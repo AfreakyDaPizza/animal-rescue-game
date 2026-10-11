@@ -1,0 +1,155 @@
+// 50 隻瀕危動物（原稿 30 隻 + 小朋友加嘅每區 2 隻 + Biome 6 嘅 10 隻）（原稿：docs/design-prompt.md）
+// biome：0 = Biome 1 … 4 = Biome 5
+// status：IUCN 紅色名錄保育狀況（2026 年資料，有啲物種係「整體唔算瀕危，但部分族群好危險」）
+import { petMoney } from './balance.js';
+
+// emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
+// kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
+
+export const ANIMALS = [
+  // ---- Biome 1：Deforestation Site ----
+  { name: 'Giant Panda', biome: 0, emoji: '🐼', kg: [70, 125], status: 'Vulnerable',
+    fact: 'Giant pandas spend 10 to 16 hours a day eating bamboo.' },
+  { name: 'African Savanna Elephant', biome: 0, emoji: '🐘', kg: [3000, 6000], status: 'Endangered',
+    fact: 'The largest land animal on Earth. Its big ears help it keep cool.' },
+  { name: 'African Forest Elephant', biome: 0, emoji: '🐘', kg: [1700, 4000], status: 'Critically Endangered',
+    fact: 'Forest elephants are "gardeners": they spread seeds that grow into new trees.' },
+  { name: 'Black Rhinoceros', biome: 0, emoji: '🦏', kg: [800, 1400], status: 'Critically Endangered',
+    fact: 'Its pointed, hook-shaped upper lip grabs leaves and twigs like a finger.' },
+
+  { name: 'Red Panda', biome: 0, emoji: '🦝', kg: [3, 6.2], status: 'Endangered',
+    fact: 'Red pandas wrap their big fluffy tail around themselves like a blanket to keep warm.' },
+  { name: 'Okapi', biome: 0, emoji: '🦓', kg: [200, 350], status: 'Endangered',
+    fact: 'Okapis have zebra stripes but are related to giraffes. Their tongue is long enough to lick their own ears!' },
+
+  // ---- Biome 2：Polluted Ocean ----
+  { name: 'Manta Ray', biome: 1, emoji: '🐟', kg: [700, 2000], status: 'Endangered',
+    fact: 'Manta rays have one of the biggest brains of any fish.' },
+  { name: 'Scalloped Hammerhead Shark', biome: 1, emoji: '🦈', kg: [30, 150], status: 'Critically Endangered',
+    fact: 'Its wide, hammer-shaped head helps it find prey hiding in the sand.' },
+  { name: 'Blue Whale', biome: 1, emoji: '🐋', kg: [100000, 190000], status: 'Endangered',
+    fact: 'The largest animal that has ever lived - even bigger than dinosaurs.' },
+  { name: 'Vaquita', biome: 1, emoji: '🐬', kg: [30, 55], status: 'Critically Endangered',
+    fact: 'The rarest sea mammal in the world. Only about 10 are left.' },
+  { name: 'Sea Turtle', biome: 1, emoji: '🐢', kg: [70, 200], status: 'Threatened (most species)',
+    fact: 'Sea turtles can mistake floating plastic bags for jellyfish.' },
+
+  { name: 'Whale Shark', biome: 1, emoji: '🦈', kg: [9000, 20000], status: 'Endangered',
+    fact: 'The biggest fish in the world - but it only eats tiny plankton and is gentle to divers.' },
+  { name: 'Dugong', biome: 1, emoji: '🧜', kg: [250, 400], status: 'Vulnerable',
+    fact: 'Dugongs are "sea cows" that munch seagrass all day. Sailors long ago may have thought they were mermaids!' },
+
+  // ---- Biome 3：Bird Poaching Site ----
+  { name: "Spix's Macaw", biome: 2, emoji: '🦜', kg: [0.25, 0.4], status: 'Extinct in the Wild (being returned)',
+    fact: 'The blue parrot from the movie Rio. Scientists are releasing them back into Brazil.' },
+  { name: 'Philippine Eagle', biome: 2, emoji: '🦅', kg: [4.5, 8], status: 'Critically Endangered',
+    fact: 'One of the largest eagles in the world and the national bird of the Philippines.' },
+  { name: 'Kakapo', biome: 2, emoji: '🦜', kg: [1, 4], status: 'Critically Endangered',
+    fact: 'The heaviest parrot in the world - and it cannot fly!' },
+  { name: 'Hyacinth Macaw', biome: 2, emoji: '🦜', kg: [1.2, 1.7], status: 'Vulnerable',
+    fact: 'The largest flying parrot. Its strong beak can crack hard nuts.' },
+  { name: 'Sun Conure', biome: 2, emoji: '🐤', kg: [0.1, 0.13], status: 'Endangered',
+    fact: 'A bright yellow and orange parrot from South America.' },
+
+  { name: 'California Condor', biome: 2, emoji: '🦅', kg: [7, 12], status: 'Critically Endangered',
+    fact: 'Once only 27 were left in the world! Thanks to rescuers, there are now over 500.' },
+  { name: 'Bali Myna', biome: 2, emoji: '🐦', kg: [0.08, 0.12], status: 'Critically Endangered',
+    fact: 'A snow-white bird with bright blue skin around its eyes. Poachers caught so many it almost vanished from the wild.' },
+
+  // ---- Biome 4：Arctic Meltdown ----
+  { name: 'Polar Bear', biome: 3, emoji: '🐻', kg: [150, 700], status: 'Vulnerable',
+    fact: 'Its fur looks white, but its skin underneath is black.' },
+  { name: 'Narwhal', biome: 3, emoji: '🐋', kg: [800, 1600], status: 'Least Concern (threatened by melting ice)',
+    fact: 'Its long "tusk" is actually a tooth that can grow up to 3 metres.' },
+  { name: 'Beluga Whale', biome: 3, emoji: '🐳', kg: [700, 1600], status: 'Least Concern (some groups Critically Endangered)',
+    fact: 'Called the "canary of the sea" because it chirps and whistles.' },
+  { name: 'Ringed Seal', biome: 3, emoji: '🦭', kg: [50, 70], status: 'Least Concern (threatened by melting ice)',
+    fact: 'Mother seals dig snow caves on the ice to keep their pups safe.' },
+  { name: 'Emperor Penguin', biome: 3, emoji: '🐧', kg: [22, 45], status: 'Near Threatened',
+    fact: 'The biggest penguin. Dads keep the egg warm on their feet all winter.' },
+  { name: 'Arctic Fox', biome: 3, emoji: '🦊', kg: [2.5, 6], status: 'Least Concern (threatened by melting ice)',
+    fact: 'Its fur is white in winter and brown in summer.' },
+  { name: 'Caribou', biome: 3, emoji: '🦌', kg: [70, 200], status: 'Vulnerable',
+    fact: 'Both males and females grow antlers.' },
+  { name: 'Snowy Owl', biome: 3, emoji: '🦉', kg: [1.6, 3], status: 'Vulnerable',
+    fact: 'Unlike most owls, it hunts during the day in the Arctic summer.' },
+
+  { name: 'Walrus', biome: 3, emoji: '🦭', kg: [600, 1500], status: 'Vulnerable',
+    fact: 'Walruses use their long tusks like ice picks to pull themselves out of the water onto the ice.' },
+  { name: 'Atlantic Puffin', biome: 3, emoji: '🐦', kg: [0.4, 0.55], status: 'Vulnerable',
+    fact: 'Puffins can carry more than 10 small fish in their colourful beak at the same time!' },
+
+  // ---- Biome 5：Smuggler's Compound ----
+  { name: 'Amur Leopard', biome: 4, emoji: '🐆', kg: [25, 50], status: 'Critically Endangered',
+    fact: 'Its thick fur keeps it warm in the snowy forests of Russia and China.' },
+  { name: 'Sumatran Orangutan', biome: 4, emoji: '🦧', kg: [35, 90], status: 'Critically Endangered',
+    fact: 'It spends almost its whole life up in the trees.' },
+  { name: 'Bornean Orangutan', biome: 4, emoji: '🦧', kg: [35, 100], status: 'Critically Endangered',
+    fact: 'It builds a new bed of leaves to sleep in every night.' },
+  { name: 'Mountain Gorilla', biome: 4, emoji: '🦍', kg: [70, 220], status: 'Endangered',
+    fact: 'Lives in family groups led by a big male called a silverback.' },
+  { name: 'Javan Rhino', biome: 4, emoji: '🦏', kg: [900, 2300], status: 'Critically Endangered',
+    fact: 'Only one group is left in the world, in one park in Java, Indonesia.' },
+  { name: 'Sumatran Rhino', biome: 4, emoji: '🦏', kg: [500, 950], status: 'Critically Endangered',
+    fact: 'The smallest rhino, and the only one covered in hair.' },
+  { name: 'Saola', biome: 4, emoji: '🐐', kg: [80, 100], status: 'Critically Endangered',
+    fact: 'So rare and hard to find that it is called the "Asian unicorn".' },
+  { name: 'Pangolin', biome: 4, emoji: '🦔', kg: [2, 10], status: 'Critically Endangered (some species)',
+    fact: 'The only mammal covered in scales. It rolls into a ball to stay safe.' },
+  { name: 'Sumatran Tiger', biome: 4, emoji: '🐅', kg: [75, 140], status: 'Critically Endangered',
+    fact: 'The smallest tiger in the world. Only about 600 or fewer are left in the wild.' },
+  { name: 'Slow Loris', biome: 4, emoji: '🐒', kg: [0.6, 2], status: 'Endangered',
+    fact: 'The only venomous primate! Sadly, many are smuggled to be sold as pets - so never buy one.' },
+
+  // ---- Biome 6：Mining Mountain（小朋友加嘅新生態區）----
+  { name: 'Snow Leopard', biome: 5, emoji: '🐆', kg: [22, 55], status: 'Vulnerable',
+    fact: 'Snow leopards wrap their super-long, fluffy tail around their face like a scarf to keep warm.' },
+  { name: 'Andean Bear', biome: 5, emoji: '🐻', kg: [60, 175], status: 'Vulnerable',
+    fact: 'Also called the spectacled bear - the pale rings around its eyes look like glasses!' },
+  { name: 'Ethiopian Wolf', biome: 5, emoji: '🐺', kg: [11, 19], status: 'Endangered',
+    fact: "Africa's rarest wolf lives high in the mountains of Ethiopia. Only about 500 are left." },
+  { name: 'Mountain Pygmy Possum', biome: 5, emoji: '🐭', kg: [0.03, 0.08], status: 'Critically Endangered',
+    fact: 'A tiny possum that sleeps under the snow for up to 7 months every year!' },
+  { name: 'Golden Snub-nosed Monkey', biome: 5, emoji: '🐒', kg: [6, 39], status: 'Endangered',
+    fact: 'It has golden fur and a tiny turned-up nose. It lives in snowy mountain forests in China.' },
+  { name: 'Takin', biome: 5, emoji: '🐂', kg: [250, 350], status: 'Vulnerable',
+    fact: 'A big shaggy goat-antelope. Some people think its golden coat inspired the legend of the Golden Fleece!' },
+  { name: 'Pyrenean Desman', biome: 5, emoji: '🐀', kg: [0.05, 0.08], status: 'Endangered',
+    fact: 'A tiny swimming mammal with a long bendy nose like a mini trunk. It needs clean mountain streams.' },
+  { name: 'Himalayan Musk Deer', biome: 5, emoji: '🦌', kg: [11, 18], status: 'Endangered',
+    fact: 'It has no antlers - instead, the males have long teeth that look like vampire fangs!' },
+  { name: 'Andean Cat', biome: 5, emoji: '🐈', kg: [3.5, 5], status: 'Endangered',
+    fact: 'One of the rarest wild cats in the world. It lives high in the Andes mountains and has a super-thick tail.' },
+  { name: 'Volcano Rabbit', biome: 5, emoji: '🐇', kg: [0.4, 0.6], status: 'Endangered',
+    fact: 'A tiny rabbit with round ears that lives only on the slopes of volcanoes near Mexico City!' },
+];
+
+export const animalsInBiome = (biome) => ANIMALS.filter((a) => a.biome === biome);
+
+export const findAnimal = (name) => ANIMALS.find((a) => a.name === name);
+
+// 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
+export function randomKg(animal) {
+  const [lo, hi] = animal.kg;
+  const kg = lo + Math.random() * (hi - lo);
+  return kg < 10 ? Math.round(kg * 10) / 10 : Math.round(kg);
+}
+
+// 舊存檔冇重量：用中間值
+export function kgOf(item) {
+  if (item.kg) return item.kg;
+  const [lo, hi] = findAnimal(item.name).kg;
+  return (lo + hi) / 2;
+}
+
+export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
+
+// 一隻救返嚟嘅動物／寵物每秒賺幾多（重量 × 生態區 × 稀有度）
+export const itemMoney = (item) => petMoney(kgOf(item), item.biome, item.rarity);
+
+// 越重越大隻：同一種動物，最輕嗰隻 ×0.8，最重嗰隻 ×1.25（小朋友：大細要跟重量）
+export function kgScale(item) {
+  const [lo, hi] = findAnimal(item.name).kg;
+  const t = hi > lo ? Math.min(1, Math.max(0, (kgOf(item) - lo) / (hi - lo))) : 0.5;
+  return 0.8 + t * 0.45;
+}

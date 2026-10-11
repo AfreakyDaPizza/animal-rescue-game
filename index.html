@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Animal Rescue</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- 字款喺背景載，連唔到 Google 都唔會阻住遊戲 -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- 上面：數值 + 夜晚倒數 + 面板掣 -->
+    <div id="hud-stats" class="hud-box">
+      <span>💰 <b id="hud-money">0</b></span>
+      <span>⚡ <b id="hud-speed">100</b></span>
+      <span>🧠 <b id="hud-iq">100</b></span>
+      <span>🎟️ <b id="hud-tokens">0</b></span>
+    </div>
+    <div id="hud-timer" class="hud-box">☀️ Night in 5:00</div>
+    <div id="event-banner" class="hud-box"></div>
+    <div id="hud-buttons">
+      <button id="mute-button" class="hud-box">🔊 <kbd>M</kbd></button>
+      <button id="quests-button" class="hud-box">📜 Quests <kbd>Q</kbd></button>
+      <button id="index-button" class="hud-box">📖 Index <kbd>I</kbd></button>
+      <button id="stats-button" class="hud-box">📋 My Stats <kbd>P</kbd></button>
+    </div>
+
+    <!-- 下面：位置 + 快捷欄 + 操作提示 -->
+    <div id="hud-location" class="hud-box">Hub</div>
+    <div id="hotbar-wrap">
+      <div id="hotbar-label"></div>
+      <div id="hotbar"></div>
+    </div>
+    <div id="hud-help" class="hud-box">WASD move · Space jump · Mouse look · E use · 1-0 hotbar · scroll zoom · Shift lock · M sound · G graphics · Esc pause</div>
+
+    <div id="hud-carry" class="hud-box" hidden></div>
+    <div id="hud-prompt" class="hud-box" hidden></div>
+
+    <div id="crosshair"></div>
+    <div id="popups"></div>
+    <div id="announce"></div>
+    <div id="zone-title"><small></small><span></span></div>
+    <div id="sightings"></div>
+    <div id="fact" class="hud-box" hidden></div>
+
+    <!-- 教學關 -->
+    <div id="tutorial" hidden>
+      <div id="tutorial-step"></div>
+      <div id="tutorial-text"></div>
+      <button id="tutorial-skip">Skip tutorial <kbd>K</kbd></button>
+    </div>
+    <div id="tutorial-arrow" hidden><span>⬆</span><small></small></div>
+
+    <!-- 開場動畫 -->
+    <div id="intro">
+      <div id="intro-caption"></div>
+      <div id="intro-fade"></div>
+      <div id="intro-final">Save all the animals...<br /><span>to save the world.</span></div>
+      <div id="intro-skip">Click or press any key to skip ▶</div>
+    </div>
+
+    <!-- 未開始／暫停 -->
+    <div id="start" class="overlay">
+      <div class="card">
+        <h1>🐼 Animal Rescue</h1>
+        <p>Rescue endangered animals and bring them home safely!</p>
+        <p class="hint">
+          Train <b>Speed</b> on the Treadmill and <b>IQ</b> at the Student Table.<br />
+          Bosses chase you when you borrow their animal - be fast!
+        </p>
+        <button id="start-button">Click to Play</button>
+        <p class="small">WASD / Arrow keys move · Space jump · Mouse look · E use · 1-0 hotbar · scroll to zoom camera · P stats · I index · G graphics · Esc pause</p>
+      </div>
+    </div>
+
+    <!-- 資料面板（My Stats／Animal Index） -->
+    <div id="panel" class="overlay" hidden>
+      <div class="card wide">
+        <h2 id="panel-title">📋 My Stats</h2>
+        <div id="panel-body"></div>
+        <button id="panel-close">Close <kbd id="panel-close-key">P</kbd></button>
+      </div>
+    </div>
+
+    <!-- 問答（遊戲停住，答完先繼續） -->
+    <div id="quiz" class="overlay" hidden>
+      <div class="card quiz">
+        <h2 id="quiz-title"></h2>
+        <p id="quiz-question"></p>
+        <div id="quiz-answers"></div>
+        <p id="quiz-iq" class="small"></p>
+        <p id="quiz-result" hidden></p>
+        <button id="quiz-continue" hidden>Continue <kbd>Enter</kbd></button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
