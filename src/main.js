@@ -290,6 +290,31 @@ function togglePanel(kind) {
 document.getElementById('stats-button').addEventListener('click', () => togglePanel('stats'));
 document.getElementById('index-button').addEventListener('click', () => togglePanel('index'));
 document.getElementById('quests-button').addEventListener('click', () => togglePanel('quests'));
+
+// 隱藏寵物（巨型寵物遮住成個 Hub 嗰陣好有用）：地塊寵物同手上／頭頂嗰隻都收埋，照樣賺錢
+let petsHidden = false;
+try {
+  petsHidden = localStorage.getItem('animal-rescue-hide-pets') === '1';
+} catch {
+  // 記唔到就算
+}
+const hideBtn = document.getElementById('hide-pets-button');
+function showHideBtn() {
+  hideBtn.innerHTML = `${petsHidden ? '🙈 Pets hidden' : '👁️ Pets'} <kbd>H</kbd>`;
+}
+function toggleHidePets() {
+  petsHidden = !petsHidden;
+  try {
+    localStorage.setItem('animal-rescue-hide-pets', petsHidden ? '1' : '0');
+  } catch {
+    // 記唔到就算
+  }
+  showHideBtn();
+  popup(petsHidden ? '🙈 Pets hidden (they still earn money!)' : '👁️ Pets visible');
+  play('click');
+}
+showHideBtn();
+hideBtn.addEventListener('click', toggleHidePets);
 document.getElementById('panel-close').addEventListener('click', () => togglePanel(panelKind()));
 
 // 問答：遊戲停住，放個滑鼠出嚟俾你揀答案
@@ -310,6 +335,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyP') togglePanel('stats');
   if (e.code === 'KeyI') togglePanel('index');
   if (e.code === 'KeyQ') togglePanel('quests');
+  if (e.code === 'KeyH') toggleHidePets();
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
   if (e.code === 'KeyE' && panelKind() === 'pets') return togglePanel('pets'); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
@@ -713,6 +739,9 @@ renderer.setAnimationLoop((timestamp) => {
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
   });
   renderPass.camera = viewCam;
+  for (const p of hub.plot.pets) p.group.visible = !petsHidden;
+  const heldModel = rescue.holding?.model;
+  if (heldModel) heldModel.visible = !petsHidden;
   LEVER.ready = state.leverReadyAt <= Date.now();
   stars.material.opacity = dayNight.blend;
 

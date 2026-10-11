@@ -93,6 +93,7 @@ src/data/questions.js ← 野生動物問題
 - Shift Lock（似 Roblox）：Shift 切換鎖住／放開滑鼠；放開時見到滑鼠、右鍵拖轉鏡頭、遊戲唔暫停。
 - Skin Tokens 🎟️：每日 3 個任務（Q 掣，`src/quests.js`）＋每隻新寵物（Common 1 … Mythic 10）。
 - 皮膚商店攤位（Hub 右下）：護林員皮膚 7 款（Classic/Ninja/Panda/Astronaut/Knight/Golden/Rainbow）、寵物皮膚 6 款（Natural/Shadow/Golden/Neon/Galaxy/Rainbow，換晒所有寵物）、擴建 Hub 3 次（每次 +10 米：Fountain Garden 15、Statue Park 30、Pet Playground 50 代幣）。
+- 隱藏寵物（H 掣／頂部掣）：收埋地塊同手上嘅寵物，照樣賺錢；巨型寵物遮住 Hub 時用。
 - 學生桌坐姿改正（之前手向後、沉落櫈）。
 - 暫停：動物、動畫、繁殖機倒數全部停；日夜同活動時鐘跟真實時間照行（小朋友 2026-10-11 揀 A：保持跟真實時鐘）。
 - F5 唔會換動物：每段 5 分鐘白天嘅動物係固定（seed），救咗嘅記喺 `state.takenSpawns`，refresh 都唔會再出。
