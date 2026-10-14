@@ -37,6 +37,7 @@
 - 2026-10-11：滑鼠轆 = 鏡頭 zoom（`zoomCamera`，存 `animal-rescue-zoom`），快捷欄只用 1–0；頭頂寵物真實大細（`realMax`）；跑步／坐低動畫。
 - 2026-10-11：Shift Lock（`MouseLook.freeMode`）、每日任務 + Skin Tokens（`src/quests.js`）、皮膚商店（`src/skins.js`，`applyRangerSkin`/`applyPetSkin`）、Hub 擴建（`state.hubLevel`，`HUB.maxZ` 跟住變，買完 reload + sessionStorage 跳開場）。
 - 2026-10-13：上咗 GitHub（**Public**，小朋友要求公開）：https://github.com/AfreakyDaPizza/animal-rescue-game ，repo 屬小朋友帳號，家長 `gavinc2025` 係 collaborator（呢部機 SSH key 用家長帳號 push）。
+- 2026-10-14：GitHub Pages 自動部署（`.github/workflows/deploy.yml`，push 上 `main` 就更新）：https://afreakydapizza.github.io/animal-rescue-game/ 。`vite.config.js` 用 `base: './'`。
 
 ## 點樣玩／開發
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。
