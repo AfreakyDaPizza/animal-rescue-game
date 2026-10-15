@@ -42,6 +42,7 @@
 - 2026-10-15（下晝）：Hub 分區 + Magic Library + Sell Stall（`src/hubBuildings.js`）、電影感開場、Boss 彈飛返 Hub、刪拉桿、山樓梯、Biome 2 沙灘（`TRASH` 執垃圾）+ Captain Oil Spill、生態區 42×62。每做完一部分就 push 上 main（自動部署）。
 
 - 2026-10-15（夜）：Issue #2（BUG 02 + IDEA 01）：修咗吊床 Owner 反轉（`lieOnHammock` 改仰瞓，commit 72c0785，Refs #2）。Issue 留咗 checklist 同兩條問題（Arctic Smeltdown／Smugglers Compound 點 redesign；2.5 分鐘前變 dawn 係咪指黃昏）。未做：25 隻寵物開閘 → Laboratory → 四隻手 Mutated Scientist Poacher Boss（無人機、腐化動物、傳送門 Boss、紅框拍手、Solar Energy Capsule×4）→ 結局動畫＋黑幕字；閘外海灘睇流星＋秘密結局「THE COLLAB」。
+- 2026-10-15（夜）：Issue #2 續：小朋友話 Biome 4、5「very ugly」要重做 texture 同設計 → 新檔 `src/biomeArt.js`（canvas 像素紋理、`tiledBox` 按尺寸鋪 UV；`arcticV2`／`smugglersV2`；`biomeFloorTexture` 俾 world.js 地板用）。Arctic：冰川懸崖、融冰海浮冰、雪松、雪屋、研究站、北極光；Smuggler's：瀝青路線、貨倉、貨櫃、鐵絲網＋鐵蒺藜、FRAGILE 木箱、開咗門嘅空籠、警告桶、瞭望塔探射燈。黃昏：`daynight.js` 入夜前 `DUSK_START`=150 秒變橙→深紅紫（commit 8924db0）。biomes.js 舊 `arctic`／`smugglers` 函數已冇用。
 
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
