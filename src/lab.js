@@ -12,17 +12,27 @@ import { makeLabel, dynamicSign, THEMES } from './signs.js';
 import { PARK_GATE, setGateOpen } from './hubPark.js';
 import { buildAnimalModel } from './animalModels.js';
 import { ANIMALS } from './data/animals.js';
-import { LAB_UNLOCK_PETS } from './data/balance.js';
+import { LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY, LAB_LEGENDARY_NEEDED } from './data/balance.js';
 import { state } from './state.js';
-import { LAB, LAB_DOOR_Z, CAPSULES, PODS, PORTAL, BOSS_HOME } from './labShape.js';
+import { LAB, LAB_DOOR_Z, CAPSULES, PODS, PORTAL, ARENA, BOSS_PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
+
+const LAB_MID = { x: 0, z: 124 }; // 實驗室中間（地上燈帶、頂上光環）
 
 const $ = (id) => document.getElementById(id);
 
 // 其他檔案要郁嘅嘢
 export const lab = {
-  capsules: [], pods: [], portal: null, doors: [], lock: null, lights: [],
-  guide: null, doorOpen: 0,
+  capsules: [], pods: [], doors: [], lock: null, lights: [], guide: null, doorOpen: 0,
+  labPortal: null, // 實驗室傳送門（開咗就入得 Boss Arena）
+  bossPortal: null, // Arena 入面，Boss 叫生態區 Boss 出嚟嘅傳送門
+  exitPortal: null, // Arena 南邊：返實驗室
+  button: null, hammer: null, effects: [], scene: null,
 };
+
+// ---- 傳送門幾時開（小朋友 2026-10-15：做到其中一樣就得）----
+export const podsDone = () => state.labPodsSmashed.length >= Math.min(LAB_PODS, PODS.length);
+export const legendaryDone = () => state.labLegendaryGiven >= LAB_LEGENDARY_NEEDED;
+export const portalReady = () => (LAB_PORTAL_BY_PODS && podsDone()) || (LAB_PORTAL_BY_LEGENDARY && legendaryDone());
 
 const materials = new Map();
 function mat(color, extra = {}) {
@@ -211,19 +221,31 @@ export function buildLab(scene) {
   const staticRoot = new THREE.Group();
   const live = new THREE.Group();
   scene.add(live);
+  lab.scene = scene;
   const updates = [];
 
   buildShell(staticRoot, live, updates);
   buildInterior(staticRoot, live, updates);
+  buildArena(staticRoot, live, updates);
   buildCapsules(live);
   buildPods(live);
-  buildPortal(staticRoot, live, updates);
+  lab.labPortal = makePortal(staticRoot, live, updates, { ...PORTAL, color: 0xd500f9 });
+  lab.bossPortal = makePortal(staticRoot, live, updates, { ...BOSS_PORTAL, color: 0xff1744 });
+  lab.exitPortal = makePortal(staticRoot, live, updates, { ...EXIT_PORTAL, r: 2.4, color: 0x00e676, rotY: Math.PI });
+  lab.exitPortal.target = 1; // 出口一直開住
+  const exitSign = holoPanel([{ text: '⬅ EXIT', size: 70, color: '#b9f6ca' }, { text: 'back to the Lab', size: 40 }], 4, 1.8, '#00e676');
+  exitSign.position.set(EXIT_PORTAL.x, EXIT_PORTAL.y + 4, EXIT_PORTAL.z);
+  live.add(exitSign);
+  buildRedButton(live);
+  buildHammer(live);
   buildGateLock(live);
   buildGuide(live);
   bakeStatic(staticRoot, scene);
 
-  // 已經開咗（舊存檔）：大門一開始就打開
+  // 舊存檔：大門一開始就打開；打爛咗嘅玻璃艙保持爛咗；執咗嘅鎚仔唔再出
   parkGate.open = !!state.labUnlocked;
+  for (const i of state.labPodsSmashed) if (lab.pods[i]) breakPodNow(lab.pods[i]);
+  if (state.hasHammer) lab.hammer.g.visible = false;
   if (parkGate.open) {
     setGateOpen(1);
     lab.lock.group.visible = false;
@@ -243,12 +265,30 @@ export function buildLab(scene) {
       c.ring2.rotation.y = -time * 1.1;
       c.core.material.emissiveIntensity = 1.6 + Math.sin(time * 3 + c.x) * 0.5;
     }
-    // 瞓覺嘅動物：呼吸、Zzz 浮上浮落
+    // 困住嘅動物：呼吸、字浮上浮落；放咗出嚟：跳兩下，再跑出實驗室門口
     for (const p of lab.pods) {
-      if (p.free) continue;
-      p.model.userData.animate?.(time * 0.3, 0);
-      p.zzz.position.y = p.zzzY + Math.sin(time * 1.5 + p.x) * 0.2;
+      if (!p.free) {
+        p.model.userData.animate?.(time * 0.3, 0);
+        p.zzz.position.y = p.zzzY + Math.sin(time * 1.5 + p.x) * 0.2;
+      } else if (p.runner) updateFreedAnimal(p, dt, time);
     }
+    // 實驗室傳送門：開咗先有旋渦（打贏咗就閂）
+    lab.labPortal.target = portalReady() && !state.labBossDefeated ? 1 : 0;
+    // 紅色掣：撳落去再彈返上嚟
+    lab.button.press = Math.max(0, lab.button.press - dt * 2);
+    lab.button.cap.position.y = 1.0 - Math.sin(Math.min(1, lab.button.press) * Math.PI) * 0.18;
+    lab.button.ring.material.emissiveIntensity = 1.5 + Math.sin(time * 4) * 1;
+    // 鎚仔：浮下浮下、轉
+    if (lab.hammer.g.visible) {
+      lab.hammer.tool.position.y = 1.4 + Math.sin(time * 2) * 0.15;
+      lab.hammer.tool.rotation.y = time * 1.2;
+    }
+    updateEffects(dt);
+    // 燈只係喺附近先開（每盞燈都會令成個世界畫慢啲）
+    const inLabZone = playerPos.z > 90 && playerPos.z < 170;
+    const inArenaZone = playerPos.z > 260;
+    for (const l of lab.lights) l.visible = inLabZone;
+    for (const l of lab.arenaLights) l.visible = inArenaZone;
   };
 }
 
@@ -363,7 +403,7 @@ function buildShell(root, live, updates) {
   }
   // 頂：浮喺半空嘅大光環（喺 Boss 上面轉）
   const halo = new THREE.Group();
-  halo.position.set(BOSS_HOME.x, wallH + 5, (minZ + maxZ) / 2 + 3);
+  halo.position.set(LAB_MID.x, wallH + 5, LAB_MID.z);
   const h1 = new THREE.Mesh(new THREE.TorusGeometry(14, 0.25, 8, 64), neonC);
   h1.rotation.x = Math.PI / 2;
   const h2 = new THREE.Mesh(new THREE.TorusGeometry(10, 0.18, 8, 64), neonM);
@@ -451,8 +491,8 @@ function buildInterior(root, live, updates) {
   // 兩邊浮喺半空嘅細全息屏幕（每個下面有投影機 + 光錐）
   const smallScreens = [
     { x: -14, z: 104.5, rot: Math.PI, lines: [{ text: 'DNA SCAN', size: 60, color: '#e0f7fa' }, { text: '🧬 ▓▓▓▓▓░░ 71%', size: 44, color: '#76ff03' }] },
-    { x: 14, z: 104.5, rot: Math.PI, lines: [{ text: 'SOLAR CORE', size: 60, color: '#ffe082' }, { text: '☀️ x4 ONLINE', size: 46, color: '#ffd740' }] },
-    { x: -7.5, z: maxZ - 6.5, rot: Math.PI, lines: [{ text: 'PORTAL', size: 64, color: '#ea80fc' }, { text: '🌀 STANDBY', size: 46 }] },
+    { x: 14, z: 104.5, rot: Math.PI, lines: [{ text: 'SPECIMENS', size: 60, color: '#ffe082' }, { text: '🔨 SMASH TO FREE', size: 40, color: '#ffd740' }] },
+    { x: -7.5, z: maxZ - 6.5, rot: Math.PI, lines: [{ text: 'PORTAL', size: 64, color: '#ea80fc' }, { text: '🌀 BOSS ARENA', size: 42 }] },
     { x: 7.5, z: maxZ - 6.5, rot: Math.PI, lines: [{ text: 'DRONE BAY', size: 60, color: '#e0f7fa' }, { text: '🛸 READY', size: 46, color: '#76ff03' }] },
   ];
   const coneMat = new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
@@ -491,15 +531,15 @@ function buildInterior(root, live, updates) {
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
     const r = 7.5;
-    const seg = add(live, box(2 * r * Math.sin(Math.PI / 8) + 0.2, 0.06, 0.25), stripMats[0], BOSS_HOME.x + Math.cos(a) * r * Math.cos(Math.PI / 8), 0.04, BOSS_HOME.z + Math.sin(a) * r * Math.cos(Math.PI / 8), false);
+    const seg = add(live, box(2 * r * Math.sin(Math.PI / 8) + 0.2, 0.06, 0.25), stripMats[0], LAB_MID.x + Math.cos(a) * r * Math.cos(Math.PI / 8), 0.04, LAB_MID.z + Math.sin(a) * r * Math.cos(Math.PI / 8), false);
     seg.rotation.y = -a + Math.PI / 2;
   }
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     for (let k = 0; k < 5; k++) {
       const d = 9 + k * 3.2;
-      const x = BOSS_HOME.x + Math.cos(a) * d;
-      const z = BOSS_HOME.z + Math.sin(a) * d;
+      const x = LAB_MID.x + Math.cos(a) * d;
+      const z = LAB_MID.z + Math.sin(a) * d;
       if (x < LAB.minX + 1.5 || x > LAB.maxX - 1.5 || z < minZ + 1.5 || z > maxZ - 1.5) continue;
       const m = stripMats[1].clone();
       const seg = add(live, box(0.25, 0.05, 2.2), m, x, 0.04, z, false);
@@ -604,21 +644,25 @@ export function resetCapsules() {
   }
 }
 
-// ---------- 玻璃艙：瞓住被捉嘅瀕危動物 ----------
-const POD_ANIMALS = ['Giant Panda', 'Red Panda', 'Kakapo', 'Polar Bear', 'Pangolin', 'Snow Leopard'];
+// ---------- 玻璃艙：困住被捉嘅瀕危動物（用鎚仔打爛救佢哋） ----------
+const POD_ANIMALS = ['Giant Panda', 'Red Panda', 'Polar Bear', 'Snow Leopard'];
 function buildPods(live) {
-  const metal = mat(0x455a64, { metalness: 0.6, roughness: 0.35 });
-  lab.pods = PODS.map(({ x, z }, i) => {
+  const metal = mat(0x2a3448, { metalness: 0.6, roughness: 0.35 });
+  lab.pods = PODS.slice(0, LAB_PODS).map(({ x, z }, i) => {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
     add(g, cyl(1.9, 0.6, 20), metal, 0, 0.3, 0);
-    add(g, cyl(1.7, 0.08, 20), glow(0x00e5ff, 1.2), 0, 0.64, 0, false);
-    const lid = new THREE.Group(); // 玻璃罩 + 頂（結局會升起）
-    add(lid, cyl(1.75, 3.4, 20), new THREE.MeshStandardMaterial({ color: 0x80deea, transparent: true, opacity: 0.28, roughness: 0.05 }), 0, 2.4, 0, false);
+    add(g, cyl(1.7, 0.08, 20), glow(CYAN, 1.2), 0, 0.64, 0, false);
+    const lid = new THREE.Group(); // 玻璃罩 + 頂（打爛就冇咗）
+    add(lid, cyl(1.75, 3.4, 20), new THREE.MeshStandardMaterial({ color: 0x80deea, transparent: true, opacity: 0.3, roughness: 0.05 }), 0, 2.4, 0, false);
     add(lid, cyl(1.9, 0.5, 20), metal, 0, 4.35, 0);
-    add(lid, new THREE.SphereGeometry(0.25, 8, 6), glow(0x00e5ff, 2.5), 0, 4.75, 0, false);
+    add(lid, new THREE.SphereGeometry(0.25, 8, 6), glow(CYAN, 2.5), 0, 4.75, 0, false);
+    for (const y of [1.0, 3.9]) {
+      const r = add(lid, new THREE.TorusGeometry(1.78, 0.06, 6, 32), glow(MAGENTA, 2), 0, y, 0, false);
+      r.rotation.x = Math.PI / 2;
+    }
     g.add(lid);
-    const animal = ANIMALS.find((a) => a.name === POD_ANIMALS[i]) || ANIMALS[i * 7];
+    const animal = ANIMALS.find((a) => a.name === POD_ANIMALS[i % POD_ANIMALS.length]) || ANIMALS[i * 7];
     const model = buildAnimalModel(animal);
     const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
     model.scale.multiplyScalar(Math.min(1.4, 2.2 / Math.max(size.x, size.y, size.z)));
@@ -627,44 +671,286 @@ function buildPods(live) {
     model.rotation.y = x < 0 ? -Math.PI / 2 : Math.PI / 2; // 面向場中間
     g.add(model);
     const zzzY = 3.6;
-    const zzz = makeLabel([{ text: '💤 Zzz...', color: '#b3e5fc' }], 0.8);
+    const zzz = makeLabel([{ text: '😢 Help! Trapped!', color: '#b3e5fc' }], 0.8);
     zzz.position.y = zzzY;
     g.add(zzz);
+    const base = add(g, cyl(1.95, 0.1, 20), glow(0xff1744, 1), 0, 0.05, 0, false); // 紅光 = 未救
     live.add(g);
     addCollider(x, z, 2.1);
-    return { x, z, g, lid, model, animal, zzz, zzzY, free: false };
+    return { i, x, z, g, lid, model, animal, zzz, zzzY, base, free: false, runner: null };
   });
 }
 
-// ---------- 傳送門（後牆前面；Boss 戰先開） ----------
-function buildPortal(root, live, updates) {
-  const { x, z, y } = PORTAL;
+// 打爛玻璃艙（即刻，例如讀存檔）
+function breakPodNow(p) {
+  p.free = true;
+  p.lid.visible = false;
+  p.model.visible = false;
+  p.zzz.visible = false;
+  p.base.material = glow(0x00e676, 1);
+}
+
+// 用鎚仔打爛：玻璃碎飛散、動物開心咁跳，再跑出實驗室
+export function smashPod(p) {
+  p.free = true;
+  p.lid.visible = false;
+  p.base.material = glow(0x00e676, 1);
+  p.zzz.userData.setLines([{ text: `❤ Thank you! ❤`, color: '#ff80ab' }]);
+  shards(p.g.position.clone().setY(2.2), 0x80deea, 40);
+  shards(p.g.position.clone().setY(2.2), 0xffffff, 16);
+  p.runner = { t: 0 };
+}
+function updateFreedAnimal(p, dt, time) {
+  const r = p.runner;
+  r.t += dt;
+  const m = p.model;
+  if (r.t < 1.6) {
+    m.position.y = 0.66 + Math.abs(Math.sin(r.t * 7)) * 0.9; // 開心到跳
+    m.userData.animate?.(time, 0);
+    return;
+  }
+  // 跑去實驗室門口，然後消失（返屋企）
+  const world = p.g.position.clone().add(m.position);
+  const goal = new THREE.Vector3(0, 0, LAB_DOOR_Z - 2);
+  const d = goal.clone().sub(world);
+  d.y = 0;
+  if (d.length() < 1 || r.t > 9) {
+    m.visible = false;
+    p.zzz.visible = false;
+    p.runner = null;
+    return;
+  }
+  d.normalize();
+  m.position.addScaledVector(d, dt * 8);
+  m.position.y = 0;
+  m.rotation.y = Math.atan2(-d.x, -d.z);
+  p.zzz.position.set(m.position.x, p.zzzY, m.position.z);
+  m.userData.animate?.(time, 1);
+}
+
+// 玻璃碎／閃光：一堆細方塊四圍飛
+function shards(at, color, n) {
+  const m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, transparent: true, opacity: 0.9 });
+  const g = new THREE.Group();
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.05), m);
+    p.position.copy(at);
+    g.add(p);
+    parts.push({ p, v: new THREE.Vector3().randomDirection().multiplyScalar(4 + Math.random() * 4).add(new THREE.Vector3(0, 3, 0)) });
+  }
+  lab.scene.add(g);
+  lab.effects.push({ life: 0, max: 1.6, update: (k, dt) => {
+    for (const q of parts) {
+      q.v.y -= 14 * dt;
+      q.p.position.addScaledVector(q.v, dt);
+      if (q.p.position.y < 0.05) {
+        q.p.position.y = 0.05;
+        q.v.set(0, 0, 0);
+      }
+      q.p.rotation.x += dt * 9;
+    }
+    m.opacity = 0.9 * (1 - k);
+  }, done: () => lab.scene.remove(g) });
+}
+export const sparkleBurst = shards;
+function updateEffects(dt) {
+  for (let i = lab.effects.length - 1; i >= 0; i--) {
+    const e = lab.effects[i];
+    e.life += dt;
+    const k = Math.min(1, e.life / e.max);
+    e.update(k, dt);
+    if (k >= 1) {
+      e.done();
+      lab.effects.splice(i, 1);
+    }
+  }
+}
+
+// ---------- 傳送門（實驗室一個、Arena 兩個） ----------
+// { x, y, z, r（大細）, color, rotY }；回傳 { swirl, open, target }：target 1 = 開
+function makePortal(root, live, updates, { x, y, z, r = 3.7, color = 0xd500f9, rotY = 0 }) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
   const metal = mat(0x263238, { metalness: 0.7, roughness: 0.3 });
-  const frame = new THREE.Mesh(new THREE.TorusGeometry(3.7, 0.5, 10, 36), metal);
-  frame.position.set(x, y, z);
-  root.add(frame);
-  for (const s of [-1, 1]) add(root, rbox(1.2, y, 1.2), metal, x + s * 3.9, y / 2, z);
-  add(root, rbox(9.5, 0.6, 2.5), metal, x, 0.3, z);
-  // 一圈紫色燈
+  const frame = new THREE.Mesh(new THREE.TorusGeometry(r, 0.5, 10, 36), metal);
+  frame.position.y = y;
+  g.add(frame);
+  for (const s of [-1, 1]) add(g, rbox(1.2, y, 1.2), metal, s * (r + 0.2), y / 2, 0);
+  add(g, rbox(r * 2 + 2, 0.6, 2.5), metal, 0, 0.3, 0);
   const lights = [];
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2;
-    const l = add(live, new THREE.SphereGeometry(0.2, 8, 6), glow(0xd500f9, 1).clone(), x + Math.cos(a) * 3.7, y + Math.sin(a) * 3.7, z - 0.45, false);
-    lights.push(l);
+    lights.push(add(g, new THREE.SphereGeometry(0.2, 8, 6), glow(color, 1).clone(), Math.cos(a) * r, y + Math.sin(a) * r, -0.45, false));
   }
-  const swirl = new THREE.Mesh(new THREE.CircleGeometry(3.3, 40), new THREE.MeshBasicMaterial({ map: swirlTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
-  swirl.position.set(x, y, z - 0.1);
+  const swirl = new THREE.Mesh(new THREE.CircleGeometry(r - 0.4, 40), new THREE.MeshBasicMaterial({ map: swirlTexture(), color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.5), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+  swirl.position.set(0, y, -0.1);
   swirl.scale.setScalar(0.001);
-  live.add(swirl);
-  lab.portal = { swirl, open: 0, target: 0, lights };
+  g.add(swirl);
+  live.add(g);
+  const portal = { g, swirl, open: 0, target: 0, lights, x, z };
   updates.push((dt, time) => {
-    const p = lab.portal;
-    p.open += (p.target - p.open) * Math.min(1, dt * 2.5);
-    swirl.scale.setScalar(Math.max(0.001, p.open));
+    portal.open += (portal.target - portal.open) * Math.min(1, dt * 2.5);
+    swirl.scale.setScalar(Math.max(0.001, portal.open));
     swirl.rotation.z = time * 2.5;
-    swirl.visible = p.open > 0.01;
-    lights.forEach((l, i) => (l.material.emissiveIntensity = p.open > 0.1 ? 1.5 + Math.sin(time * 8 + i) * 1.5 : 0.4));
+    swirl.visible = portal.open > 0.01;
+    lights.forEach((l, i) => (l.material.emissiveIntensity = portal.open > 0.1 ? 1.5 + Math.sin(time * 8 + i) * 1.5 : 0.4));
   });
+  void root;
+  return portal;
+}
+
+// ---------- 圓形 Boss Arena（小朋友：好未來感、圓形） ----------
+// 浮喺天空嘅圓形平台：金屬地板 + 霓虹圈、圓形力場牆、霓虹柱、全息屏幕、玻璃試管、頂上光環
+function buildArena(root, live, updates) {
+  const { x: cx, z: cz, r } = ARENA;
+  const dark = mat(0x2a3448, { metalness: 0.6, roughness: 0.35 });
+  const neonC = glow(CYAN, 2.2);
+  const neonM = glow(MAGENTA, 2.2);
+  const H = 9;
+  // 外圍深色大平台（似太空站）+ 圓形地板
+  add(root, cyl(r + 16, 1.2, 64), mat(0x0f1520, { metalness: 0.7, roughness: 0.4 }), cx, -0.62, cz, false);
+  add(root, cyl(r + 0.8, 0.2, 64), techFloor(r / 3, r / 3), cx, -0.09, cz, false);
+  // 地上霓虹圈 + 由中間射出去嘅光線
+  const rings = [];
+  [[6, MAGENTA], [12, CYAN], [18.5, MAGENTA], [24.6, CYAN]].forEach(([rr, c]) => {
+    const m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2, side: THREE.DoubleSide });
+    const ring = add(live, new THREE.RingGeometry(rr - 0.16, rr + 0.16, 96), m, cx, 0.03, cz, false);
+    ring.rotation.x = -Math.PI / 2;
+    rings.push({ m, rr });
+  });
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const seg = add(root, box(0.14, 0.05, 6), i % 2 ? neonC : neonM, cx + Math.cos(a) * 15.2, 0.03, cz + Math.sin(a) * 15.2, false);
+    seg.rotation.y = -a + Math.PI / 2;
+  }
+  // 圓形力場牆（透明六角格仔，會流動）+ 底座 + 頂部霓虹圈
+  const hexMat = new THREE.MeshBasicMaterial({
+    map: hexTexture((2 * Math.PI * r) / 6, H / 6), color: 0x66f2ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  add(live, new THREE.CylinderGeometry(r + 0.6, r + 0.6, H - 1.4, 72, 1, true), hexMat, cx, 1.4 + (H - 1.4) / 2, cz, false);
+  add(root, new THREE.CylinderGeometry(r + 0.6, r + 0.6, 1.4, 72, 1, true), mat(0x2a3448, { metalness: 0.6, roughness: 0.35, side: THREE.DoubleSide }), cx, 0.7, cz);
+  for (const [y, m, t] of [[1.45, neonC, 0.14], [H, neonM, 0.18]]) {
+    const ring = add(root, new THREE.TorusGeometry(r + 0.6, t, 8, 128), m, cx, y, cz, false);
+    ring.rotation.x = Math.PI / 2;
+  }
+  // 霓虹柱 + 柱頂光球（避開兩個傳送門）
+  const orbs = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + Math.PI / 16;
+    const px = cx + Math.cos(a) * (r + 1.3);
+    const pz = cz + Math.sin(a) * (r + 1.3);
+    add(root, box(1.2, H + 1.5, 1.2), dark, px, (H + 1.5) / 2, pz).rotation.y = -a;
+    add(root, box(0.25, H, 1.25), i % 2 ? neonC : neonM, cx + Math.cos(a) * (r + 0.65), H / 2 + 0.5, cz + Math.sin(a) * (r + 0.65), false).rotation.y = -a;
+    orbs.push(add(live, new THREE.SphereGeometry(0.45, 12, 8), glow(i % 2 ? CYAN : MAGENTA, 3).clone(), px, H + 2.1, pz, false));
+  }
+  // 全息屏幕（向住中間）
+  const holos = [];
+  [[200, 'BOSS ARENA', '⚠️ DANGER LEVEL: MAX'], [340, 'SOLAR CAPSULES', '☀️ x4 READY'], [20, 'MUTATION', '🧬 ▓▓▓▓▓▓▓ 99%'], [160, 'ARENA SHIELD', '🛡️ ONLINE']].forEach(([deg, t1, t2], i) => {
+    const a = (deg * Math.PI) / 180;
+    const m = holoPanel([{ text: t1, size: 58, color: '#e0f7fa' }, { text: t2, size: 40, color: '#76ff03' }], 6, 2.8, i % 2 ? '#ea00ff' : '#00e5ff');
+    m.position.set(cx + Math.cos(a) * (r - 0.5), 6.4, cz + Math.sin(a) * (r - 0.5));
+    m.lookAt(cx, 6.4, cz);
+    live.add(m);
+    holos.push({ m, phase: i });
+  });
+  // 玻璃試管（東西兩邊，貼住牆）
+  const glass = new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.25, roughness: 0.05 });
+  [0, 180, 25, 155, 205, 335].forEach((deg, i) => {
+    const a = (deg * Math.PI) / 180;
+    const x = cx + Math.cos(a) * (r - 2.2);
+    const z = cz + Math.sin(a) * (r - 2.2);
+    add(root, cyl(1.3, 0.6, 18), dark, x, 0.3, z);
+    add(root, cyl(1.05, 4.6, 18), glow([0x76ff03, 0x00e5ff, 0xea00ff][i % 3], 0.8), x, 2.9, z);
+    add(root, cyl(1.2, 5.2, 18), glass, x, 3.2, z, false);
+    add(root, cyl(1.3, 0.5, 18), dark, x, 5.95, z);
+    const rr = add(root, new THREE.TorusGeometry(1.25, 0.06, 6, 28), neonC, x, 0.65, z, false);
+    rr.rotation.x = Math.PI / 2;
+    addCollider(x, z, 1.5);
+  });
+  // 頂上浮喺半空嘅光環
+  const halo = new THREE.Group();
+  halo.position.set(cx, H + 6, cz);
+  const h1 = new THREE.Mesh(new THREE.TorusGeometry(16, 0.3, 8, 72), neonC);
+  h1.rotation.x = Math.PI / 2;
+  const h2 = new THREE.Mesh(new THREE.TorusGeometry(11, 0.22, 8, 72), neonM);
+  h2.rotation.x = Math.PI / 2;
+  halo.add(h1, h2);
+  for (let i = 0; i < 6; i++) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 32), neonC);
+    beam.rotation.y = (i / 6) * Math.PI;
+    halo.add(beam);
+  }
+  live.add(halo);
+  // 燈
+  const l1 = new THREE.PointLight(CYAN, 16, 40, 1.4);
+  l1.position.set(cx - 12, 8, cz);
+  const l2 = new THREE.PointLight(MAGENTA, 16, 40, 1.4);
+  l2.position.set(cx + 12, 8, cz);
+  const l3 = new THREE.PointLight(0xffffff, 10, 45, 1.2);
+  l3.position.set(cx, 14, cz);
+  live.add(l1, l2, l3);
+  lab.arenaLights = [l1, l2, l3];
+  updates.push((dt, time) => {
+    hexMat.map.offset.y = time * 0.05;
+    hexMat.opacity = 0.38 + Math.sin(time * 2) * 0.08;
+    halo.rotation.y = time * 0.15;
+    h2.rotation.z = -time * 0.4;
+    orbs.forEach((o, i) => (o.material.emissiveIntensity = 2 + Math.sin(time * 3 + i) * 1.5));
+    rings.forEach(({ m, rr }) => (m.emissiveIntensity = 0.8 + Math.max(0, Math.sin(time * 3 - rr * 0.25)) * 2.5)); // 光圈由中間向外一圈圈閃
+    holos.forEach(({ m, phase }) => (m.material.opacity = 0.8 + Math.sin(time * 9 + phase) * 0.06));
+  });
+}
+
+// ---------- Hub 入面嘅秘密紅色掣（Magic Library 後面） ----------
+function buildRedButton(live) {
+  const g = new THREE.Group();
+  g.position.set(RED_BUTTON.x, 0, RED_BUTTON.z);
+  add(g, cyl(0.9, 1.0, 20), mat(0x37474f, { metalness: 0.6 }), 0, 0.5, 0);
+  const ring = add(g, new THREE.TorusGeometry(0.72, 0.08, 8, 28), glow(0xffd600, 1.5).clone(), 0, 1.02, 0, false);
+  ring.rotation.x = Math.PI / 2;
+  const cap = add(g, new THREE.SphereGeometry(0.6, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xff1744, { emissive: 0xd50000, emissiveIntensity: 0.6 }), 0, 1.25, 0);
+  cap.scale.y = 0.6;
+  const sign = makeLabel([{ text: '🔴 DO NOT PRESS', color: '#ff5252' }], 0.9);
+  sign.position.y = 2.4;
+  g.add(sign);
+  live.add(g);
+  addCollider(RED_BUTTON.x, RED_BUTTON.z, 0.9);
+  lab.button = { g, cap, ring, press: 0 };
+}
+export function pressButton() {
+  lab.button.press = 1;
+}
+
+// ---------- Biome 6 座山後面嘅鎚仔 ----------
+export function hammerModel() {
+  const g = new THREE.Group();
+  add(g, box(0.12, 1.0, 0.12), mat(0x8d6e63), 0, 0, 0);
+  add(g, box(0.14, 0.25, 0.14), mat(0x3e2723), 0, -0.4, 0); // 手柄
+  add(g, rbox(0.55, 0.3, 0.3), mat(0x90a4ae, { metalness: 0.8, roughness: 0.25 }), 0, 0.55, 0);
+  add(g, box(0.57, 0.08, 0.32), mat(0xffd600, { metalness: 0.9, roughness: 0.2 }), 0, 0.55, 0);
+  return g;
+}
+function buildHammer(live) {
+  const g = new THREE.Group();
+  g.position.set(HAMMER_SPOT.x, 0, HAMMER_SPOT.z);
+  add(g, rbox(1.2, 0.5, 1.0), mat(0x6d6359), 0, 0.25, 0); // 石頭
+  const ringM = new THREE.MeshBasicMaterial({ color: 0xffd600, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.85, 32), ringM);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.52;
+  g.add(ring);
+  const tool = hammerModel();
+  tool.scale.setScalar(1.3);
+  tool.rotation.z = 0.3;
+  g.add(tool);
+  const label = makeLabel([{ text: '🔨 HAMMER', color: '#ffeb3b' }], 0.8);
+  label.position.y = 2.6;
+  g.add(label);
+  live.add(g);
+  lab.hammer = { g, tool };
 }
 
 // ---------- 大門鎖（Hub 嗰邊）：鐵鏈打交叉 + 大鎖 + 「仲差幾多隻」牌 ----------
@@ -707,11 +993,10 @@ function buildGateLock(live) {
 
 function updateLockSign() {
   if (!lab.lock.group.visible) return;
-  const have = state.indexFound.length;
   lab.lock.sign.draw(THEMES.dark, [
     { text: '🔒 LOCKED', size: 0.3, color: '#ffeb3b' },
-    { text: `Find ${LAB_UNLOCK_PETS} pets in your 📖 Index to open`, size: 0.15 },
-    { text: `You have ${Math.min(have, LAB_UNLOCK_PETS)} / ${LAB_UNLOCK_PETS}`, size: 0.2, color: have >= LAB_UNLOCK_PETS ? '#b9f6ca' : '#ffcdd2' },
+    { text: 'Something is hiding behind this gate...', size: 0.15 },
+    { text: 'Find the secret RED BUTTON 🔴 to open it!', size: 0.16, color: '#ff8a80' },
   ]);
 }
 

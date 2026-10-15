@@ -26,10 +26,15 @@ const DEFAULTS = {
   tutorialDone: false,
   plotLevel: 0, // 地塊升咗幾多次（每次 +1 隻位）
   machines: [null, null, null, null, null], // 5 部繁殖機：{ name, biome, endsAt }
-  labUnlocked: false, // Issue #2：圖鑑夠 25 隻，睇咗開門動畫
+  labUnlocked: false, // Issue #2：撳咗秘密紅色掣，睇咗開門動畫
+  hasHammer: false, // 執咗 Biome 6 山後面嘅鎚仔（永遠喺快捷欄）
+  labPodsSmashed: [], // 打爛咗邊幾個玻璃艙（0–3）
+  labLegendaryGiven: 0, // 交咗幾多隻 Legendary 俾傳送門
+  labGivenSpecies: [], // 交咗邊幾種（結局動畫佢哋會返嚟）
   labVisited: false, // 行入過實驗室（之後唔再指路）
   labBossDefeated: false, // 打贏咗 Mutated Scientist Poacher
   labRewardPaid: false, // Owner 俾咗 $1000 未
+  labEndingSeen: false, // 睇咗結局動畫未
 };
 
 export const state = load();

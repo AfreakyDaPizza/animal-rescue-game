@@ -383,8 +383,10 @@ body.intro #tutorial, body.intro #tutorial-arrow { display: none !important; }
 #lab-arrow span { font-size: 46px; display: inline-block; transition: transform 0.1s; }
 body.intro #lab-arrow { display: none !important; }
 /* 結局黑畫面：字多，細啲 */
-#movie-final { font-size: 34px; line-height: 1.45; padding: 0 8%; top: 22%; }
-#movie-final .line { display: block; opacity: 0; animation: final-line 1.2s ease-out forwards; }
+#movie-final { font-size: clamp(18px, 4.6vh, 34px); line-height: 1.45; padding: 0 8%; top: 18%; }
+#movie-final .line { display: block; opacity: 0; }
+#movie-final.show .line { animation: final-line 1.4s ease-out forwards; }
+#movie-final small.line { margin-top: 3vh; font-size: clamp(18px, 4vh, 30px); color: #69f0ae; }
 @keyframes final-line { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* Issue #2：實驗室 Boss 血條 */
 #boss-bar {
@@ -396,3 +398,10 @@ body.intro #lab-arrow { display: none !important; }
 #boss-bar small { font-size: 14px; color: #ffe082; }
 #boss-bar .status { font-size: 15px; margin-top: 3px; color: #b9f6ca; font-weight: 700; }
 body:has(#boss-bar:not([hidden])) #event-banner { display: none; }
+/* Issue #2：傳送門面板 */
+.portal-route { background: #f3e5f5; border-radius: 12px; padding: 8px 14px; margin: 8px 0; }
+.portal-route h3 { margin: 4px 0; color: #6a1b9a; }
+.portal-route .hint, .card .hint { color: #c62828; font-weight: 700; }
+.portal-or { text-align: center; font-weight: 900; color: #6a1b9a; margin: 4px 0; }
+.portal-open { font-size: 20px; color: #4a148c; }
+#boss-bar small.you { display: block; margin-top: 2px; color: #b9f6ca; }

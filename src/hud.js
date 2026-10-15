@@ -10,7 +10,7 @@ import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney } from './data/anima
 import { BOSSES, rarityInfo, trainingGain, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
-import { plotSlots, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_UNLOCK_PETS } from './data/balance.js';
+import { plotSlots, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
@@ -137,8 +137,11 @@ export function setSightings(list, camera) {
 const SLOTS = 10;
 let selected = 0;
 
+// 鎚仔（Issue #2）：執咗就永遠喺第一格
+export const HAMMER_ITEM = { kind: 'tool', item: { name: 'Hammer', tool: true } };
 export function hotbarItems() {
   return [
+    ...(state.hasHammer ? [HAMMER_ITEM] : []),
     ...state.borrowed.map((item) => ({ kind: 'rescued', item })),
     ...state.pets.filter((p) => !p.onPlot).map((item) => ({ kind: 'pet', item })),
   ].slice(0, SLOTS);
@@ -167,13 +170,15 @@ function renderHotbar() {
     const it = items[i];
     const slot = document.createElement('div');
     slot.className = `slot ${it ? it.kind : ''} ${i === selected ? 'selected' : ''}`;
-    if (it && i !== selected) slot.style.borderColor = rarityInfo(it.item.rarity).color; // 邊框顏色 = 稀有度
-    slot.innerHTML = `<span class="num">${(i + 1) % 10}</span>${it ? findAnimal(it.item.name).emoji : ''}`;
+    if (it && i !== selected) slot.style.borderColor = it.kind === 'tool' ? '#ffd600' : rarityInfo(it.item.rarity).color; // 邊框顏色 = 稀有度
+    slot.innerHTML = `<span class="num">${(i + 1) % 10}</span>${it ? (it.kind === 'tool' ? '🔨' : findAnimal(it.item.name).emoji) : ''}`;
     slot.addEventListener('click', () => selectSlot(i));
     bar.appendChild(slot);
   }
   const it = items[selected];
-  $('hotbar-label').textContent = it
+  $('hotbar-label').textContent = it?.kind === 'tool'
+    ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
+    : it
     ? `${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
     : items.length ? '' : 'Rescued animals and pets go here';
 }
@@ -193,6 +198,7 @@ export function openPanel(kind) {
     sell: ['💰 Sell Stall', sellHtml, 'E'],
     quests: ['📜 Daily Quests', questsHtml, 'Q'],
     shop: ['🛍️ Skin Shop', shopHtml, 'E'],
+    portal: ['🌀 The Portal', portalHtml, 'E'],
   };
   const [title, html, key] = panels[kind];
   $('panel-title').textContent = title;
@@ -388,8 +394,7 @@ function animalIndexHtml() {
   let html = `
     <div class="progress"><div style="width:${(found / ANIMALS.length) * 100}%"></div></div>
     <p class="index-summary"><b>${found} / ${ANIMALS.length}</b> species registered.
-      Rescue a new species for a reward, and complete a whole biome for a big bonus!</p>
-    <p class="index-summary">${found >= LAB_UNLOCK_PETS ? '🔓 The gate at the bottom of the Hub is open! 🔬 Go to the Laboratory!' : `🔒 Find <b>${LAB_UNLOCK_PETS - found}</b> more to open the gate at the bottom of the Hub (${found} / ${LAB_UNLOCK_PETS})`}</p>`;
+      Rescue a new species for a reward, and complete a whole biome for a big bonus!</p>`;
   BIOMES.forEach((biome, b) => {
     const animals = animalsInBiome(b);
     const got = animals.filter((a) => state.indexFound.includes(a.name)).length;
@@ -468,4 +473,76 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
   if (!btn || !shopActions) return;
   shopActions.handle(btn.dataset.shop, Number(btn.dataset.i));
   $('panel-body').innerHTML = openPanelKind === 'quests' ? questsHtml() : shopHtml();
+});
+
+// ================= Issue #2：實驗室傳送門面板 =================
+// 兩個方法（做到其中一樣就開）：A 用鎚仔打爛晒玻璃艙；B 交 3 隻 Legendary（佢哋會由 Index 消失）
+let portalActions = null;
+let portalPicked = []; // 揀咗嘅 Legendary（'p3' = 寵物第 3 隻，'b1' = 等緊繁殖嘅第 1 隻）
+let portalConfirm = false;
+export function setPortalActions(actions) {
+  portalActions = actions;
+}
+// 有邊啲 Legendary 可以交
+export function legendaryChoices() {
+  return [
+    ...state.pets.map((item, i) => ({ key: `p${i}`, item, where: item.onPlot ? 'on your Plot' : 'pet' })),
+    ...state.borrowed.map((item, i) => ({ key: `b${i}`, item, where: 'waiting to breed' })),
+  ].filter((c) => c.item.rarity === 'Legendary');
+}
+function portalHtml() {
+  const st = portalActions.status();
+  if (st.ready) return `<p class="index-summary portal-open">🌀 The portal is <b>OPEN</b>!<br>Walk into it to enter the <b>BOSS ARENA</b> and fight the Mutated Scientist Poacher!</p>`;
+  const choices = legendaryChoices();
+  portalPicked = portalPicked.filter((k) => choices.some((c) => c.key === k));
+  const need = LAB_LEGENDARY_NEEDED - st.legendary;
+  let html = '<p class="index-summary">The portal is <b>LOCKED</b> 🔒. Open it with <b>ONE</b> of these:</p>';
+  if (LAB_PORTAL_BY_PODS) {
+    html += `<div class="portal-route"><h3>🔨 Route A: Smash the glass pods</h3>
+      <p>Free the trapped animals with the Hammer: <b>${st.pods} / ${Math.min(LAB_PODS, st.podsTotal)}</b> ${st.pods >= st.podsTotal ? '✅' : ''}</p>
+      ${state.hasHammer ? '' : '<p class="hint">You need the Hammer (found behind the mountain in Biome 6)</p>'}</div>`;
+  }
+  if (LAB_PORTAL_BY_PODS && LAB_PORTAL_BY_LEGENDARY) html += '<p class="portal-or">— OR —</p>';
+  if (LAB_PORTAL_BY_LEGENDARY) {
+    html += `<div class="portal-route"><h3>⭐ Route B: Give ${LAB_LEGENDARY_NEEDED} Legendary animals</h3>
+      <p>Given: <b>${st.legendary} / ${LAB_LEGENDARY_NEEDED}</b>. ⚠️ They go into the portal and <b>leave your Index</b>!</p>`;
+    if (!choices.length) html += '<p class="hint">You have no Legendary animals right now. Rescue some ★ Legendary animals first!</p>';
+    else {
+      html += `<p>Pick ${need} (${portalPicked.length} picked):</p><div class="cards">${choices.map((c) => {
+        const a = findAnimal(c.item.name);
+        const on = portalPicked.includes(c.key);
+        return `<div class="card-animal ${on ? 'equipped' : ''}"><div class="emoji">${a.emoji}</div><b>${c.item.name}</b><small>★ Legendary · ${c.where}</small>
+          <button data-portal="pick" data-key="${c.key}" class="${on ? 'grey' : ''}">${on ? 'Unpick' : 'Pick'}</button></div>`;
+      }).join('')}</div>`;
+      if (portalPicked.length >= need) {
+        html += portalConfirm
+          ? `<p class="hint">⚠️ Are you sure? These ${need} animals will be GONE and leave your Index!</p>
+             <div class="pet-actions"><button data-portal="give" class="sell">Yes, give them to the portal</button><button data-portal="cancel" class="grey">Cancel</button></div>`
+          : `<div class="pet-actions"><button data-portal="ask" class="sell">🌀 Give these ${need} to the portal</button></div>`;
+      }
+    }
+    html += '</div>';
+  }
+  return html;
+}
+document.getElementById('panel-body').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-portal]');
+  if (!b || openPanelKind !== 'portal' || !portalActions) return;
+  const what = b.dataset.portal;
+  const need = LAB_LEGENDARY_NEEDED - portalActions.status().legendary;
+  if (what === 'pick') {
+    const k = b.dataset.key;
+    if (portalPicked.includes(k)) portalPicked = portalPicked.filter((x) => x !== k);
+    else if (portalPicked.length < need) portalPicked.push(k);
+    portalConfirm = false;
+  }
+  if (what === 'ask') portalConfirm = true;
+  if (what === 'cancel') portalConfirm = false;
+  if (what === 'give') {
+    const picked = legendaryChoices().filter((c) => portalPicked.includes(c.key)).map((c) => c.item);
+    portalPicked = [];
+    portalConfirm = false;
+    portalActions.give(picked);
+  }
+  $('panel-body').innerHTML = portalHtml();
 });

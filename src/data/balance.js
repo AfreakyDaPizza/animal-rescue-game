@@ -91,9 +91,14 @@ export const SELL_SECONDS = 60;
 export const TRASH_REWARD = 20;
 
 // ---- Laboratory + Mutated Scientist Poacher（小朋友 Issue #2）----
-// 圖鑑登記夠幾多隻動物，Hub 底個大門先會開
-export const LAB_UNLOCK_PETS = 25;
+// 開實驗室：撳 Hub 入面（Magic Library 後面）嘅秘密紅色掣
+// 實驗室傳送門：做到其中一樣就會開（true = 呢個方法用得；false = 唔用）
+export const LAB_PORTAL_BY_PODS = true; // 方法 A：用鎚仔打爛晒啲玻璃艙
+export const LAB_PODS = 4; // 有幾多個玻璃艙
+export const LAB_PORTAL_BY_LEGENDARY = true; // 方法 B：交 Legendary 寵物俾傳送門（佢哋會由 Index 消失！）
+export const LAB_LEGENDARY_NEEDED = 3; // 要交幾多隻 Legendary
 // Boss 戰：每一輪佢會放無人機、叫腐化動物、開傳送門叫 Boss、用手拍你；之後佢會攰
+export const LAB_LIVES = 5; // 你有幾多個心（俾打中就扣 1 個；扣晒就返實驗室，可以再挑戰）
 export const LAB_DRONES = 3; // 每輪幾多部炸彈無人機（之後每輪多 1 部）
 export const LAB_CORRUPTED_ANIMALS = 4; // 每輪叫幾多隻腐化動物
 export const LAB_CORRUPTED_SECONDS = 30; // 腐化動物追你幾多秒，之後變灰燼

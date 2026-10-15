@@ -19,10 +19,10 @@ import { makeLabel } from './signs.js';
 import { popup, announce } from './hud.js';
 import { play } from './sound.js';
 import { lab, breakCapsule, resetCapsules } from './lab.js';
-import { LAB, BOSS_HOME, PORTAL } from './labShape.js';
+import { ARENA, BOSS_HOME, BOSS_PORTAL as PORTAL, clampArena } from './labShape.js';
 import {
   BOSSES, LAB_DRONES, LAB_CORRUPTED_ANIMALS, LAB_CORRUPTED_SECONDS, LAB_PORTAL_BOSSES, LAB_PORTAL_SECONDS,
-  LAB_SQUASH_FOLLOW, LAB_SQUASH_WARNING, LAB_TIRED_SECONDS, LAB_CAPSULE_HITS,
+  LAB_SQUASH_FOLLOW, LAB_SQUASH_WARNING, LAB_TIRED_SECONDS, LAB_CAPSULE_HITS, LAB_LIVES,
 } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -32,7 +32,7 @@ const SQUASH_SIZE = 4.2; // 普通拍：紅框幾闊（米）
 const LAZY_SIZE = 5.2; // 懶散拍：紅框大啲
 const LAZY_WARNING = 1.0; // 懶散拍：紅框停低之後耐啲先拍（佢攰）
 const SQUASH_GAP = 1.5; // 拍完一次，隔幾秒再拍
-const LEAVE_RESET = 12; // 你走出實驗室幾多秒，佢就收晒招、返去瞓覺（打中咗嘅 Capsule 唔會冇）
+const LEAVE_RESET = 1.5; // 你離開咗 Arena（出口傳送門／心冇晒）：成場重新嚟過
 // 每一輪招式幾時出（秒）
 const T_DRONES = 1;
 const T_ANIMALS = 8;
@@ -61,84 +61,138 @@ function pivot(parent, x, y, z) {
 const GLOW = (c, k = 2.5) => ({ emissive: c, emissiveIntensity: k });
 
 // ================= Boss 公仔 =================
-// 實驗袍 + 迷彩偷獵背心、綠色變異皮膚、發光護目鏡、白色亂髮、背住一個綠色變異藥水缸
-// 四隻手：喺身度只有膊頭；條手同隻手係喺世界度另外畫（可以拉到好長，好似橡筋咁）
+// 小朋友 2026-10-15：舊款「好醜」，要似 Roblox「Steal an Egg」嘅 Dr. Scramble：
+// 瘋狂科學家坐喺一部靚靚嘅機械人（mech）入面：白色實驗袍、大頭、發光護目鏡、蓬鬆白髮、紫色手套、
+// 背後一個發綠光嘅藥水缸、四隻金屬機械手（有爪 + 霓虹燈），會行、會浮、會郁
+const SPHERE = new THREE.SphereGeometry(1, 20, 14);
+function ball(parent, r, color, x, y, z, extra, sx = 1, sy = 1, sz = 1) {
+  const m = new THREE.Mesh(SPHERE, color.isMaterial ? color : mat(color, extra));
+  m.scale.set(r * sx, r * sy, r * sz);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+function soft(parent, w, h, d, color, x, y, z, extra, round = 0.3) {
+  const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(w, h, d) * round), color.isMaterial ? color : mat(color, extra));
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+function tube(parent, r, h, color, x, y, z, extra, seg = 20) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), color.isMaterial ? color : mat(color, extra));
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+const CHROME = { metalness: 0.35, roughness: 0.3 }; // 冇環境反光，太金屬會變黑
+const NEON_C = 0x00e5ff;
+const NEON_M = 0xea00ff;
+
 function buildScientist() {
   const g = new THREE.Group();
   const root = pivot(g, 0, 0, 0);
-  const SKIN = 0xa5d6a7; // 變異咗嘅淺綠色皮膚
-  const COAT = 0xf5f5f5;
-  const CAMO = 0x556b2f;
+  const SILVER = 0xdfe6ec;
+  const DARK = 0x2b3445;
+  const SKIN = 0xd7f0b8; // 少少綠（俾藥水變異咗），但係可愛
+  const COAT = 0xffffff;
+
+  // ---- 機械腳（會行）----
   const legs = [-1, 1].map((s) => {
-    const hip = pivot(root, s * 0.32, 1.2, 0);
-    box(hip, 0.55, 1.0, 0.55, CAMO, 0, -0.5, 0);
-    box(hip, 0.2, 0.2, 0.04, 0x3e4a1f, 0.08, -0.4, -0.28);
-    box(hip, 0.62, 0.32, 0.72, 0x212121, 0, -1.04, -0.06); // 大靴
+    const hip = pivot(root, s * 0.55, 1.25, 0);
+    ball(hip, 0.26, DARK, 0, 0, 0, CHROME);
+    tube(hip, 0.17, 0.55, SILVER, 0, -0.3, 0, CHROME);
+    ball(hip, 0.2, NEON_C, 0, -0.62, 0, GLOW(NEON_C, 2.5)); // 發光膝頭
+    soft(hip, 0.42, 0.5, 0.42, DARK, 0, -0.92, 0, CHROME);
+    soft(hip, 0.6, 0.22, 0.85, SILVER, 0, -1.16, -0.1, CHROME, 0.45); // 大腳板
+    soft(hip, 0.62, 0.05, 0.1, NEON_C, 0, -1.1, -0.53, GLOW(NEON_C, 2.5));
     return hip;
   });
-  // 實驗袍（身 + 下擺）
-  const torso = box(root, 1.35, 1.35, 0.75, COAT, 0, 1.9, 0);
-  box(root, 1.38, 0.7, 0.78, COAT, 0, 1.05, 0.02);
-  // 迷彩偷獵背心（前面兩塊 + 口袋）
+  // ---- 機械人身（駕駛艙）：銀色圓潤 + 霓虹邊 ----
+  soft(root, 1.25, 0.35, 0.9, DARK, 0, 1.35, 0, CHROME, 0.4); // 腰
+  const torso = soft(root, 1.9, 1.15, 1.35, SILVER, 0, 1.95, 0, CHROME, 0.38);
+  const trim = new THREE.Mesh(new THREE.TorusGeometry(0.98, 0.045, 8, 48), mat(NEON_C, GLOW(NEON_C, 3)));
+  trim.rotation.x = Math.PI / 2;
+  trim.scale.set(1, 0.72, 1);
+  trim.position.y = 2.45;
+  root.add(trim);
+  // 前面：圓形發光標誌（原子）+ 兩粒大燈
+  const emblem = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 8, 32), mat(NEON_M, GLOW(NEON_M, 3)));
+  emblem.position.set(0, 1.85, -0.69);
+  root.add(emblem);
+  ball(root, 0.08, 0xffffff, 0, 1.85, -0.7, GLOW(0xffffff, 3));
   for (const s of [-1, 1]) {
-    box(root, 0.44, 1.1, 0.08, CAMO, s * 0.36, 1.95, -0.39);
-    box(root, 0.3, 0.25, 0.1, 0x3e4a1f, s * 0.36, 1.75, -0.44);
-    box(root, 0.16, 0.16, 0.06, 0x8d7b4f, s * 0.3, 2.2, -0.44);
+    ball(root, 0.13, 0xfff59d, s * 0.6, 1.7, -0.62, GLOW(0xffee58, 3), 1, 1, 0.5);
+    soft(root, 0.08, 0.6, 0.06, NEON_C, s * 0.93, 1.95, -0.3, GLOW(NEON_C, 2.5));
   }
-  // 皮帶 + 發光藥水
-  box(root, 1.4, 0.18, 0.8, 0x4e342e, 0, 1.32, 0);
-  const vials = [];
-  [0x76ff03, 0xd500f9, 0x00e5ff, 0x76ff03].forEach((c, i) => {
-    const v = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.3, 8), new THREE.MeshStandardMaterial({ color: c, ...GLOW(c, 2) }));
-    v.position.set(-0.45 + i * 0.3, 1.38, -0.43);
-    root.add(v);
-    vials.push(v);
-  });
-  // 袍上面嘅綠色污漬
-  for (const [x, y] of [[0.5, 2.3], [-0.55, 1.6], [0.2, 0.9]]) box(root, 0.22, 0.18, 0.04, 0x76ff03, x, y, -0.4, GLOW(0x76ff03, 0.6));
-  // 背後：變異藥水缸（管連去兩隻變異手）
-  const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 1.3, 12), new THREE.MeshStandardMaterial({ color: 0x76ff03, ...GLOW(0x64dd17, 1.2), transparent: true, opacity: 0.85 }));
-  tank.position.set(0, 2.0, 0.62);
-  root.add(tank);
-  box(root, 0.85, 0.15, 0.85, 0x37474f, 0, 2.7, 0.62, { metalness: 0.6 });
-  box(root, 0.85, 0.15, 0.85, 0x37474f, 0, 1.33, 0.62, { metalness: 0.6 });
-  for (const s of [-1, 1]) box(root, 0.12, 0.12, 0.5, 0x8bc34a, s * 0.45, 1.8, 0.45);
-  // 膊頭（上面兩隻：白袍袖；下面兩隻：紫色變異）
-  const shoulders = [
-    pivot(root, -0.9, 2.35, 0), pivot(root, 0.9, 2.35, 0),
-    pivot(root, -0.85, 1.65, 0.1), pivot(root, 0.85, 1.65, 0.1),
-  ];
-  shoulders.forEach((sh, i) => box(sh, i < 2 ? 0.55 : 0.6, i < 2 ? 0.55 : 0.5, i < 2 ? 0.6 : 0.6, i < 2 ? COAT : 0x7b1fa2));
-  // 頭
-  const head = pivot(root, 0, 3.12, 0);
-  box(head, 1.05, 1.0, 1.0, SKIN, 0, 0, 0);
-  for (const [x, y] of [[-0.35, 0.3], [0.4, 0.15], [-0.2, -0.3]]) box(head, 0.06, 0.25, 0.03, 0x8e24aa, x, y, -0.51); // 凸起嘅紫色血管
-  // 護目鏡（發綠光）
-  box(head, 1.09, 0.2, 1.04, 0x212121, 0, 0.1, 0);
+  // ---- 科學家（坐喺駕駛艙，上半身露出嚟）----
+  const coat = soft(root, 1.15, 0.85, 0.8, COAT, 0, 2.75, 0.05, undefined, 0.35);
+  for (const s of [-1, 1]) {
+    const lapel = soft(root, 0.28, 0.6, 0.06, 0xeeeeee, s * 0.2, 2.85, -0.36, undefined, 0.4); // 衫領
+    lapel.rotation.z = s * 0.35;
+  }
+  soft(root, 0.14, 0.42, 0.05, 0x7b1fa2, 0, 2.78, -0.37); // 紫色呔
+  soft(root, 0.2, 0.16, 0.04, 0x90caf9, 0.32, 2.62, -0.38); // 心口袋
+  for (let i = 0; i < 2; i++) tube(root, 0.025, 0.2, [0xff5252, 0x40c4ff][i], 0.27 + i * 0.08, 2.72, -0.39, undefined, 6); // 筆
+  // 自己兩隻手（紫色手套）揸住控制桿
+  for (const s of [-1, 1]) {
+    const arm = pivot(root, s * 0.62, 2.95, 0);
+    const sleeve = tube(arm, 0.14, 0.55, COAT, 0, -0.22, -0.12);
+    sleeve.rotation.x = 0.6;
+    ball(arm, 0.15, 0x8e24aa, 0, -0.45, -0.32); // 紫色手套
+    tube(arm, 0.035, 0.35, DARK, 0, -0.55, -0.32, CHROME, 8);
+    ball(arm, 0.07, 0xff1744, 0, -0.38, -0.32, GLOW(0xff1744, 2.5)); // 控制桿紅掣
+  }
+  // ---- 大頭 ----
+  const head = pivot(root, 0, 3.55, 0);
+  soft(head, 1.05, 1.0, 0.95, SKIN, 0, 0, 0, undefined, 0.42);
+  ball(head, 0.17, 0xc5e1a5, 0, -0.08, -0.5); // 大鼻
+  for (const s of [-1, 1]) ball(head, 0.13, 0xc5e1a5, s * 0.55, 0, 0); // 耳仔
+  // 奸笑大口 + 牙
+  soft(head, 0.5, 0.14, 0.06, 0x4e342e, 0, -0.3, -0.47, undefined, 0.45);
+  for (let i = 0; i < 4; i++) soft(head, 0.1, 0.07, 0.03, 0xffffff, -0.15 + i * 0.1, -0.26, -0.5, undefined, 0.2);
+  // 護目鏡：金色厚框 + 發光鏡片 + 黑色帶
+  soft(head, 1.1, 0.16, 1.0, 0x263238, 0, 0.18, 0, undefined, 0.4);
   const lenses = [-1, 1].map((s) => {
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 16), mat(0xb8860b, { metalness: 0.8, roughness: 0.3 }));
-    rim.rotation.x = Math.PI / 2;
-    rim.position.set(s * 0.24, 0.1, -0.54);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.065, 10, 24), mat(0xffb300, CHROME));
+    rim.position.set(s * 0.24, 0.18, -0.52);
     head.add(rim);
-    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0xccff90, ...GLOW(0x76ff03, 3) }));
-    lens.rotation.x = Math.PI / 2;
-    lens.position.set(s * 0.24, 0.1, -0.62);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.2, 24), new THREE.MeshStandardMaterial({ color: 0xb9f6ca, ...GLOW(0x69f0ae, 3) }));
+    lens.position.set(s * 0.24, 0.18, -0.535);
+    lens.rotation.y = Math.PI;
     head.add(lens);
-    const brow = box(head, 0.32, 0.08, 0.06, 0xeeeeee, s * 0.24, 0.36, -0.52);
-    brow.rotation.z = s * 0.4;
+    ball(head, 0.05, 0xffffff, s * 0.24 + 0.07, 0.25, -0.55, GLOW(0xffffff, 2)); // 反光
+    const brow = soft(head, 0.32, 0.09, 0.08, 0xffffff, s * 0.25, 0.43, -0.48, undefined, 0.45); // 白色粗眉
+    brow.rotation.z = s * 0.35;
     return lens;
   });
-  // 奸笑：黑口 + 白牙
-  box(head, 0.56, 0.16, 0.04, 0x3e2723, 0, -0.28, -0.51);
-  for (let i = 0; i < 4; i++) box(head, 0.1, 0.08, 0.03, 0xffffff, -0.18 + i * 0.12, -0.24, -0.53);
-  // 白色亂髮（尖尖地）
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.8 });
-  const hairBits = [[0, 0.62, 0, 0], [-0.4, 0.55, 0.1, 0.5], [0.4, 0.55, 0.1, -0.5], [-0.55, 0.3, 0.2, 0.9], [0.55, 0.3, 0.2, -0.9], [0, 0.5, 0.42, -0.4], [-0.25, 0.65, -0.2, 0.2], [0.25, 0.68, 0.25, -0.3]];
-  for (const [x, y, z, r] of hairBits) {
-    const h = box(head, 0.32, 0.5, 0.32, hairMat, x, y, z);
-    h.rotation.z = r;
-    h.rotation.x = z * 0.8;
+  // 蓬鬆白髮（一舊舊雲咁）
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.9 });
+  for (const [x, y, z, r] of [[0, 0.55, 0.15, 0.32], [-0.38, 0.48, 0.1, 0.27], [0.38, 0.48, 0.1, 0.27], [-0.58, 0.18, 0.15, 0.24], [0.58, 0.18, 0.15, 0.24], [-0.22, 0.45, 0.42, 0.26], [0.22, 0.45, 0.42, 0.26], [0, 0.28, 0.5, 0.28], [-0.62, 0.45, 0.3, 0.17], [0.62, 0.45, 0.3, 0.17]]) {
+    ball(head, r, hairMat, x, y, z);
   }
+  // ---- 背後：發綠光嘅藥水缸（啵啵聲）+ 喉管 ----
+  const tankGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.3, 20), new THREE.MeshStandardMaterial({ color: 0xccff90, transparent: true, opacity: 0.35, roughness: 0.05 }));
+  tankGlass.position.set(0, 2.55, 0.95);
+  root.add(tankGlass);
+  const tank = tube(root, 0.36, 1.15, 0x76ff03, 0, 2.5, 0.95, { ...GLOW(0x64dd17, 1.6), transparent: true, opacity: 0.9 });
+  for (const y of [1.88, 3.22]) tube(root, 0.46, 0.14, SILVER, 0, y, 0.95, CHROME);
+  ball(root, 0.12, NEON_C, 0, 3.35, 0.95, GLOW(NEON_C, 3));
+  const vials = [];
+  for (let i = 0; i < 3; i++) vials.push(ball(root, 0.09, 0xe8f5e9, (i - 1) * 0.15, 2, 0.95, GLOW(0xccff90, 2)));
+  // ---- 四個機械膊頭（上兩個、下兩個）----
+  const shoulders = [
+    pivot(root, -1.05, 2.25, 0.05), pivot(root, 1.05, 2.25, 0.05),
+    pivot(root, -1.0, 1.65, 0.1), pivot(root, 1.0, 1.65, 0.1),
+  ];
+  shoulders.forEach((sh, i) => {
+    ball(sh, 0.3, DARK, 0, 0, 0, CHROME);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 8, 24), mat(i < 2 ? NEON_C : NEON_M, GLOW(i < 2 ? NEON_C : NEON_M, 3)));
+    ring.rotation.y = Math.PI / 2;
+    sh.add(ring);
+  });
 
   // ---- 受傷樣（每拍中一次 Capsule 多一層）----
   const damage = [new THREE.Group(), new THREE.Group(), new THREE.Group()];
@@ -147,29 +201,25 @@ function buildScientist() {
     root.add(d);
   });
   const SOOT = 0x37474f;
-  // 第 1 層：護目鏡裂、袍有燶黑
-  for (const s of [-1, 1]) {
-    const crack = box(damage[0], 0.04, 0.34, 0.02, 0x111111, s * 0.24, 3.22, -0.66);
-    crack.rotation.z = 0.6 * s;
-  }
-  for (const [x, y] of [[-0.3, 2.1], [0.45, 1.5], [0.1, 1.0], [-0.5, 2.5]]) box(damage[0], 0.3, 0.26, 0.05, SOOT, x, y, -0.41);
-  // 第 2 層：頭紮繃帶、背脊冒煙、袍爛咗
-  box(damage[1], 1.1, 0.18, 1.06, 0xfffde7, 0, 3.55, 0);
-  box(damage[1], 0.14, 0.24, 0.05, 0xef9a9a, 0.3, 3.55, -0.55);
-  for (let i = 0; i < 4; i++) box(damage[1], 0.2, 0.2, 0.8, SOOT, -0.5 + i * 0.33, 0.68 - (i % 2) * 0.08, 0.02);
+  // 第 1 層：護目鏡裂、機身燶黑
+  for (const s of [-1, 1]) soft(damage[0], 0.04, 0.34, 0.02, 0x111111, s * 0.24, 3.73, -0.56).rotation.z = 0.6 * s;
+  for (const [x, y] of [[-0.5, 2.1], [0.55, 1.75], [0.2, 2.25]]) ball(damage[0], 0.15, SOOT, x, y, -0.66, undefined, 1, 1, 0.3);
+  // 第 2 層：頭紮繃帶、藥水缸冒煙、袍燶咗
+  soft(damage[1], 1.08, 0.18, 1.0, 0xfffde7, 0, 3.92, 0, undefined, 0.4);
+  soft(damage[1], 0.16, 0.16, 0.05, 0xef9a9a, 0.3, 3.92, -0.5);
+  for (const [x, y] of [[-0.35, 2.9], [0.3, 2.5]]) ball(damage[1], 0.12, SOOT, x, y, -0.4, undefined, 1, 1, 0.3);
   const smoke = [];
   for (let i = 0; i < 4; i++) {
-    const p = box(damage[1], 0.4, 0.4, 0.4, 0x616161, 0, 2.8, 0.7, { transparent: true, opacity: 0.7 });
+    const p = soft(damage[1], 0.4, 0.4, 0.4, 0x616161, 0, 3.4, 0.95, { transparent: true, opacity: 0.7 });
     p.material = p.material.clone();
     p.castShadow = false;
     smoke.push(p);
   }
-  // 第 3 層：電火花、藥水缸裂、身上更多燶黑
-  for (const [x, y, z] of [[0.6, 2.5, -0.4], [-0.6, 1.9, -0.4], [0, 2.2, 0.9]]) box(damage[2], 0.12, 0.12, 0.12, 0xffeb3b, x, y, z, GLOW(0xffea00, 4));
-  for (const [x, y] of [[0.3, 2.4], [-0.2, 1.7], [0.5, 2.0]]) box(damage[2], 0.25, 0.22, 0.05, 0x212121, x, y, -0.42);
-  box(damage[2], 0.06, 1.0, 0.05, 0x111111, 0.15, 2.0, 0.99);
+  // 第 3 層：電火花、機身凹咗
+  for (const [x, y, z] of [[0.75, 2.3, -0.5], [-0.8, 1.9, -0.4], [0, 2.9, 1.2]]) ball(damage[2], 0.08, 0xffeb3b, x, y, z, GLOW(0xffea00, 4));
+  for (const [x, y] of [[0.35, 1.6], [-0.3, 2.3]]) ball(damage[2], 0.2, 0x212121, x, y, -0.68, undefined, 1, 1, 0.25);
 
-  // 暈咗嘅星星（拍中 Capsule／打低咗）
+  // 暈咗嘅星星
   const stars = new THREE.Group();
   for (let i = 0; i < 6; i++) {
     const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
@@ -177,37 +227,48 @@ function buildScientist() {
     st.position.set(Math.cos(a) * 0.8, 0, Math.sin(a) * 0.8);
     stars.add(st);
   }
-  stars.position.y = 4.1;
+  stars.position.y = 4.4;
   stars.visible = false;
   root.add(stars);
 
-  g.scale.setScalar(S);
+  g.scale.setScalar(S * 0.95);
   return { g, root, legs, arms: [shoulders[0], shoulders[1]], head, torso, shoulders, lenses, damage, stars, hairMat, tank, vials, smoke };
 }
 
-// ---------- 四隻手（喺世界度畫，可以拉長） ----------
-const SEG = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5); // 由起點向 +z 伸 1 米
+// ---------- 四隻機械手（喺世界度畫，可以伸到好長） ----------
+const SEG = new THREE.CylinderGeometry(1, 1, 1, 14).rotateX(Math.PI / 2).translate(0, 0, 0.5); // 由起點向 +z 伸 1 米
 function buildArm(scene, i) {
   const mutant = i >= 2;
-  const thick = (mutant ? 0.62 : 0.48) * S;
-  const upper = new THREE.Mesh(SEG, mat(mutant ? 0x7b1fa2 : 0xf5f5f5));
-  const lower = new THREE.Mesh(SEG, mat(mutant ? 0x8e24aa : 0xa5d6a7));
-  const elbow = new THREE.Mesh(new THREE.SphereGeometry(thick * 0.62, 10, 8), mat(mutant ? 0x76ff03 : 0xf5f5f5, mutant ? GLOW(0x64dd17, 0.8) : undefined));
+  const neon = mutant ? NEON_M : NEON_C;
+  const thick = (mutant ? 0.3 : 0.26) * S;
+  const upper = new THREE.Mesh(SEG, mat(0xcfd8dc, CHROME));
+  const lower = new THREE.Mesh(SEG, mat(0x90a4ae, CHROME));
+  const elbow = new THREE.Mesh(new THREE.SphereGeometry(thick * 1.25, 14, 10), mat(neon, GLOW(neon, 2.5)));
   for (const m of [upper, lower, elbow]) {
     m.castShadow = true;
     scene.add(m);
   }
-  // 大手掌（掌心向落）+ 4 隻手指（變異手：紫色 + 發光指甲）
+  // 機械爪：手腕 + 掌 + 3 隻彎爪（爪尖發光）
   const hand = new THREE.Group();
-  const skin = mutant ? 0x8e24aa : 0xa5d6a7;
-  box(hand, 1.1, 0.45, 1.15, skin);
-  for (let f = 0; f < 4; f++) {
-    box(hand, 0.22, 0.3, 0.5, skin, -0.39 + f * 0.26, -0.05, -0.75);
-    if (mutant) box(hand, 0.16, 0.12, 0.14, 0x76ff03, -0.39 + f * 0.26, -0.12, -1.02, GLOW(0x76ff03, 2));
+  tube(hand, 0.32, 0.35, 0x37474f, 0, 0.35, 0, CHROME);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.05, 8, 24), mat(neon, GLOW(neon, 3)));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.3;
+  hand.add(ring);
+  soft(hand, 0.9, 0.35, 0.9, 0xdfe6ec, 0, 0.05, 0, CHROME, 0.4);
+  for (let f = 0; f < 3; f++) {
+    const a = (f / 3) * Math.PI * 2;
+    const claw = new THREE.Group();
+    claw.position.set(Math.sin(a) * 0.38, -0.1, Math.cos(a) * 0.38);
+    claw.rotation.y = a;
+    const c1 = soft(claw, 0.16, 0.42, 0.16, 0x546e7a, 0, -0.2, 0, CHROME, 0.45);
+    c1.rotation.x = 0.35;
+    const c2 = soft(claw, 0.13, 0.32, 0.13, 0x37474f, 0, -0.48, -0.12, CHROME, 0.45);
+    c2.rotation.x = -0.4;
+    ball(claw, 0.07, neon, 0, -0.64, -0.2, GLOW(neon, 3));
+    hand.add(claw);
   }
-  box(hand, 0.26, 0.28, 0.45, skin, 0.62, -0.02, -0.15); // 手指公
-  if (!mutant) box(hand, 1.2, 0.3, 0.4, 0xf5f5f5, 0, 0.05, 0.6); // 袖口
-  hand.scale.setScalar(S * 0.95);
+  hand.scale.setScalar(S * 0.72);
   scene.add(hand);
   return { i, mutant, thick, upper, lower, elbow, hand, pos: V(), busy: false, limp: false };
 }
@@ -237,7 +298,7 @@ export function createLabFight(scene) {
     t: 0, round: 0, hp: LAB_CAPSULE_HITS, runPhase: 0,
     drones: [], bombs: [], animals: [], portalBosses: [], slams: [], effects: [],
     nextSquash: 0, nextLazy: 0, events: new Set(), onDefeat: null, hitInfo: null,
-    clock: 0, pending: [], away: 0, timeScale: 1, // clock：一直行嘅時鐘（傳送門 Boss 排隊出嚟用）；away：你喺實驗室外面幾耐
+    clock: 0, pending: [], away: 0, timeScale: 1, lives: LAB_LIVES, // clock：一直行嘅時鐘（傳送門 Boss 排隊出嚟用）；away：你喺實驗室外面幾耐
   };
   if (fight.phase === 'gone') hideBoss(fight);
   return fight;
@@ -264,19 +325,20 @@ export function updateLabFight(fight, dt, time, player) {
   const P = player;
   const pos = fight.group.position;
 
-  // 你走咗出去好耐：收晒招，返去瞓（返嚟會再打過一輪；拍中咗嘅 Capsule 唔會冇）
+  // 你離開咗 Arena：收晒招、成場重新嚟過（返嚟可以再挑戰）
   fight.away = P.inside ? 0 : fight.away + dt;
-  if (fight.away > LEAVE_RESET && ['wake', 'attack', 'tired'].includes(fight.phase)) {
-    clearMinions(fight, true);
-    resetCapsuleLabels();
-    setPhase(fight, 'sleep');
-    popup('💤 The scientist went back to sleep. Come back to finish the fight!');
+  if (fight.away > LEAVE_RESET && ['wake', 'attack', 'tired', 'hurt'].includes(fight.phase)) {
+    resetFight(fight);
+    return null;
   }
   updateBossLabel(fight);
 
   // ---- 狀態機 ----
   if (fight.phase === 'sleep') {
-    if (P.inside && P.z > LAB.minZ + 3) setPhase(fight, 'wake');
+    if (P.inside) {
+      setPhase(fight, 'wake');
+      fight.lives = LAB_LIVES;
+    }
   } else if (fight.phase === 'wake') {
     if (once(fight, 'wake')) {
       play('roar');
@@ -322,20 +384,27 @@ export function updateLabFight(fight, dt, time, player) {
       pos.z += (dz / d) * step;
       moving = 0.4;
     }
-  } else if (fight.phase === 'attack' || fight.phase === 'wake') {
-    // 返去自己個位（紅黃圈中間）
-    const dx = BOSS_HOME.x - pos.x;
-    const dz = BOSS_HOME.z - pos.z;
+  } else if (fight.phase === 'attack' && P.inside) {
+    // 小朋友 2026-10-15：Boss 要喺場入面行嚟行去：每幾秒揀一個新位（喺你附近 9–13 米），慢慢行過去
+    const summoning = (fight.t > T_ANIMALS - 0.8 && fight.t < T_ANIMALS + 1.2) || (fight.t > T_PORTAL - 0.5 && fight.t < T_PORTAL + 2);
+    fight.roamTimer = (fight.roamTimer ?? 0) - dt;
+    if (!fight.roam || fight.roamTimer <= 0) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 9 + Math.random() * 4;
+      fight.roam = clampArena(V(P.x + Math.cos(a) * d, 0, P.z + Math.sin(a) * d), 6);
+      fight.roamTimer = 3.5 + Math.random() * 2.5;
+    }
+    const dx = fight.roam.x - pos.x;
+    const dz = fight.roam.z - pos.z;
     const d = Math.hypot(dx, dz);
-    if (d > 0.3) {
-      const step = Math.min(d, 6 * dt);
+    if (d > 0.4 && !summoning) {
+      const step = Math.min(d, 5.5 * dt);
       pos.x += (dx / d) * step;
       pos.z += (dz / d) * step;
-      moving = 0.8;
+      moving = 1;
     }
   }
-  pos.x = THREE.MathUtils.clamp(pos.x, LAB.minX + 5, LAB.maxX - 5);
-  pos.z = THREE.MathUtils.clamp(pos.z, LAB.minZ + 6, LAB.maxZ - 6);
+  clampArena(pos, 5);
   fight.runPhase += dt * (4 + 6 * moving);
   const swing = Math.sin(fight.runPhase) * 0.6 * moving;
   r.legs[0].rotation.x = swing;
@@ -343,7 +412,9 @@ export function updateLabFight(fight, dt, time, player) {
   r.torso.scale.y = 1 + Math.sin(time * (tired ? 6 : 2)) * (tired ? 0.05 : 0.015); // 攰：大力抖氣
   r.head.rotation.x = tired ? 0.35 + Math.sin(time * 6) * 0.06 : Math.sin(time * 1.3) * 0.05;
   r.head.rotation.z = fight.phase === 'wake' ? Math.sin(time * 18) * 0.15 : 0;
-  r.root.position.y = fight.phase === 'wake' ? Math.abs(Math.sin(time * 10)) * 0.15 : 0;
+  r.root.position.y = fight.phase === 'wake' ? Math.abs(Math.sin(time * 10)) * 0.15 : Math.abs(Math.sin(fight.runPhase)) * 0.08 * moving;
+  r.root.rotation.x = fight.phase === 'defeated' ? r.root.rotation.x : -0.08 * moving; // 行嗰陣向前傾少少
+  r.shoulders.forEach((sh, i) => (sh.rotation.z = Math.sin(time * 3 + i) * 0.2));
   r.vials.forEach((v, i) => (v.material.emissiveIntensity = 1.5 + Math.sin(time * 5 + i) * 1));
   // 受傷冒煙（第 2 層）
   r.smoke.forEach((p, i) => {
@@ -416,7 +487,7 @@ function updateAttackRound(fight, P) {
   // 招式 d：用手拍（出其他招嗰陣都會拍）
   if (t >= fight.nextSquash && P.inside && !fight.slams.length) startSlam(fight, P, false);
   // 出晒招、啲手下走晒 → 佢攰咗
-  const busy = fight.drones.length || fight.bombs.length || fight.animals.length || fight.portalBosses.length || fight.pending.length || lab.portal.target > 0;
+  const busy = fight.drones.length || fight.bombs.length || fight.animals.length || fight.portalBosses.length || fight.pending.length || lab.bossPortal.target > 0;
   if (t > T_PORTAL + 3 && !busy && !fight.slams.length) {
     setPhase(fight, 'tired');
     fight.nextLazy = 1.5;
@@ -504,7 +575,7 @@ function restPos(fight, arm, time, out) {
   else if (arm.limp) local = V(side * 2.4, 0.8, -0.3);
   else if (fight.phase === 'tired') local = V(side * 2.6, lowerArm ? 0.9 : 1.6, -1.2 + wig * 0.2); // 攰：手拖地
   else if (raise) local = V(side * 2.6, lowerArm ? 6.5 : 8.5, -0.5 + wig);
-  else local = V(side * (lowerArm ? 3.2 : 2.7), (lowerArm ? 2.4 : 3.6) + wig, -1.3);
+  else local = V(side * (lowerArm ? 4.4 : 3.8), (lowerArm ? 3.0 : 6.2) + wig, lowerArm ? -0.6 : 0.2); // 兩邊張開，唔好遮住塊面
   out.copy(local).applyAxisAngle(V(0, 1, 0), fight.group.rotation.y).add(fight.group.position);
   return out;
 }
@@ -545,8 +616,7 @@ function startSlam(fight, P, lazy) {
   free.sort((a, b) => a.pos.distanceTo(V(P.x, 0, P.z)) - b.pos.distanceTo(V(P.x, 0, P.z)));
   const arm = free[0];
   const size = lazy ? LAZY_SIZE : SQUASH_SIZE;
-  const x = THREE.MathUtils.clamp(P.x, LAB.minX + size / 2, LAB.maxX - size / 2);
-  const z = THREE.MathUtils.clamp(P.z, LAB.minZ + size / 2, LAB.maxZ - size / 2);
+  const { x, z } = clampArena(V(P.x, 0, P.z), size / 2);
   const box = warningBox(size);
   box.position.set(x, 0.06, z);
   fight.fx.add(box);
@@ -582,15 +652,16 @@ function updateSlams(fight, dt, time, P) {
     // 頭 3 秒：紅框跟住你行（小朋友 2026-10-15）；之後停低，隻手拍落嚟
     if (s.t < s.follow && P.inside) {
       const k = Math.min(1, dt * 7);
-      s.x += (THREE.MathUtils.clamp(P.x, LAB.minX + s.size / 2, LAB.maxX - s.size / 2) - s.x) * k;
-      s.z += (THREE.MathUtils.clamp(P.z, LAB.minZ + s.size / 2, LAB.maxZ - s.size / 2) - s.z) * k;
+      const want = clampArena(V(P.x, 0, P.z), s.size / 2);
+      s.x += (want.x - s.x) * k;
+      s.z += (want.z - s.z) * k;
       s.box.position.set(s.x, 0.06, s.z);
     } else if (!s.locked) {
       s.locked = true;
       play('blip');
     }
     const above = V(s.x, s.lazy ? 6 : 7.5, s.z);
-    const ground = V(s.x, 0.55 * S * 0.95, s.z);
+    const ground = V(s.x, 1.05, s.z); // 爪尖啱啱掂地
     if (s.t < s.warn) {
       // 隻手飛去紅框上面（跟住紅框），停低之後震下震下
       const k = Math.min(1, s.t / 1.2);
@@ -730,7 +801,7 @@ function updateDrones(fight, dt, time, P) {
       continue;
     }
     // 飛去你頭頂（喺實驗室入面先追）
-    const goal = P.inside ? V(P.x + d.offset.x, 8, P.z + d.offset.z) : V(BOSS_HOME.x + d.offset.x * 2, 9, BOSS_HOME.z - 6 + d.offset.z);
+    const goal = P.inside ? V(P.x + d.offset.x, 8, P.z + d.offset.z) : V(BOSS_HOME.x + d.offset.x * 2, 9, BOSS_HOME.z + d.offset.z);
     const delta = goal.clone().sub(p);
     const dist = delta.length();
     if (dist > 0.1) p.addScaledVector(delta.normalize(), Math.min(dist, speed * dt));
@@ -750,8 +821,7 @@ function updateDrones(fight, dt, time, P) {
 }
 
 function dropBomb(fight, from, at) {
-  at.x = THREE.MathUtils.clamp(at.x, LAB.minX + 1, LAB.maxX - 1);
-  at.z = THREE.MathUtils.clamp(at.z, LAB.minZ + 1, LAB.maxZ - 1);
+  clampArena(at, 1);
   const bomb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), mat(0x212121, { metalness: 0.4 }));
   bomb.position.copy(from);
   const fuse = new THREE.Mesh(new THREE.OctahedronGeometry(0.15), new THREE.MeshBasicMaterial({ color: 0xffea00 }));
@@ -854,7 +924,7 @@ function updateCorrupted(fight, dt, time, P) {
     if (a.life > 0 && fight.phase !== 'defeated') {
       a.label.userData.setLines([{ text: `😵 Corrupted ${a.animal.name}`, color: '#ea80fc' }, { text: `${Math.ceil(a.life)}s`, color: '#ffffff' }]);
       // 追你（你喺實驗室外面就喺入面行嚟行去）
-      const goal = P.inside ? V(P.x, 0, P.z) : V(BOSS_HOME.x + Math.sin(time + i) * 10, 0, 120 + Math.cos(time * 0.7 + i) * 8);
+      const goal = P.inside ? V(P.x, 0, P.z) : V(ARENA.x + Math.sin(time + i) * 10, 0, ARENA.z + Math.cos(time * 0.7 + i) * 8);
       const d = goal.sub(a.g.position);
       d.y = 0;
       const dist = d.length();
@@ -870,8 +940,7 @@ function updateCorrupted(fight, dt, time, P) {
         const dd = Math.hypot(dx, dz);
         if (dd < 1.6 && dd > 0.01) a.g.position.add(V(dx / dd, 0, dz / dd).multiplyScalar((1.6 - dd) * 0.5));
       }
-      a.g.position.x = THREE.MathUtils.clamp(a.g.position.x, LAB.minX + 1.5, LAB.maxX - 1.5);
-      a.g.position.z = THREE.MathUtils.clamp(a.g.position.z, LAB.minZ + 1.5, LAB.maxZ - 1.5);
+      clampArena(a.g.position, 1.5);
       a.model.userData.animate?.(time, 1);
       if (P.inside && Math.hypot(P.x - a.g.position.x, P.z - a.g.position.z) < 1.5 && P.feetY < 1.2) hit(fight, P, `the Corrupted ${a.animal.name}`);
     } else {
@@ -901,7 +970,7 @@ function updateCorrupted(fight, dt, time, P) {
 
 // ================= c. 傳送門 Boss（1 分鐘後返入傳送門） =================
 function openPortal(fight) {
-  lab.portal.target = 1;
+  lab.bossPortal.target = 1;
   play('portal');
   announce('🌀 He opened a PORTAL! Biome Bosses are coming out!');
   const picks = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, LAB_PORTAL_BOSSES);
@@ -918,7 +987,7 @@ function spawnPortalBoss(fight, { biome: b, slot: i, count }) {
     const label = makeLabel([{ text: `BOSS: ${BOSSES[b].name}`, color: '#ff5252' }, { text: '', color: '#ffffff' }], 1.1);
     label.position.y = 4.7;
     group.add(label);
-    group.position.set(PORTAL.x + (i - (count - 1) / 2) * 1.5, 0, PORTAL.z - 0.5);
+    group.position.set(PORTAL.x + (i - (count - 1) / 2) * 1.5, 0, PORTAL.z + 0.6);
     fight.fx.add(group);
     fight.portalBosses.push({ biome: b, rig, group, label, life: LAB_PORTAL_SECONDS, runPhase: 0, grow: 0 });
     play('alarm');
@@ -939,12 +1008,12 @@ function updatePortalBosses(fight, dt, time, P) {
     let goal;
     let speed;
     if (leaving) {
-      goal = V(PORTAL.x, 0, PORTAL.z - 0.3);
+      goal = V(PORTAL.x, 0, PORTAL.z + 0.4);
       speed = 9;
       b.label.userData.setLines([{ text: `BOSS: ${BOSSES[b.biome].name}`, color: '#ff5252' }, { text: 'Going back! 🌀', color: '#ea80fc' }]);
     } else {
       b.grow = Math.min(1, b.grow + dt * 1.5);
-      goal = P.inside ? V(P.x, 0, P.z) : V(PORTAL.x + Math.sin(time + i * 2) * 8, 0, 138);
+      goal = P.inside ? V(P.x, 0, P.z) : V(PORTAL.x + Math.sin(time + i * 2) * 8, 0, ARENA.z - 8);
       speed = THREE.MathUtils.clamp(Math.min(walkSpeed(BOSSES[b.biome].speed), playerSpeed() * 0.7), 6, 22) * (P.inside ? 1 : 0.4);
       b.label.userData.setLines([{ text: `BOSS: ${BOSSES[b.biome].name}`, color: '#ff5252' }, { text: `${Math.ceil(b.life)}s`, color: '#ffffff' }]);
     }
@@ -957,8 +1026,7 @@ function updatePortalBosses(fight, dt, time, P) {
       b.group.rotation.y = Math.atan2(-d.x, -d.z);
       moving = 1;
     }
-    pos.x = THREE.MathUtils.clamp(pos.x, LAB.minX + 1.5, LAB.maxX - 1.5);
-    pos.z = THREE.MathUtils.clamp(pos.z, LAB.minZ + 1.5, LAB.maxZ - 0.5);
+    clampArena(pos, 1.2);
     if (leaving && dist < 0.6) b.grow -= dt * 2.5; // 縮細返入傳送門
     b.rig.g.scale.setScalar(Math.max(0.01, b.grow) * 1.15);
     animateRig(b, dt, time, moving);
@@ -967,7 +1035,7 @@ function updatePortalBosses(fight, dt, time, P) {
       fight.fx.remove(b.group);
       fight.portalBosses.splice(i, 1);
       if (!fight.portalBosses.length) {
-        lab.portal.target = 0; // 全部返晒入去：閂門
+        lab.bossPortal.target = 0; // 全部返晒入去：閂門
         popup('🌀 The Bosses went back into the portal!');
       }
     }
@@ -985,7 +1053,7 @@ function clearMinions(fight, poof = false) {
   for (const list of [fight.drones, fight.animals, fight.portalBosses, fight.bombs, fight.slams, fight.pending]) list.length = 0;
   for (const o of [...fight.fx.children]) if (!keep.includes(o)) fight.fx.remove(o);
   if (!poof) fight.effects.length = 0;
-  lab.portal.target = 0;
+  lab.bossPortal.target = 0;
 }
 
 // Boss 頭頂個牌：而家做緊乜
@@ -1015,7 +1083,8 @@ function showBar(fight) {
     tired: `😮‍💨 TIRED! Lead his lazy slam onto a capsule! (${Math.max(0, Math.ceil(LAB_TIRED_SECONDS - fight.t))}s)`,
     hurt: '💫 OUCH!',
   }[fight.phase] || '';
-  const html = `<b>🧪 MUTATED SCIENTIST POACHER</b><div class="hp">${'❤️'.repeat(Math.max(0, fight.hp))}${'🖤'.repeat(hits)}</div><small>Capsule hits: ${suns}</small><div class="status">${status}</div>`;
+  const lives = `${'💚'.repeat(Math.max(0, fight.lives))}${'🤍'.repeat(Math.max(0, LAB_LIVES - fight.lives))}`;
+  const html = `<b>🧪 MUTATED SCIENTIST POACHER</b><div class="hp">${'❤️'.repeat(Math.max(0, fight.hp))}${'🖤'.repeat(hits)}</div><small>Capsule hits: ${suns}</small><div class="status">${status}</div><small class="you">You: ${lives}</small>`;
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 
@@ -1068,6 +1137,10 @@ export function resetFight(fight) {
   fight.group.visible = true;
   for (const a of fight.arms) for (const m of [a.upper, a.lower, a.elbow, a.hand]) m.visible = true;
   fight.group.position.set(BOSS_HOME.x, 0, BOSS_HOME.z);
+  fight.group.rotation.set(0, Math.PI, 0); // 面向南（玩家入嚟嗰邊）
+  fight.lives = LAB_LIVES;
+  fight.round = 0;
+  fight.away = 0;
   resetCapsules();
   setPhase(fight, 'sleep');
 }

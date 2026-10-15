@@ -10,7 +10,7 @@ import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
-  selectedHotbarItem, selectSlot, showZoneTitle, setSightings, setPetActions, setShopActions,
+  selectedHotbarItem, selectSlot, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
 } from './hud.js';
 import { state, save } from './state.js';
 import {
@@ -31,12 +31,12 @@ import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent } from './events.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD, LAB_UNLOCK_PETS } from './data/balance.js';
-import { buildLab, updateLabGuide, openParkGate } from './lab.js';
+import { rarityInfo, TRASH_REWARD, LAB_REWARD } from './data/balance.js';
+import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie } from './movie.js';
-import { playUnlockScene } from './labScenes.js';
-import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip } from './labBoss.js';
-import { LAB_RESPAWN, LAB, inLab } from './labShape.js';
+import { playUnlockScene, playEnding } from './labScenes.js';
+import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss } from './labBoss.js';
+import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
 import { setGateOpen } from './hubPark.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
@@ -163,6 +163,19 @@ function cycleQuality() {
 applyQuality();
 
 const thirdPerson = createThirdPerson(scene, camera); // 拎住寵物時用第三身
+// Issue #2：手上嘅鎚仔（第一身掛喺鏡頭；第三身掛喺公仔右手）
+const handHammer = hammerModel();
+handHammer.position.set(0.45, -0.45, -0.8);
+handHammer.rotation.set(-0.5, 0, 0.4);
+handHammer.scale.setScalar(0.32);
+handHammer.visible = false;
+camera.add(handHammer);
+const avatarHammer = hammerModel();
+avatarHammer.position.set(0.22, -0.7, -0.15);
+avatarHammer.rotation.set(-0.35, 0, -0.25); // 鎚頭向上，喺手臂旁邊（後面都睇到）
+avatarHammer.scale.setScalar(1.3);
+avatarHammer.visible = false;
+thirdPerson.avatar.arms[1].add(avatarHammer);
 applyRangerSkin(thirdPerson, RANGER_SKINS.find((s) => s.id === state.rangerSkin) || RANGER_SKINS[0]);
 
 // 任務有進度：完成就提你去領代幣
@@ -363,7 +376,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ') togglePanel('quests');
   if (e.code === 'KeyH') toggleHidePets();
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && (panelKind() === 'pets' || panelKind() === 'sell')) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.freeMode) {
@@ -532,6 +545,8 @@ function currentInteraction() {
   // Biome 2 沙灘嘅垃圾：執走有少少錢
   const trash = TRASH.find((t) => t.group.visible && Math.hypot(pos.x - t.x, pos.z - t.z) < 2);
   if (trash) return { prompt: `<kbd>E</kbd> Clean up the ${trash.name} 🗑️ (+$${TRASH_REWARD})`, action: () => cleanTrash(trash) };
+  const lab2 = labInteraction(pos);
+  if (lab2) return lab2;
   const w = nearestAnimal(rescue);
   if (w) {
     if (rescue.carrying) return { prompt: '🙌 Your hands are full - take your animal to the Hub first' };
@@ -539,6 +554,116 @@ function currentInteraction() {
   }
   if (whereIs(pos.x, pos.z) !== 'Hub') return null;
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
+}
+
+// ================= Issue #2：鎚仔、紅色掣、玻璃艙、傳送門 =================
+const near = (pos, p, d) => Math.hypot(pos.x - p.x, pos.z - p.z) < d;
+const holdingHammer = () => selectedHotbarItem()?.kind === 'tool';
+function labInteraction(pos) {
+  // Biome 6 座山後面嘅鎚仔
+  if (!state.hasHammer && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
+  // Magic Library 後面嘅紅色掣
+  if (near(pos, RED_BUTTON, 2.6)) {
+    if (state.labUnlocked) return { prompt: '<kbd>E</kbd> 🔴 Press the button (the gate is already open!)', action: () => { pressButton(); play('click'); popup('🔓 The gate is already open!'); } };
+    return { prompt: '<kbd>E</kbd> Press the big RED BUTTON 🔴', action: () => { pressButton(); play('click'); setTimeout(startUnlockScene, 400); } };
+  }
+  if (whereIs(pos.x, pos.z) !== 'Laboratory') return null;
+  // 玻璃艙
+  const pod = lab.pods.find((p) => !p.free && near(pos, p, 3.6));
+  if (pod) {
+    if (holdingHammer()) return { prompt: `<kbd>E</kbd> or click: 🔨 Smash the pod and free the ${pod.animal.name}!`, action: () => smashPodNow(pod) };
+    if (state.hasHammer) return { prompt: `🔨 Pick your Hammer in the hotbar (slot 1) to smash the pod` };
+    return { prompt: '🔒 You need the Hammer (found behind the mountain in Biome 6)' };
+  }
+  // 傳送門
+  if (!state.labBossDefeated && near(pos, PORTAL, 6)) {
+    if (portalReady()) return { prompt: '🌀 The portal is OPEN! Walk into it to enter the BOSS ARENA!' };
+    return { prompt: '<kbd>E</kbd> 🌀 Look at the Portal (how to open it)', action: () => togglePanel('portal') };
+  }
+  return null;
+}
+function pickUpHammer() {
+  state.hasHammer = true;
+  lab.hammer.g.visible = false;
+  sparkleBurst(new THREE.Vector3(HAMMER_SPOT.x, 1.5, HAMMER_SPOT.z), 0xffd600, 30);
+  selectSlot(0);
+  announce('🔨 You found the HAMMER! It stays in your hotbar forever.');
+  setTimeout(() => popup('Use it to smash the glass pods in the Laboratory!'), 1800);
+  play('tierUp');
+  save();
+}
+function smashPodNow(pod) {
+  if (pod.free) return;
+  smashPod(pod);
+  state.labPodsSmashed.push(pod.i);
+  play('slam');
+  play('rescue');
+  const n = state.labPodsSmashed.length;
+  popup(`🔨 You freed the ${pod.animal.name}! (${n} / ${lab.pods.length})`);
+  if (podsDone()) setTimeout(() => {
+    announce('🌀 All pods smashed! The PORTAL is open!');
+    play('portal');
+  }, 1200);
+  save();
+}
+// Route B：交 Legendary 俾傳送門（佢哋會由 Index 消失）
+setPortalActions({
+  status: () => ({
+    ready: portalReady(), pods: state.labPodsSmashed.length, podsTotal: lab.pods.length, legendary: state.labLegendaryGiven,
+  }),
+  give(items) {
+    for (const item of items) {
+      const pi = state.pets.indexOf(item);
+      if (pi >= 0) {
+        if (item.onPlot) unequipPet(hub, item);
+        state.pets.splice(state.pets.indexOf(item), 1);
+      }
+      const bi = state.borrowed.indexOf(item);
+      if (bi >= 0) state.borrowed.splice(bi, 1);
+      state.indexFound = state.indexFound.filter((n) => n !== item.name);
+      if (!state.labGivenSpecies.includes(item.name)) state.labGivenSpecies.push(item.name);
+    }
+    state.labLegendaryGiven += items.length;
+    refreshPlotPets(hub);
+    play('portal');
+    popup(`🌀 The portal took ${items.length} Legendary animals...`);
+    if (legendaryDone()) setTimeout(() => announce('🌀 The PORTAL is open! Walk into it!'), 600);
+    save();
+  },
+});
+// 撳滑鼠左鍵（拎住鎚仔）都打得爛玻璃艙
+window.addEventListener('mousedown', (e) => {
+  if (e.button !== 0 || isPaused() || !player.controls.isLocked || !holdingHammer()) return;
+  const it = labInteraction(camera.position);
+  if (it?.action && lab.pods.some((p) => !p.free && near(camera.position, p, 3.6))) it.action();
+});
+
+// 入傳送門 → 圓形 Boss Arena；出口 → 返實驗室
+function flashScreen() {
+  const el = document.getElementById('movie-blink');
+  document.getElementById('movie').hidden = false;
+  el.classList.remove('on');
+  void el.offsetWidth;
+  el.classList.add('on');
+  setTimeout(() => {
+    if (!movie.active) document.getElementById('movie').hidden = true;
+  }, 400);
+}
+function enterArena() {
+  flashScreen();
+  play('portal');
+  teleportPlayer(player, ARENA_START.x, ARENA_START.z);
+  camera.rotation.set(0, 0, 0, 'YXZ'); // 望住北邊（Boss）
+  announce('⚔️ The BOSS ARENA!');
+  safeTime = 2;
+}
+function leaveArena(text) {
+  flashScreen();
+  play('portal');
+  teleportPlayer(player, LAB_RETURN.x, LAB_RETURN.z);
+  camera.rotation.set(0, 0, 0, 'YXZ');
+  if (text) announce(text);
+  safeTime = 2;
 }
 
 function cleanTrash(trash) {
@@ -600,10 +725,16 @@ let fling = null; // 彈飛緊：{ from, to, t, dur }
 function onLabHit(what) {
   play('hit');
   play('boing');
-  announce(`💥 ${what[0].toUpperCase()}${what.slice(1)} sent you flying out of the Lab!`);
-  setTimeout(() => popup('Run back in and keep dodging! 💪'), 1800);
+  fight.lives -= 1;
+  const who = `${what[0].toUpperCase()}${what.slice(1)}`;
+  if (fight.lives <= 0) {
+    // 心冇晒：返實驗室，成場重新嚟過（傳送門仲開住，可以再挑戰）
+    leaveArena('😵 Knocked out! Train more and try again - the portal is still open!');
+    return;
+  }
+  announce(`💥 ${who} hit you! ${fight.lives} ${fight.lives === 1 ? 'heart' : 'hearts'} left`);
   const from = camera.position.clone();
-  fling = { from, to: new THREE.Vector3(LAB_RESPAWN.x, from.y, LAB_RESPAWN.z), t: 0, dur: 1.4 };
+  fling = { from, to: new THREE.Vector3(ARENA_START.x, from.y, ARENA_START.z), t: 0, dur: 1.2 };
   safeTime = 99;
 }
 
@@ -667,6 +798,35 @@ function startUnlockScene() {
       camera.rotation.set(0, Math.PI, 0, 'YXZ');
       announce('🔓 The gate is open! Follow the green arrows to the 🔬 Laboratory!');
       play('magic');
+      resume();
+    },
+  });
+}
+
+// ================= Issue #2：結局動畫 =================
+function startEnding() {
+  player.controls.unlock();
+  closePanel();
+  playEnding({
+    scene, camera, fight,
+    onPaid() {
+      // Owner 俾你 $1000（只俾一次）
+      if (state.labRewardPaid) return;
+      state.labRewardPaid = true;
+      state.money += LAB_REWARD;
+      popup(`💰 +$${LAB_REWARD.toLocaleString('en-US')}`);
+      save();
+    },
+    onDone() {
+      state.labEndingSeen = true;
+      hideBoss(fight);
+      fight.phase = 'gone';
+      save();
+      // 企喺地塊門口，同你啲寵物一齊（之後可以照玩）
+      teleportPlayer(player, 6, 12.5);
+      camera.rotation.set(0, -Math.PI / 2, 0, 'YXZ');
+      announce('🐾 You and your pets live happily together! Keep playing!');
+      play('day');
       resume();
     },
   });
@@ -768,10 +928,10 @@ renderer.setAnimationLoop((timestamp) => {
     setSightings(rescue.wild.filter((w) => w.special), camera);
     // 背景音樂跟住情況轉：俾 Boss 追 > 夜晚 > 生態區 > Hub
     const labHit = updateLabFight(fight, dt, time, {
-      x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Laboratory', safe: safeTime > 0 || !!fling || labDebug.god,
+      x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Boss Arena', safe: safeTime > 0 || !!fling || labDebug.god,
     });
     if (labHit) onLabHit(labHit);
-    const labBattle = location === 'Laboratory' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
+    const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
     if (bosses.some((b) => b.mode === 'chase') || labBattle) setMusicMood('boss');
     else if (dayNight.isNight) setMusicMood('night');
     else setMusicMood(location === 'Hub' ? 'hub' : 'biome');
@@ -782,8 +942,12 @@ renderer.setAnimationLoop((timestamp) => {
     }
 
     // Issue #2：圖鑑夠 25 隻 → 播開門動畫（喺 Hub 先播，唔會喺俾 Boss 追緊嗰陣播）
-    if (!state.labUnlocked && state.indexFound.length >= LAB_UNLOCK_PETS && location === 'Hub' && !fling && !rescue.carrying) startUnlockScene();
-    if (location === 'Laboratory' && !state.labVisited) {
+    // 行入開咗嘅傳送門 → Boss Arena；Arena 出口 → 返實驗室
+    if (!fling && location === 'Laboratory' && portalReady() && !state.labBossDefeated && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 2.6) enterArena();
+    if (!fling && location === 'Boss Arena' && Math.hypot(pos.x - EXIT_PORTAL.x, pos.z - EXIT_PORTAL.z) < 2) leaveArena(fight.phase === 'gone' ? '' : '🏃 You left the arena. Come back when you are ready!');
+    // 打贏咗（Boss 跌低咗 3 秒之後）→ 播結局
+    if (state.labBossDefeated && !state.labEndingSeen && !fling && !(fight.phase === 'defeated' && fight.t < 3)) startEnding();
+    if ((location === 'Laboratory' || location === 'Boss Arena') && !state.labVisited) {
       state.labVisited = true; // 入咗實驗室：唔使再指路
       save();
     }
@@ -797,7 +961,12 @@ renderer.setAnimationLoop((timestamp) => {
     updateHud(dayNight, location);
   }
 
-  setHolding(rescue, selectedHotbarItem()?.item.name ?? null);
+  const sel = selectedHotbarItem();
+  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null);
+  // 鎚仔：第一身拎喺手，第三身拎喺右手
+  const showHammer = sel?.kind === 'tool' && !rescue.carrying;
+  handHammer.visible = showHammer && thirdPerson.zoom === 0;
+  avatarHammer.visible = showHammer;
   if (!frozen) updateRescue(rescue, dt, time, player.walking);
   // 拎住寵物／抱住動物：第三身，寵物頂喺頭上
   const inMovie = intro.active || movie.active;
@@ -809,10 +978,17 @@ renderer.setAnimationLoop((timestamp) => {
     walking: player.walking, feetY: player.feetY,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
   });
-  // Issue #2：喺實驗室入面，第三身鏡頭唔好退咗入前牆／後牆（會成個畫面黑晒）
+  // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
   if (!inMovie && viewCam !== camera && inLab(camera.position.x, camera.position.z)) {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
     viewCam.position.x = THREE.MathUtils.clamp(viewCam.position.x, LAB.minX + 1.3, LAB.maxX - 1.3);
+  }
+  if (!inMovie && viewCam !== camera && Math.hypot(camera.position.x - ARENA.x, camera.position.z - ARENA.z) < ARENA.r) {
+    const dx = viewCam.position.x - ARENA.x;
+    const dz = viewCam.position.z - ARENA.z;
+    const d = Math.hypot(dx, dz);
+    const max = ARENA.r - 1.2;
+    if (d > max) viewCam.position.set(ARENA.x + (dx / d) * max, viewCam.position.y, ARENA.z + (dz / d) * max);
   }
   avoidCameraClip(fight, viewCam.position);
   renderPass.camera = viewCam;
@@ -834,13 +1010,25 @@ renderer.setAnimationLoop((timestamp) => {
 // Issue #2 測試用：game.lab.grant(25)、game.lab.unlock()、game.lab.goto()
 const labDebug = {
   god: false, // 測試用：唔會俾 Boss 打中
-  grant(n = LAB_UNLOCK_PETS) {
-    for (const a of ANIMALS.slice(0, n)) if (!state.indexFound.includes(a.name)) state.indexFound.push(a.name);
-    return state.indexFound.length;
+  // 俾你 n 隻 Legendary 寵物（試 Route B）
+  legendary(n = 3) {
+    for (const a of ANIMALS.slice(0, n)) state.pets.push({ name: a.name, biome: a.biome, kg: a.kg[0], rarity: 'Legendary', onPlot: false });
+    return state.pets.length;
   },
-  unlock() {
-    labDebug.grant();
-    startUnlockScene();
+  hammer() {
+    state.hasHammer = true;
+    lab.hammer.g.visible = false;
+  },
+  smashAll() {
+    labDebug.hammer();
+    for (const p of lab.pods) if (!p.free) smashPodNow(p);
+  },
+  unlock: () => startUnlockScene(), // 好似撳咗紅色掣
+  arena() {
+    // 直接入 Boss Arena（會開晒傳送門）
+    labDebug.open();
+    labDebug.smashAll();
+    enterArena();
   },
   open() {
     openParkGate();
@@ -854,18 +1042,31 @@ const labDebug = {
   skipMovie: () => finishMovie(),
   fight, // 而家打到邊：game.lab.fight.phase
   start() {
-    labDebug.goto(108);
     resetFight(fight);
+    labDebug.arena();
   },
   attack: (what) => debugFight(fight, what), // 'drones' | 'animals' | 'portal' | 'tired' | 'hit'
   tired: () => debugFight(fight, 'tired'),
   hitCapsule: () => debugFight(fight, 'hit'),
+  // 直接播結局：game.lab.ending()
+  ending() {
+    labDebug.open();
+    Object.assign(state, { labBossDefeated: true, labEndingSeen: false });
+    if (fight.phase !== 'defeated') {
+      hideBoss(fight);
+      fight.phase = 'gone';
+    }
+    startEnding();
+  },
   resetFight: () => resetFight(fight),
   reset() {
-    Object.assign(state, { labUnlocked: false, labVisited: false, labBossDefeated: false, labRewardPaid: false });
+    Object.assign(state, {
+      labUnlocked: false, labVisited: false, labBossDefeated: false, labRewardPaid: false, labEndingSeen: false,
+      hasHammer: false, labPodsSmashed: [], labLegendaryGiven: 0, labGivenSpecies: [],
+    });
     parkGate.open = false;
     save();
   },
 };
 
-if (import.meta.env.DEV) window.game = { lab: labDebug, movie, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
