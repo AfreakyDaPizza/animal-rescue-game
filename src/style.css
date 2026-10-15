@@ -234,18 +234,41 @@ kbd {
 body.intro .hud-box, body.intro #hud-buttons, body.intro #hotbar-wrap, body.intro #crosshair, body.intro #sightings { display: none !important; }
 #intro { position: fixed; inset: 0; cursor: pointer; }
 #intro-caption {
-  position: absolute; left: 0; right: 0; bottom: 12%;
-  text-align: center; font-size: 34px; font-weight: 900;
-  text-shadow: 0 3px 0 #000, 0 0 20px rgba(0, 0, 0, 0.8);
-  opacity: 0;
+  position: absolute; left: 0; right: 0; bottom: 3.5vh; z-index: 3;
+  text-align: center; font-size: 26px; font-weight: 700; font-style: italic; color: #fff3c4;
+  text-shadow: 0 2px 6px #000; opacity: 0;
 }
-#intro-caption.show { animation: caption 4s ease-out forwards; }
-@keyframes caption { 0% { opacity: 0; transform: translateY(20px); } 15% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0.9; } }
-#intro-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+#intro-caption.show { animation: caption 0.8s ease-out forwards; }
+@keyframes caption { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: none; } }
+/* 電影黑邊 */
+#intro-bar-top, #intro-bar-bottom { position: absolute; left: 0; right: 0; height: 12vh; background: #000; z-index: 2; pointer-events: none; }
+#intro-bar-top { top: 0; animation: bar-top 1s ease-out; }
+#intro-bar-bottom { bottom: 0; animation: bar-bottom 1s ease-out; }
+@keyframes bar-top { from { transform: translateY(-100%); } }
+@keyframes bar-bottom { from { transform: translateY(100%); } }
+/* 轉鏡頭閃黑 */
+#intro-blink { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+#intro-blink.on { animation: blink-cut 0.35s ease-out; }
+@keyframes blink-cut { 0% { opacity: 1; } 100% { opacity: 0; } }
+/* 對白泡泡 */
+#intro-bubble {
+  position: absolute; transform: translate(-50%, -100%) scale(0.6); max-width: 340px;
+  background: #fff; color: #212121; border: 4px solid #212121; border-radius: 22px;
+  padding: 10px 18px; font-size: 24px; font-weight: 900; text-align: center;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+}
+#intro-bubble::after {
+  content: ''; position: absolute; left: 50%; bottom: -18px; margin-left: -12px;
+  border: 12px solid transparent; border-top: 14px solid #212121; border-bottom: 0;
+}
+#intro-bubble.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+#intro-bubble.ranger { background: #e8f5e9; border-color: #1b5e20; }
+#intro-bubble.ranger::after { border-top-color: #1b5e20; }
+#intro-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 4; }
 #intro-final {
   position: absolute; left: 0; right: 0; top: 30%;
   text-align: center; font-size: 46px; font-weight: 900; color: #fff;
-  letter-spacing: 1px; opacity: 0; transition: opacity 1.5s;
+  letter-spacing: 1px; opacity: 0; transition: opacity 1.5s; z-index: 5;
 }
 #intro-final span { color: #69f0ae; font-size: 64px; }
 #intro-final small { display: block; margin-top: 18px; font-size: 26px; color: #ffe082; }
@@ -267,7 +290,7 @@ body.intro .hud-box, body.intro #hud-buttons, body.intro #hotbar-wrap, body.intr
 .phone-card small { color: #558b2f; font-size: 13px; }
 .phone-call { margin-top: 16px; text-align: center; font-size: 22px; font-weight: 900; color: #2e7d32; animation: blink 1s steps(1) infinite; }
 #intro-final.show { opacity: 1; }
-#intro-skip { position: absolute; right: 20px; bottom: 16px; font-size: 15px; opacity: 0.75; text-shadow: 0 1px 3px #000; }
+#intro-skip { position: absolute; z-index: 6; color: #bbb; right: 20px; bottom: 16px; font-size: 15px; opacity: 0.75; text-shadow: 0 1px 3px #000; }
 
 /* Index 分頁 */
 .tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }

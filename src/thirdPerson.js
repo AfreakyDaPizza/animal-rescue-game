@@ -35,6 +35,10 @@ export function buildAvatar() {
   });
   box(g, 0.85, 0.9, 0.45, mats.shirt, 0, 1.35, 0);
   const badge = box(g, 0.2, 0.35, 0.05, 0xffd600, 0.22, 1.55, -0.24); // 徽章
+  box(g, 0.87, 0.14, 0.47, mats.shoes, 0, 0.95, 0); // 皮帶（跟鞋顏色）
+  box(g, 0.16, 0.12, 0.04, 0xffd54f, 0, 0.95, -0.24); // 皮帶扣
+  box(g, 0.24, 0.2, 0.04, mats.pants, -0.22, 1.5, -0.235); // 心口袋
+  for (const s of [-1, 1]) box(g, 0.3, 0.1, 0.12, mats.shirt, s * 0.17, 1.82, -0.2).rotation.z = s * -0.3; // 衫領
   const arms = [-1, 1].map((s) => {
     const sh = new THREE.Group();
     sh.position.set(s * 0.62, 1.75, 0);
@@ -50,8 +54,15 @@ export function buildAvatar() {
   box(hat, 0.72, 0.18, 0.72, mats.hat, 0, 0.36, 0);
   box(hat, 0.9, 0.05, 0.9, mats.hat, 0, 0.28, 0);
   head.add(hat);
-  for (const s of [-1, 1]) box(head, 0.1, 0.12, 0.04, 0x111111, s * 0.14, 0.04, -0.34); // 眼
-  box(head, 0.18, 0.05, 0.04, 0x8d4a3a, 0, -0.14, -0.34); // 笑口
+  for (const s of [-1, 1]) {
+    box(head, 0.15, 0.15, 0.03, 0xffffff, s * 0.15, 0.05, -0.335); // 眼白
+    box(head, 0.08, 0.1, 0.03, 0x1b1b1b, s * 0.15, 0.04, -0.348); // 眼珠
+    box(head, 0.03, 0.03, 0.02, 0xffffff, s * 0.15 + 0.02, 0.07, -0.362); // 反光
+    box(head, 0.16, 0.04, 0.03, 0x4e342e, s * 0.15, 0.17, -0.34); // 眉
+    box(head, 0.1, 0.06, 0.02, 0xff8a80, s * 0.24, -0.08, -0.335); // 面珠
+  }
+  box(head, 0.2, 0.05, 0.04, 0x8d4a3a, 0, -0.16, -0.34); // 笑口
+  box(hat, 0.74, 0.07, 0.74, mats.shoes, 0, 0.3, 0); // 帽帶
   g.add(head);
 
   // ---- 每款皮膚嘅配件 ----

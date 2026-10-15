@@ -62,22 +62,41 @@ export function buildOwner() {
   });
   const torso = box(root, 1.1, 1.15, 0.6, shirt, 0, 1.78, 0);
   box(root, 1.12, 0.2, 0.62, 0x5d4037, 0, 1.25, 0); // 皮帶
+  box(root, 0.22, 0.16, 0.05, 0xffd54f, 0, 1.25, -0.32); // 皮帶扣
+  for (const s of [-1, 1]) {
+    const collar = box(root, 0.34, 0.12, 0.3, 0xffffff, s * 0.2, 2.33, -0.17); // 白色衫領
+    collar.rotation.z = s * -0.35;
+  }
+  for (let i = 0; i < 3; i++) box(root, 0.07, 0.07, 0.03, 0xffffff, 0, 2.1 - i * 0.28, -0.31); // 鈕
+  box(root, 0.28, 0.22, 0.03, 0x1565c0, 0.3, 2.0, -0.31); // 心口袋
   const arms = [-1, 1].map((s) => {
     const shoulder = pivot(root, s * 0.8, 2.25, 0);
     box(shoulder, 0.46, 0.5, 0.46, shirt, 0, -0.2, 0);
     box(shoulder, 0.4, 0.6, 0.4, skin, 0, -0.72, 0);
+    if (s < 0) box(shoulder, 0.43, 0.1, 0.43, 0x212121, 0, -0.85, 0); // 手錶
     return shoulder;
   });
   const head = pivot(root, 0, 2.72, 0);
   box(head, 0.8, 0.8, 0.8, skin, 0, 0, 0);
-  // 開心樣：眼、笑口、鬚
-  for (const s of [-1, 1]) box(head, 0.12, 0.14, 0.04, 0x212121, s * 0.17, 0.08, -0.41);
-  box(head, 0.36, 0.08, 0.04, 0x6d4c41, 0, -0.1, -0.41); // 鬚
-  const mouth = box(head, 0.22, 0.06, 0.04, 0xc62828, 0, -0.22, -0.41);
-  // 太陽帽
-  box(head, 1.25, 0.06, 1.25, 0xfff59d, 0, 0.42, 0);
-  box(head, 0.82, 0.3, 0.82, 0xfff59d, 0, 0.58, 0);
-  box(head, 0.84, 0.1, 0.84, 0xe53935, 0, 0.48, 0);
+  // 開心樣：大眼（白 + 黑 + 反光）、眉、鼻、紅面珠、鬚、笑口
+  for (const s of [-1, 1]) {
+    box(head, 0.2, 0.2, 0.03, 0xffffff, s * 0.18, 0.08, -0.405);
+    box(head, 0.11, 0.13, 0.03, 0x3e2723, s * 0.18, 0.06, -0.42);
+    box(head, 0.04, 0.04, 0.02, 0xffffff, s * 0.18 + 0.03, 0.1, -0.437);
+    box(head, 0.22, 0.06, 0.03, 0x5d4037, s * 0.18, 0.24, -0.41); // 眉
+    box(head, 0.14, 0.09, 0.02, 0xff8a80, s * 0.29, -0.1, -0.405); // 面珠
+  }
+  box(head, 0.14, 0.14, 0.12, 0xe0a96d, 0, -0.04, -0.45); // 鼻
+  box(head, 0.42, 0.09, 0.04, 0x6d4c41, 0, -0.17, -0.41); // 鬚
+  const mouth = box(head, 0.2, 0.06, 0.04, 0xc62828, 0, -0.27, -0.41);
+  // 頭髮（喺帽下面露出嚟）
+  box(head, 0.86, 0.3, 0.3, 0x6d4c41, 0, 0.2, 0.3);
+  for (const s of [-1, 1]) box(head, 0.1, 0.32, 0.5, 0x6d4c41, s * 0.42, 0.18, 0.1);
+  // 草帽（闊邊 + 紅帶 + 一朵花）
+  box(head, 1.35, 0.06, 1.35, 0xf9e79f, 0, 0.42, 0);
+  box(head, 0.84, 0.34, 0.84, 0xf9e79f, 0, 0.6, 0);
+  box(head, 0.86, 0.11, 0.86, 0xe53935, 0, 0.49, 0);
+  box(head, 0.16, 0.16, 0.06, 0xffeb3b, 0.3, 0.52, -0.44);
   // 「!」（見到 Boss 嗰陣先出）
   const alert = new THREE.Group();
   const red = new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 1.5 });
