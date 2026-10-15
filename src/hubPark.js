@@ -233,15 +233,15 @@ function buildHammock(root, live) {
 // Owner 瞓返落吊床（開場動畫完咗都會叫）
 export function lieOnHammock(owner = park.owner) {
   owner.g.position.set(HAMMOCK.x + 1.5, 1.05, HAMMOCK.z);
-  owner.g.rotation.set(0, Math.PI / 2, 0); // 頭向 -x
-  owner.root.rotation.set(-Math.PI / 2 + 0.22, 0, 0); // 瞓低，個頭少少抬高
+  owner.g.rotation.set(0, -Math.PI / 2, 0); // 頭向 -x
+  owner.root.rotation.set(Math.PI / 2 - 0.22, 0, 0); // 仰瞓（面向天），個頭少少抬高（Issue #2：之前反轉咗面向落）
   owner.root.position.set(0, 0, 0);
   for (const p of [...owner.legs, ...owner.arms]) p.rotation.set(0, 0, 0);
   owner.arms[0].rotation.x = -0.4;
   owner.head.rotation.set(0, 0, 0);
   owner.alert.visible = false;
   owner.phone.visible = false;
-  owner.label.position.set(0, 1.9, -1.6);
+  owner.label.position.set(0, 1.9, 1.6);
 }
 
 // 企起身（開場動畫用）
