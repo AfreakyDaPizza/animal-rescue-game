@@ -9,6 +9,7 @@
 //      `--------------`
 
 import * as THREE from 'three';
+import { biomeFloorTexture } from './biomeArt.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { decorateBiome } from './biomes.js';
 import { buildHubPark } from './hubPark.js';
@@ -104,7 +105,7 @@ export function buildWorld(scene) {
 
   BIOMES.forEach((biome, i) => {
     const rect = biomeRect(i);
-    addFloor(scene, rect, biome.floor, i === 3 ? 0.03 : 0.1);
+    addFloor(scene, rect, biome.floor, i === 3 ? 0.03 : 0.1, i);
     addBanner(scene, biome.name, rect.maxZ - 0.5, i);
     addBossSign(scene, i, rect.maxZ - 3);
     animators.push(decorateBiome(staticRoot, i, rect, scene));
@@ -145,12 +146,12 @@ export function buildWorld(scene) {
   };
 }
 
-function addFloor(scene, rect, color, variation) {
+function addFloor(scene, rect, color, variation, i = -1) {
   const w = rect.maxX - rect.minX;
   const d = rect.maxZ - rect.minZ;
   const floor = new THREE.Mesh(
     new THREE.BoxGeometry(w, 1, d),
-    new THREE.MeshStandardMaterial({ map: noiseTexture(color, variation, w / 4, d / 4) }),
+    new THREE.MeshStandardMaterial({ map: biomeFloorTexture(i, w, d) || noiseTexture(color, variation, w / 4, d / 4) }),
   );
   floor.position.set(rect.minX + w / 2, -0.5, rect.minZ + d / 2);
   floor.receiveShadow = true;

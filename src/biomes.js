@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { addPlatform, addCollider } from './world.js';
+import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
 // 固定嘅「隨機」：每次開遊戲裝飾都喺同一個位，唔會成日變
@@ -69,7 +70,7 @@ function roundTree(scene, x, z, s = 1) {
 // scene：放唔會郁嘅裝飾（之後會焊埋做一大件，畫得快啲）；live：放會郁嘅嘢
 export function decorateBiome(scene, i, rect, live) {
   const rand = seededRandom(100 + i);
-  return [deforestation, ocean, birds, arctic, smugglers, mining][i](scene, rect, rand, live);
+  return [deforestation, ocean, birds, arcticV2, smugglersV2, mining][i](scene, rect, rand, live);
 }
 
 // Biome 1：砍伐森林 — 有啲樹仲企喺度，有啲已經俾人斬咗淨返樹頭
