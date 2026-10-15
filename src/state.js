@@ -22,7 +22,6 @@ const DEFAULTS = {
   ownedPet: ['none'],
   hubLevel: 0, // Hub 擴建咗幾多次（每次深 10 米 + 一個新區域）
   takenSpawns: [], // 救咗嘅動物身份（F5 唔再出）
-  leverReadyAt: 0, // 秘密拉桿幾時再拉得（真實時間 ms）
   tutorialStep: 0,
   tutorialDone: false,
   plotLevel: 0, // 地塊升咗幾多次（每次 +1 隻位）

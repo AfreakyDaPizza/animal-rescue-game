@@ -5,7 +5,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB } from './world.js';
+import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders } from './world.js';
 import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
@@ -21,7 +21,7 @@ import {
   unequipPet, equipBest, sellPet, upgradePlot, upgradeMachines, refreshPlotPets,
 } from './hub.js';
 import { createHazards, updateHazards, hazardHit } from './hazards.js';
-import { createBosses, updateBosses, stunBoss, sendBossHome, resetBosses } from './bosses.js';
+import { createBosses, updateBosses, sendBossHome, resetBosses } from './bosses.js';
 import { askQuestion, isQuizOpen, finishQuiz } from './quiz.js';
 import { play, unlockAudio, toggleMute, isMuted, setMusicMood } from './sound.js';
 import { createIntro, updateIntro } from './intro.js';
@@ -29,9 +29,8 @@ import { createTutorial, startTutorial, updateTutorial } from './tutorial.js';
 import { createThirdPerson, updateThirdPerson, zoomCamera, applyRangerSkin } from './thirdPerson.js';
 import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
-import { updateEvents, forceEvent, EVENTS, SECRET_EVENT } from './events.js';
-import { LEVER } from './biomes.js';
-import { BOSS_STUN_SECONDS, rarityInfo } from './data/balance.js';
+import { updateEvents, forceEvent } from './events.js';
+import { rarityInfo } from './data/balance.js';
 import { itemMoney, formatKg } from './data/animals.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -514,12 +513,6 @@ setPetActions({
 
 function currentInteraction() {
   const pos = camera.position;
-  // 山後面嘅秘密拉桿
-  if (Math.hypot(pos.x - LEVER.x, pos.z - LEVER.z) < 2.5) {
-    const wait = state.leverReadyAt - Date.now();
-    if (wait > 0) return { prompt: '🔒 The lever is recharging...' };
-    return { prompt: '<kbd>E</kbd> Pull the secret lever!', action: pullLever };
-  }
   const w = nearestAnimal(rescue);
   if (w) {
     if (rescue.carrying) return { prompt: '🙌 Your hands are full - take your animal to the Hub first' };
@@ -527,19 +520,6 @@ function currentInteraction() {
   }
   if (whereIs(pos.x, pos.z) !== 'Hub') return null;
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
-}
-
-// 拉秘密拉桿：即刻開始一個隨機活動，10 分鐘後先拉得再
-const LEVER_COOLDOWN_MS = 1000; // 小朋友：每 1 秒就拉得
-function pullLever() {
-  LEVER.pulledAt = time;
-  quest('lever');
-  state.leverReadyAt = Date.now() + LEVER_COOLDOWN_MS;
-  play('boing');
-  popup('🕹️ You pulled the secret lever!');
-  const ev = Math.random() < 0.5 ? SECRET_EVENT : EVENTS[Math.floor(Math.random() * EVENTS.length)]; // 一半機會 BIG PET FRENZY
-  setTimeout(() => forceEvent(ev.id), 700);
-  save();
 }
 
 function interact() {
@@ -572,21 +552,35 @@ async function onHazardHit(h) {
   } else popup('Be careful out there!');
 }
 
-async function onBossCatch(boss) {
-  const right = await quiz({ title: `😠 ${boss.info.name} caught you! Hard question!`, biome: boss.biome, hard: true });
-  safeTime = 1;
-  if (right) {
-    quest('right');
-    stunBoss(boss, BOSS_STUN_SECONDS);
-    play('boing');
-    announce(`😵 ${boss.info.name} is stunned! RUN!`);
-    return;
-  }
+// Boss 撞到你：唔使答問題，直接彈飛返 Hub（小朋友 2026-10-15）；抱住嘅動物走返去生態區
+function onBossCatch(boss) {
+  play('hit');
+  play('boing');
   sendBossHome(boss);
   if (rescue.carrying) {
     const animal = loseAnimal(rescue);
     setCarrying(null);
-    announce(`😢 ${boss.info.name} took the ${animal.name} back!`);
+    announce(`💥 ${boss.info.name} sent you flying! The ${animal.name} ran back to its biome.`);
+  } else announce(`💥 ${boss.info.name} sent you flying back to the Hub!`);
+  const from = camera.position.clone();
+  fling = { from, to: new THREE.Vector3(0, from.y, 14), t: 0, dur: 1.8 };
+  safeTime = 99; // 飛緊唔會再撞
+}
+let fling = null; // 彈飛緊：{ from, to, t, dur }
+
+// 每格畫面：沿住拋物線飛返 Hub，轉吓轉吓
+function updateFling(dt) {
+  fling.t += dt;
+  const k = Math.min(1, fling.t / fling.dur);
+  camera.position.lerpVectors(fling.from, fling.to, k);
+  camera.position.y += Math.sin(k * Math.PI) * (12 + fling.from.distanceTo(fling.to) * 0.15);
+  camera.rotation.z = Math.sin(k * Math.PI * 4) * 0.3 * (1 - k);
+  if (k >= 1) {
+    teleportPlayer(player, fling.to.x, fling.to.z);
+    camera.rotation.z = 0;
+    fling = null;
+    safeTime = 2;
+    play('pop');
   }
 }
 
@@ -605,7 +599,7 @@ function handleEvents() {
   const { started, ended, tick, tickNo, status } = updateEvents();
   const tag = `${status.key}-${started?.id ?? status.ev.id}`;
   if (ended && !started) {
-    if (['giant', 'rare', 'bigfrenzy'].includes(lastEventId)) respawnWild(); // 變返呢段白天嘅正常動物
+    if (['giant', 'rare'].includes(lastEventId)) respawnWild(); // 變返呢段白天嘅正常動物
     popup('The event is over! See you at the next one!');
   }
   if (started) {
@@ -613,9 +607,9 @@ function handleEvents() {
     setTimeout(() => popup(started.desc), 1500);
     play('magic');
     const prev = lastEventId;
-    if (started.id === 'giant' || started.id === 'bigfrenzy') respawnWild(false, `${tag}-t${tickNo}`);
+    if (started.id === 'giant') respawnWild(false, `${tag}-t${tickNo}`);
     else if (started.id === 'rare') respawnWild(true, tag);
-    else if (['giant', 'rare', 'bigfrenzy'].includes(prev)) respawnWild(); // 由巨型轉去其他活動：變返正常
+    else if (['giant', 'rare'].includes(prev)) respawnWild(); // 由巨型轉去其他活動：變返正常
   }
   if (started) lastEventId = started.id;
   if (tick) respawnWild(false, `${tag}-t${tickNo}`); // Giant Pets：每 30 秒換一批
@@ -659,7 +653,8 @@ renderer.setAnimationLoop((timestamp) => {
     }
     wasTraining = station;
 
-    updatePlayer(player, dt, station ? station.standHeight : 0);
+    if (fling) updateFling(dt);
+    else updatePlayer(player, dt, station ? station.standHeight : 0);
     const { trained, earned } = updateHub(hub, dt, time, pos.x, pos.z);
     if (earned) quest('money', earned);
     if (trained) {
@@ -745,7 +740,6 @@ renderer.setAnimationLoop((timestamp) => {
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
   if (heldModel) heldModel.visible = !petsHidden;
-  LEVER.ready = state.leverReadyAt <= Date.now();
   stars.material.opacity = dayNight.blend;
 
   // 太陽跟住玩家，影先會一直清楚
@@ -758,4 +752,4 @@ renderer.setAnimationLoop((timestamp) => {
 });
 
 // 開發用：喺瀏覽器 console 打 game 可以睇／改嘢
-if (import.meta.env.DEV) window.game = { spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

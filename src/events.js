@@ -9,8 +9,7 @@ export const EVENTS = [
   { id: 'frenzy', emoji: '💰', name: 'PET FRENZY', desc: 'All pets on your Plot earn 10x money!', duration: 300 },
   { id: 'training', emoji: '🏋️', name: 'TRAINING NO MERCY', desc: 'Treadmill & Student Table give 100x!', duration: 20 },
 ];
-// 只有拉山後面嘅拉桿先會出（小朋友 2026-10-11：50% 機會）
-export const SECRET_EVENT = { id: 'bigfrenzy', emoji: '🌋', name: 'BIG PET FRENZY', desc: 'Wild animals are 10000x BIGGER!!!', duration: 30 };
+// （秘密拉桿同 BIG PET FRENZY：2026-10-15 小朋友叫刪走）
 
 // 而家生效嘅加成（其他檔案讀呢度）
 export const boost = { size: 1, money: 1, train: 1 };
@@ -18,7 +17,7 @@ export const boost = { size: 1, money: 1, train: 1 };
 // 測試用：game.forceEvent('frenzy') 即刻開始一個活動
 let forced = null;
 export function forceEvent(id) {
-  forced = { ev: [...EVENTS, SECRET_EVENT].find((e) => e.id === id), start: Date.now() };
+  forced = { ev: EVENTS.find((e) => e.id === id), start: Date.now() };
 }
 
 function eventForSlot(slot) {
@@ -58,7 +57,7 @@ export function updateEvents() {
   lastKey = activeKey;
   lastActive = !!activeKey;
 
-  boost.size = !s.active ? 1 : s.ev.id === 'giant' ? 3 : s.ev.id === 'bigfrenzy' ? 10000 : 1; // Giant ×3、Big Pet Frenzy ×10000
+  boost.size = !s.active ? 1 : s.ev.id === 'giant' ? 3 : 1; // Giant ×3
   boost.money = s.active && s.ev.id === 'frenzy' ? 10 : 1;
   boost.train = s.active && s.ev.id === 'training' ? 100 : 1;
   if (s.active && s.ev.id === 'giant' && !out.started) {

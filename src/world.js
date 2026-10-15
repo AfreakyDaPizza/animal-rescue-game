@@ -79,7 +79,9 @@ export function groundAt(x, z, feetY) {
 export function isWalkable(x, z, radius, feetY = 0) {
   if (gate.locked && z < 0.8) return false; // 閘口落咗，入唔到通道
   for (const p of platforms) {
-    if (feetY + STEP_UP < p.top && x > p.minX - radius && x < p.maxX + radius && z > p.minZ - radius && z < p.maxZ + radius) return false;
+    // 矮嘅樓梯級唔計公仔闊度（級太淺，計埋就會俾第二級擋住，踏唔上第一級）
+    const m = p.top - feetY <= STEP_UP * 2.2 ? 0 : radius;
+    if (feetY + STEP_UP < p.top && x > p.minX - m && x < p.maxX + m && z > p.minZ - m && z < p.maxZ + m) return false;
   }
   const r = radius + WALL_THICKNESS / 2; // 牆有一半厚度企喺地圖入面
   const inRect = (rect) =>

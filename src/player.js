@@ -9,7 +9,8 @@ const RADIUS = 0.4;      // 玩家有幾闊（用嚟撞嘢）
 const EYE_HEIGHT = 1.6;  // 對眼有幾高
 const GRAVITY = 28;      // 跌落嚟幾快
 const JUMP_SPEED = 10.5; // 跳起有幾勁（大約跳到 2 米高）
-const AIR_SPEED_CAP = 9; // 喺半空／石台上面最快幾快（Speed 好高都唔會一跳飛過頭）
+const AIR_SPEED_CAP = 9; // 喺半空最快幾快（Speed 好高都唔會一跳飛過頭）
+const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣）
 
 // Speed 數值 → 每秒行幾多格
 // 用 log：Speed 每加倍，就快 3 格／秒。咁 Speed 去到幾百萬都唔會快到飛出畫面。
@@ -114,14 +115,23 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
     const len = Math.hypot(f, s); // 斜行唔好快過直行
     let speed = walkSpeed(state.speed);
-    if (!player.grounded || player.feetY > 0.6) speed = Math.min(speed, AIR_SPEED_CAP);
+    // 只係喺半空先限速（企喺山／樓梯上面照跑得快，小朋友 2026-10-15）
+    if (!player.grounded) speed = Math.min(speed, AIR_SPEED_CAP);
     const step = speed * dt;
-    const moveX = ((forward.x * f + right.x * s) / len) * step;
-    const moveZ = ((forward.z * f + right.z * s) / len) * step;
-
-    // 分開試 x 同 z：撞牆嗰邊停，另一邊照行，咁貼住牆都可以滑過去
-    if (isWalkable(p.x + moveX, p.z, RADIUS, player.feetY)) p.x += moveX;
-    if (isWalkable(p.x, p.z + moveZ, RADIUS, player.feetY)) p.z += moveZ;
+    // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
+    const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));
+    const moveX = ((forward.x * f + right.x * s) / len) * (step / parts);
+    const moveZ = ((forward.z * f + right.z * s) / len) * (step / parts);
+    for (let i = 0; i < parts; i++) {
+      // 分開試 x 同 z：撞牆嗰邊停，另一邊照行，咁貼住牆都可以滑過去
+      if (isWalkable(p.x + moveX, p.z, RADIUS, player.feetY)) p.x += moveX;
+      if (isWalkable(p.x, p.z + moveZ, RADIUS, player.feetY)) p.z += moveZ;
+      // 行上／落樓梯：一級一級即刻踏上去，唔使跳
+      if (player.grounded) {
+        const g = Math.max(extraGround, groundAt(p.x, p.z, player.feetY));
+        if (Math.abs(g - player.feetY) <= STEP + 0.05) player.feetY = g;
+      }
+    }
     if (player.grounded) player.bob += dt * 10;
   }
 

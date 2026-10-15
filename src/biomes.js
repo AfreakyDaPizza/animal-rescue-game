@@ -343,9 +343,8 @@ function smugglers(scene, rect, rand, live) {
 
 // Biome 6 嘅山頂：動物喺度出現，唔會落山（小朋友：「a massive triangle mountain」，要跳上去）
 export const SUMMIT = { x: 0, z: 0, top: 0, halfX: 1, halfZ: 1 };
-// 山後面嘅秘密拉桿（小朋友 2026-10-11）：拉落去開始一個活動
-export const LEVER = { x: 0, z: 0, handle: null, light: null, pulledAt: -99 };
 export const MOUNTAIN = { minX: -15, maxX: 15, minZ: 0, maxZ: 0 }; // 山腳範圍（main／hazards 用）
+const STAIRS = { z: 0 }; // 樓梯口
 
 // 一座方塊金字塔山：一層疊一層，每層要跳先上到；頂幾層有雪
 function buildMountain(scene, rect) {
@@ -365,6 +364,28 @@ function buildMountain(scene, rect) {
     add(scene, new THREE.Mesh(new THREE.BoxGeometry(hx * 2, LAYER_HEIGHT, hz * 2), material), 0, top - LAYER_HEIGHT / 2, cz);
     addPlatform({ minX: -hx, maxX: hx, minZ: cz - hz, maxZ: cz + hz }, top);
   }
+  // 山前面中間一條樓梯（小朋友 2026-10-15：爬山唔好慢）：每層 3 級，每級矮過 0.45 米，行上去唔使跳
+  const STEPS = 3;
+  const stepMat = mat(0xcfc6b8, { flatShading: true });
+  const edgeMat = mat(0xffd54f, { metalness: 0.6, roughness: 0.4 });
+  for (let i = 0; i < LAYERS; i++) {
+    const front = cz + (baseHalfZ - i * SHRINK); // 呢層嘅前面
+    const base = LAYER_HEIGHT * i;
+    for (let j = 0; j < STEPS; j++) {
+      const top = base + (LAYER_HEIGHT * (j + 1)) / STEPS;
+      const z1 = front + SHRINK - (SHRINK * (j + 1)) / STEPS; // 越高越入
+      const z2 = front + SHRINK - (SHRINK * j) / STEPS;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(4, top - base + 0.01, z2 - z1), stepMat), 0, (base + top) / 2, (z1 + z2) / 2);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 0.08), edgeMat), 0, top + 0.02, z2 - 0.05, false);
+      addPlatform({ minX: -2, maxX: 2, minZ: z1, maxZ: z2 }, top);
+    }
+  }
+  // 樓梯口：石門 + 牌
+  const trailZ = cz + baseHalfZ + SHRINK + 0.6;
+  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.4, 0.8), mat(0x6d6359, { flatShading: true })), s * 2.6, 2.2, trailZ);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.7, 1.0), mat(0x5d4037)), 0, 4.6, trailZ);
+  STAIRS.z = trailZ;
+
   // 山頂支旗
   const top = LAYER_HEIGHT * LAYERS;
   const hx = baseHalfX - (LAYERS - 1) * SHRINK;
@@ -375,40 +396,154 @@ function buildMountain(scene, rect) {
   Object.assign(MOUNTAIN, { minX: -baseHalfX, maxX: baseHalfX, minZ: cz - baseHalfZ, maxZ: cz + baseHalfZ });
 }
 
-// 山後面（山同最後幅牆中間條窄路）嘅拉桿：底座、會擺嘅手柄、紅波、會閃嘅燈
-function buildLever(live, rect) {
-  const g = new THREE.Group();
-  const z = (MOUNTAIN.minZ + rect.minZ) / 2 + 0.3;
-  g.position.set(0, 0, z);
-  const metal = new THREE.MeshStandardMaterial({ color: 0x546e7a, metalness: 0.7, roughness: 0.3 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.8), metal);
-  base.position.y = 0.3;
-  g.add(base);
-  const stripes = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.12, 0.82), new THREE.MeshStandardMaterial({ color: 0xffd600 }));
-  stripes.position.y = 0.55;
-  g.add(stripes);
-  const handle = new THREE.Group();
-  handle.position.set(0, 0.6, 0);
-  const stick = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 0.12), new THREE.MeshStandardMaterial({ color: 0xbdbdbd, metalness: 0.8 }));
-  stick.position.y = 0.6;
-  handle.add(stick);
-  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 1.5 }));
-  knob.position.y = 1.25;
-  handle.add(knob);
-  handle.rotation.x = -0.6; // 未拉：向前
-  g.add(handle);
-  const light = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), new THREE.MeshStandardMaterial({ color: 0x00e676, emissive: 0x00e676, emissiveIntensity: 3 }));
-  light.position.set(0.5, 0.75, 0);
-  g.add(light);
-  live.add(g);
-  Object.assign(LEVER, { x: 0, z, handle, light });
+// Biome 6 再型啲（小朋友 2026-10-15）：瀑布一級級流落嚟、水池、礦洞口 + 路軌、山上有松樹、山頂金光圈、鷹喺山頂飛、雪
+function coolMountain(scene, live, rect, rand) {
+  const cz = SUMMIT.z;
+  const LAYER = 1.3;
+  const SHRINK = 1.4;
+  const hzOf = (i) => 17 - i * SHRINK;
+  const hxOf = (i) => 15 - i * SHRINK;
+
+  // 瀑布：一條流動嘅水，由第 7 層一級級流落山腳（x = -4.2）
+  const c = document.createElement('canvas');
+  c.width = 16;
+  c.height = 64;
+  const ctx = c.getContext('2d');
+  for (let y = 0; y < 64; y++) {
+    ctx.fillStyle = y % 8 < 3 ? '#e1f5fe' : '#4fc3f7';
+    ctx.fillRect(0, y, 16, 1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const waterMat = new THREE.MeshStandardMaterial({ map: tex, emissive: 0x0277bd, emissiveIntensity: 0.35, transparent: true, opacity: 0.88, roughness: 0.1 });
+  const wx = -4.2;
+  for (let i = 0; i <= 7; i++) {
+    const front = cz + hzOf(i);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(1.6, LAYER), waterMat);
+    face.position.set(wx, LAYER * i + LAYER / 2, front + 0.03);
+    live.add(face);
+    if (i > 0) {
+      const flat = new THREE.Mesh(new THREE.PlaneGeometry(1.6, SHRINK), waterMat);
+      flat.rotation.x = -Math.PI / 2;
+      flat.position.set(wx, LAYER * i + 0.03, front + SHRINK / 2);
+      live.add(flat);
+    }
+  }
+  // 山腳水池 + 水花
+  const poolZ = cz + hzOf(0) + 1.4;
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.3, 2.4), mat(0x8c8072, { flatShading: true })), wx, 0.15, poolZ);
+  const pool = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.06, 1.9), waterMat);
+  pool.position.set(wx, 0.31, poolZ);
+  live.add(pool);
+  const SPLASH = 40;
+  const splashPos = new Float32Array(SPLASH * 3);
+  const splashGeo = new THREE.BufferGeometry();
+  splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPos, 3));
+  const splash = new THREE.Points(splashGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.8, depthWrite: false }));
+  splash.frustumCulled = false;
+  live.add(splash);
+
+  // 礦洞口（山腳右邊）+ 路軌 + 一架礦車
+  const mx = 8;
+  const mz = cz + hzOf(0) + 0.05;
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.4, 0.1), mat(0x111111)), mx, 1.2, mz, false);
+  for (const sx of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.7, 0.4), mat(0x6d4c41)), mx + sx * 1.45, 1.35, mz + 0.1);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.4, 0.45), mat(0x6d4c41)), mx, 2.75, mz + 0.1);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.06), mat(0xffd54f)), mx, 3.2, mz + 0.15, false); // 牌
+  for (const sx of [-0.45, 0.45]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 6), mat(0x9e9e9e, { metalness: 0.7 })), mx + sx, 0.06, mz + 3, false);
+  for (let k = 0; k < 10; k++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 0.2), mat(0x5d4037)), mx, 0.03, mz + 0.4 + k * 0.6, false);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 1.4), mat(0x795548)), mx, 0.55, mz + 3.5);
+  for (let k = 0; k < 5; k++) {
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), mat([0x00e5ff, 0xff4081, 0xffd600][k % 3], { emissive: [0x00e5ff, 0xff4081, 0xffd600][k % 3], emissiveIntensity: 2 }));
+    add(scene, gem, mx - 0.4 + (k % 3) * 0.4, 1.0, mz + 3.2 + Math.floor(k / 3) * 0.5);
+  }
+
+  // 山上每級都有啲松樹（避開樓梯同瀑布）
+  for (let i = 0; i < 7; i++) {
+    for (let n = 0; n < 3; n++) {
+      const side = rand() < 0.5 ? -1 : 1;
+      const x = side * (6 + rand() * Math.max(0.5, hxOf(i) - 7));
+      if (Math.abs(x - wx) < 1.6) continue;
+      const z = cz + (rand() * 2 - 1) * (hzOf(i) - 0.7);
+      const onLedge = Math.abs(z - cz) > hzOf(i + 1) || Math.abs(x) > hxOf(i + 1);
+      if (!onLedge) continue;
+      const g = new THREE.Group();
+      pineTree(g, 0, 0, 0.55 + rand() * 0.3);
+      g.position.set(x, LAYER * (i + 1), z); // 種喺嗰級上面
+      scene.add(g);
+    }
+  }
+
+  // 山頂金光圈（動物喺度）
+  const ring = new THREE.Mesh(new THREE.RingGeometry(SUMMIT.halfX + 0.4, SUMMIT.halfX + 0.7, 32), new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(0, SUMMIT.top + 0.05, cz);
+  live.add(ring);
+
+  // 鷹喺山頂上面飛圈
+  const eagles = [0, 1, 2].map((i) => {
+    const g = new THREE.Group();
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 1.0), mat(0x5d4037)), 0, 0, 0, false);
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), mat(0xffffff)), 0, 0.1, -0.6, false);
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 0.2), mat(0xffc107)), 0, 0.05, -0.85, false);
+    const wings = [-1, 1].map((s) => {
+      const p = new THREE.Group();
+      p.position.set(s * 0.25, 0.1, 0);
+      add(p, new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.6), mat(0x4e342e)), s * 0.7, 0, 0, false);
+      g.add(p);
+      return p;
+    });
+    live.add(g);
+    return { g, wings, r: 7 + i * 3, h: SUMMIT.top + 5 + i * 2, speed: 0.35 + i * 0.1, phase: i * 2 };
+  });
+
+  // 山頂附近落雪
+  const SNOW = 160;
+  const snowPos = new Float32Array(SNOW * 3);
+  const flakes = [];
+  for (let i = 0; i < SNOW; i++) flakes.push({ x: (rand() * 2 - 1) * 9, z: cz + (rand() * 2 - 1) * 10, k: rand(), speed: 0.5 + rand() * 0.5 });
+  const snowGeo = new THREE.BufferGeometry();
+  snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+  const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.18, transparent: true, opacity: 0.9, depthWrite: false }));
+  snow.frustumCulled = false;
+  live.add(snow);
+
+  return (dt, t) => {
+    tex.offset.y = -t * 1.5;
+    for (let i = 0; i < SPLASH; i++) {
+      const k = (t * 1.2 + i / SPLASH) % 1;
+      const a = i * 2.4;
+      splashPos[i * 3] = wx + Math.cos(a) * k * 1.2;
+      splashPos[i * 3 + 1] = 0.35 + Math.sin(k * Math.PI) * 0.8;
+      splashPos[i * 3 + 2] = poolZ - 0.8 + Math.sin(a) * k * 0.6;
+    }
+    splashGeo.attributes.position.needsUpdate = true;
+    ring.material.opacity = 0.5 + Math.sin(t * 3) * 0.3;
+    for (const e of eagles) {
+      const a = t * e.speed + e.phase;
+      e.g.position.set(Math.cos(a) * e.r, e.h + Math.sin(t + e.phase) * 0.5, cz + Math.sin(a) * e.r);
+      e.g.rotation.y = -a + Math.PI;
+      e.g.rotation.z = 0.3;
+      const flap = Math.sin(t * 5 + e.phase) * 0.35;
+      e.wings[0].rotation.z = flap;
+      e.wings[1].rotation.z = -flap;
+    }
+    for (let i = 0; i < SNOW; i++) {
+      const f = flakes[i];
+      const k = (f.k + t * 0.08 * f.speed) % 1;
+      snowPos[i * 3] = f.x + Math.sin(t + i) * 0.3;
+      snowPos[i * 3 + 1] = SUMMIT.top + 9 - k * 9;
+      snowPos[i * 3 + 2] = f.z;
+    }
+    snowGeo.attributes.position.needsUpdate = true;
+  };
 }
 
 // Biome 6：採礦山 — 中間一座好大嘅三角形山（要跳上去），山前面有石、水晶、鑽機
 function mining(scene, rect, rand, live) {
   const k = density(rect);
   buildMountain(scene, rect);
-  buildLever(live, rect);
   const rock = mat(0x6d6359, { flatShading: true });
   const rock2 = mat(0x857a6e, { flatShading: true });
   // 山前面嘅空地（入口同山腳之間）先放裝飾
@@ -441,17 +576,12 @@ function mining(scene, rect, rand, live) {
     live.add(g);
     drills.push(bit);
   }
+  const updateCool = coolMountain(scene, live, rect, rand);
   return (dt, t) => {
+    updateCool(dt, t);
     drills.forEach((bit, i) => {
       bit.position.y = 2 + Math.sin(t * 3 + i) * 1.2;
       bit.rotation.y = t * 8;
     });
-    // 拉桿：拉咗就慢慢彈返上去；燈：拉得就綠色閃，冷卻緊就紅色
-    const sincePull = t - LEVER.pulledAt;
-    LEVER.handle.rotation.x = sincePull < 1.5 ? 0.6 : sincePull < 2.5 ? 0.6 - (sincePull - 1.5) * 1.2 : -0.6;
-    const ready = LEVER.ready !== false;
-    LEVER.light.material.color.setHex(ready ? 0x00e676 : 0xff1744);
-    LEVER.light.material.emissive.setHex(ready ? 0x00e676 : 0xff1744);
-    LEVER.light.material.emissiveIntensity = ready ? 2 + Math.sin(t * 6) * 1.5 : 1;
   };
 }

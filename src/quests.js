@@ -11,7 +11,6 @@ export const QUEST_POOL = [
   { id: 'upgrade', text: 'Buy {n} upgrades', counts: [1, 2, 3], reward: 5 },
   { id: 'money', text: 'Earn ${n} from your Plot', counts: [200, 1000, 5000], reward: 5 },
   { id: 'jump', text: 'Jump {n} times', counts: [20, 40, 60], reward: 3 },
-  { id: 'lever', text: 'Pull the secret lever {n} times', counts: [1, 3, 5], reward: 4 },
 ];
 
 // 你救咗／攞到寵物都有代幣（越稀有越多）
@@ -36,7 +35,8 @@ function pickToday(key) {
 // 確保而家係今日嘅任務
 export function todayQuests() {
   const key = todayKey();
-  if (state.questDay !== key) {
+  // 舊任務已經冇咗（例如拉桿）：今日嘅任務重新揀過
+  if (state.questDay !== key || state.quests.some((q) => !QUEST_POOL.some((p) => p.id === q.id))) {
     state.questDay = key;
     state.quests = pickToday(key);
   }

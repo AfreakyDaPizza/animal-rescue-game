@@ -39,7 +39,7 @@ const STEPS = [
     done: (ctx) => !!ctx.rescue.carrying,
   },
   {
-    text: 'RUN back to the <b>Hub</b>! The Lumberjack will chase you. If he catches you, answer his question to escape!',
+    text: 'RUN back to the <b>Hub</b>! The Lumberjack will chase you. If he catches you, he sends you flying back to the Hub and the animal runs away!',
     target: () => new THREE.Vector3(0, 0, 4),
     start: () => (stepData.rescued = state.rescued),
     done: (ctx) => state.rescued > stepData.rescued || (!ctx.rescue.carrying && state.borrowed.length > 0),
