@@ -131,6 +131,34 @@ const SOUNDS = {
   },
   type: (t) => tone(1500 + Math.random() * 300, t, 0.03, { type: 'square', vol: 0.04 }),
   swoosh: (t) => noise(t, 0.25, { vol: 0.2, freq: 1500, q: 0.7, type: 'bandpass' }),
+  // Issue #2：實驗室 Boss 戰
+  boom: (t) => {
+    noise(t, 0.7, { vol: 0.5, freq: 350 });
+    tone(90, t, 0.6, { type: 'sine', vol: 0.4, slide: 0.4 });
+  },
+  slam: (t) => {
+    noise(t, 0.45, { vol: 0.55, freq: 220 });
+    tone(70, t, 0.45, { type: 'square', vol: 0.18, slide: 0.5 });
+  },
+  roar: (t) => {
+    tone(130, t, 1.1, { type: 'sawtooth', vol: 0.16, slide: 0.6 });
+    tone(97, t + 0.05, 1.1, { type: 'sawtooth', vol: 0.12, slide: 0.65 });
+    noise(t, 0.9, { vol: 0.2, freq: 600 });
+  },
+  yawn: (t) => tone(330, t, 1.0, { type: 'triangle', vol: 0.14, slide: 0.55 }),
+  portal: (t) => {
+    tone(160, t, 1.4, { type: 'sawtooth', vol: 0.07, slide: 5 });
+    tone(240, t + 0.1, 1.3, { type: 'sine', vol: 0.12, slide: 3 });
+  },
+  drone: (t) => {
+    for (let i = 0; i < 6; i++) tone(210 + (i % 2) * 30, t + i * 0.12, 0.12, { type: 'sawtooth', vol: 0.04 });
+  },
+  poof: (t) => noise(t, 0.6, { vol: 0.25, freq: 2500, q: 0.6, type: 'bandpass' }),
+  solar: (t) => {
+    arp(t, [784, 988, 1175, 1568, 1976], 0.06, { type: 'triangle', vol: 0.2 });
+    noise(t, 0.9, { vol: 0.12, freq: 5000, type: 'highpass' });
+  },
+  ouch: (t) => tone(500, t, 0.6, { type: 'square', vol: 0.1, slide: 0.4 }),
   zone: (t) => {
     tone(392, t, 0.4, { type: 'triangle', vol: 0.15 });
     tone(587, t + 0.15, 0.5, { type: 'triangle', vol: 0.15 });

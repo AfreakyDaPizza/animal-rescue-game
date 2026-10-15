@@ -35,6 +35,8 @@ import { rarityInfo, TRASH_REWARD, LAB_UNLOCK_PETS } from './data/balance.js';
 import { buildLab, updateLabGuide, openParkGate } from './lab.js';
 import { movie, updateMovie, finishMovie } from './movie.js';
 import { playUnlockScene } from './labScenes.js';
+import { createLabFight, updateLabFight, debugFight, resetFight } from './labBoss.js';
+import { LAB_RESPAWN, LAB, inLab } from './labShape.js';
 import { setGateOpen } from './hubPark.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
@@ -87,6 +89,11 @@ if (state.hubLevel > 0) {
 }
 const hazards = createHazards(scene);
 const bosses = createBosses(scene);
+const fight = createLabFight(scene); // Issue #2：實驗室 Boss（Mutated Scientist Poacher）
+fight.onDefeat = () => {
+  state.labBossDefeated = true; // 打贏咗：存檔（F5 都唔會再出）
+  save();
+};
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
 const player = createPlayer(camera, document.body);
@@ -224,14 +231,6 @@ startScreen.hidden = true;
 document.body.classList.add('intro');
 const intro = createIntro(scene, camera);
 const tutorial = createTutorial(scene, { camera, rescue, hub });
-try {
-  if (sessionStorage.getItem('animal-rescue-skip-intro')) {
-    sessionStorage.removeItem('animal-rescue-skip-intro');
-    intro.skipHandler();
-  }
-} catch {
-  // 冇 sessionStorage 就照播
-}
 updateBossSigns(state.speed, state.iq);
 intro.onDone = () => {
   document.body.classList.remove('intro');
@@ -247,6 +246,15 @@ intro.onDone = () => {
   startTutorial(tutorial); // 新玩家：開始教學
   announceSpecials(rescue.wild.filter((w) => w.special));
 };
+// 跳過開場（要喺 onDone 設定好之後先跳，唔係就唔會執返 HUD）
+try {
+  if (sessionStorage.getItem('animal-rescue-skip-intro')) {
+    sessionStorage.removeItem('animal-rescue-skip-intro');
+    intro.skipHandler();
+  }
+} catch {
+  // 冇 sessionStorage 就照播
+}
 
 const isPaused = () => intro.active || movie.active || !startScreen.hidden || isPanelOpen() || isQuizOpen();
 
@@ -588,6 +596,17 @@ function onBossCatch(boss) {
 }
 let fling = null; // 彈飛緊：{ from, to, t, dur }
 
+// Issue #2：實驗室 Boss 戰俾嘢打中 → 同其他 Boss 一樣彈飛，但係落返實驗室門口（唔使由 Hub 行返嚟）
+function onLabHit(what) {
+  play('hit');
+  play('boing');
+  announce(`💥 ${what[0].toUpperCase()}${what.slice(1)} sent you flying out of the Lab!`);
+  setTimeout(() => popup('Run back in and keep dodging! 💪'), 1800);
+  const from = camera.position.clone();
+  fling = { from, to: new THREE.Vector3(LAB_RESPAWN.x, from.y, LAB_RESPAWN.z), t: 0, dur: 1.4 };
+  safeTime = 99;
+}
+
 // 每格畫面：沿住拋物線飛返 Hub，轉吓轉吓
 function updateFling(dt) {
   fling.t += dt;
@@ -748,7 +767,12 @@ renderer.setAnimationLoop((timestamp) => {
     }
     setSightings(rescue.wild.filter((w) => w.special), camera);
     // 背景音樂跟住情況轉：俾 Boss 追 > 夜晚 > 生態區 > Hub
-    if (bosses.some((b) => b.mode === 'chase')) setMusicMood('boss');
+    const labHit = updateLabFight(fight, dt, time, {
+      x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Laboratory', safe: safeTime > 0 || !!fling || labDebug.god,
+    });
+    if (labHit) onLabHit(labHit);
+    const labBattle = location === 'Laboratory' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
+    if (bosses.some((b) => b.mode === 'chase') || labBattle) setMusicMood('boss');
     else if (dayNight.isNight) setMusicMood('night');
     else setMusicMood(location === 'Hub' ? 'hub' : 'biome');
     if (safeTime <= 0 && caught) onBossCatch(caught);
@@ -785,6 +809,11 @@ renderer.setAnimationLoop((timestamp) => {
     walking: player.walking, feetY: player.feetY,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
   });
+  // Issue #2：喺實驗室入面，第三身鏡頭唔好退咗入前牆／後牆（會成個畫面黑晒）
+  if (!inMovie && viewCam !== camera && inLab(camera.position.x, camera.position.z)) {
+    viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
+    viewCam.position.x = THREE.MathUtils.clamp(viewCam.position.x, LAB.minX + 1.3, LAB.maxX - 1.3);
+  }
   renderPass.camera = viewCam;
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
@@ -803,6 +832,7 @@ renderer.setAnimationLoop((timestamp) => {
 // 開發用：喺瀏覽器 console 打 game 可以睇／改嘢
 // Issue #2 測試用：game.lab.grant(25)、game.lab.unlock()、game.lab.goto()
 const labDebug = {
+  god: false, // 測試用：唔會俾 Boss 打中
   grant(n = LAB_UNLOCK_PETS) {
     for (const a of ANIMALS.slice(0, n)) if (!state.indexFound.includes(a.name)) state.indexFound.push(a.name);
     return state.indexFound.length;
@@ -821,6 +851,15 @@ const labDebug = {
     camera.rotation.set(0, Math.PI, 0, 'YXZ');
   },
   skipMovie: () => finishMovie(),
+  fight, // 而家打到邊：game.lab.fight.phase
+  start() {
+    labDebug.goto(108);
+    resetFight(fight);
+  },
+  attack: (what) => debugFight(fight, what), // 'drones' | 'animals' | 'portal' | 'tired' | 'hit'
+  tired: () => debugFight(fight, 'tired'),
+  hitCapsule: () => debugFight(fight, 'hit'),
+  resetFight: () => resetFight(fight),
   reset() {
     Object.assign(state, { labUnlocked: false, labVisited: false, labBossDefeated: false, labRewardPaid: false });
     parkGate.open = false;

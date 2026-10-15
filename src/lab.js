@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { addCollider, bakeStatic, parkGate } from './world.js';
-import { makeSign, makeLabel, dynamicSign, THEMES } from './signs.js';
+import { makeLabel, dynamicSign, THEMES } from './signs.js';
 import { PARK_GATE, setGateOpen } from './hubPark.js';
 import { buildAnimalModel } from './animalModels.js';
 import { ANIMALS } from './data/animals.js';
@@ -43,8 +43,8 @@ const rbox = (w, h, d) => new RoundedBoxGeometry(w, h, d, 2, Math.min(w, h, d) *
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const cyl = (r, h, n = 16) => new THREE.CylinderGeometry(r, r, h, n);
 
-// ---------- 紋理 ----------
-function canvasTex(size, draw, repeatX = 1, repeatY = 1) {
+// ---------- 紋理（未來感：深色金屬板 + 霓虹光線） ----------
+function canvasTex(size, draw, repeatX = 1, repeatY = 1, nearest = true) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   draw(c.getContext('2d'), size);
@@ -52,62 +52,128 @@ function canvasTex(size, draw, repeatX = 1, repeatY = 1) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeatX, repeatY);
-  t.magFilter = THREE.NearestFilter;
+  if (nearest) t.magFilter = THREE.NearestFilter;
   return t;
 }
-// 鐵板牆：灰藍色鐵板 + 螺絲 + 少少綠色污漬
-function panelTexture(rx, ry) {
-  return canvasTex(64, (ctx) => {
-    ctx.fillStyle = '#5b6770';
+const CYAN = 0x00e5ff;
+const MAGENTA = 0xea00ff;
+// 金屬牆板（map）+ 發光接縫（emissiveMap）
+function techPanel(rx, ry) {
+  const map = canvasTex(64, (ctx) => {
+    ctx.fillStyle = '#2b3850';
     ctx.fillRect(0, 0, 64, 64);
-    ctx.fillStyle = '#4a555d';
-    ctx.fillRect(0, 31, 64, 2);
-    ctx.fillRect(31, 0, 2, 64);
-    ctx.fillStyle = '#6e7b84';
-    ctx.fillRect(2, 2, 28, 3);
-    ctx.fillRect(34, 34, 28, 3);
-    ctx.fillStyle = '#2f373c';
-    for (const [x, y] of [[4, 8], [26, 8], [4, 26], [26, 26], [38, 40], [58, 40], [38, 58], [58, 58]]) ctx.fillRect(x, y, 2, 2);
-    ctx.fillStyle = 'rgba(118,255,3,0.25)';
-    ctx.fillRect(40, 6, 3, 18);
-    ctx.fillRect(10, 44, 3, 12);
-  }, rx, ry);
-}
-// 實驗室地板：深色方磚 + 綠色電路線
-function floorTexture(rx, ry) {
-  return canvasTex(64, (ctx) => {
-    ctx.fillStyle = '#2b3036';
-    ctx.fillRect(0, 0, 64, 64);
-    ctx.fillStyle = '#353b42';
-    ctx.fillRect(2, 2, 28, 28);
-    ctx.fillRect(34, 34, 28, 28);
-    ctx.fillStyle = '#30353b';
-    ctx.fillRect(34, 2, 28, 28);
+    ctx.fillStyle = '#3a4a66';
+    ctx.fillRect(2, 2, 60, 28);
     ctx.fillRect(2, 34, 28, 28);
-    ctx.fillStyle = '#39d353';
-    ctx.fillRect(14, 30, 36, 2);
-    ctx.fillRect(48, 14, 2, 18);
-    ctx.fillRect(14, 30, 2, 16);
-    ctx.fillStyle = '#b9f6ca';
-    ctx.fillRect(13, 45, 4, 4);
-    ctx.fillRect(47, 12, 4, 4);
+    ctx.fillRect(34, 34, 28, 28);
+    ctx.fillStyle = '#4a5d7e';
+    ctx.fillRect(4, 4, 56, 3);
+    ctx.fillStyle = '#121822';
+    for (const [x, y] of [[5, 22], [56, 22], [6, 56], [54, 56]]) ctx.fillRect(x, y, 3, 3);
   }, rx, ry);
-}
-// 黃黑警告斜紋
-function hazardTexture(rx = 1, ry = 1) {
-  return canvasTex(64, (ctx) => {
-    ctx.fillStyle = '#ffca28';
+  const emissiveMap = canvasTex(64, (ctx) => {
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, 64, 64);
-    ctx.fillStyle = '#212121';
-    for (let i = -64; i < 128; i += 32) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i + 16, 0);
-      ctx.lineTo(i + 16 + 64, 64);
-      ctx.lineTo(i + 64, 64);
-      ctx.fill();
-    }
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillRect(0, 31, 64, 2);
+    ctx.fillRect(31, 33, 2, 31);
+    ctx.fillStyle = '#ea00ff';
+    ctx.fillRect(10, 12, 14, 2);
+    ctx.fillStyle = '#76ff03';
+    ctx.fillRect(48, 44, 4, 4);
   }, rx, ry);
+  return new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffffff, emissiveIntensity: 1.2, metalness: 0.5, roughness: 0.35 });
+}
+// 金屬地板 + 發光燈帶
+function techFloor(rx, ry) {
+  const map = canvasTex(128, (ctx) => {
+    ctx.fillStyle = '#1c2430';
+    ctx.fillRect(0, 0, 128, 128);
+    for (const [x, y] of [[2, 2], [66, 2], [2, 66], [66, 66]]) {
+      ctx.fillStyle = (x + y) % 128 ? '#334155' : '#2c3849';
+      ctx.fillRect(x, y, 60, 60);
+      ctx.fillStyle = '#46566e';
+      ctx.fillRect(x + 4, y + 4, 52, 2);
+      ctx.fillRect(x + 4, y + 4, 2, 52);
+    }
+    ctx.fillStyle = '#0d1117';
+    for (let i = 0; i < 6; i++) ctx.fillRect(20 + i * 4, 100, 2, 14); // 散熱孔
+  }, rx, ry);
+  const emissiveMap = canvasTex(128, (ctx) => {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#00b8d4';
+    ctx.fillRect(0, 63, 128, 2);
+    ctx.fillRect(63, 0, 2, 128);
+    ctx.fillStyle = '#00e5ff';
+    for (const [x, y] of [[60, 60], [0, 60], [60, 0]]) ctx.fillRect(x, y, 8, 8);
+    ctx.fillStyle = '#ea00ff';
+    ctx.fillRect(84, 20, 24, 2);
+  }, rx, ry);
+  return new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0xffffff, emissiveIntensity: 1, metalness: 0.6, roughness: 0.3 });
+}
+// 力場牆：六角形格仔（透明、發光）
+function hexTexture(rx, ry) {
+  return canvasTex(128, (ctx) => {
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.strokeStyle = 'rgba(120,240,255,0.9)';
+    ctx.lineWidth = 2;
+    const r = 16;
+    const h = Math.sqrt(3) * r;
+    for (let row = -1; row < 6; row++) {
+      for (let col = -1; col < 6; col++) {
+        const cx = col * r * 3 + (row % 2 ? r * 1.5 : 0);
+        const cy = row * h / 2 * 1;
+        ctx.beginPath();
+        for (let k = 0; k <= 6; k++) {
+          const a = (k / 6) * Math.PI * 2;
+          const x = cx + Math.cos(a) * r;
+          const y = cy + Math.sin(a) * r;
+          if (k === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+  }, rx, ry, false);
+}
+// 全息屏幕：透明底 + 青色框 + 掃描線 + 字
+function holoPanel(lines, w, h, color = '#00e5ff') {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = Math.round((512 * h) / w);
+  const ctx = c.getContext('2d');
+  const H = c.height;
+  ctx.fillStyle = 'rgba(0,229,255,0.12)';
+  ctx.fillRect(0, 0, 512, H);
+  for (let y = 0; y < H; y += 6) {
+    ctx.fillStyle = 'rgba(0,229,255,0.08)';
+    ctx.fillRect(0, y, 512, 2);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 8;
+  ctx.strokeRect(6, 6, 500, H - 12);
+  ctx.lineWidth = 3;
+  ctx.strokeRect(18, 18, 476, H - 36);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  lines.forEach((l, i) => {
+    ctx.font = `900 ${l.size}px "Trebuchet MS", system-ui, sans-serif`;
+    ctx.fillStyle = l.color || '#e0f7fa';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.fillText(l.text, 256, ((i + 1) * H) / (lines.length + 1), 470);
+  });
+  // 細柱狀圖（似數據）
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(118,255,3,0.7)';
+  for (let i = 0; i < 10; i++) ctx.fillRect(36 + i * 14, H - 30 - ((i * 37) % 30), 8, 8 + ((i * 37) % 30));
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+    map: t, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  return m;
 }
 // 傳送門旋渦
 function swirlTexture() {
@@ -186,181 +252,283 @@ export function buildLab(scene) {
   };
 }
 
-// ---------- 外殼：牆、門、前面嘅大牌、煙囪 ----------
+// ---------- 外殼：未來感實驗室競技場 ----------
+// 前面：深色金屬大樓（霓虹邊框、全息大牌、天線塔、浮喺頂嘅光環）
+// 兩邊同後面：力場牆（透明六角格仔，會流動）+ 霓虹柱
 function buildShell(root, live, updates) {
   const { minX, maxX, minZ, maxZ, wallH } = LAB;
   const W = maxX - minX;
   const D = maxZ - minZ;
-  // 地板
-  const floor = add(root, box(W, 0.2, D), new THREE.MeshStandardMaterial({ map: floorTexture(W / 4, D / 4), roughness: 0.8 }), 0, -0.09, (minZ + maxZ) / 2, false);
+  const dark = mat(0x2a3448, { metalness: 0.6, roughness: 0.35 });
+  const neonC = glow(CYAN, 2.2);
+  const neonM = glow(MAGENTA, 2.2);
+  // 地板：金屬板 + 發光接縫
+  const floor = add(root, box(W, 0.2, D), techFloor(W / 6, D / 6), 0, -0.09, (minZ + maxZ) / 2, false);
   floor.receiveShadow = true;
-  // 前院：灰色石屎地 + 黃色斜紋邊
-  add(root, box(48, 0.04, 2), new THREE.MeshStandardMaterial({ map: hazardTexture(12, 0.5) }), 0, 0.03, 98.6, false);
+  // 前院：門口前面一條發光「跑道」
+  add(root, box(7, 0.04, 30), mat(0x1b2433, { metalness: 0.5 }), 0, 0.03, minZ - 15, false);
+  for (const s of [-1, 1]) add(root, box(0.18, 0.06, 30), neonC, s * 3.4, 0.05, minZ - 15, false);
 
-  const wall = (x1, z1, x2, z2) => {
-    const len = Math.hypot(x2 - x1, z2 - z1) + 1;
-    const m = new THREE.MeshStandardMaterial({ map: panelTexture(len / 4, wallH / 4), roughness: 0.55, metalness: 0.3 });
-    const w = add(root, box(len, wallH, 1), m, (x1 + x2) / 2, wallH / 2, (z1 + z2) / 2);
-    w.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
-    // 頂部黃黑警告帶
-    const stripe = add(root, box(len + 0.1, 0.6, 1.1), new THREE.MeshStandardMaterial({ map: hazardTexture(len / 2, 0.3) }), (x1 + x2) / 2, wallH - 0.3, (z1 + z2) / 2, false);
-    stripe.rotation.y = w.rotation.y;
+  // ---- 前面大樓（實心）----
+  const panel = (len) => {
+    const m = techPanel(len / 4, wallH / 4);
+    return m;
   };
-  wall(minX, minZ, -4.5, minZ);
-  wall(4.5, minZ, maxX, minZ);
-  wall(minX, minZ, minX, maxZ);
-  wall(maxX, minZ, maxX, maxZ);
-  wall(minX, maxZ, maxX, maxZ);
-  // 屋頂鐵架（唔遮鏡頭，淨係有幾條橫樑）
-  const girder = mat(0x37474f, { metalness: 0.6, roughness: 0.4 });
-  for (let z = minZ + 10; z < maxZ; z += 10) add(root, box(W, 0.5, 0.5), girder, 0, wallH + 0.2, z);
-  add(root, box(0.5, 0.5, D), girder, 0, wallH + 0.25, (minZ + maxZ) / 2);
-
-  // 門框（黃黑斜紋）+ 門頂發光牌
-  const haz = new THREE.MeshStandardMaterial({ map: hazardTexture(1, 4) });
-  for (const s of [-1, 1]) add(root, box(1.2, 6.4, 1.6), haz, s * 5.1, 3.2, minZ);
-  add(root, box(11.4, 1.2, 1.6), new THREE.MeshStandardMaterial({ map: hazardTexture(5, 0.6) }), 0, 6.9, minZ);
-  for (let s = -1; s <= 1; s += 2) addCollider(s * 5.1, minZ, 0.9);
-  const sign = makeSign([{ text: '🔬 LABORATORY', size: 0.55, color: '#b9f6ca' }], 13, 2.2, THEMES.dark);
-  sign.position.set(0, 8.3, minZ - 0.62);
+  const frontWall = (x1, x2) => {
+    const len = x2 - x1;
+    add(root, box(len, wallH + 2, 1.4), panel(len), (x1 + x2) / 2, (wallH + 2) / 2, minZ);
+    add(root, box(len, 0.25, 1.6), neonC, (x1 + x2) / 2, wallH + 2, minZ); // 頂部霓虹邊
+    add(root, box(len, 0.2, 1.6), neonM, (x1 + x2) / 2, 0.15, minZ); // 底部霓虹邊
+  };
+  frontWall(minX, -4.5);
+  frontWall(4.5, maxX);
+  // 斜斜嘅「翼」（似太空站）
+  for (const s of [-1, 1]) {
+    const wing = add(root, box(8, 0.5, 4), dark, s * 22, wallH + 2.6, minZ + 0.5);
+    wing.rotation.z = s * 0.25;
+    add(root, box(8, 0.12, 0.2), neonC, s * 22, wallH + 2.4, minZ - 1.55).rotation.z = s * 0.25;
+  }
+  // 門框：霓虹方框
+  for (const s of [-1, 1]) {
+    add(root, box(1.0, 7, 1.8), dark, s * 5, 3.5, minZ);
+    add(root, box(0.2, 7, 1.9), neonC, s * 4.45, 3.5, minZ);
+    addCollider(s * 5, minZ, 0.8);
+  }
+  add(root, box(11, 1.0, 1.8), dark, 0, 7.4, minZ);
+  add(root, box(9.2, 0.2, 1.9), neonC, 0, 6.85, minZ);
+  // 全息大牌「LABORATORY」+ 投影機
+  const sign = holoPanel([{ text: '🔬 LABORATORY', size: 70, color: '#e0f7fa' }], 14, 2.6);
+  sign.position.set(0, wallH + 4.6, minZ - 0.4);
   sign.rotation.y = Math.PI;
   live.add(sign);
-  const warn = makeSign([{ text: '⚠️ DANGER', size: 0.4, color: '#ffeb3b' }, { text: 'MUTANT SCIENCE INSIDE', size: 0.24 }], 5, 2, THEMES.red);
-  warn.position.set(-11, 4.2, minZ - 0.56);
+  add(root, box(10, 0.4, 1.2), dark, 0, wallH + 2.9, minZ - 0.3);
+  const warn = holoPanel([{ text: '⚠️ DANGER', size: 64, color: '#ffeb3b' }, { text: 'MUTANT SCIENCE INSIDE', size: 34 }], 5.5, 2.6, '#ff1744');
+  warn.position.set(-12, 4.4, minZ - 0.8);
   warn.rotation.y = Math.PI;
   live.add(warn);
-  const warn2 = makeSign([{ text: '☣️ KEEP OUT', size: 0.38, color: '#b9f6ca' }, { text: 'Rangers only!', size: 0.26 }], 5, 2, THEMES.purple);
-  warn2.position.set(11, 4.2, minZ - 0.56);
+  const warn2 = holoPanel([{ text: '☣️ KEEP OUT', size: 60, color: '#b9f6ca' }, { text: 'Rangers only!', size: 38 }], 5.5, 2.6, '#ea00ff');
+  warn2.position.set(12, 4.4, minZ - 0.8);
   warn2.rotation.y = Math.PI;
   live.add(warn2);
-  // 兩扇趟門（行近自動開）
-  const doorMat = mat(0x455a64, { metalness: 0.7, roughness: 0.35 });
+  // 兩扇趟門（行近自動開）：深色 + 霓虹線
   lab.doors = [-1, 1].map((s) => {
     const d = new THREE.Group();
-    add(d, box(4.5, 5.6, 0.4), doorMat, 0, 2.8, 0);
-    add(d, box(3.6, 0.5, 0.45), new THREE.MeshStandardMaterial({ map: hazardTexture(3, 0.4) }), 0, 1.0, 0);
-    add(d, box(0.6, 0.6, 0.46), glow(0x76ff03, 2.5), -s * 1.6, 3.9, 0);
+    add(d, box(4.5, 6.4, 0.4), mat(0x1e2a3a, { metalness: 0.8, roughness: 0.25 }), 0, 3.2, 0);
+    add(d, box(0.14, 6.2, 0.45), neonC, -s * 2.1, 3.2, 0);
+    add(d, box(3.6, 0.14, 0.45), neonM, 0, 4.6, 0);
+    add(d, box(3.6, 0.14, 0.45), neonM, 0, 1.8, 0);
     d.position.set(s * 2.25, 0, minZ);
     d.userData.side = s;
     live.add(d);
     return d;
   });
 
-  // 門口兩邊：大儲存缸（綠色液體）+ 喉管
-  const glass = new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.35, roughness: 0.05 });
+  // ---- 兩邊同後面：力場牆 ----
+  const hexMat = new THREE.MeshBasicMaterial({
+    map: hexTexture(W / 6, wallH / 6), color: 0x66f2ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const hexMatZ = hexMat.clone();
+  hexMatZ.map = hexTexture(D / 6, wallH / 6);
+  const field = (x1, z1, x2, z2, m) => {
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    const rotY = -Math.atan2(z2 - z1, x2 - x1);
+    const f = add(live, new THREE.PlaneGeometry(len, wallH - 1.4), m, (x1 + x2) / 2, 1.4 + (wallH - 1.4) / 2, (z1 + z2) / 2, false);
+    f.rotation.y = rotY;
+    f.receiveShadow = false;
+    // 底座（矮金屬牆 + 霓虹線）
+    const base = add(root, box(len + 1, 1.4, 1), dark, (x1 + x2) / 2, 0.7, (z1 + z2) / 2);
+    base.rotation.y = rotY;
+    const line = add(root, box(len + 1, 0.16, 1.1), neonC, (x1 + x2) / 2, 1.42, (z1 + z2) / 2, false);
+    line.rotation.y = rotY;
+    const top = add(root, box(len + 1, 0.3, 0.5), dark, (x1 + x2) / 2, wallH, (z1 + z2) / 2);
+    top.rotation.y = rotY;
+    const topLine = add(root, box(len + 1, 0.1, 0.6), neonM, (x1 + x2) / 2, wallH - 0.2, (z1 + z2) / 2, false);
+    topLine.rotation.y = rotY;
+  };
+  field(minX, minZ, minX, maxZ, hexMatZ);
+  field(maxX, minZ, maxX, maxZ, hexMatZ);
+  // 後面：實心科技牆（掛屏幕、試管）
+  add(root, box(W + 1, wallH + 3, 1), techPanel(W / 4, (wallH + 3) / 4), 0, (wallH + 3) / 2, maxZ);
+  add(root, box(W + 1, 0.25, 1.2), neonC, 0, wallH + 3, maxZ);
+  // 霓虹柱（每 10 米一條）
+  const orbs = [];
+  for (const x of [minX, maxX]) {
+    for (let z = minZ; z <= maxZ; z += 10) {
+      add(root, box(1.2, wallH + 1.5, 1.2), dark, x, (wallH + 1.5) / 2, z);
+      add(root, box(0.2, wallH, 1.25), (z / 10) % 2 ? neonC : neonM, x - Math.sign(x) * 0.55, wallH / 2 + 0.5, z, false);
+      const orb = add(live, new THREE.SphereGeometry(0.4, 12, 8), glow(CYAN, 3).clone(), x, wallH + 2, z, false);
+      orbs.push(orb);
+    }
+  }
+  // 頂：浮喺半空嘅大光環（喺 Boss 上面轉）
+  const halo = new THREE.Group();
+  halo.position.set(BOSS_HOME.x, wallH + 5, (minZ + maxZ) / 2 + 3);
+  const h1 = new THREE.Mesh(new THREE.TorusGeometry(14, 0.25, 8, 64), neonC);
+  h1.rotation.x = Math.PI / 2;
+  const h2 = new THREE.Mesh(new THREE.TorusGeometry(10, 0.18, 8, 64), neonM);
+  h2.rotation.x = Math.PI / 2;
+  halo.add(h1, h2);
+  for (let i = 0; i < 4; i++) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 28), neonC);
+    beam.rotation.y = (i / 4) * Math.PI;
+    halo.add(beam);
+  }
+  live.add(halo);
+  // 天線塔（閃紅燈）
+  const blinkers = [];
+  for (const x of [-26, 26]) {
+    add(root, box(0.6, 7, 0.6), dark, x, wallH + 5, minZ + 1);
+    for (let k = 0; k < 3; k++) add(root, box(2 - k * 0.5, 0.12, 0.12), neonC, x, wallH + 3 + k * 2, minZ + 1, false);
+    blinkers.push(add(live, new THREE.SphereGeometry(0.35, 10, 8), glow(0xff1744, 3).clone(), x, wallH + 8.8, minZ + 1, false));
+  }
+  // 門口兩邊：大玻璃缸（發光液體 + 霓虹圈）
+  const glass = new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.3, roughness: 0.05 });
   for (const s of [-1, 1]) {
     const x = s * 17;
-    add(root, cyl(2.2, 0.6, 20), mat(0x37474f, { metalness: 0.6 }), x, 0.3, minZ - 4);
-    add(root, cyl(1.9, 4.2, 20), glow(0x64dd17, 0.9), x, 2.6, minZ - 4);
+    add(root, cyl(2.2, 0.6, 20), dark, x, 0.3, minZ - 4);
+    add(root, cyl(1.9, 4.2, 20), glow(s < 0 ? 0x64dd17 : 0x00b8d4, 0.9), x, 2.6, minZ - 4);
     add(root, cyl(2.05, 4.8, 20), glass, x, 2.9, minZ - 4, false);
-    add(root, cyl(2.2, 0.5, 20), mat(0x37474f, { metalness: 0.6 }), x, 5.45, minZ - 4);
-    add(root, box(0.5, 0.5, 4), mat(0x78909c, { metalness: 0.6 }), x, 5.2, minZ - 2.2);
+    add(root, cyl(2.2, 0.5, 20), dark, x, 5.45, minZ - 4);
+    for (const y of [0.65, 5.15]) {
+      const r = add(root, new THREE.TorusGeometry(2.15, 0.08, 6, 32), neonC, x, y, minZ - 4, false);
+      r.rotation.x = Math.PI / 2;
+    }
     addCollider(x, minZ - 4, 2.4);
   }
-  // 牆頂煙囪：噴綠色煙
-  const smokeMat = new THREE.MeshStandardMaterial({ color: 0x9ccc65, transparent: true, opacity: 0.6, emissive: 0x33691e, emissiveIntensity: 0.6 });
-  const puffs = [];
-  for (const x of [-20, 22]) {
-    add(root, cyl(0.9, 4, 12), mat(0x546e7a, { metalness: 0.5 }), x, wallH + 2, minZ + 3);
-    add(root, cyl(1.05, 0.5, 12), mat(0x263238), x, wallH + 4.1, minZ + 3);
-    for (let i = 0; i < 5; i++) {
-      const p = add(live, rbox(1.2, 1.2, 1.2), smokeMat.clone(), x, wallH + 5, minZ + 3, false);
-      puffs.push({ p, x, i });
-    }
-  }
-  // 雷達碟
-  const radar = new THREE.Group();
-  radar.position.set(-26, wallH + 0.5, minZ + 6);
-  add(radar, cyl(0.2, 2.5, 8), mat(0x9e9e9e), 0, 1.25, 0);
-  const dish = add(radar, new THREE.SphereGeometry(1.6, 16, 8, 0, Math.PI * 2, 0, Math.PI / 3), mat(0xeceff1, { side: THREE.DoubleSide }), 0, 2.6, 0);
-  dish.rotation.x = -1.0;
-  add(radar, new THREE.SphereGeometry(0.2, 8, 6), glow(0xff1744, 3), 0, 3.2, -0.5);
-  live.add(radar);
   updates.push((dt, time) => {
-    radar.rotation.y = time * 0.6;
-    for (const { p, x, i } of puffs) {
-      const k = (time * 0.35 + i / 5) % 1;
-      p.position.set(x + Math.sin(k * 4 + i) * 0.8, wallH + 4.6 + k * 6, minZ + 3 + k * 2);
-      p.scale.setScalar(0.6 + k * 1.6);
-      p.material.opacity = 0.6 * (1 - k);
-    }
+    hexMat.map.offset.y = time * 0.05; // 力場慢慢流動
+    hexMatZ.map.offset.y = time * 0.05;
+    hexMat.opacity = hexMatZ.opacity = 0.38 + Math.sin(time * 2) * 0.08;
+    halo.rotation.y = time * 0.15;
+    h2.rotation.z = -time * 0.4;
+    halo.position.y = wallH + 5 + Math.sin(time * 0.8) * 0.4;
+    orbs.forEach((o, i) => (o.material.emissiveIntensity = 2 + Math.sin(time * 3 + i) * 1.5));
+    blinkers.forEach((b) => (b.material.emissiveIntensity = Math.sin(time * 4) > 0 ? 4 : 0.2));
+    sign.material.opacity = 0.85 + (Math.random() < 0.03 ? -0.4 : 0); // 全息偶然閃一閃
   });
 }
 
-// ---------- 入面：試管、電腦、喉管、地上警告圈 ----------
+// ---------- 入面：試管、全息屏幕、控制台、地上燈帶 ----------
 function buildInterior(root, live, updates) {
-  const { maxZ } = LAB;
-  const glass = new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.3, roughness: 0.05 });
-  const metal = mat(0x37474f, { metalness: 0.6, roughness: 0.35 });
-  // 後牆：大試管（4 支，入面有氣泡）
+  const { minZ, maxZ } = LAB;
+  const glass = new THREE.MeshStandardMaterial({ color: 0xb2ebf2, transparent: true, opacity: 0.25, roughness: 0.05 });
+  const dark = mat(0x2a3448, { metalness: 0.6, roughness: 0.35 });
+  const neonC = glow(CYAN, 2.2);
+  const neonM = glow(MAGENTA, 2.2);
+  // 後牆：大試管（4 支，發光液體 + 氣泡 + 霓虹圈）
   const bubbles = [];
   const bubbleMat = new THREE.MeshStandardMaterial({ color: 0xe8f5e9, emissive: 0xccff90, emissiveIntensity: 1.5, transparent: true, opacity: 0.8 });
-  const liquid = [0x76ff03, 0x00e5ff, 0x76ff03, 0xd500f9];
+  const liquid = [0x76ff03, 0x00e5ff, 0x76ff03, 0xea00ff];
   [-22, -12, 12, 22].forEach((x, i) => {
     const z = maxZ - 3;
-    add(root, cyl(1.7, 0.7, 20), metal, x, 0.35, z);
+    add(root, cyl(1.7, 0.7, 20), dark, x, 0.35, z);
     add(root, cyl(1.4, 5.5, 20), glow(liquid[i], 0.8), x, 3.4, z);
     add(root, cyl(1.55, 6.2, 20), glass, x, 3.8, z, false);
-    add(root, cyl(1.7, 0.6, 20), metal, x, 7.0, z);
-    add(root, box(0.5, 2.5, 0.5), metal, x, 8.4, z);
+    add(root, cyl(1.7, 0.6, 20), dark, x, 7.0, z);
+    for (const y of [0.75, 6.65]) {
+      const r = add(root, new THREE.TorusGeometry(1.65, 0.07, 6, 32), neonC, x, y, z, false);
+      r.rotation.x = Math.PI / 2;
+    }
+    add(root, box(0.5, 2.5, 0.5), dark, x, 8.4, z);
     addCollider(x, z, 1.9);
     for (let b = 0; b < 4; b++) {
       const m = add(live, new THREE.SphereGeometry(0.18, 8, 6), bubbleMat, x, 1, z, false);
       bubbles.push({ m, x, z, phase: b / 4 + i * 0.13 });
     }
   });
-  // 後牆大電腦：屏幕 + 按鈕（閃）
-  // 掛喺後牆頂（傳送門上面），成個實驗室都望到
-  add(root, box(9, 5, 1), metal, 0, 11.3, maxZ - 0.9);
-  for (const s of [-1, 1]) add(root, box(0.6, 4, 0.6), metal, s * 3.5, 8.5, maxZ - 0.9);
-  const screen = makeSign([{ text: '🧬 MUTATION LAB', size: 0.24, color: '#b9f6ca' }, { text: 'Experiment: ███ 99%', size: 0.17, color: '#76ff03' }, { text: '⚠️ ANIMALS CAPTURED: 6', size: 0.15, color: '#ff8a80' }], 8, 4.2, THEMES.dark);
-  screen.position.set(0, 11.3, maxZ - 1.42);
-  screen.rotation.y = Math.PI;
-  live.add(screen);
-  // 控制台（兩邊）
+  // 全息大屏幕（後牆頂，傳送門上面）
+  const holos = [];
+  const bigScreen = holoPanel([
+    { text: '🧬 MUTATION LAB', size: 56, color: '#e0f7fa' },
+    { text: 'EXPERIMENT ████ 99%', size: 40, color: '#76ff03' },
+    { text: '⚠️ SPECIMENS CAPTURED: 6', size: 36, color: '#ff8a80' },
+  ], 10, 4.6);
+  bigScreen.position.set(0, 12, maxZ - 1);
+  bigScreen.rotation.y = Math.PI;
+  live.add(bigScreen);
+  holos.push({ m: bigScreen, y: 12, phase: 0 });
+  // 兩邊浮喺半空嘅細全息屏幕（每個下面有投影機 + 光錐）
+  const smallScreens = [
+    { x: -14, z: 104.5, rot: Math.PI, lines: [{ text: 'DNA SCAN', size: 60, color: '#e0f7fa' }, { text: '🧬 ▓▓▓▓▓░░ 71%', size: 44, color: '#76ff03' }] },
+    { x: 14, z: 104.5, rot: Math.PI, lines: [{ text: 'SOLAR CORE', size: 60, color: '#ffe082' }, { text: '☀️ x4 ONLINE', size: 46, color: '#ffd740' }] },
+    { x: -7.5, z: maxZ - 6.5, rot: Math.PI, lines: [{ text: 'PORTAL', size: 64, color: '#ea80fc' }, { text: '🌀 STANDBY', size: 46 }] },
+    { x: 7.5, z: maxZ - 6.5, rot: Math.PI, lines: [{ text: 'DRONE BAY', size: 60, color: '#e0f7fa' }, { text: '🛸 READY', size: 46, color: '#76ff03' }] },
+  ];
+  const coneMat = new THREE.MeshBasicMaterial({ color: CYAN, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  for (const s of smallScreens) {
+    const m = holoPanel(s.lines, 4.4, 2.2);
+    m.position.set(s.x, 4.2, s.z);
+    m.rotation.y = s.rot;
+    live.add(m);
+    holos.push({ m, y: 4.2, phase: s.x });
+    add(root, cyl(0.7, 0.5, 16), dark, s.x, 0.25, s.z);
+    add(root, cyl(0.45, 0.1, 16), neonC, s.x, 0.52, s.z, false);
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 0.4, 2.6, 16, 1, true), coneMat);
+    cone.position.set(s.x, 1.85, s.z);
+    live.add(cone);
+    addCollider(s.x, s.z, 0.8);
+  }
+  // 控制台（後面兩邊）：斜面 + 發光掣
   const buttons = [];
   for (const s of [-1, 1]) {
     const x = s * 7.5;
     const z = maxZ - 4.5;
-    const desk = add(root, rbox(4, 1.2, 1.6), metal, x, 0.6, z);
-    desk.rotation.y = 0;
-    add(root, box(3.6, 0.8, 0.2), mat(0x263238), x, 1.65, z + 0.6).rotation.x = -0.4;
+    add(root, rbox(4, 1.2, 1.6), dark, x, 0.6, z);
+    add(root, box(3.6, 0.8, 0.2), mat(0x0d1117), x, 1.65, z + 0.6).rotation.x = -0.4;
+    add(root, box(4.05, 0.1, 1.65), neonC, x, 1.21, z, false);
     addCollider(x - 1, z, 1.1);
     addCollider(x + 1, z, 1.1);
     for (let i = 0; i < 6; i++) {
-      const colors = [0xff1744, 0x76ff03, 0xffea00, 0x00e5ff];
-      const b = add(live, box(0.3, 0.12, 0.3), glow(colors[i % 4], 2).clone(), x - 1.3 + (i % 3) * 0.5 + (i > 2 ? 0.2 : 0), 1.25, z - 0.4 + Math.floor(i / 3) * 0.4, false);
+      const colors = [0xff1744, 0x76ff03, 0xffea00, CYAN];
+      const b = add(live, box(0.3, 0.12, 0.3), glow(colors[i % 4], 2).clone(), x - 1.3 + (i % 3) * 0.5 + (i > 2 ? 0.2 : 0), 1.3, z - 0.4 + Math.floor(i / 3) * 0.4, false);
       buttons.push({ b, phase: i * 1.7 + s });
     }
   }
-  // 地上：喉管 + 電線
-  const pipe = mat(0x78909c, { metalness: 0.6, roughness: 0.3 });
-  for (const s of [-1, 1]) {
-    add(root, cyl(0.35, 40, 10), pipe, s * 29, 0.4, 125).rotation.x = Math.PI / 2;
-    add(root, cyl(0.25, 40, 10), mat(0x8bc34a), s * 28.6, 1.2, 125).rotation.x = Math.PI / 2;
+  // 地上燈帶：Boss 位一個霓虹八角形 + 由中間射出去嘅光線（會一閃一閃咁流動）
+  const strips = [];
+  const stripMats = [CYAN, MAGENTA].map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2 }));
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const r = 7.5;
+    const seg = add(live, box(2 * r * Math.sin(Math.PI / 8) + 0.2, 0.06, 0.25), stripMats[0], BOSS_HOME.x + Math.cos(a) * r * Math.cos(Math.PI / 8), 0.04, BOSS_HOME.z + Math.sin(a) * r * Math.cos(Math.PI / 8), false);
+    seg.rotation.y = -a + Math.PI / 2;
   }
-  for (let i = 0; i < 6; i++) {
-    const cable = add(root, box(0.15, 0.08, 9 + i), mat(i % 2 ? 0x212121 : 0xd32f2f), -6 + i * 2.4, 0.05, maxZ - 9 - i * 0.5, false);
-    cable.rotation.y = (i - 2.5) * 0.12;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    for (let k = 0; k < 5; k++) {
+      const d = 9 + k * 3.2;
+      const x = BOSS_HOME.x + Math.cos(a) * d;
+      const z = BOSS_HOME.z + Math.sin(a) * d;
+      if (x < LAB.minX + 1.5 || x > LAB.maxX - 1.5 || z < minZ + 1.5 || z > maxZ - 1.5) continue;
+      const m = stripMats[1].clone();
+      const seg = add(live, box(0.25, 0.05, 2.2), m, x, 0.04, z, false);
+      seg.rotation.y = -a + Math.PI / 2;
+      strips.push({ m, k });
+    }
   }
-  // Boss 企嘅位：地上黃黑警告圈
-  const ring = add(root, new THREE.RingGeometry(6, 7, 48), new THREE.MeshStandardMaterial({ map: hazardTexture(12, 1), side: THREE.DoubleSide }), BOSS_HOME.x, 0.04, BOSS_HOME.z, false);
-  ring.rotation.x = -Math.PI / 2;
-  // 恐怖燈：綠光（試管）+ 紫光（傳送門）會閃
-  const green = new THREE.PointLight(0x76ff03, 18, 30, 1.6);
+  // 頂上燈（細細粒，未來感）
+  const green = new THREE.PointLight(0x76ff03, 16, 30, 1.6);
   green.position.set(0, 6, maxZ - 8);
-  const purple = new THREE.PointLight(0xd500f9, 14, 28, 1.6);
-  purple.position.set(0, 5, 118);
-  live.add(green, purple);
-  lab.lights = [green, purple];
+  const cyanLight = new THREE.PointLight(CYAN, 14, 34, 1.5);
+  cyanLight.position.set(-12, 7, 118);
+  const magentaLight = new THREE.PointLight(MAGENTA, 14, 34, 1.5);
+  magentaLight.position.set(12, 7, 118);
+  live.add(green, cyanLight, magentaLight);
+  lab.lights = [green, cyanLight, magentaLight];
   updates.push((dt, time) => {
     for (const { m, x, z, phase } of bubbles) {
       const k = (time * 0.4 + phase) % 1;
       m.position.set(x + Math.sin(k * 9 + phase * 10) * 0.6, 1 + k * 5.2, z + Math.cos(k * 7 + phase * 10) * 0.5);
     }
     for (const { b, phase } of buttons) b.material.emissiveIntensity = Math.sin(time * 4 + phase) > 0.2 ? 3 : 0.3;
-    green.intensity = 16 + Math.sin(time * 2.3) * 4 + (Math.random() < 0.02 ? -10 : 0); // 偶然閃一下
-    purple.intensity = 12 + Math.sin(time * 1.7) * 3;
+    for (const h of holos) {
+      h.m.position.y = h.y + Math.sin(time * 1.2 + h.phase) * 0.12;
+      h.m.material.opacity = 0.8 + Math.sin(time * 9 + h.phase) * 0.06;
+    }
+    for (const s of strips) s.m.emissiveIntensity = 0.4 + Math.max(0, Math.sin(time * 4 - s.k * 1.1)) * 3; // 光由中間向外流
+    stripMats[0].emissiveIntensity = 1.6 + Math.sin(time * 2) * 0.8;
+    green.intensity = 14 + Math.sin(time * 2.3) * 4;
   });
 }
 
