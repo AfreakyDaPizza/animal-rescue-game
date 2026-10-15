@@ -5,19 +5,20 @@
 //            │  │
 //            │  │  ← Biome 1
 //   ┌────────┘  └────────┐
-//   │        HUB         │
-//   └────────────────────┘
+//    \       HUB        /   ← 圓形（小朋友 2026-10-15）
+//      `--------------`
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { decorateBiome, decorateHub } from './biomes.js';
+import { decorateBiome } from './biomes.js';
+import { buildHubPark } from './hubPark.js';
 import { makeSign, dynamicSign, signOnPosts, THEMES } from './signs.js';
 import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
-import { state } from './state.js';
-// 橫嘅 Hub：每擴建一次（皮膚商店用代幣買）向下深 10 米
-export const HUB = { minX: -30, maxX: 30, minZ: 0, maxZ: 26 + 10 * (state.hubLevel || 0) };
+import { HUB } from './hubShape.js';
+export { HUB };
+const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
 export const BIOME_LENGTH = 50;                                     // 每個生態區有幾長
 export const STEM = { minX: -18, maxX: 18, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道
 
@@ -83,9 +84,10 @@ export function isWalkable(x, z, radius, feetY = 0) {
   const r = radius + WALL_THICKNESS / 2; // 牆有一半厚度企喺地圖入面
   const inRect = (rect) =>
     x >= rect.minX + r && x <= rect.maxX - r && z >= rect.minZ + r && z <= rect.maxZ - r;
+  const inHub = z >= HUB.minZ + r && Math.hypot(x - HUB.cx, z - HUB.cz) <= HUB.r - r;
   // 通道向下伸入 Hub 少少，等兩部分接得順，唔會喺接口卡住
-  const stemIntoHub = { ...STEM, maxZ: HUB.maxZ };
-  if (!inRect(HUB) && !inRect(stemIntoHub)) return false;
+  const stemIntoHub = { ...STEM, maxZ: 8 };
+  if (!inHub && !inRect(stemIntoHub)) return false;
   return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius);
 }
 
@@ -94,9 +96,9 @@ export function isWalkable(x, z, radius, feetY = 0) {
 export function buildWorld(scene) {
   const animators = [];
 
-  addFloor(scene, HUB, 0x7fb069, 0.08);
+  addHubFloor(scene);
   const staticRoot = new THREE.Group(); // 唔會郁嘅裝飾先放埋呢度，最後焊埋
-  animators.push(decorateHub(staticRoot));
+  animators.push(buildHubPark(staticRoot, scene));
 
   BIOMES.forEach((biome, i) => {
     const rect = biomeRect(i);
@@ -106,22 +108,27 @@ export function buildWorld(scene) {
     animators.push(decorateBiome(staticRoot, i, rect, scene));
   });
 
-  // 圍牆：沿住 ⊥ 外圍行一圈（順時針，8 個角）
-  const corners = [
-    [HUB.minX, HUB.maxZ],   // Hub 左下
-    [HUB.minX, HUB.minZ],   // Hub 左上
-    [STEM.minX, HUB.minZ],  // 通道左邊入口
-    [STEM.minX, STEM.minZ], // 通道左上
-    [STEM.maxX, STEM.minZ], // 通道右上
-    [STEM.maxX, HUB.minZ],  // 通道右邊入口
-    [HUB.maxX, HUB.minZ],   // Hub 右上
-    [HUB.maxX, HUB.maxZ],   // Hub 右下
-  ];
+  // 圍牆：通道（直）+ Hub 頂嘅兩截直線 + Hub 個圓弧（大門口留個窿）
   const wallMaterial = new THREE.MeshStandardMaterial({ map: stoneTexture() });
-  corners.forEach(([x1, z1], i) => {
-    const [x2, z2] = corners[(i + 1) % corners.length];
-    addWall(scene, x1, z1, x2, z2, wallMaterial);
-  });
+  const stemWall = [
+    [-HUB_TOP_HALF, 0],
+    [STEM.minX, 0],
+    [STEM.minX, STEM.minZ],
+    [STEM.maxX, STEM.minZ],
+    [STEM.maxX, 0],
+    [HUB_TOP_HALF, 0],
+  ];
+  for (let i = 0; i < stemWall.length - 1; i++) addWall(scene, ...stemWall[i], ...stemWall[i + 1], wallMaterial);
+  const a0 = Math.asin(-HUB.cz / HUB.r); // 右上角（z = 0）嘅角度
+  const a1 = Math.PI - a0; // 左上角
+  const SEGMENTS = 60;
+  const arc = (a) => [HUB.cx + Math.cos(a) * HUB.r, HUB.cz + Math.sin(a) * HUB.r];
+  for (let i = 0; i < SEGMENTS; i++) {
+    const [x1, z1] = arc(a0 + ((a1 - a0) * i) / SEGMENTS);
+    const [x2, z2] = arc(a0 + ((a1 - a0) * (i + 1)) / SEGMENTS);
+    if (Math.abs((x1 + x2) / 2) < 3.2 && z1 > HUB.cz) continue; // 大門口
+    addWall(scene, x1, z1, x2, z2, wallMaterial, 0.15);
+  }
 
   addClouds(staticRoot);
   bakeStatic(staticRoot, scene);
@@ -148,9 +155,32 @@ function addFloor(scene, rect, color, variation) {
   scene.add(floor);
 }
 
-// 一幅直線牆，由 (x1,z1) 去 (x2,z2)
-function addWall(scene, x1, z1, x2, z2, material) {
-  const length = Math.hypot(x2 - x1, z2 - z1) + WALL_THICKNESS; // 加長少少，轉角位唔會有窿
+// 圓形 Hub 地板（頂嗰截 z < 0 切走）
+function addHubFloor(scene) {
+  const shape = new THREE.Shape();
+  const a0 = Math.asin(-HUB.cz / HUB.r);
+  const a1 = Math.PI - a0;
+  // Shape 喺 XY 平面，之後轉落地：y = -z
+  for (let i = 0; i <= 64; i++) {
+    const a = a0 + ((a1 - a0) * i) / 64;
+    const x = HUB.cx + Math.cos(a) * HUB.r;
+    const z = HUB.cz + Math.sin(a) * HUB.r;
+    if (i === 0) shape.moveTo(x, -z);
+    else shape.lineTo(x, -z);
+  }
+  shape.closePath();
+  const floor = new THREE.Mesh(
+    new THREE.ShapeGeometry(shape, 1),
+    new THREE.MeshStandardMaterial({ map: noiseTexture(0x7fb069, 0.08, 0.25, 0.25) }),
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+}
+
+// 一幅直線牆，由 (x1,z1) 去 (x2,z2)；extra = 兩頭加長幾多（轉角位唔會有窿）
+function addWall(scene, x1, z1, x2, z2, material, extra = WALL_THICKNESS) {
+  const length = Math.hypot(x2 - x1, z2 - z1) + extra;
   const wall = new THREE.Mesh(new THREE.BoxGeometry(length, WALL_HEIGHT, WALL_THICKNESS), material);
   wall.position.set((x1 + x2) / 2, WALL_HEIGHT / 2, (z1 + z2) / 2);
   wall.rotation.y = -Math.atan2(z2 - z1, x2 - x1);

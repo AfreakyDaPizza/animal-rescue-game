@@ -51,7 +51,7 @@ src/data/questions.js ← 野生動物問題
 |---|---|---|
 | Speed → 行路速度 | 100 → 每秒 6 格；Speed 每加倍快 3 格（2,000,000 → 49 格）；Boss 都係用同一條公式 | `src/player.js` 嘅 `walkSpeed` |
 | 夜晚有幾耐 | 20 秒（原稿冇講） | `src/daynight.js` 嘅 `NIGHT_LENGTH` |
-| 地圖大細 | Hub 60×26，每個生態區 24 闊 × 50 長（小朋友改過幾次：太大 → BIGGER and LONGER → Hub 細返啲） | `src/world.js` 頂部 |
+| 地圖大細 | Hub 係圓形（半徑 38 米，2026-10-15），每個生態區 24 闊 × 50 長（小朋友改過幾次：太大 → BIGGER and LONGER → Hub 細返啲） | `src/world.js` 頂部 |
 | 每個生態區每輪幾多隻動物 | 1 隻，入夜先換新（跟原稿） | `src/main.js` |
 | 升級外觀 | Lv1 Basic → Lv3 Blue Steel → Lv5 Neon → Lv8 Golden → Lv12 Rainbow Legend | `src/hub.js` 嘅 `TIERS` |
 
@@ -92,7 +92,7 @@ src/data/questions.js ← 野生動物問題
 - 地塊巨型寵物畫面上限 60 米（普通寵物 7 米）。
 - Shift Lock（似 Roblox）：Shift 切換鎖住／放開滑鼠；放開時見到滑鼠、右鍵拖轉鏡頭、遊戲唔暫停。
 - Skin Tokens 🎟️：每日 3 個任務（Q 掣，`src/quests.js`）＋每隻新寵物（Common 1 … Mythic 10）。
-- 皮膚商店攤位（Hub 右下）：護林員皮膚 7 款（Classic/Ninja/Panda/Astronaut/Knight/Golden/Rainbow）、寵物皮膚 6 款（Natural/Shadow/Golden/Neon/Galaxy/Rainbow，換晒所有寵物）、擴建 Hub 3 次（每次 +10 米：Fountain Garden 15、Statue Park 30、Pet Playground 50 代幣）。
+- 皮膚商店攤位（Hub 右下）：護林員皮膚 7 款（Classic/Ninja/Panda/Astronaut/Knight/Golden/Rainbow）、寵物皮膚 6 款（Natural/Shadow/Golden/Neon/Galaxy/Rainbow，換晒所有寵物）。（以前有擴建 Hub：2026-10-15 取消，Hub 免費變大，買過嘅退返代幣。）
 - 隱藏寵物（H 掣／頂部掣）：收埋地塊同手上嘅寵物，照樣賺錢；巨型寵物遮住 Hub 時用。
 - 學生桌坐姿改正（之前手向後、沉落櫈）。
 - 暫停：動物、動畫、繁殖機倒數全部停；日夜同活動時鐘跟真實時間照行（小朋友 2026-10-11 揀 A：保持跟真實時鐘）。
@@ -106,6 +106,19 @@ src/data/questions.js ← 野生動物問題
 - 50 隻動物全部重新設計：頭 20 隻 `src/animals20.js`、其餘 30 隻 `src/animals30.js`（大眼有反光、腳掌、花紋、識郁嘅耳／尾／翼）。
 - 可以跳（空白鍵）：跳得過障礙物；Boss 唔識跳，你企高過 1.5 米佢捉你唔到。
 - Biome 6 係一座好大嘅方塊三角形山（10 層，每層 1.3 米，要逐層跳上去），動物喺山頂出現、唔會落山；滾石由山頂前面碌落山，礦車喺山兩邊條路上落，塵埃喺山前面打橫飄；Mega Digger 喺山腳前面守。
+
+## GitHub Issue #1（2026-10-15，小朋友喺 GitHub 開嘅）
+- 小朋友揀：先做「大 Hub + 開場動畫」，其他之後做。
+- ✅ Hub 變大圓形（`src/hubShape.js` 大細、`src/hubPark.js` 裝飾）：中間會噴水嘅噴水池、4 個石像（金熊貓、雲石象、金犀牛、雲石老虎）、雀仔飛圈、吊床（Owner 瞓喺度）+ 枱（杯水、pizza）、「COMING SOON」機器、遊樂場、燈柱、長櫈、花圃、一圈樹、Hub 底有大門口「ANIMAL RESCUE PARK」。繁殖機搬咗去噴水池下面（z = 40）。
+- ✅ 皮膚商店冇咗「Expand Hub」：嗰啲裝飾而家 Hub 本身就有；買過嘅退返代幣。
+- ✅ 新開場動畫（約 46 秒，可以跳過）：Owner 瞓吊床食 pizza → 覺得怪怪地，杯水震 → Boss 捉走動物（Owner 頭頂「!」）→ Owner 追唔到 → 手機搜尋「top tier ranger」→ Ranger 揸車由大門入嚟、握手 → 黑畫面「YOU are the ranger! Save the endangered animals to save the world. Upgrade your Treadmill and Student Table to improve!」
+- 未做（已經問咗小朋友）：
+  - Boss 撞到你 → 彈返 **Hub**，唔使答問題；隻動物返去生態區原位。
+  - 拉桿同 BIG PET FRENZY 秘密活動**一齊刪走**。
+  - Biome 2 重做：**沙灘 + 海**（沙、浪、石、要清嘅垃圾、大油船 Boss）。
+  - Biome 6 山整靚啲；爬山唔會慢（抱住動物落山先唔會俾 Boss 捉到）。
+  - 畫面再靚啲、多啲細節、動物再型啲。
+  - 生態區大少少、長少少、靚啲。
 
 ## 未做
 

@@ -1,5 +1,5 @@
 // 皮膚：護林員皮膚（改你個公仔）同寵物皮膚（改晒你啲寵物），用 Skin Tokens 喺皮膚商店買
-// 擴建 Hub：用代幣令 Hub 大啲，每次多一個新區域
+// （以前有「擴建 Hub」：2026-10-15 小朋友話唔使買，Hub 本身已經好大，噴水池、石像、遊樂場全部免費有）
 
 import * as THREE from 'three';
 
@@ -22,11 +22,8 @@ export const PET_SKINS = [
   { id: 'rainbow', name: 'Rainbow', cost: 60 },
 ];
 
-export const HUB_EXPANSIONS = [
-  { name: 'Fountain Garden', cost: 15 },
-  { name: 'Statue Park', cost: 30 },
-  { name: 'Pet Playground', cost: 50 },
-];
+// 舊存檔買過擴建：退返代幣（15 + 30 + 50）
+export const OLD_HUB_EXPANSION_COSTS = [15, 30, 50];
 
 // ---------- 寵物皮膚：換晒隻寵物嘅物料 ----------
 let starTex = null;

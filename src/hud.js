@@ -5,7 +5,7 @@ import { walkSpeed } from './player.js';
 import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
-import { RANGER_SKINS, PET_SKINS, HUB_EXPANSIONS } from './skins.js';
+import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney } from './data/animals.js';
 import { BOSSES, rarityInfo, trainingGain, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
@@ -402,7 +402,7 @@ const PET_SWATCH = {
 };
 function shopHtml() {
   const tab = (id, label) => `<button data-shop-tab="${id}" class="${shopTab === id ? 'active' : ''}">${label}</button>`;
-  let html = `<div class="tabs">${tab('ranger', '🧑 Ranger Skins')}${tab('pet', '🐾 Pet Skins')}${tab('hub', '🏗️ Expand Hub')}</div>
+  let html = `<div class="tabs">${tab('ranger', '🧑 Ranger Skins')}${tab('pet', '🐾 Pet Skins')}</div>
     <p class="index-summary">You have <b>🎟️ ${fmt(state.tokens)}</b> Skin Tokens. Get more from 📜 Quests (Q) and new pets!</p>`;
   const card = (preview, name, cost, owned, equipped, action, i, extra = '') => `<div class="card-animal ${equipped ? 'equipped' : ''}">
       ${preview}<b>${name}</b>${extra}
@@ -413,16 +413,9 @@ function shopHtml() {
   if (shopTab === 'ranger') {
     html += `<div class="cards">${RANGER_SKINS.map((s, i) => card(swatch([hex(s.hat), hex(s.shirt), hex(s.pants)]), s.name, s.cost,
       state.ownedRanger.includes(s.id), state.rangerSkin === s.id, 'ranger', i)).join('')}</div>`;
-  } else if (shopTab === 'pet') {
+  } else {
     html += `<p class="reward">A pet skin changes the look of ALL your pets.</p><div class="cards">${PET_SKINS.map((s, i) => card(swatch(PET_SWATCH[s.id]), s.name, s.cost,
       state.ownedPet.includes(s.id), state.petSkin === s.id, 'pet', i)).join('')}</div>`;
-  } else {
-    html += `<p class="reward">Each expansion makes your Hub 10 m bigger and adds a new area!</p><div class="cards">${HUB_EXPANSIONS.map((e, i) => {
-      const got = state.hubLevel > i;
-      const next = state.hubLevel === i;
-      return `<div class="card-animal ${got ? 'equipped' : next ? '' : 'locked'}"><div class="emoji">${['⛲', '🗽', '🛝'][i]}</div><b>${e.name}</b>
-        ${got ? '<span class="tag">✔ Built</span>' : next ? `<button data-shop="hub-buy" data-i="${i}" ${state.tokens < e.cost ? 'disabled' : ''}>Build 🎟️ ${e.cost}</button>` : `<small>Build the one before first</small>`}</div>`;
-    }).join('')}</div>`;
   }
   return html;
 }

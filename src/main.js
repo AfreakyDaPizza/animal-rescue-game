@@ -28,7 +28,7 @@ import { createIntro, updateIntro } from './intro.js';
 import { createTutorial, startTutorial, updateTutorial } from './tutorial.js';
 import { createThirdPerson, updateThirdPerson, zoomCamera, applyRangerSkin } from './thirdPerson.js';
 import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
-import { RANGER_SKINS, PET_SKINS, HUB_EXPANSIONS, applyPetSkin, animateSkins } from './skins.js';
+import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent, EVENTS, SECRET_EVENT } from './events.js';
 import { LEVER } from './biomes.js';
 import { BOSS_STUN_SECONDS, rarityInfo } from './data/balance.js';
@@ -72,6 +72,13 @@ scene.add(stars);
 
 const updateWorld = buildWorld(scene);
 const hub = createHub(scene);
+// 舊存檔買過「擴建 Hub」：而家 Hub 免費變大咗，退返啲代幣
+let hubRefund = 0;
+if (state.hubLevel > 0) {
+  hubRefund = OLD_HUB_EXPANSION_COSTS.slice(0, state.hubLevel).reduce((a, b) => a + b, 0);
+  state.tokens += hubRefund;
+  state.hubLevel = 0;
+}
 const hazards = createHazards(scene);
 const bosses = createBosses(scene);
 
@@ -222,10 +229,14 @@ try {
 updateBossSigns(state.speed, state.iq);
 intro.onDone = () => {
   document.body.classList.remove('intro');
-  teleportPlayer(player, 0, 16);
+  teleportPlayer(player, 0, 14);
   camera.rotation.set(0, 0, 0, 'YXZ');
   startScreen.hidden = false;
   introRunning = false;
+  if (hubRefund) {
+    save();
+    announce(`🏗️ Your Hub is now BIG for free! You got back 🎟️ ${hubRefund} Skin Tokens.`);
+  }
   startTutorial(tutorial); // 新玩家：開始教學
   announceSpecials(rescue.wild.filter((w) => w.special));
 };
@@ -460,21 +471,6 @@ setShopActions({
       refreshPlotPets(hub);
       if (rescue.holding) rescue.holding.name = '__refresh__'; // 手上嗰隻都換
       popup(`🐾 Pet skin: ${skin.name}!`);
-    }
-    if (action === 'hub-buy') {
-      const exp = HUB_EXPANSIONS[i];
-      if (state.hubLevel !== i || !buy(exp.cost)) return;
-      state.hubLevel += 1;
-      save();
-      announce(`🏗️ Building ${exp.name}...`);
-      // Hub 個地圖要重新起過：重新載入（唔再播開場動畫）
-      try {
-        sessionStorage.setItem('animal-rescue-skip-intro', '1');
-      } catch {
-        // 照載入
-      }
-      setTimeout(() => location.reload(), 1200);
-      return;
     }
     save();
   },

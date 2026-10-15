@@ -21,7 +21,7 @@ function box(parent, w, h, d, color, x, y, z) {
 }
 
 // Roblox 款護林員公仔：顏色由皮膚決定（mats），每款皮膚有自己嘅配件（extras）
-function buildAvatar() {
+export function buildAvatar() {
   const M = () => new THREE.MeshStandardMaterial({ roughness: 0.55 });
   const mats = { shirt: M(), pants: M(), skin: M(), hat: M(), shoes: M() };
   const g = new THREE.Group();

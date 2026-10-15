@@ -243,11 +243,29 @@ body.intro .hud-box, body.intro #hud-buttons, body.intro #hotbar-wrap, body.intr
 @keyframes caption { 0% { opacity: 0; transform: translateY(20px); } 15% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0.9; } }
 #intro-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
 #intro-final {
-  position: absolute; left: 0; right: 0; top: 38%;
+  position: absolute; left: 0; right: 0; top: 30%;
   text-align: center; font-size: 46px; font-weight: 900; color: #fff;
   letter-spacing: 1px; opacity: 0; transition: opacity 1.5s;
 }
-#intro-final span { color: #69f0ae; font-size: 56px; }
+#intro-final span { color: #69f0ae; font-size: 64px; }
+#intro-final small { display: block; margin-top: 18px; font-size: 26px; color: #ffe082; }
+/* 開場動畫：Owner 部手機 */
+#intro-phone {
+  position: absolute; right: 9%; top: 50%; width: 250px; height: 440px; margin-top: -220px;
+  background: #fafafa; border: 12px solid #212121; border-radius: 34px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  color: #212121; padding: 34px 14px 14px; box-sizing: border-box;
+  opacity: 0; transform: translateY(60px) rotate(6deg); transition: opacity 0.5s, transform 0.5s; pointer-events: none;
+}
+#intro-phone.show { opacity: 1; transform: none; }
+.phone-notch { position: absolute; top: 8px; left: 50%; width: 70px; height: 12px; margin-left: -35px; background: #212121; border-radius: 8px; }
+.phone-search { background: #eceff1; border-radius: 20px; padding: 10px 12px; font-size: 17px; font-weight: 700; }
+.phone-search i { font-style: normal; animation: blink 0.8s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+#phone-result { margin-top: 18px; opacity: 0; transition: opacity 0.4s; }
+#phone-result.show { opacity: 1; }
+.phone-card { background: #e8f5e9; border-radius: 12px; padding: 12px; font-size: 18px; line-height: 1.5; }
+.phone-card small { color: #558b2f; font-size: 13px; }
+.phone-call { margin-top: 16px; text-align: center; font-size: 22px; font-weight: 900; color: #2e7d32; animation: blink 1s steps(1) infinite; }
 #intro-final.show { opacity: 1; }
 #intro-skip { position: absolute; right: 20px; bottom: 16px; font-size: 15px; opacity: 0.75; text-shadow: 0 1px 3px #000; }
 

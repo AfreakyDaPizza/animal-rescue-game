@@ -76,7 +76,7 @@ export function createPlayer(camera, domElement) {
   camera.rotation.order = 'YXZ'; // rotation.y 就係「望緊邊個方向」（箭咀要用）
   const controls = new MouseLook(camera, domElement);
   // 由 Hub 中間開始，望住生態區（-z）
-  camera.position.set((HUB.minX + HUB.maxX) / 2, EYE_HEIGHT, HUB.maxZ - 10);
+  camera.position.set(HUB.cx, EYE_HEIGHT, 14); // 噴水池同入口中間
   camera.rotation.set(0, 0, 0);
   return { controls, camera, feetY: 0, vy: 0, grounded: true, bob: 0 };
 }

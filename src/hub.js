@@ -1278,7 +1278,7 @@ export function createHub(scene) {
   for (const st of stations) state[st.levelKey] = Math.min(state[st.levelKey], MAX_TRAINING_LEVEL); // 舊存檔可能超過最高級
   stations.forEach((s) => applyTier(s));
 
-  const machines = [-16, -8, 0, 8, 16].map((x, i) => buildMachine(scene, i, x, 22.5));
+  const machines = [-16, -8, 0, 8, 16].map((x, i) => buildMachine(scene, i, x, 40)); // 噴水池下面一排
   const plot = buildPlot(scene);
   // 舊存檔：地塊上面嘅寵物多過位數，就淨係留最好嗰啲
   const onPlot = state.pets.filter((p) => p.onPlot).sort((a, b) => itemMoney(b) - itemMoney(a));
@@ -1299,15 +1299,14 @@ export function createHub(scene) {
   // 繁殖機升級牌（機嘅左邊）
   const machineSign = dynamicSign(2.6, 1.7);
   const machineSignGroup = signOnPosts(machineSign.mesh, 2.6, 1.7, 2.0);
-  machineSignGroup.position.set(-22, 0, 22);
+  machineSignGroup.position.set(-22, 0, 40);
   machineSignGroup.rotation.y = Math.PI;
   scene.add(machineSignGroup);
-  addCollider(-22, 22, 0.4);
-  const machineUpgradeSpot = { x: -22, z: 20, sign: machineSign };
+  addCollider(-22, 40, 0.4);
+  const machineUpgradeSpot = { x: -22, z: 38, sign: machineSign };
 
   // ---- 皮膚商店攤位（間條帳篷 + 櫃枱 + 公仔模特兒）----
   const shopSpot = buildSkinShop(scene, 24, 22.5);
-  buildHubExpansions(scene);
 
   // 「MY PETS」牌：撳 E 睇晒所有寵物
   const petsBoard = makeSign([{ text: 'MY PETS', size: 0.42 }, { text: 'Press E to see all your pets', size: 0.22 }], 3, 1.5, THEMES.pink);
@@ -1832,62 +1831,4 @@ function buildSkinShop(scene, x, z) {
   g.add(sign);
   addCollider(x, z, 2.2);
   return { x, z: z - 2.4 };
-}
-
-// ================= Hub 擴建：每擴建一次多一個區域（喺 Hub 下面新地） =================
-function buildHubExpansions(scene) {
-  const level = state.hubLevel || 0;
-  const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
-  const zOf = (i) => 31 + i * 10; // 第 i 個新區域嘅中間
-  if (level >= 1) {
-    // Fountain Garden：圓形噴水池 + 花圃
-    const z = zOf(0);
-    add(scene, new THREE.CylinderGeometry(3.2, 3.4, 0.6, 24), M(0xbdbdbd), 0, 0.3, z);
-    add(scene, new THREE.CylinderGeometry(2.9, 2.9, 0.05, 24), M(0x4fc3f7, { transparent: true, opacity: 0.8, roughness: 0.05 }), 0, 0.58, z);
-    add(scene, new THREE.CylinderGeometry(0.3, 0.4, 1.8, 12), M(0xbdbdbd), 0, 1.2, z);
-    add(scene, new THREE.CylinderGeometry(1.0, 0.6, 0.25, 16), M(0xbdbdbd), 0, 2.1, z);
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      add(scene, new THREE.SphereGeometry(0.22, 8, 6), M([0xff4081, 0xffeb3b, 0xba68c8, 0xffffff][i % 4]), Math.cos(a) * 4.4 + (a > Math.PI ? -9 : 9), 0.25, z + Math.sin(a) * 2);
-    }
-    addCollider(0, z, 3.4);
-  }
-  if (level >= 2) {
-    // Statue Park：一隻金色熊貓大石像
-    const z = zOf(1);
-    add(scene, rbox(4, 1.2, 4), M(0x9e9e9e), 0, 0.6, z);
-    add(scene, rbox(4.4, 0.2, 4.4), M(0xbdbdbd), 0, 1.25, z);
-    const statue = buildAnimalModel(findAnimal('Giant Panda'));
-    applyPetSkin(statue, 'golden');
-    statue.scale.setScalar(2.2);
-    statue.position.set(0, 1.35, z);
-    statue.rotation.y = Math.PI;
-    statue.userData.animate?.(0.5, 0);
-    scene.add(statue);
-    const plaque = makeSign([{ text: 'HERO RESCUER', size: 0.45 }, { text: 'Thank you for saving the animals!', size: 0.22 }], 3.2, 0.9, THEMES.wood);
-    plaque.position.set(0, 0.7, z - 2.05);
-    plaque.rotation.y = Math.PI;
-    scene.add(plaque);
-    addCollider(0, z, 2.6);
-  }
-  if (level >= 3) {
-    // Pet Playground：滑梯、韆鞦、蹺蹺板
-    const z = zOf(2);
-    const red = M(0xe53935);
-    const blue = M(0x1e88e5);
-    const yellow = M(0xfdd835);
-    add(scene, rbox(1.6, 2.4, 1.6), blue, -8, 1.2, z); // 滑梯台
-    const slide = add(scene, new THREE.BoxGeometry(1.2, 0.12, 4), yellow, -8, 1.3, z + 2.4);
-    slide.rotation.x = -0.55;
-    for (const s of [-1, 1]) add(scene, rbox(0.15, 3, 0.15), red, 4 + s * 1.6, 1.5, z);
-    add(scene, rbox(3.5, 0.15, 0.15), red, 4, 3, z);
-    for (const s of [-0.6, 0.6]) {
-      add(scene, new THREE.BoxGeometry(0.03, 2, 0.03), M(0x9e9e9e), 4 + s, 2, z);
-      add(scene, rbox(0.5, 0.08, 0.35), blue, 4 + s, 1, z);
-    }
-    const seesaw = add(scene, rbox(4, 0.15, 0.5), yellow, 12, 0.6, z);
-    seesaw.rotation.z = 0.2;
-    add(scene, new THREE.ConeGeometry(0.4, 0.6, 4), red, 12, 0.3, z);
-    addCollider(-8, z, 1.4);
-  }
 }

@@ -117,6 +117,19 @@ const SOUNDS = {
     for (let i = 0; i < 10; i++) tone(1000 + Math.random() * 2000, t + i * 0.06, 0.3, { vol: 0.07 });
     arp(t + 0.6, [659, 831, 988, 1319], 0.1, { type: 'triangle', vol: 0.18 });
   },
+  rumble: (t) => {
+    noise(t, 2.2, { vol: 0.45, freq: 140 });
+    tone(45, t, 2.2, { type: 'sine', vol: 0.35, slide: 0.8 });
+  },
+  ring: (t) => {
+    for (let i = 0; i < 4; i++) tone(i % 2 ? 1180 : 940, t + i * 0.12, 0.1, { type: 'square', vol: 0.06 });
+    for (let i = 0; i < 4; i++) tone(i % 2 ? 1180 : 940, t + 0.8 + i * 0.12, 0.1, { type: 'square', vol: 0.06 });
+  },
+  engine: (t) => {
+    noise(t, 3, { vol: 0.25, freq: 220 });
+    tone(70, t, 3, { type: 'sawtooth', vol: 0.06, slide: 1.4 });
+  },
+  type: (t) => tone(1500 + Math.random() * 300, t, 0.03, { type: 'square', vol: 0.04 }),
   swoosh: (t) => noise(t, 0.25, { vol: 0.2, freq: 1500, q: 0.7, type: 'bandpass' }),
   zone: (t) => {
     tone(392, t, 0.4, { type: 'triangle', vol: 0.15 });

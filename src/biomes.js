@@ -2,7 +2,7 @@
 // 裝飾放喺兩邊，中間留條路（|x| < 3）俾玩家行。
 
 import * as THREE from 'three';
-import { HUB, addPlatform } from './world.js';
+import { addPlatform } from './world.js';
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
 // 固定嘅「隨機」：每次開遊戲裝飾都喺同一個位，唔會成日變
@@ -63,32 +63,6 @@ function roundTree(scene, x, z, s = 1) {
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(3 * s, 2 * s, 3 * s), leafMat), x, 4.6 * s, z);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(2 * s, 1.4 * s, 2 * s), leafMat2), x + 0.6 * s, 5.8 * s, z + 0.3 * s);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.6 * s, 1.2 * s, 1.6 * s), leafMat2), x - 0.8 * s, 5.2 * s, z - 0.7 * s);
-}
-
-// ---------------- Hub ----------------
-export function decorateHub(scene) {
-  // 石仔路：中間一條直落 Hub 底（去繁殖機），一條橫去跑步機同地塊
-  const pathMat = mat(0xbfb5a0);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(5, 0.05, HUB.maxZ), pathMat), 0, 0.02, HUB.maxZ / 2, false);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(40, 0.05, 3), pathMat), -8, 0.02, 10.5, false);
-
-  // 角落有樹（右上角係地塊，唔種）
-  roundTree(scene, HUB.minX + 3, HUB.maxZ - 3);
-  roundTree(scene, HUB.maxX - 3, HUB.maxZ - 3);
-
-  // 沿住底邊種花
-  const rand = seededRandom(7);
-  const flowerColors = [0xff6b6b, 0xffd93d, 0xff9ff3, 0xffffff, 0x74b9ff];
-  const stemGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 4);
-  const headGeo = new THREE.SphereGeometry(0.12, 8, 6);
-  for (let i = 0; i < 140; i++) {
-    const x = HUB.minX + 2 + rand() * (HUB.maxX - HUB.minX - 4);
-    if (Math.abs(x) < 3.5) continue; // 唔好種喺條路度
-    const z = HUB.maxZ - 1.4 + rand() * 0.6;
-    add(scene, new THREE.Mesh(stemGeo, leafMat2), x, 0.2, z, false);
-    add(scene, new THREE.Mesh(headGeo, mat(flowerColors[i % flowerColors.length])), x, 0.42, z, false);
-  }
-  return null;
 }
 
 // ---------------- 生態區 ----------------
