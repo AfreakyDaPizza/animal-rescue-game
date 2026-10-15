@@ -157,6 +157,13 @@ function buildScientist() {
   box(damage[1], 1.1, 0.18, 1.06, 0xfffde7, 0, 3.55, 0);
   box(damage[1], 0.14, 0.24, 0.05, 0xef9a9a, 0.3, 3.55, -0.55);
   for (let i = 0; i < 4; i++) box(damage[1], 0.2, 0.2, 0.8, SOOT, -0.5 + i * 0.33, 0.68 - (i % 2) * 0.08, 0.02);
+  const smoke = [];
+  for (let i = 0; i < 4; i++) {
+    const p = box(damage[1], 0.4, 0.4, 0.4, 0x616161, 0, 2.8, 0.7, { transparent: true, opacity: 0.7 });
+    p.material = p.material.clone();
+    p.castShadow = false;
+    smoke.push(p);
+  }
   // 第 3 層：電火花、藥水缸裂、身上更多燶黑
   for (const [x, y, z] of [[0.6, 2.5, -0.4], [-0.6, 1.9, -0.4], [0, 2.2, 0.9]]) box(damage[2], 0.12, 0.12, 0.12, 0xffeb3b, x, y, z, GLOW(0xffea00, 4));
   for (const [x, y] of [[0.3, 2.4], [-0.2, 1.7], [0.5, 2.0]]) box(damage[2], 0.25, 0.22, 0.05, 0x212121, x, y, -0.42);
@@ -175,7 +182,7 @@ function buildScientist() {
   root.add(stars);
 
   g.scale.setScalar(S);
-  return { g, root, legs, arms: [shoulders[0], shoulders[1]], head, torso, shoulders, lenses, damage, stars, hairMat, tank, vials };
+  return { g, root, legs, arms: [shoulders[0], shoulders[1]], head, torso, shoulders, lenses, damage, stars, hairMat, tank, vials, smoke };
 }
 
 // ---------- 四隻手（喺世界度畫，可以拉長） ----------
@@ -338,6 +345,15 @@ export function updateLabFight(fight, dt, time, player) {
   r.head.rotation.z = fight.phase === 'wake' ? Math.sin(time * 18) * 0.15 : 0;
   r.root.position.y = fight.phase === 'wake' ? Math.abs(Math.sin(time * 10)) * 0.15 : 0;
   r.vials.forEach((v, i) => (v.material.emissiveIntensity = 1.5 + Math.sin(time * 5 + i) * 1));
+  // 受傷冒煙（第 2 層）
+  r.smoke.forEach((p, i) => {
+    const k = (time * 0.6 + i / 4) % 1;
+    p.position.set(Math.sin(k * 5 + i) * 0.3, 2.8 + k * 2.2, 0.7 + k * 0.5);
+    p.scale.setScalar(0.6 + k * 1.4);
+    p.material.opacity = 0.7 * (1 - k);
+  });
+  // 攰咗：Capsule 頭頂有跳下跳下嘅黃色大箭咀
+  updateCapsuleArrows(fight, time);
   r.lenses.forEach((l) => (l.material.emissiveIntensity = tired ? 0.8 : 3 + Math.sin(time * 7) * 0.8));
   if (fight.phase === 'hurt') {
     r.stars.visible = true;
@@ -447,6 +463,29 @@ function capsuleHit(fight, capsule) {
   } else {
     announce('☀️☀️ FINAL SOLAR BLAST! The Mutated Scientist Poacher is DEFEATED! 🎉');
     setPhase(fight, 'hurt');
+  }
+}
+
+// 攰咗嗰陣：每個未用嘅 Capsule 頭頂一個黃色箭咀
+function updateCapsuleArrows(fight, time) {
+  if (!fight.capArrows) {
+    const m = new THREE.MeshStandardMaterial({ color: 0xffeb3b, emissive: 0xffc400, emissiveIntensity: 2 });
+    fight.capArrows = lab.capsules.map((c) => {
+      const g = new THREE.Group();
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.9, 4), m);
+      head.rotation.x = Math.PI;
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), m);
+      shaft.position.y = 0.8;
+      g.add(head, shaft);
+      g.position.set(c.x, 6, c.z);
+      fight.scene.add(g);
+      return { g, c };
+    });
+  }
+  for (const { g, c } of fight.capArrows) {
+    g.visible = fight.phase === 'tired' && !c.used && fight.playerInside;
+    g.position.y = 5.6 + Math.sin(time * 4 + c.x) * 0.35;
+    g.rotation.y = time * 2;
   }
 }
 
@@ -979,6 +1018,27 @@ function showBar(fight) {
   const html = `<b>🧪 MUTATED SCIENTIST POACHER</b><div class="hp">${'❤️'.repeat(Math.max(0, fight.hp))}${'🖤'.repeat(hits)}</div><small>Capsule hits: ${suns}</small><div class="status">${status}</div>`;
   if (el.innerHTML !== html) el.innerHTML = html;
 }
+
+// 第三身鏡頭鑽咗入 Boss 個身（佢好大隻）：暫時收埋個身，唔係成個畫面得一片灰
+export function avoidCameraClip(fight, camPos) {
+  if (fight.phase === 'gone') return;
+  const p = fight.group.position;
+  const inside = Math.hypot(camPos.x - p.x, camPos.z - p.z) < 2.2 * S * 0.75 && camPos.y < 8;
+  fight.rig.g.visible = !inside;
+  // 條手（可以拉好長）掃過鏡頭：收埋嗰隻手
+  for (const arm of fight.arms) {
+    let near = arm.hand.position.distanceTo(camPos) < 2.2;
+    for (const seg of [arm.upper, arm.lower]) {
+      const a = seg.position;
+      const dir = tmpSeg.set(0, 0, 1).applyQuaternion(seg.quaternion);
+      const k = THREE.MathUtils.clamp(tmpSeg2.copy(camPos).sub(a).dot(dir), 0, seg.scale.z);
+      if (tmpSeg2.copy(a).addScaledVector(dir, k).distanceTo(camPos) < arm.thick * 1.2) near = true;
+    }
+    for (const m of [arm.upper, arm.lower, arm.elbow, arm.hand]) m.visible = !near;
+  }
+}
+const tmpSeg = new THREE.Vector3();
+const tmpSeg2 = new THREE.Vector3();
 
 // ================= 測試用（game.lab） =================
 export function debugFight(fight, what) {

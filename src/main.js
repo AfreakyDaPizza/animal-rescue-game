@@ -35,7 +35,7 @@ import { rarityInfo, TRASH_REWARD, LAB_UNLOCK_PETS } from './data/balance.js';
 import { buildLab, updateLabGuide, openParkGate } from './lab.js';
 import { movie, updateMovie, finishMovie } from './movie.js';
 import { playUnlockScene } from './labScenes.js';
-import { createLabFight, updateLabFight, debugFight, resetFight } from './labBoss.js';
+import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip } from './labBoss.js';
 import { LAB_RESPAWN, LAB, inLab } from './labShape.js';
 import { setGateOpen } from './hubPark.js';
 import { ANIMALS } from './data/animals.js';
@@ -814,6 +814,7 @@ renderer.setAnimationLoop((timestamp) => {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
     viewCam.position.x = THREE.MathUtils.clamp(viewCam.position.x, LAB.minX + 1.3, LAB.maxX - 1.3);
   }
+  avoidCameraClip(fight, viewCam.position);
   renderPass.camera = viewCam;
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
