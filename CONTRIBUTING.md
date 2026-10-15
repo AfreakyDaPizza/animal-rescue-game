@@ -78,6 +78,9 @@ You can change them right on the GitHub website. You don't need to install anyth
 | How many pets fit on your Plot at the start | `PLOT_START_SLOTS = 8` | Bigger = more pets |
 | Selling a pet gives you this many seconds of its money | `SELL_SECONDS = 60` | Bigger = sells for more |
 | Money for cleaning up one piece of beach trash | `TRASH_REWARD = 20` | Bigger = more cash |
+| Your hearts in the Boss Arena | `LAB_LIVES = 5` | Bigger = easier boss fight |
+| Seconds the red box follows you before the hand slams | `LAB_SQUASH_FOLLOW = 3` | Smaller = harder |
+| Legendary animals the portal wants (Route B) | `LAB_LEGENDARY_NEEDED = 3` | Smaller = portal opens easier |
 
 💡 **Scientist tip:** before you change a number, guess what will happen. Then test it.
 Were you right? That's how real game designers balance their games!

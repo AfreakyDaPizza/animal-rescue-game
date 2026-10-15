@@ -133,3 +133,27 @@ src/data/questions.js ← 野生動物問題
 - **第 6 步前**：每種動物每秒賺幾多錢？跑步機升級要幾多錢？
 - **第 10 步前**：Boss 會做乜？（追玩家？守住動物？）
 - **第 10 步前**：Speed 由 100 升到 2,000,000 咁大，畫面上行速點樣跟住變？（我會建議一個做法俾你揀）
+
+## GitHub Issue #2：Laboratory + Mutated Scientist Poacher（2026-10-15）
+
+小朋友中途改咗三次（開閘方法、傳送門、圓形 Arena、Boss 樣），以下係最後版本：
+
+1. **開閘**：Hub 入面 Magic Library 後面有個秘密**紅色掣**（🔴 DO NOT PRESS），撳 E → 開門動畫（鐵鏈震、大鎖彈開、閘門打開、鏡頭飛過去睇實驗室）→ 地上綠色箭咀 + 畫面箭咀帶你去 Laboratory（入過一次就收埋）。未開之前閘門有鎖同牌（「Find the secret RED BUTTON」）。（本來係圖鑑 25 隻開，小朋友改咗。）
+2. **Laboratory**（Hub 大門外面，南邊）：未來感實驗室——霓虹金屬地板、力場牆、全息屏幕、試管、控制台。入面有 **4 個玻璃艙**困住動物。
+3. **鎚仔**：Biome 6 座山**後面**（經山兩邊窄路入去）。執咗就**永遠**喺快捷欄第 1 格（`state.hasHammer`）。拎住鎚仔行近玻璃艙撳 E／撳滑鼠 → 打爛，動物開心跳兩下就跑走。冇鎚仔會提示「You need the Hammer (found behind the mountain in Biome 6)」。
+4. **傳送門開法（做到其中一樣就得）**：A. 打爛晒 4 個玻璃艙；或者 B. 喺傳送門交 3 隻 Legendary（寵物或者等繁殖嘅都得；要確認先交；佢哋會由 Index 刪走）。傳送門面板（E）會顯示兩條路。`LAB_PORTAL_BY_PODS`／`LAB_PORTAL_BY_LEGENDARY` 可以分別開關。
+5. **Boss Arena**：行入傳送門 → 傳送去一個**圓形**未來感 Arena（圓形力場牆行唔出去）。一入去 Boss 就醒，開始打。南邊有綠色**出口傳送門**隨時返實驗室。
+6. **Mutated Scientist Poacher**：似 Roblox「Steal an Egg」嘅 Dr. Scramble——瘋狂科學家坐喺 mech 入面（白袍、大頭、發光護目鏡、白色蓬鬆頭髮、紫手套、綠色藥水缸），**四隻機械手**有爪同霓虹燈；會喺場入面行嚟行去。每一輪招式：
+   - a. 炸彈無人機（地上紅圈 = 炸彈落點）
+   - b. 腐化咗嘅瀕危動物追你 30 秒，之後變灰燼（散做灰塵，冇血腥）
+   - c. 傳送門出 2 個生態區 Boss 追你 1 分鐘，之後返入傳送門
+   - d. 手拍：紅框**跟住你 3 秒**（小朋友加），停低之後 0.6 秒隻手拍落嚟
+   - 出完晒招佢**攰**：懶散拍（大啲紅框，一樣跟住你 3 秒）→ 帶佢隻手拍落 **Solar Energy Capsule**（Arena 四圍有 4 個，攰嗰陣頭頂有黃色箭咀）。拍中一次扣一格血，樣子越嚟越殘（護目鏡裂、繃帶、冒煙、火花、頭髮燶）。拍中 4 次就贏。
+7. **俾打中**（我揀，小朋友冇講）：同其他 Boss 一樣彈飛（彈返 Arena 南邊），扣 1 個心；**5 個心**（`LAB_LIVES`）冇晒 → 返實驗室，成場重來。行出口都係成場重來。傳送門開咗就一直開，可以再挑戰。
+8. **結局動畫**：Boss 瞓低 → 佢啲生態區 Boss 由傳送門出嚟 → 被捉嘅瀕危動物（包括你交咗嘅 Legendary 種類）醒咗、避開啲 Boss 走 → 跑過大門 → 跑入你個地塊開心跳 → Owner 多謝你、俾你 **$1000** → 黑畫面：「You saved the endangered animals! You got paid $1000... but something's missing... the pets wanted you to stay here forever, so you decided to stay with them forever.」→ 之後照玩。
+9. **存檔**：`labUnlocked`、`hasHammer`、`labPodsSmashed`、`labLegendaryGiven`、`labGivenSpecies`、`labBossDefeated`、`labRewardPaid`（$1000 只俾一次）、`labEndingSeen`。打緊嘅一場唔存（F5 重新打過）。
+10. 數值全部喺 `src/data/balance.js` 嘅 `LAB_*`。
+11. 我自己揀嘅（小朋友冇講）：Boss 戰「一輪」入面招式會重疊（無人機 1 秒、動物 8 秒、傳送門 16 秒、拍手一路都有），一輪大約 80 秒；Boss 手下嘅速度跟你嘅 Speed 調（唔會快過你太多）；Route B 要一次過交晒 3 隻；救出嚟嘅動物淨係動畫，唔會變寵物。
+12. 以後加地方：前院（`YARD`）兩邊可以再開路（例如閘外海灘睇流星），秘密結局「THE COLLAB」未做。
+
+測試（開發模式 console）：`game.lab.unlock()`（好似撳紅色掣）、`game.lab.open()`、`game.lab.hammer()`、`game.lab.smashAll()`、`game.lab.legendary(3)`、`game.lab.arena()`／`game.lab.start()`（直接入 Arena 開打）、`game.lab.god = true`（唔會俾打中）、`game.lab.attack('drones'|'animals'|'portal')`、`game.lab.tired()`、`game.lab.hitCapsule()`、`game.lab.ending()`、`game.lab.fight.timeScale = 3`（快轉）、`game.lab.reset()`（清晒實驗室進度）。
