@@ -76,46 +76,88 @@ function lumberjack() {
   return p;
 }
 
-function factoryWaste() {
-  // 一嚿綠色毒泥方塊怪，頭頂有煙囪
+// Biome 2 Boss：Captain Oil Spill（小朋友 2026-10-15 話舊嗰個好醜）：
+// 船長企喺一隻漏油嘅細油輪入面「揸船」喺沙灘衝，煙囪噴黑煙，船底滴油
+function captainOil() {
   const g = new THREE.Group();
   const root = pivot(g, 0, 0, 0);
-  const sludge = 0x7cb342;
+  // 腳收埋喺船入面（animateRig 要用）
   const legs = [-1, 1].map((s) => {
-    const hip = pivot(root, s * 0.5, 0.8, 0);
-    box(hip, 0.6, 0.8, 0.6, 0x558b2f, 0, -0.4, 0);
+    const hip = pivot(root, s * 0.3, 0.9, 0);
+    box(hip, 0.4, 0.6, 0.4, 0x263238, 0, -0.3, 0);
     return hip;
   });
-  const torso = box(root, 2.0, 1.9, 1.6, sludge, 0, 1.75, 0, { roughness: 0.15 });
-  for (let i = 0; i < 6; i++) box(root, 0.3, 0.5 + (i % 3) * 0.2, 0.3, sludge, -0.8 + i * 0.32, 0.8, -0.65 - (i % 2) * 0.1, { roughness: 0.15 }); // 滴落嚟
-  for (let i = 0; i < 4; i++) box(root, 0.35, 0.35, 0.05, 0x33691e, -0.6 + (i % 2) * 1.1, 1.3 + Math.floor(i / 2) * 0.7, 0.81); // 污漬
-  const head = pivot(root, 0, 2.2, -0.8);
+  // 油輪：黑色船身、紅色船底、白色字帶、尖船頭（-z）
+  const hull = pivot(root, 0, 0, 0);
+  box(hull, 2.6, 0.5, 3.6, 0xb71c1c, 0, 0.35, 0.2); // 紅色船底
+  box(hull, 2.8, 0.75, 3.8, 0x212121, 0, 0.95, 0.2, { metalness: 0.4, roughness: 0.3 }); // 黑色船身
+  box(hull, 2.85, 0.14, 3.85, 0xeceff1, 0, 1.1, 0.2); // 白帶
+  const bow = box(hull, 1.98, 0.75, 1.98, 0x212121, 0, 0.95, -1.6, { metalness: 0.4, roughness: 0.3 });
+  bow.rotation.y = Math.PI / 4; // 尖船頭
+  box(hull, 0.9, 0.5, 0.06, 0xffd600, 0.9, 0.95, 2.12); // 「OIL」牌
+  for (const s of [-1, 1]) box(hull, 0.06, 0.5, 2.4, 0x5d4037, s * 1.42, 1.5, 0.6); // 船邊欄杆
+  // 後面嘅煙囪 + 油桶
+  box(hull, 0.6, 1.5, 0.6, 0xd32f2f, 0, 1.9, 1.6);
+  box(hull, 0.7, 0.2, 0.7, 0x212121, 0, 2.7, 1.6);
   for (const s of [-1, 1]) {
-    box(head, 0.4, 0.4, 0.06, 0xffee58, s * 0.45, 0.05, 0, { emissive: 0x9e9d24 });
-    box(head, 0.18, 0.18, 0.04, 0x111111, s * 0.45, 0.02, -0.04);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.7, 12), mat(0x1565c0, { metalness: 0.5 }));
+    barrel.position.set(s * 0.85, 1.6, 1.4);
+    barrel.castShadow = true;
+    hull.add(barrel);
   }
-  box(head, 1.0, 0.15, 0.06, 0x1b1b1b, 0, -0.55, 0);
+  // 船長：深藍外套 + 金鈕 + 金肩章
+  const torso = box(root, 1.1, 1.1, 0.6, 0x1a237e, 0, 1.95, -0.2);
+  for (let i = 0; i < 3; i++) box(root, 0.1, 0.1, 0.04, 0xffd600, 0.18, 2.25 - i * 0.28, -0.52, { metalness: 0.9 });
   const arms = [-1, 1].map((s) => {
-    const shoulder = pivot(root, s * 1.15, 2.2, 0);
-    box(shoulder, 0.4, 1.0, 0.4, sludge, 0, -0.45, 0, { roughness: 0.15 });
+    const shoulder = pivot(root, s * 0.8, 2.4, -0.2);
+    box(shoulder, 0.5, 0.18, 0.5, 0xffd600, 0, 0.08, 0, { metalness: 0.8 }); // 肩章
+    box(shoulder, 0.42, 0.9, 0.42, 0x1a237e, 0, -0.42, 0);
+    box(shoulder, 0.4, 0.22, 0.4, 0x212121, 0, -0.95, 0); // 黑手套（沾晒油）
     return shoulder;
   });
-  box(root, 0.55, 1.3, 0.55, 0x8d6e63, 0.5, 3.3, 0.3); // 煙囪
-  box(root, 0.65, 0.2, 0.65, 0xd32f2f, 0.5, 3.95, 0.3);
+  const head = pivot(root, 0, 2.9, -0.2);
+  box(head, 0.82, 0.82, 0.82, 0xf5c99b, 0, 0, 0);
+  for (const s of [-1, 1]) {
+    box(head, 0.14, 0.17, 0.04, 0xff1744, s * 0.18, 0.08, -0.42, { emissive: 0xff1744, emissiveIntensity: 2.5 });
+    const brow = box(head, 0.26, 0.07, 0.05, 0x111111, s * 0.18, 0.24, -0.43);
+    brow.rotation.z = s * 0.35;
+  }
+  box(head, 0.86, 0.4, 0.2, 0x111111, 0, -0.26, -0.36); // 黑色大鬍子
+  for (let i = 0; i < 3; i++) box(head, 0.12, 0.2 + (i % 2) * 0.12, 0.1, 0x111111, -0.25 + i * 0.25, -0.55, -0.38); // 鬍子滴油
+  // 船長帽
+  box(head, 1.0, 0.12, 1.05, 0x111111, 0, 0.46, -0.05); // 帽簷
+  box(head, 0.95, 0.38, 0.95, 0x1a237e, 0, 0.66, 0);
+  box(head, 0.97, 0.1, 0.97, 0xffd600, 0, 0.5, 0, { metalness: 0.8 });
+  box(head, 0.24, 0.3, 0.06, 0x111111, 0, 0.7, -0.49); // 油滴徽章
+  // 煙
   const smoke = [];
-  for (let i = 0; i < 4; i++) {
-    const puff = box(root, 0.5, 0.5, 0.5, 0x757575, 0.5, 4.3, 0.3, { transparent: true, opacity: 0.7 });
+  for (let i = 0; i < 5; i++) {
+    const puff = box(root, 0.6, 0.6, 0.6, 0x212121, 0, 3, 1.6, { transparent: true, opacity: 0.75 });
     puff.material = puff.material.clone();
     puff.castShadow = false;
     smoke.push(puff);
   }
-  g.userData.extra = (t) => smoke.forEach((p, i) => {
-    const k = (t * 0.6 + i / 4) % 1;
-    p.position.set(0.5 + k * 0.8, 4.2 + k * 2, 0.3);
-    p.scale.setScalar(0.6 + k);
-    p.rotation.y = k * 3;
-    p.material.opacity = 0.7 * (1 - k);
-  });
+  // 船底滴油
+  const drips = [];
+  for (let i = 0; i < 3; i++) {
+    const d = box(root, 0.18, 0.25, 0.18, 0x111111, -0.8 + i * 0.8, 0.1, 1.5, { metalness: 0.6, roughness: 0.1 });
+    drips.push(d);
+  }
+  g.userData.extra = (t) => {
+    smoke.forEach((p, i) => {
+      const k = (t * 0.7 + i / 5) % 1;
+      p.position.set(Math.sin(k * 5) * 0.3, 2.9 + k * 2.5, 1.6 + k * 1.2);
+      p.scale.setScalar(0.6 + k * 1.2);
+      p.material.opacity = 0.75 * (1 - k);
+    });
+    drips.forEach((d, i) => {
+      const k = (t * 1.5 + i / 3) % 1;
+      d.position.y = 0.3 - k * 0.3;
+      d.scale.setScalar(1 - k * 0.6);
+    });
+    hull.rotation.z = Math.sin(t * 2) * 0.04; // 好似喺水上面搖
+    hull.rotation.x = Math.sin(t * 1.6) * 0.03;
+  };
   return { g, root, legs, arms, head, torso };
 }
 
@@ -210,9 +252,9 @@ function megaDigger() {
   return { g, root, legs, arms, head, torso };
 }
 
-const BUILDERS = [lumberjack, factoryWaste, hunter, oilDriller, smugglerKing, megaDigger];
+const BUILDERS = [lumberjack, captainOil, hunter, oilDriller, smugglerKing, megaDigger];
 // 每個 Boss 嘅主題色（光環同碎片）
-const AURA_COLORS = [0xff7043, 0x76ff03, 0xffab00, 0x00b0ff, 0xffd600, 0xff9100];
+const AURA_COLORS = [0xff7043, 0x7c4dff, 0xffab00, 0x00b0ff, 0xffd600, 0xff9100];
 
 // 開場動畫用：攞一個 Boss 公仔
 export const buildBossRig = (i) => BUILDERS[i]();

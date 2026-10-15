@@ -39,6 +39,7 @@
 - 2026-10-13：上咗 GitHub（**Public**，小朋友要求公開）：https://github.com/AfreakyDaPizza/animal-rescue-game ，repo 屬小朋友帳號，家長 `gavinc2025` 係 collaborator（呢部機 SSH key 用家長帳號 push）。
 - 2026-10-14：GitHub Pages 自動部署（`.github/workflows/deploy.yml`，push 上 `main` 就更新）：https://afreakydapizza.github.io/animal-rescue-game/ 。`vite.config.js` 用 `base: './'`。
 - 2026-10-15：小朋友用 GitHub Issue 提要求（教咗佢：Issues → New issue；`curl` GitHub API 讀，repo 係 public 唔使登入）。Issue #1：圓形大 Hub（`src/hubShape.js`／`src/hubPark.js`）、新開場動畫（`src/intro.js`，Owner 喺 `src/owner.js`）、取消 Expand Hub。其餘項目同小朋友答案記喺 `docs/plan.md`「GitHub Issue #1」。
+- 2026-10-15（下晝）：Hub 分區 + Magic Library + Sell Stall（`src/hubBuildings.js`）、電影感開場、Boss 彈飛返 Hub、刪拉桿、山樓梯、Biome 2 沙灘（`TRASH` 執垃圾）+ Captain Oil Spill、生態區 42×62。每做完一部分就 push 上 main（自動部署）。
 
 ## 點樣玩／開發
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。

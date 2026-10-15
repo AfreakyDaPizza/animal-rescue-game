@@ -30,6 +30,7 @@ import { createThirdPerson, updateThirdPerson, zoomCamera, applyRangerSkin } fro
 import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent } from './events.js';
+import { TRASH } from './biomes.js';
 import { rarityInfo } from './data/balance.js';
 import { itemMoney, formatKg } from './data/animals.js';
 
@@ -513,6 +514,9 @@ setPetActions({
 
 function currentInteraction() {
   const pos = camera.position;
+  // Biome 2 沙灘嘅垃圾：執走有少少錢
+  const trash = TRASH.find((t) => t.group.visible && Math.hypot(pos.x - t.x, pos.z - t.z) < 2);
+  if (trash) return { prompt: `<kbd>E</kbd> Clean up the ${trash.name} 🗑️ (+$${TRASH_REWARD})`, action: () => cleanTrash(trash) };
   const w = nearestAnimal(rescue);
   if (w) {
     if (rescue.carrying) return { prompt: '🙌 Your hands are full - take your animal to the Hub first' };
@@ -520,6 +524,16 @@ function currentInteraction() {
   }
   if (whereIs(pos.x, pos.z) !== 'Hub') return null;
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
+}
+
+const TRASH_REWARD = 20; // 執一件垃圾有幾多錢
+function cleanTrash(trash) {
+  trash.group.visible = false;
+  trash.back = time + 180; // 3 分鐘之後又有人亂拋
+  state.money += TRASH_REWARD;
+  play('coin');
+  popup(`♻️ You cleaned up a ${trash.name}! +$${TRASH_REWARD}`);
+  save();
 }
 
 function interact() {

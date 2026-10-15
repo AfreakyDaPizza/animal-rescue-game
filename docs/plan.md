@@ -112,13 +112,17 @@ src/data/questions.js ← 野生動物問題
 - ✅ Hub 變大圓形（`src/hubShape.js` 大細、`src/hubPark.js` 裝飾）：中間會噴水嘅噴水池、4 個石像（金熊貓、雲石象、金犀牛、雲石老虎）、雀仔飛圈、吊床（Owner 瞓喺度）+ 枱（杯水、pizza）、「COMING SOON」機器、遊樂場、燈柱、長櫈、花圃、一圈樹、Hub 底有大門口「ANIMAL RESCUE PARK」。繁殖機搬咗去噴水池下面（z = 40）。
 - ✅ 皮膚商店冇咗「Expand Hub」：嗰啲裝飾而家 Hub 本身就有；買過嘅退返代幣。
 - ✅ 新開場動畫（約 46 秒，可以跳過）：Owner 瞓吊床食 pizza → 覺得怪怪地，杯水震 → Boss 捉走動物（Owner 頭頂「!」）→ Owner 追唔到 → 手機搜尋「top tier ranger」→ Ranger 揸車由大門入嚟、握手 → 黑畫面「YOU are the ranger! Save the endangered animals to save the world. Upgrade your Treadmill and Student Table to improve!」
-- 未做（已經問咗小朋友）：
-  - Boss 撞到你 → 彈返 **Hub**，唔使答問題；隻動物返去生態區原位。
-  - 拉桿同 BIG PET FRENZY 秘密活動**一齊刪走**。
-  - Biome 2 重做：**沙灘 + 海**（沙、浪、石、要清嘅垃圾、大油船 Boss）。
-  - Biome 6 山整靚啲；爬山唔會慢（抱住動物落山先唔會俾 Boss 捉到）。
-  - 畫面再靚啲、多啲細節、動物再型啲。
-  - 生態區大少少、長少少、靚啲。
+- 小朋友試玩後（同日）：
+  - ✅ Hub 整齊啲：分區（Training Zone、入口廣場、Magic Library、Coming Soon、Breeding Lab、Owner's Garden、Playground），每區有地磚同牌，樹籬圍住噴水池；**燈柱刪走**。
+  - ✅ Index 石台改做 **Magic Library**（書架、飛嚟飛去嘅書、水晶球、魔法陣；`src/hubBuildings.js`）。
+  - ✅ **Sell Stall**（入口左邊，E 開；可以逐隻賣或者一次過賣晒背囊入面嘅寵物）；**Skin Shop 搬去入口右邊**。
+  - ✅ 開場動畫「好似電影」：上下黑邊、鏡頭慢慢郁、對白泡泡、畫面震、轉鏡頭閃黑；Owner／Ranger 公仔有大眼、眉、面珠等細節；吉普車有防滾架、後備胎、警示燈。
+  - ✅ Boss 撞到你 → 彈飛返 Hub（唔使答問題），動物走返去生態區。障礙物照舊答問題。
+  - ✅ 拉桿同 BIG PET FRENZY 刪走（舊「拉桿」每日任務自動換過）。
+  - ✅ Biome 6：山前面有樓梯（每級 < 0.45 米，唔使跳），企喺山上唔再減速（只係喺半空先限速）；瀑布、水池、礦洞、松樹、山頂金光圈、鷹、雪。
+  - ✅ Biome 2 重做：左邊海（浪、白泡、漏油大油輪 + 黑煙 + 油污）、右邊沙灘（棕櫚樹、遮陽傘、救生員塔、沙堡、蟹、海鷗）；**執垃圾**（E，+$20，3 分鐘後再出現）。Boss 改做 **Captain Oil Spill**（揸住漏油細油輪嘅船長）。
+  - ✅ 生態區大啲：42 闊 × 62 長（本來 36 × 50）。
+  - 未做：畫面再靚啲、動物再型啲（要問小朋友邊啲最想改）。
 
 ## 未做
 

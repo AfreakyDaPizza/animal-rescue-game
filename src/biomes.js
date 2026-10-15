@@ -2,7 +2,7 @@
 // 裝飾放喺兩邊，中間留條路（|x| < 3）俾玩家行。
 
 import * as THREE from 'three';
-import { addPlatform } from './world.js';
+import { addPlatform, addCollider } from './world.js';
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
 // 固定嘅「隨機」：每次開遊戲裝飾都喺同一個位，唔會成日變
@@ -98,88 +98,262 @@ function deforestation(scene, rect, rand) {
   return null;
 }
 
-// Biome 2：污染海洋 — 淺水、珊瑚、海草，仲有油污同膠樽
+// Biome 2：污染海灘（小朋友 2026-10-15 揀「沙灘 + 海」）：
+// 左邊係海（有浪、有隻漏油嘅大油輪），右邊係沙灘（棕櫚樹、遮陽傘、救生員塔、沙堡、蟹、海鷗）
+// 沙灘同淺水有垃圾：行埋去撳 E 執走（TRASH，main.js 處理）
+export const TRASH = [];
+const SHORE_X = -6; // 海同沙灘嘅分界
+function palmTree(scene, x, z, s = 1) {
+  const trunk = mat(0x8d6e63);
+  for (let i = 0; i < 6; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.45 * s, 0.75 * s, 0.45 * s), i % 2 ? trunk : mat(0x795548)), x + i * 0.08 * s, (0.375 + i * 0.72) * s, z);
+  const top = 4.5 * s;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(2.6 * s, 0.1 * s, 0.6 * s), mat(i % 2 ? 0x43a047 : 0x2e7d32));
+    leaf.geometry.translate(1.3 * s, 0, 0);
+    leaf.rotation.set(0, a, -0.45);
+    add(scene, leaf, x + 0.45 * s, top, z);
+  }
+  for (let i = 0; i < 3; i++) add(scene, new THREE.Mesh(new THREE.SphereGeometry(0.2 * s, 8, 6), mat(0x6d4c41)), x + 0.45 * s + Math.cos(i * 2.1) * 0.3 * s, top - 0.3 * s, z + Math.sin(i * 2.1) * 0.3 * s);
+}
 function ocean(scene, rect, rand, live) {
   const k = density(rect);
-  const w = rect.maxX - rect.minX;
   const d = rect.maxZ - rect.minZ;
-  const cx = (rect.minX + rect.maxX) / 2;
   const cz = (rect.minZ + rect.maxZ) / 2;
+  const seaW = SHORE_X - rect.minX;
+  const seaX = (rect.minX + SHORE_X) / 2;
 
-  // 珊瑚
-  const coralColors = [0xff7f50, 0xff6f91, 0xffc75f, 0xc34a36, 0x9b59b6];
-  for (let n = 0; n < 14 * k; n++) {
-    const [x, z] = sidePosition(rand, rect);
-    const coral = new THREE.Group();
-    const color = coralColors[n % coralColors.length];
-    for (let k = 0; k < 4; k++) {
-      const branch = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.8 + rand() * 0.8, 6), mat(color));
-      branch.position.set((rand() - 0.5) * 0.5, 0.5, (rand() - 0.5) * 0.5);
-      branch.rotation.set((rand() - 0.5) * 0.8, 0, (rand() - 0.5) * 0.8);
-      branch.castShadow = true;
-      coral.add(branch);
-    }
-    coral.position.set(x, 0, z);
-    scene.add(coral);
-  }
+  // 海底（深藍）+ 濕沙
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(seaW, 0.04, d), mat(0x0d47a1)), seaX, 0.01, cz, false);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.035, d), mat(0xbfa877)), SHORE_X + 1.2, 0.01, cz, false);
 
-  // 石
-  for (let n = 0; n < 6 * k; n++) {
-    const [x, z] = sidePosition(rand, rect);
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + rand() * 0.4), mat(0x7a7a7a, { flatShading: true }));
-    add(scene, rock, x, 0.2, z);
-  }
-
-  // 海草（會擺嚟擺去）
-  const seaweed = [];
-  for (let n = 0; n < 20 * k; n++) {
-    const [x, z] = sidePosition(rand, rect);
-    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.2 + rand(), 4), mat(0x2e8b57));
-    blade.geometry.translate(0, (1.2 + rand()) / 2, 0); // 由根部擺動
-    add(live, blade, x, 0, z, false);
-    seaweed.push({ blade, phase: rand() * 6 });
-  }
-
-  // 膠樽（污染）
-  const bottleMat = mat(0x9fd8ef, { transparent: true, opacity: 0.7 });
-  for (let n = 0; n < 6 * k; n++) {
-    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 8), bottleMat);
-    bottle.rotation.z = Math.PI / 2;
-    bottle.rotation.y = rand() * Math.PI;
-    add(scene, bottle, (rand() - 0.5) * (w - 4), 0.1, rect.minZ + 1 + rand() * (d - 2), false);
-  }
-
-  // 水（半透明，有波浪）
-  const waterGeo = new THREE.PlaneGeometry(w, d, Math.round(w), Math.round(d));
+  // 海面：有浪（頂點上下郁）
+  const waterGeo = new THREE.PlaneGeometry(seaW, d, Math.round(seaW), Math.round(d / 1.5));
   waterGeo.rotateX(-Math.PI / 2);
-  const water = new THREE.Mesh(
-    waterGeo,
-    new THREE.MeshStandardMaterial({ color: 0x1e88c8, transparent: true, opacity: 0.45, roughness: 0.2, metalness: 0.1 }),
-  );
-  water.position.set(cx, 0.35, cz);
+  const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({ color: 0x29b6f6, transparent: true, opacity: 0.7, roughness: 0.15, metalness: 0.1 }));
+  water.position.set(seaX, 0.3, cz);
   live.add(water);
-  const basePositions = waterGeo.attributes.position.array.slice();
+  const base = waterGeo.attributes.position.array.slice();
+  // 海浪白泡：沖上沙灘又退返
+  const foam = new THREE.Mesh(new THREE.PlaneGeometry(1.2, d), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+  foam.rotation.x = -Math.PI / 2;
+  live.add(foam);
 
-  // 油污（浮喺水面嘅黑色一灘灘）
-  const oilMat = mat(0x1a1a22, { transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.6 });
-  for (let n = 0; n < 4 * k; n++) {
-    const oil = new THREE.Mesh(new THREE.CircleGeometry(0.8 + rand() * 0.8, 16), oilMat);
-    oil.rotation.x = -Math.PI / 2;
-    oil.scale.y = 0.6 + rand() * 0.5;
-    add(scene, oil, (rand() - 0.5) * (w - 6), 0.38, rect.minZ + 2 + rand() * (d - 4), false);
+  // 漏油嘅大油輪（喺海度，擋住唔行得穿）
+  const ship = new THREE.Group();
+  const sx = rect.minX + 7;
+  const sz = cz - 6;
+  ship.position.set(sx, 0, sz);
+  ship.rotation.y = 0.12;
+  const hull = mat(0x263238, { metalness: 0.4, roughness: 0.4 });
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(7, 2.2, 20), hull), 0, 1.0, 0);
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(7.05, 0.8, 20.05), mat(0xb71c1c)), 0, 0.2, 0);
+  const bow = add(ship, new THREE.Mesh(new THREE.BoxGeometry(4.95, 2.2, 4.95), hull), 0, 1.0, -10);
+  bow.rotation.y = Math.PI / 4;
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(7.1, 0.25, 20.1), mat(0xeceff1)), 0, 2.1, 0);
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(5, 3.4, 4), mat(0xeceff1)), 0, 3.8, 6.5); // 駕駛樓
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.6, 0.05), mat(0x4fc3f7, { emissive: 0x01579b, emissiveIntensity: 0.4 })), 0, 4.6, 4.48, false); // 窗
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(1.4, 3, 1.4), mat(0xd32f2f)), 0, 6.5, 7.5); // 煙囪
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 1.5), mat(0x212121)), 0, 8.1, 7.5);
+  for (let i = 0; i < 3; i++) add(ship, new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.6, 16), mat(0x37474f)), 0, 2.4, -6 + i * 4); // 油缸
+  add(ship, new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 2.2), mat(0x111111)), 3.56, 1.0, -2); // 爛咗個窿
+  const shipLabel = makeTextBlock('OIL', 0xffd600);
+  shipLabel.position.set(3.53, 1.2, 2.5);
+  shipLabel.rotation.y = Math.PI / 2;
+  ship.add(shipLabel);
+  scene.add(ship);
+  for (let i = -10; i <= 9; i += 2.5) addCollider(sx + Math.sin(0.12) * i, sz + Math.cos(0.12) * i, 3.6);
+  // 黑煙
+  const smoke = [];
+  for (let i = 0; i < 6; i++) {
+    const puff = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0x212121, transparent: true, opacity: 0.7 }));
+    live.add(puff);
+    smoke.push(puff);
   }
+  // 油污：由個窿漏出嚟，一大灘浮喺海面（會慢慢變大變細）
+  const oilMat = mat(0x0d0d12, { transparent: true, opacity: 0.85, roughness: 0.05, metalness: 0.8 });
+  const slicks = [];
+  for (let n = 0; n < 7; n++) {
+    const oil = new THREE.Mesh(new THREE.CircleGeometry(1.2 + rand() * 1.4, 18), oilMat);
+    oil.rotation.x = -Math.PI / 2;
+    oil.position.set(sx + 4.5 + rand() * 4, 0.36, sz - 6 + rand() * 12);
+    live.add(oil);
+    slicks.push({ oil, phase: rand() * 6 });
+  }
+
+  // 沙灘：棕櫚樹、遮陽傘 + 毛巾、救生員塔、沙堡、石、貝殼、海星
+  const beachX = () => SHORE_X + 4 + rand() * (rect.maxX - SHORE_X - 6);
+  const okX = (x) => Math.abs(x) > 3.5; // 中間條路留空
+  for (let n = 0; n < 4 * k; n++) {
+    const x = rect.maxX - 2.5 - rand() * 3;
+    palmTree(scene, x, rect.minZ + 3 + rand() * (d - 6), 0.9 + rand() * 0.3);
+  }
+  const umbrellaColors = [0xff5252, 0xffeb3b, 0x40c4ff, 0x69f0ae];
+  for (let n = 0; n < 3; n++) {
+    const x = 8 + rand() * 8;
+    const z = rect.minZ + 8 + n * (d / 3.2);
+    add(scene, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), mat(0xeeeeee)), x, 1.3, z);
+    const top = add(scene, new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.7, 8), mat(umbrellaColors[n % 4])), x, 2.6, z);
+    top.rotation.z = 0.15;
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1, 0.03, 2), mat(umbrellaColors[(n + 1) % 4])), x + 1.2, 0.02, z + 0.4, false); // 毛巾
+  }
+  // 救生員塔
+  {
+    const x = 15;
+    const z = rect.maxZ - 12;
+    const wood = mat(0xffffff);
+    for (const [dx, dz] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 0.2), wood), x + dx, 1.5, z + dz);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, 2.2), wood), x, 3.0, z);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.0, 0.1), mat(0xe53935)), x, 3.6, z - 1.05);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 2.6), mat(0xe53935)), x, 4.6, z);
+    for (const [dx, dz] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.1), wood), x + dx, 3.85, z + dz);
+    addCollider(x, z, 1.3);
+  }
+  // 沙堡
+  {
+    const x = 6;
+    const z = rect.minZ + 14;
+    const sand = mat(0xe6cf98, { flatShading: true });
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 2), sand), x, 0.4, z);
+    for (const [dx, dz] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) {
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.4, 0.6), sand), x + dx, 0.7, z + dz);
+      add(scene, new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.5, 4), sand), x + dx, 1.65, z + dz).rotation.y = Math.PI / 4;
+    }
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.02), mat(0x795548)), x, 1.05, z);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.02), mat(0xff5252)), x + 0.2, 1.2, z, false);
+  }
+  for (let n = 0; n < 8 * k; n++) {
+    const x = beachX();
+    if (!okX(x)) continue;
+    const z = rect.minZ + 1 + rand() * (d - 2);
+    if (n % 3 === 0) add(scene, new THREE.Mesh(new THREE.DodecahedronGeometry(0.4 + rand() * 0.4), mat(0x9e9e9e, { flatShading: true })), x, 0.2, z);
+    else {
+      const star = add(scene, new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.06, 5), mat(n % 2 ? 0xff7043 : 0xffab91)), x, 0.03, z, false);
+      star.rotation.y = rand() * 3;
+    }
+  }
+
+  // 垃圾（可以執）：膠樽、罐、膠袋、舊車胎
+  const trashKinds = [
+    { name: 'plastic bottle', make: () => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.42, 8), mat(0x80deea, { transparent: true, opacity: 0.75 }));
+      m.rotation.z = Math.PI / 2;
+      return m;
+    } },
+    { name: 'soda can', make: () => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.26, 10), mat(0xe53935, { metalness: 0.7 }));
+      m.rotation.z = Math.PI / 2;
+      return m;
+    } },
+    { name: 'plastic bag', make: () => new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), mat(0xffffff, { transparent: true, opacity: 0.6 })) },
+    { name: 'old tyre', make: () => {
+      const m = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.14, 8, 16), mat(0x212121));
+      m.rotation.x = Math.PI / 2;
+      return m;
+    } },
+  ];
+  TRASH.length = 0;
+  for (let n = 0; n < 14; n++) {
+    const kind = trashKinds[n % trashKinds.length];
+    const x = n % 3 === 0 ? SHORE_X - 1 - rand() * 3 : SHORE_X + 1 + rand() * (rect.maxX - SHORE_X - 4);
+    const z = rect.minZ + 3 + rand() * (d - 6);
+    const g = new THREE.Group();
+    const m = kind.make();
+    m.castShadow = true;
+    g.add(m);
+    // 細細粒發光圈，等小朋友見到
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.55, 20), new THREE.MeshBasicMaterial({ color: 0x76ff03, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.y = -0.08;
+    g.add(halo);
+    g.position.set(x, 0.15, z);
+    g.rotation.y = rand() * 3;
+    live.add(g);
+    TRASH.push({ x, z, name: kind.name, group: g, halo, back: 0 });
+  }
+
+  // 蟹（打橫行）同海鷗
+  const crabs = [];
+  for (let n = 0; n < 4; n++) {
+    const g = new THREE.Group();
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.38), mat(0xe64a19)), 0, 0.15, 0, false);
+    for (const s of [-1, 1]) {
+      add(g, new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.16), mat(0xff7043)), s * 0.35, 0.2, -0.22, false);
+      add(g, new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.06), mat(0x111111)), s * 0.1, 0.32, -0.15, false);
+    }
+    live.add(g);
+    crabs.push({ g, x: SHORE_X + 3 + rand() * 6, z: rect.minZ + 5 + rand() * (d - 10), phase: rand() * 6 });
+  }
+  const gulls = [0, 1, 2, 3].map((i) => {
+    const g = new THREE.Group();
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.6), mat(0xffffff)), 0, 0, 0, false);
+    const wings = [-1, 1].map((s) => {
+      const p = new THREE.Group();
+      p.position.x = s * 0.15;
+      add(p, new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 0.3), mat(0xeceff1)), s * 0.4, 0, 0, false);
+      g.add(p);
+      return p;
+    });
+    live.add(g);
+    return { g, wings, r: 6 + i * 2, h: 8 + i, speed: 0.4 + i * 0.07, phase: i * 1.7 };
+  });
 
   return (dt, t) => {
     const pos = waterGeo.attributes.position;
-    for (let k = 0; k < pos.count; k++) {
-      const x = basePositions[k * 3];
-      const z = basePositions[k * 3 + 2];
-      pos.array[k * 3 + 1] = Math.sin(x * 0.8 + t * 1.5) * 0.06 + Math.cos(z * 0.6 + t) * 0.06;
+    for (let i = 0; i < pos.count; i++) {
+      const x = base[i * 3];
+      const z = base[i * 3 + 2];
+      pos.array[i * 3 + 1] = Math.sin(x * 0.7 + t * 1.8) * 0.12 + Math.cos(z * 0.5 + t * 1.2) * 0.08;
     }
     pos.needsUpdate = true;
     waterGeo.computeVertexNormals();
-    for (const s of seaweed) s.blade.rotation.z = Math.sin(t * 1.2 + s.phase) * 0.25;
+    const wave = (Math.sin(t * 0.9) + 1) / 2;
+    foam.position.set(SHORE_X - 0.4 + wave * 2.2, 0.33, cz);
+    foam.material.opacity = 0.35 + (1 - wave) * 0.5;
+    smoke.forEach((p, i) => {
+      const k = (t * 0.25 + i / smoke.length) % 1;
+      p.position.set(sx + Math.sin(0.12) * 7.5 + k * 2, 8.5 + k * 7, sz + Math.cos(0.12) * 7.5 + k * 3);
+      p.scale.setScalar(0.8 + k * 2.5);
+      p.material.opacity = 0.7 * (1 - k);
+    });
+    for (const s of slicks) s.oil.scale.setScalar(1 + Math.sin(t * 0.5 + s.phase) * 0.12);
+    for (const c of crabs) {
+      c.g.position.set(c.x + Math.sin(t * 0.8 + c.phase) * 2.5, 0, c.z);
+      c.g.rotation.y = Math.sin(t * 8) * 0.1;
+    }
+    for (const gl of gulls) {
+      const a = t * gl.speed + gl.phase;
+      gl.g.position.set(SHORE_X + Math.cos(a) * gl.r, gl.h, cz + Math.sin(a) * gl.r * 2);
+      gl.g.rotation.y = -a + Math.PI;
+      const flap = Math.sin(t * 9 + gl.phase) * 0.6;
+      gl.wings[0].rotation.z = flap;
+      gl.wings[1].rotation.z = -flap;
+    }
+    for (const tr of TRASH) {
+      if (tr.back && t > tr.back) {
+        tr.back = 0;
+        tr.group.visible = true; // 過咗一陣又有人亂拋垃圾……
+      }
+      tr.halo.material.opacity = 0.35 + Math.sin(t * 4) * 0.25;
+      tr.group.position.y = tr.x < SHORE_X ? 0.3 + Math.sin(t * 2 + tr.z) * 0.08 : 0.15; // 喺水度嘅會浮
+    }
   };
+}
+
+// 一塊寫咗字嘅方塊（例如油輪上面嘅「OIL」）
+function makeTextBlock(text, color) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 96;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+  ctx.font = 'bold 84px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 52);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(3, 1.1), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
 }
 
 // Biome 3：雀鳥偷獵場 — 熱帶森林、花，色彩繽紛嘅雀喺天上飛

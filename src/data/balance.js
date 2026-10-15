@@ -5,7 +5,7 @@
 // speed：原稿數值再加 10%（小朋友 2026-10-10 要求）；Biome 6 係小朋友後加
 export const BOSSES = [
   { name: 'Lumberjack', speed: 550, iq: 200 },
-  { name: 'Factory Waste', speed: 2200, iq: 1000 },
+  { name: 'Captain Oil Spill', speed: 2200, iq: 1000 },
   { name: 'Hunter', speed: 33000, iq: 45000 },
   { name: 'Oil Driller', speed: 330000, iq: 450000 },
   { name: 'Smuggler King', speed: 2200000, iq: 3000000 },

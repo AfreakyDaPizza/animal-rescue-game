@@ -19,8 +19,8 @@ import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 import { HUB } from './hubShape.js';
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
-export const BIOME_LENGTH = 50;                                     // 每個生態區有幾長
-export const STEM = { minX: -18, maxX: 18, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道
+export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
+export const STEM = { minX: -21, maxX: 21, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道（小朋友 2026-10-15：生態區大啲、長啲）
 
 const WALL_HEIGHT = 3.5;
 const WALL_THICKNESS = 1;
