@@ -31,7 +31,7 @@ import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent } from './events.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD } from './data/balance.js';
 import { itemMoney, formatKg } from './data/animals.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -526,7 +526,6 @@ function currentInteraction() {
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
 }
 
-const TRASH_REWARD = 20; // 執一件垃圾有幾多錢
 function cleanTrash(trash) {
   trash.group.visible = false;
   trash.back = time + 180; // 3 分鐘之後又有人亂拋

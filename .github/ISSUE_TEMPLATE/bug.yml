@@ -1,0 +1,40 @@
+name: 🐛 Bug (something is broken)
+description: Something in the game doesn't work the way it should
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **One bug = one Issue!**
+        ⚠️ Everyone in the world can read this. No real names, school, home address, or photos of yourself.
+  - type: textarea
+    id: did
+    attributes:
+      label: What did you do?
+      description: The steps, one by one.
+      placeholder: |
+        1. Borrowed the panda in Biome 1
+        2. Ran back to the Hub
+        3. Pressed E at Reproduce Machine 1
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What went wrong?
+      placeholder: The panda disappeared and the machine stayed empty.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened?
+      placeholder: The panda should go into the machine.
+    validations:
+      required: true
+  - type: textarea
+    id: picture
+    attributes:
+      label: Picture (optional)
+      description: Paste a screenshot. Press Win + Shift + S, then Ctrl + V here.

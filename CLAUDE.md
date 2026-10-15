@@ -42,6 +42,7 @@
 - 2026-10-15（下晝）：Hub 分區 + Magic Library + Sell Stall（`src/hubBuildings.js`）、電影感開場、Boss 彈飛返 Hub、刪拉桿、山樓梯、Biome 2 沙灘（`TRASH` 執垃圾）+ Captain Oil Spill、生態區 42×62。每做完一部分就 push 上 main（自動部署）。
 
 ## 點樣玩／開發
+- **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。
 - 地圖尺寸喺 `src/world.js` 頂部；-z 係「上」（生態區方向）。暫定數值一覽見 `docs/plan.md`。
 - 開發模式 console 有 `window.game`（camera、dayNight、scene、state、hub、rescue、spawn(biome, rarity) 等）；試玩 script 可以 `#start.hidden = true` 跳過開始畫面（無頭瀏覽器鎖唔到滑鼠）。

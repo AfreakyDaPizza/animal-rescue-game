@@ -1,0 +1,50 @@
+name: 💡 New idea or change
+description: Something new to add, or something to change in the game
+title: "[Idea] "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **One idea = one Issue!** Got 3 ideas? Make 3 Issues. 🙂
+        ⚠️ Everyone in the world can read this. No real names, school, home address, or photos of yourself.
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want?
+      description: Tell me your idea in a few sentences.
+      placeholder: Make the panda statue in the Hub golden and spinning.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where in the game?
+      options:
+        - Hub
+        - Biome 1 - Deforestation Site
+        - Biome 2 - Polluted Beach
+        - Biome 3 - Bird Poaching Site
+        - Biome 4 - Arctic Meltdown
+        - Biome 5 - Smuggler's Compound
+        - Biome 6 - Mining Mountain
+        - Cutscene
+        - Shop / Index / Quests / menus
+        - Animals or pets
+        - Bosses
+        - Somewhere else
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: How will I know it's done?
+      description: What will you see or be able to do when it works?
+      placeholder: When I walk to the fountain, the panda statue is gold and spins slowly.
+    validations:
+      required: true
+  - type: textarea
+    id: picture
+    attributes:
+      label: Picture (optional)
+      description: Paste a screenshot or a drawing. Press Win + Shift + S, then Ctrl + V here.

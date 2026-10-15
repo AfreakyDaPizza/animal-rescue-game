@@ -1,5 +1,9 @@
+// 🎮 GAME NUMBERS — you can change these yourself! (see CONTRIBUTING.md)
+// Only change the NUMBERS. Keep every comma , and bracket [ ] { } exactly where it is.
+// Lists with 6 numbers go in order: Biome 1, Biome 2, Biome 3, Biome 4, Biome 5, Biome 6.
+//
 // 遊戲數值：想遊戲易啲／難啲，改呢度就得
-// 每個 array 有 5 格，順序係 Biome 1 → Biome 5
+// 每個 array 有 6 格，順序係 Biome 1 → Biome 6
 
 // ---- Boss（原稿數值）----
 // speed：原稿數值再加 10%（小朋友 2026-10-10 要求）；Biome 6 係小朋友後加
@@ -11,7 +15,6 @@ export const BOSSES = [
   { name: 'Smuggler King', speed: 2200000, iq: 3000000 },
   { name: 'Mega Digger', speed: 22000000, iq: 30000000 },
 ];
-export const BOSS_STUN_SECONDS = 3;   // 答啱 Boss 問題，佢暈幾耐
 
 // ---- 寵物每秒賺幾多錢：生態區底價 × (1 + √重量 × 0.1) × 稀有度 ----
 // 越遠嘅生態區底價越高（小朋友話遠嘅要賺多啲）；重啲都賺多啲，但唔會爆錶
@@ -83,3 +86,6 @@ export const plotUpgradeCost = (plotLevel) => Math.round(200 * 2.2 ** plotLevel 
 
 // ---- 賣寵物：賣得幾錢 = 佢 1 分鐘賺到嘅錢 ----
 export const SELL_SECONDS = 60;
+
+// ---- Biome 2 沙灘執垃圾：執一件有幾錢 ----
+export const TRASH_REWARD = 20;

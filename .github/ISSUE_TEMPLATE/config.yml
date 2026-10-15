@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📜 Team rules (read me first!)
+    url: https://github.com/AfreakyDaPizza/animal-rescue-game/blob/main/CONTRIBUTING.md
+    about: How to ask for changes, stay safe online, and tweak the game numbers yourself.
