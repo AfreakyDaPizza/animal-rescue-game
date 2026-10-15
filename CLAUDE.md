@@ -41,6 +41,8 @@
 - 2026-10-15：小朋友用 GitHub Issue 提要求（教咗佢：Issues → New issue；`curl` GitHub API 讀，repo 係 public 唔使登入）。Issue #1：圓形大 Hub（`src/hubShape.js`／`src/hubPark.js`）、新開場動畫（`src/intro.js`，Owner 喺 `src/owner.js`）、取消 Expand Hub。其餘項目同小朋友答案記喺 `docs/plan.md`「GitHub Issue #1」。
 - 2026-10-15（下晝）：Hub 分區 + Magic Library + Sell Stall（`src/hubBuildings.js`）、電影感開場、Boss 彈飛返 Hub、刪拉桿、山樓梯、Biome 2 沙灘（`TRASH` 執垃圾）+ Captain Oil Spill、生態區 42×62。每做完一部分就 push 上 main（自動部署）。
 
+- 2026-10-15（夜）：Issue #2（BUG 02 + IDEA 01）：修咗吊床 Owner 反轉（`lieOnHammock` 改仰瞓，commit 72c0785，Refs #2）。Issue 留咗 checklist 同兩條問題（Arctic Smeltdown／Smugglers Compound 點 redesign；2.5 分鐘前變 dawn 係咪指黃昏）。未做：25 隻寵物開閘 → Laboratory → 四隻手 Mutated Scientist Poacher Boss（無人機、腐化動物、傳送門 Boss、紅框拍手、Solar Energy Capsule×4）→ 結局動畫＋黑幕字；閘外海灘睇流星＋秘密結局「THE COLLAB」。
+
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。
