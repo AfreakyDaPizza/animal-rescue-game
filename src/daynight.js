@@ -71,9 +71,10 @@ export function updateDayNight(dn, dt) {
   dn.blend += Math.sign(target - dn.blend) * Math.min(Math.abs(target - dn.blend), dt / FADE);
 
   // 黃昏：白天最後 2.5 分鐘，慢慢（大約 8 秒）變橙；夜晚／天光就慢慢褪返
-  const duskTarget = !dn.isNight && dn.timeLeft <= DUSK_START ? 1 : 0;
-  dn.dusk += Math.sign(duskTarget - dn.dusk) * Math.min(Math.abs(duskTarget - dn.dusk), dt / 8);
-  const late = dn.isNight ? 1 : Math.max(0, Math.min(1, 1 - dn.timeLeft / DUSK_START)); // 越接近入夜越深色
+  const duskTarget = !dn.isNight && (dn.forceDusk || dn.timeLeft <= DUSK_START) ? 1 : 0;
+  dn.dusk += Math.sign(duskTarget - dn.dusk) * Math.min(Math.abs(duskTarget - dn.dusk), dt / (dn.forceDusk ? 2 : 8)); // 行入北極 2 秒變色
+  let late = dn.isNight ? 1 : Math.max(0, Math.min(1, 1 - dn.timeLeft / DUSK_START)); // 越接近入夜越深色
+  if (dn.forceDusk && !dn.isNight) late = Math.max(late, 0.3); // 北極：橙粉色帶少少紫，北極光最靚
   const d = dn.dusk;
   // 白天色 → 黃昏色（d），黃昏早段 → 晚段（late）
   _a.sky.lerpColors(DUSK.sky, DUSK_LATE.sky, late);

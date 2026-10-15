@@ -736,6 +736,7 @@ renderer.setAnimationLoop((timestamp) => {
     const it = currentInteraction();
     setPrompt(it?.prompt ?? null);
     updateBossSigns(state.speed, state.iq);
+    dayNight.forceDusk = location === BIOMES[3].name; // Issue #2：Arctic Meltdown 永遠係黃昏天（夜晚照樣入夜）
     updateDayNight(dayNight, dt);
     updateHud(dayNight, location);
   }
