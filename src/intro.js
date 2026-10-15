@@ -121,7 +121,7 @@ export function createIntro(scene, camera) {
   ranger.g.visible = false;
   root.add(ranger.g);
   const jeep = buildJeep();
-  jeep.g.position.set(PARK_GATE.x, 0, PARK_GATE.z + 40);
+  jeep.g.position.set(PARK_GATE.x, 0, PARK_GATE.z + 34); // 由實驗室門口嗰度開過嚟
   root.add(jeep.g);
 
   // 「?」（覺得怪怪地）

@@ -89,3 +89,17 @@ export const SELL_SECONDS = 60;
 
 // ---- Biome 2 沙灘執垃圾：執一件有幾錢 ----
 export const TRASH_REWARD = 20;
+
+// ---- Laboratory + Mutated Scientist Poacher（小朋友 Issue #2）----
+// 圖鑑登記夠幾多隻動物，Hub 底個大門先會開
+export const LAB_UNLOCK_PETS = 25;
+// Boss 戰：每一輪佢會放無人機、叫腐化動物、開傳送門叫 Boss、用手拍你；之後佢會攰
+export const LAB_DRONES = 3; // 每輪幾多部炸彈無人機（之後每輪多 1 部）
+export const LAB_CORRUPTED_ANIMALS = 4; // 每輪叫幾多隻腐化動物
+export const LAB_CORRUPTED_SECONDS = 30; // 腐化動物追你幾多秒，之後變灰燼
+export const LAB_PORTAL_BOSSES = 2; // 傳送門出幾多個生態區 Boss
+export const LAB_PORTAL_SECONDS = 60; // 傳送門 Boss 追你幾多秒，之後返入傳送門
+export const LAB_SQUASH_WARNING = 1.3; // 紅框閃幾多秒隻手先拍落嚟（越大越易避）
+export const LAB_TIRED_SECONDS = 30; // 佢攰咗幾多秒（呢段時間要帶佢隻手拍落 Solar Energy Capsule）
+export const LAB_CAPSULE_HITS = 4; // 要拍中幾多次 Capsule 先打得低佢
+export const LAB_REWARD = 1000; // 打贏 Owner 俾你幾多錢

@@ -343,13 +343,14 @@ function buildGate(root, live) {
     live.add(door);
     return door;
   });
-  // 門外：一條路 + 草地（開場動畫架車喺呢度行）
-  add(root, new THREE.BoxGeometry(6, 0.05, 60), mat(0x616161), x, 0.02, z + 30, false);
-  const outside = add(root, new THREE.BoxGeometry(70, 0.5, 60), mat(0x689f38), x, -0.27, z + 30, false);
+  // 門外：一條路（去 Laboratory 門口）+ 大草地（開場動畫架車喺呢度行）
+  add(root, new THREE.BoxGeometry(6, 0.05, 38), mat(0x616161), x, 0.02, z + 19, false);
+  const outside = add(root, new THREE.BoxGeometry(150, 0.5, 130), mat(0x689f38), x, -0.27, z + 65, false);
   outside.receiveShadow = true;
-  for (let i = 0; i < 14; i++) {
+  // 樹種喺前院同實驗室外面（Issue #2：中間留位俾實驗室）
+  for (let i = 0; i < 26; i++) {
     const side = i % 2 ? 1 : -1;
-    tree(root, x + side * (7 + (i * 7) % 18), z + 6 + i * 3.8, 0.9 + (i % 3) * 0.15, i % 3 === 0 ? 1 : 0);
+    tree(root, x + side * (34 + (i * 7) % 16), z + 4 + i * 4.4, 0.9 + (i % 3) * 0.15, i % 3 === 0 ? 1 : 0);
   }
 }
 

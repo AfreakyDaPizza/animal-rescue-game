@@ -26,6 +26,10 @@ const DEFAULTS = {
   tutorialDone: false,
   plotLevel: 0, // 地塊升咗幾多次（每次 +1 隻位）
   machines: [null, null, null, null, null], // 5 部繁殖機：{ name, biome, endsAt }
+  labUnlocked: false, // Issue #2：圖鑑夠 25 隻，睇咗開門動畫
+  labVisited: false, // 行入過實驗室（之後唔再指路）
+  labBossDefeated: false, // 打贏咗 Mutated Scientist Poacher
+  labRewardPaid: false, // Owner 俾咗 $1000 未
 };
 
 export const state = load();

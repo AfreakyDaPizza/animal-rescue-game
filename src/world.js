@@ -18,6 +18,7 @@ import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
 import { HUB } from './hubShape.js';
+import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z } from './labShape.js';
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
 export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
@@ -43,6 +44,9 @@ export function biomeRect(i) {
 
 // 玩家而家喺邊？（Hub 或者第幾個生態區）
 export function whereIs(x, z) {
+  // Hub 大門外面（Issue #2）：前院同實驗室
+  if (z > LAB_DOOR_Z + 0.5) return 'Laboratory';
+  if (z > STEM.maxZ && Math.hypot(x - HUB.cx, z - HUB.cz) > HUB.r - 0.3) return 'Outside the Park';
   if (z > STEM.maxZ) return 'Hub';
   const i = Math.min(BIOMES.length - 1, Math.floor((STEM.maxZ - z) / BIOME_LENGTH));
   return BIOMES[i].name;
@@ -58,6 +62,8 @@ export function addCollider(x, z, r) {
 // 一個點（加埋公仔嘅闊度 radius）行唔行得到？
 // 夜晚：生態區入口鎖住（有道閘）
 export const gate = { locked: false, mesh: null };
+// Hub 底大門（ANIMAL RESCUE PARK）：圖鑑有 25 隻先開（Issue #2）；開咗先行得出去前院同實驗室
+export const parkGate = { open: false };
 
 // ---- 石台（可以跳上去企）----
 // { minX, maxX, minZ, maxZ, top }：top 係台面有幾高
@@ -90,7 +96,8 @@ export function isWalkable(x, z, radius, feetY = 0) {
   const inHub = z >= HUB.minZ + r && Math.hypot(x - HUB.cx, z - HUB.cz) <= HUB.r - r;
   // 通道向下伸入 Hub 少少，等兩部分接得順，唔會喺接口卡住
   const stemIntoHub = { ...STEM, maxZ: 8 };
-  if (!inHub && !inRect(stemIntoHub)) return false;
+  const outside = parkGate.open && (inRect(GATE_LANE) || inRect(YARD) || inRect(LAB_DOOR) || inRect(LAB));
+  if (!inHub && !inRect(stemIntoHub) && !outside) return false;
   return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius);
 }
 

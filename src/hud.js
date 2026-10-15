@@ -10,7 +10,7 @@ import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney } from './data/anima
 import { BOSSES, rarityInfo, trainingGain, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
-import { plotSlots, MAX_TRAINING_LEVEL, MACHINE_LEVELS } from './data/balance.js';
+import { plotSlots, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_UNLOCK_PETS } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
@@ -95,9 +95,11 @@ let zoneTimer;
 export function showZoneTitle(location) {
   const el = $('zone-title');
   const i = BIOMES.findIndex((b) => b.name === location);
-  el.querySelector('small').textContent = i >= 0 ? `Biome ${i + 1}` : 'Welcome back to';
-  el.querySelector('span').textContent = i >= 0 ? BIOMES[i].short : 'The Hub';
-  el.style.setProperty('--zone-color', i >= 0 ? BIOME_THEMES[i].top : '#ffd54f');
+  // Issue #2：大門外面
+  const extra = { Laboratory: ['⚠️ Danger zone', '🔬 The Laboratory', '#b388ff'], 'Outside the Park': ['Outside the gate', 'Lab Road', '#76ff03'] }[location];
+  el.querySelector('small').textContent = extra ? extra[0] : i >= 0 ? `Biome ${i + 1}` : 'Welcome back to';
+  el.querySelector('span').textContent = extra ? extra[1] : i >= 0 ? BIOMES[i].short : 'The Hub';
+  el.style.setProperty('--zone-color', extra ? extra[2] : i >= 0 ? BIOME_THEMES[i].top : '#ffd54f');
   el.classList.remove('show');
   void el.offsetWidth;
   el.classList.add('show');
@@ -386,7 +388,8 @@ function animalIndexHtml() {
   let html = `
     <div class="progress"><div style="width:${(found / ANIMALS.length) * 100}%"></div></div>
     <p class="index-summary"><b>${found} / ${ANIMALS.length}</b> species registered.
-      Rescue a new species for a reward, and complete a whole biome for a big bonus!</p>`;
+      Rescue a new species for a reward, and complete a whole biome for a big bonus!</p>
+    <p class="index-summary">${found >= LAB_UNLOCK_PETS ? '🔓 The gate at the bottom of the Hub is open! 🔬 Go to the Laboratory!' : `🔒 Find <b>${LAB_UNLOCK_PETS - found}</b> more to open the gate at the bottom of the Hub (${found} / ${LAB_UNLOCK_PETS})`}</p>`;
   BIOMES.forEach((biome, b) => {
     const animals = animalsInBiome(b);
     const got = animals.filter((a) => state.indexFound.includes(a.name)).length;

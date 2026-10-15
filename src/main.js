@@ -5,7 +5,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders } from './world.js';
+import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate } from './world.js';
 import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
@@ -31,7 +31,12 @@ import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent } from './events.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD, LAB_UNLOCK_PETS } from './data/balance.js';
+import { buildLab, updateLabGuide, openParkGate } from './lab.js';
+import { movie, updateMovie, finishMovie } from './movie.js';
+import { playUnlockScene } from './labScenes.js';
+import { setGateOpen } from './hubPark.js';
+import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -71,6 +76,7 @@ const stars = new THREE.Points(
 scene.add(stars);
 
 const updateWorld = buildWorld(scene);
+const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const hub = createHub(scene);
 // 舊存檔買過「擴建 Hub」：而家 Hub 免費變大咗，退返啲代幣
 let hubRefund = 0;
@@ -237,11 +243,12 @@ intro.onDone = () => {
     save();
     announce(`🏗️ Your Hub is now BIG for free! You got back 🎟️ ${hubRefund} Skin Tokens.`);
   }
+  if (state.labUnlocked) setGateOpen(1); // 開場動畫會閂返個閘
   startTutorial(tutorial); // 新玩家：開始教學
   announceSpecials(rescue.wild.filter((w) => w.special));
 };
 
-const isPaused = () => intro.active || !startScreen.hidden || isPanelOpen() || isQuizOpen();
+const isPaused = () => intro.active || movie.active || !startScreen.hidden || isPanelOpen() || isQuizOpen();
 
 // Shift Lock（好似 Roblox）：Shift = 鎖住滑鼠（滑鼠轉鏡頭）；再撳 = 放開滑鼠（見到滑鼠，右鍵拖轉鏡頭）
 function toggleShiftLock() {
@@ -338,7 +345,7 @@ async function quiz(options) {
 document.getElementById('quiz-continue').addEventListener('click', finishQuiz);
 
 window.addEventListener('keydown', (e) => {
-  if (intro.active) return; // 開場動畫：撳掣只係跳過
+  if (intro.active || movie.active) return; // 開場動畫／細電影：撳掣只係跳過
   if (isQuizOpen()) {
     if (e.code === 'Enter' || e.code === 'NumpadEnter') finishQuiz();
     return; // 問緊問題時其他掣唔做嘢（1–4 係揀答案）
@@ -629,6 +636,23 @@ function handleEvents() {
 }
 let lastEventId = null;
 
+// ================= Issue #2：開門動畫 =================
+function startUnlockScene() {
+  player.controls.unlock();
+  closePanel();
+  playUnlockScene({
+    scene, camera,
+    onDone() {
+      // 播完：企喺大門前面，望住大門（+z）
+      teleportPlayer(player, 0, 50);
+      camera.rotation.set(0, Math.PI, 0, 'YXZ');
+      announce('🔓 The gate is open! Follow the green arrows to the 🔬 Laboratory!');
+      play('magic');
+      resume();
+    },
+  });
+}
+
 // ================= 主迴圈 =================
 
 let pausedSince = 0; // 幾時開始暫停（0 = 冇暫停）
@@ -644,7 +668,7 @@ renderer.setAnimationLoop((timestamp) => {
   time += dt;
 
   // 暫停：成個世界停低（開場動畫除外）；繁殖機倒數都暫停（返嚟時補返暫停咗嘅時間）
-  const frozen = isPaused() && !intro.active;
+  const frozen = isPaused() && !intro.active && !movie.active;
   if (frozen) {
     if (!pausedSince) pausedSince = Date.now();
   } else if (pausedSince) {
@@ -655,6 +679,8 @@ renderer.setAnimationLoop((timestamp) => {
   if (!frozen) updateWorld(dt, time); // 水、雀、雪、拉桿
   const pos = camera.position;
   updateIntro(intro, dt);
+  updateMovie(dt);
+  if (!frozen) updateLab(dt, time, pos);
 
   hub.night = dayNight.isNight; // 夜晚繁殖機 10 倍速
   if (isPaused()) updateHub(hub, 0, time, Infinity, Infinity); // 暫停：唔訓練唔賺錢，但啲牌照畫
@@ -731,6 +757,12 @@ renderer.setAnimationLoop((timestamp) => {
       if (hit) onHazardHit(hit);
     }
 
+    // Issue #2：圖鑑夠 25 隻 → 播開門動畫（喺 Hub 先播，唔會喺俾 Boss 追緊嗰陣播）
+    if (!state.labUnlocked && state.indexFound.length >= LAB_UNLOCK_PETS && location === 'Hub' && !fling && !rescue.carrying) startUnlockScene();
+    if (location === 'Laboratory' && !state.labVisited) {
+      state.labVisited = true; // 入咗實驗室：唔使再指路
+      save();
+    }
     updateTutorial(tutorial, time);
     handleEvents();
     const it = currentInteraction();
@@ -744,7 +776,10 @@ renderer.setAnimationLoop((timestamp) => {
   setHolding(rescue, selectedHotbarItem()?.item.name ?? null);
   if (!frozen) updateRescue(rescue, dt, time, player.walking);
   // 拎住寵物／抱住動物：第三身，寵物頂喺頭上
-  const viewCam = intro.active ? camera : updateThirdPerson(thirdPerson, dt, {
+  const inMovie = intro.active || movie.active;
+  if (inMovie) thirdPerson.avatar.g.visible = false;
+  updateLabGuide(camera, time, state.labUnlocked && !state.labVisited && !inMovie);
+  const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
     walking: player.walking, feetY: player.feetY,
@@ -766,4 +801,31 @@ renderer.setAnimationLoop((timestamp) => {
 });
 
 // 開發用：喺瀏覽器 console 打 game 可以睇／改嘢
-if (import.meta.env.DEV) window.game = { spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+// Issue #2 測試用：game.lab.grant(25)、game.lab.unlock()、game.lab.goto()
+const labDebug = {
+  grant(n = LAB_UNLOCK_PETS) {
+    for (const a of ANIMALS.slice(0, n)) if (!state.indexFound.includes(a.name)) state.indexFound.push(a.name);
+    return state.indexFound.length;
+  },
+  unlock() {
+    labDebug.grant();
+    startUnlockScene();
+  },
+  open() {
+    openParkGate();
+    state.labUnlocked = true;
+  },
+  goto(z = 95) {
+    labDebug.open();
+    teleportPlayer(player, 0, z);
+    camera.rotation.set(0, Math.PI, 0, 'YXZ');
+  },
+  skipMovie: () => finishMovie(),
+  reset() {
+    Object.assign(state, { labUnlocked: false, labVisited: false, labBossDefeated: false, labRewardPaid: false });
+    parkGate.open = false;
+    save();
+  },
+};
+
+if (import.meta.env.DEV) window.game = { lab: labDebug, movie, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
