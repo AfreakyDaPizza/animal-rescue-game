@@ -348,7 +348,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ') togglePanel('quests');
   if (e.code === 'KeyH') toggleHidePets();
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && panelKind() === 'pets') return togglePanel('pets'); // 再撳 E 收埋
+  if (e.code === 'KeyE' && (panelKind() === 'pets' || panelKind() === 'sell')) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.freeMode) {
@@ -419,6 +419,7 @@ const hubActions = {
   },
   openIndex: () => togglePanel('index'),
   openPets: () => togglePanel('pets'),
+  openSell: () => togglePanel('sell'),
   openShop: () => togglePanel('shop'),
   upgradeMachines() {
     const lv = upgradeMachines(hub);
@@ -500,6 +501,12 @@ setPetActions({
   sell(pet) {
     const price = sellPet(hub, pet);
     popup(`💰 Sold ${pet.name} for $${price.toLocaleString('en-US')}`);
+    play('coin');
+    save();
+  },
+  sellMany(pets) {
+    const price = pets.reduce((n, p) => n + sellPet(hub, p), 0);
+    popup(`💰 Sold ${pets.length} pets for $${price.toLocaleString('en-US')}`);
     play('coin');
     save();
   },

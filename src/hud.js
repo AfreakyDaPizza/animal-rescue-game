@@ -188,6 +188,7 @@ export function openPanel(kind) {
     index: ['📖 Animal Index', indexHtml, 'I'],
     stats: ['📋 My Stats', statsHtml, 'P'],
     pets: ['🐾 My Pets', petsHtml, 'E'],
+    sell: ['💰 Sell Stall', sellHtml, 'E'],
     quests: ['📜 Daily Quests', questsHtml, 'Q'],
     shop: ['🛍️ Skin Shop', shopHtml, 'E'],
   };
@@ -271,6 +272,27 @@ function petsHtml() {
       ${waiting.map((p) => card(p)).join('')}</div>`;
 }
 
+// 賣寵物攤位：最平嘅排最前（通常想賣啲細嘅），地塊上面嘅都賣得
+let confirmSellBackpack = false;
+function sellHtml() {
+  if (!state.pets.length) return '<p class="index-summary">You have no pets to sell yet!</p>';
+  const backpack = state.pets.filter((p) => !p.onPlot);
+  const backpackTotal = backpack.reduce((n, p) => n + sellPrice(p), 0);
+  const pets = state.pets.map((p, i) => ({ p, i })).sort((a, b) => sellPrice(a.p) - sellPrice(b.p));
+  return `<p class="index-summary">Sell pets you don't need for 💰 cash. You have <b>$${fmt(state.money)}</b>.</p>
+    <div class="pet-actions">
+      ${backpack.length ? `<button data-action="sell-backpack" class="sell">${confirmSellBackpack ? 'Sure? Sell them all!' : `Sell all ${backpack.length} backpack pets for $${fmt(backpackTotal)}`}</button>` : '<small>All your pets are on your Plot.</small>'}
+    </div>
+    <div class="cards">${pets.map(({ p, i }) => {
+      const r = rarityInfo(p.rarity);
+      return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
+        <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
+        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · 🔥 GIANT x${p.sizeMul}` : ''}</small>
+        <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
+        <div class="card-buttons"><button data-action="sell" data-i="${i}" class="sell">${confirmSell === i ? 'Sure? Sell!' : `Sell $${fmt(sellPrice(p))}`}</button></div></div>`;
+    }).join('')}</div>`;
+}
+
 // 面板入面嘅掣（main.js 話俾我知撳咗要做乜）
 let petActions = null;
 export function setPetActions(actions) {
@@ -284,10 +306,17 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
     return;
   }
   const button = e.target.closest('button[data-action]');
-  if (!button || !petActions || openPanelKind !== 'pets') return;
+  if (!button || !petActions || (openPanelKind !== 'pets' && openPanelKind !== 'sell')) return;
   const pet = state.pets[Number(button.dataset.i)];
   const action = button.dataset.action;
-  if (action === 'sell') {
+  if (action === 'sell-backpack') {
+    if (!confirmSellBackpack) confirmSellBackpack = true;
+    else {
+      confirmSellBackpack = false;
+      petActions.sellMany(state.pets.filter((p) => !p.onPlot));
+    }
+  } else if (action === 'sell') {
+    confirmSellBackpack = false;
     if (confirmSell !== Number(button.dataset.i)) confirmSell = Number(button.dataset.i);
     else {
       confirmSell = -1;
@@ -300,7 +329,7 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
     if (action === 'equip') petActions.equip(pet);
     if (action === 'unequip') petActions.unequip(pet);
   }
-  $('panel-body').innerHTML = petsHtml(); // 即刻更新
+  $('panel-body').innerHTML = openPanelKind === 'sell' ? sellHtml() : petsHtml(); // 即刻更新
 });
 
 // Index 面板有三個分頁：動物、跑步機、學生桌

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { addCollider, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
+import { buildMagicLibrary, buildSellStall } from './hubBuildings.js';
 import { boost } from './events.js';
 import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -1248,25 +1249,6 @@ export function moneyPerSecond() {
 
 // ================= 圖鑑檯 =================
 
-function buildIndexKiosk(scene, x, z) {
-  const g = new THREE.Group();
-  g.position.set(x, 0, z);
-  scene.add(g);
-  const stone = new THREE.MeshStandardMaterial({ color: 0xbcaaa4 });
-  add(g, new THREE.CylinderGeometry(0.6, 0.8, 1.1, 12), stone, 0, 0.55, 0);
-  // 打開咗嘅大本書
-  for (const side of [-1, 1]) {
-    const page = add(g, new THREE.BoxGeometry(0.8, 0.06, 1.0), new THREE.MeshStandardMaterial({ color: 0xfffde7 }), side * 0.42, 1.2, 0);
-    page.rotation.z = side * -0.15;
-  }
-  add(g, new THREE.BoxGeometry(1.8, 0.05, 1.1), new THREE.MeshStandardMaterial({ color: 0x6d4c41 }), 0, 1.13, 0);
-  const title = makeSign('ANIMAL INDEX', 3, 0.7, THEMES.purple);
-  title.position.set(0, 2.4, 0);
-  g.add(title);
-  addCollider(x, z, 0.9);
-  return { x, z, group: g };
-}
-
 // ================= 起晒成個 Hub =================
 
 export function createHub(scene) {
@@ -1284,7 +1266,9 @@ export function createHub(scene) {
   const onPlot = state.pets.filter((p) => p.onPlot).sort((a, b) => itemMoney(b) - itemMoney(a));
   onPlot.slice(plotSlots(state.plotLevel)).forEach((p) => (p.onPlot = false));
   state.pets.filter((p) => p.onPlot).forEach((p) => addPetToPlot(plot, scene, p));
-  const kiosk = buildIndexKiosk(scene, -24, 19);
+  // 魔法圖書館（Index）喺噴水池左邊，面向噴水池
+  const library = buildMagicLibrary(scene, -25, 25, Math.PI / 2);
+  const kiosk = library.spot;
   applyPlotSkin({ plot });
 
   // 地塊升級牌（閘口隔籬）
@@ -1299,14 +1283,16 @@ export function createHub(scene) {
   // 繁殖機升級牌（機嘅左邊）
   const machineSign = dynamicSign(2.6, 1.7);
   const machineSignGroup = signOnPosts(machineSign.mesh, 2.6, 1.7, 2.0);
-  machineSignGroup.position.set(-22, 0, 40);
+  machineSignGroup.position.set(-23.5, 0, 40);
   machineSignGroup.rotation.y = Math.PI;
   scene.add(machineSignGroup);
-  addCollider(-22, 40, 0.4);
-  const machineUpgradeSpot = { x: -22, z: 38, sign: machineSign };
+  addCollider(-23.5, 40, 0.4);
+  const machineUpgradeSpot = { x: -23.5, z: 38, sign: machineSign };
 
   // ---- 皮膚商店攤位（間條帳篷 + 櫃枱 + 公仔模特兒）----
-  const shopSpot = buildSkinShop(scene, 24, 22.5);
+  // 入口前面（小朋友 2026-10-15）：右邊皮膚商店、左邊賣寵物攤位，面向中間條路
+  const shopSpot = buildSkinShop(scene, 6.5, 4.5);
+  const sellStall = buildSellStall(scene, -6.5, 4.5, Math.PI / 2);
 
   // 「MY PETS」牌：撳 E 睇晒所有寵物
   const petsBoard = makeSign([{ text: 'MY PETS', size: 0.42 }, { text: 'Press E to see all your pets', size: 0.22 }], 3, 1.5, THEMES.pink);
@@ -1317,7 +1303,7 @@ export function createHub(scene) {
   addCollider(8.5, 16, 0.6);
   const petsBoardSpot = { x: 8.5, z: 16 };
 
-  const hub = { scene, stations, machines, plot, kiosk, petsBoardSpot, plotUpgradeSpot, machineUpgradeSpot, shopSpot, moneyTimer: 0, trainTimer: 0 };
+  const hub = { scene, stations, machines, plot, kiosk, sellSpot: sellStall.spot, animators: [library.update, sellStall.update], petsBoardSpot, plotUpgradeSpot, machineUpgradeSpot, shopSpot, moneyTimer: 0, trainTimer: 0 };
   applyMachineLevel(hub);
   return hub;
 }
@@ -1331,6 +1317,7 @@ export function trainingStationAt(hub, px, pz) {
 // 回傳 { trained: { station, amount } | null, earned: number }
 export function updateHub(hub, dt, time, px, pz) {
   const result = { trained: null, earned: 0 };
+  for (const update of hub.animators) update(dt, time); // 圖書館、攤位嘅小動畫
 
   // 訓練：每秒加一次
   const station = trainingStationAt(hub, px, pz);
@@ -1578,13 +1565,17 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   const sh = near(hub.shopSpot.x, hub.shopSpot.z);
   if (sh < INTERACT_DISTANCE + 0.8) options.push({ dist: sh, prompt: `<kbd>E</kbd> Open the Skin Shop (🎟️ ${state.tokens} tokens)`, action: actions.openShop });
 
+  // 賣寵物攤位
+  const se = near(hub.sellSpot.x, hub.sellSpot.z);
+  if (se < INTERACT_DISTANCE + 0.8) options.push({ dist: se, prompt: '<kbd>E</kbd> Open the Sell Stall 💰', action: actions.openSell });
+
   // MY PETS 牌
   const pb = near(hub.petsBoardSpot.x, hub.petsBoardSpot.z);
   if (pb < INTERACT_DISTANCE + 0.5) options.push({ dist: pb, prompt: '<kbd>E</kbd> See all your pets', action: actions.openPets });
 
   // 圖鑑檯
   const k = near(hub.kiosk.x, hub.kiosk.z);
-  if (k < INTERACT_DISTANCE) options.push({ dist: k, prompt: '<kbd>E</kbd> Open the Animal Index', action: actions.openIndex });
+  if (k < INTERACT_DISTANCE + 0.8) options.push({ dist: k, prompt: '<kbd>E</kbd> Open the Magic Library (Animal Index) 📖', action: actions.openIndex });
 
   options.sort((a, b) => a.dist - b.dist);
   return options[0] || null;
@@ -1806,6 +1797,7 @@ export function getTierThumbnails(kind) {
 function buildSkinShop(scene, x, z) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
+  g.rotation.y = Math.PI / 2; // 櫃枱（本地 -z）面向 -x：中間條路
   scene.add(g);
   const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
   const wood = M(0x8d6e63);
@@ -1830,5 +1822,5 @@ function buildSkinShop(scene, x, z) {
   sign.rotation.y = Math.PI;
   g.add(sign);
   addCollider(x, z, 2.2);
-  return { x, z: z - 2.4 };
+  return { x: x - 2.4, z };
 }

@@ -158,10 +158,10 @@ function buildStatues(root) {
   const plinth = mat(0x9e9e9e);
   const plinthTop = mat(0xbdbdbd);
   const list = [
-    ['Giant Panda', 'golden', -12, 19.5, 0.5],
-    ['African Savanna Elephant', 'marble', 12, 19.5, -0.5],
-    ['Black Rhinoceros', 'golden', -9, 33, 2.4],
-    ['Sumatran Tiger', 'marble', 9, 33, -2.4],
+    ['Giant Panda', 'golden', -11, 31, 2.4],
+    ['African Savanna Elephant', 'marble', 11, 31, -2.4],
+    ['Black Rhinoceros', 'golden', -6, 56, Math.PI],
+    ['Sumatran Tiger', 'marble', 6, 56, Math.PI],
   ];
   for (const [name, skin, x, z, rot] of list) {
     add(root, rbox(2.6, 1.2, 2.6), plinth, x, 0.6, z);
@@ -253,9 +253,18 @@ export function standUp(owner, x, z, faceAngle) {
 }
 
 // ---------- 「COMING SOON」機器（用帆布冚住、圍住黃色膠帶） ----------
-function buildComingSoon(root, live) {
-  const x = 23;
-  const z = 44;
+function buildComingSoon(rootScene, liveScene) {
+  // 喺噴水池右邊，面向噴水池（-x）
+  const x = 0;
+  const z = 0;
+  const root = new THREE.Group();
+  const live = new THREE.Group();
+  for (const g of [root, live]) {
+    g.position.set(25, 0, 25);
+    g.rotation.y = Math.PI / 2;
+  }
+  rootScene.add(root);
+  liveScene.add(live);
   const metal = mat(0x78909c, { metalness: 0.6, roughness: 0.4 });
   add(root, rbox(4.2, 0.6, 3.4), mat(0x546e7a), x, 0.3, z);
   add(root, rbox(3.4, 2.8, 2.6), metal, x, 2.0, z);
@@ -281,7 +290,7 @@ function buildComingSoon(root, live) {
   sign.position.set(x, 3.0, z - 1.75);
   sign.rotation.y = Math.PI;
   live.add(sign);
-  addCollider(x, z, 2.8);
+  addCollider(25, 25, 2.8);
   return (dt, time) => {
     lamp.material.emissiveIntensity = Math.sin(time * 5) > 0 ? 2.5 : 0.2;
   };
@@ -289,12 +298,12 @@ function buildComingSoon(root, live) {
 
 // ---------- 遊樂場（滑梯、韆鞦、蹺蹺板） ----------
 function buildPlayground(root) {
-  const x = 10;
-  const z = 52;
+  const x = 14;
+  const z = 51.5;
   const red = mat(0xe53935);
   const blue = mat(0x1e88e5);
   const yellow = mat(0xfdd835);
-  const sand = add(root, new THREE.CylinderGeometry(6, 6, 0.06, 32), mat(0xf3d9a4), x, 0.03, z, false);
+  const sand = add(root, new THREE.CylinderGeometry(5.2, 5.2, 0.06, 32), mat(0xf3d9a4), x, 0.03, z, false);
   sand.receiveShadow = true;
   add(root, rbox(1.6, 2.4, 1.6), blue, x - 3.5, 1.2, z - 1); // 滑梯台
   add(root, new THREE.BoxGeometry(1.2, 0.12, 4), yellow, x - 3.5, 1.3, z + 1.4).rotation.x = -0.55;
@@ -379,51 +388,100 @@ function buildBirds(live) {
   };
 }
 
-// ---------- 燈柱、長櫈、花圃 ----------
-const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff8e1, emissive: 0xffe082, emissiveIntensity: 1.2 });
-function lamp(root, x, z) {
-  const iron = mat(0x37474f, { metalness: 0.5 });
-  add(root, new THREE.CylinderGeometry(0.1, 0.16, 3.4, 8), iron, x, 1.7, z);
-  add(root, new THREE.BoxGeometry(0.5, 0.1, 0.5), iron, x, 3.45, z);
-  add(root, new THREE.SphereGeometry(0.26, 12, 8), bulbMat, x, 3.75, z, false);
+// ---------- 區域：彩色地磚 + 牌 + 矮樹籬（等 Hub 睇落整齊） ----------
+function tilePad(root, x, z, w, d, color, edge) {
+  add(root, new THREE.BoxGeometry(w + 0.5, 0.04, d + 0.5), mat(edge), x, 0.012, z, false);
+  add(root, new THREE.BoxGeometry(w, 0.05, d), mat(color), x, 0.02, z, false);
+  // 地磚線
+  const line = mat(edge);
+  for (let i = 1; i < Math.floor(w / 2); i++) add(root, new THREE.BoxGeometry(0.06, 0.055, d), line, x - w / 2 + i * 2, 0.022, z, false);
+  for (let i = 1; i < Math.floor(d / 2); i++) add(root, new THREE.BoxGeometry(w, 0.055, 0.06), line, x, 0.022, z - d / 2 + i * 2, false);
 }
-function bench(root, x, z, rot) {
+function roundPad(root, x, z, r, color, edge) {
+  add(root, new THREE.CylinderGeometry(r + 0.3, r + 0.3, 0.04, 40), mat(edge), x, 0.012, z, false);
+  add(root, new THREE.CylinderGeometry(r, r, 0.05, 40), mat(color), x, 0.02, z, false);
+}
+// 區域牌：兩條柱 + 牌，面向 (fx, fz)
+function zoneSign(live, x, z, text, theme, fx = HUB.cx, fz = HUB.cz) {
   const g = new THREE.Group();
-  const wood = mat(0xa1887f);
-  const iron = mat(0x424242);
-  add(g, new THREE.BoxGeometry(2.2, 0.1, 0.6), wood, 0, 0.55, 0);
-  add(g, new THREE.BoxGeometry(2.2, 0.5, 0.08), wood, 0, 0.9, 0.28);
-  for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.08, 0.55, 0.6), iron, s * 0.95, 0.28, 0);
+  const sign = makeSign([{ text, size: 0.42 }], 4.2, 0.95, theme);
+  sign.position.y = 3.1;
+  g.add(sign);
+  for (const s of [-1, 1]) add(g, rbox(0.25, 3.6, 0.25), mat(0x5d4037), s * 1.95, 1.8, -0.05);
   g.position.set(x, 0, z);
-  g.rotation.y = rot;
-  root.add(g);
+  g.rotation.y = Math.atan2(fx - x, fz - z);
+  live.add(g);
 }
+const hedgeMat = mat(0x2e7d32);
+const hedgeTop = mat(0x388e3c);
 const flowerColors = [0xff6b6b, 0xffd93d, 0xff9ff3, 0xffffff, 0x74b9ff, 0xba68c8];
-function flowerBed(root, x, z, r, n) {
-  const soil = add(root, new THREE.CylinderGeometry(r, r, 0.12, 20), mat(0x6d4c41), x, 0.06, z, false);
-  soil.receiveShadow = true;
+// 一段直嘅矮樹籬，上面有花
+function hedge(root, x1, z1, x2, z2) {
+  const len = Math.hypot(x2 - x1, z2 - z1);
+  const h = add(root, new THREE.BoxGeometry(0.8, 0.8, len), hedgeMat, (x1 + x2) / 2, 0.4, (z1 + z2) / 2);
+  h.rotation.y = Math.atan2(x2 - x1, z2 - z1);
+  const top = add(root, new THREE.BoxGeometry(0.85, 0.12, len + 0.05), hedgeTop, (x1 + x2) / 2, 0.85, (z1 + z2) / 2, false);
+  top.rotation.y = h.rotation.y;
+  const n = Math.floor(len / 0.9);
   for (let i = 0; i < n; i++) {
-    const a = i * 2.4;
-    const rr = r * Math.sqrt((i + 0.5) / n) * 0.9;
-    const fx = x + Math.cos(a) * rr;
-    const fz = z + Math.sin(a) * rr;
-    add(root, new THREE.BoxGeometry(0.05, 0.4, 0.05), leafB, fx, 0.3, fz, false);
-    add(root, new THREE.BoxGeometry(0.2, 0.2, 0.2), mat(flowerColors[i % flowerColors.length]), fx, 0.55, fz, false);
+    const k = (i + 0.5) / n;
+    add(root, new THREE.BoxGeometry(0.18, 0.18, 0.18), mat(flowerColors[i % flowerColors.length]), x1 + (x2 - x1) * k, 0.98, z1 + (z2 - z1) * k, false);
+  }
+}
+// 圓弧樹籬（a1 → a2）
+function hedgeArc(root, cx, cz, r, a1, a2) {
+  const steps = Math.max(2, Math.round(((a2 - a1) * r) / 1.5));
+  for (let i = 0; i < steps; i++) {
+    const p = a1 + ((a2 - a1) * i) / steps;
+    const q = a1 + ((a2 - a1) * (i + 1)) / steps;
+    hedge(root, cx + Math.cos(p) * r, cz + Math.sin(p) * r, cx + Math.cos(q) * r, cz + Math.sin(q) * r);
   }
 }
 
 // ================= 起晒成個 Hub =================
+// 排位（由上面望，-z 係生態區）：
+//   入口：左 Sell Stall、右 Skin Shop
+//   左上 Training Zone、右上 My Plot
+//   左 Magic Library ── 中間噴水池 ── 右 Coming Soon
+//   下面 Breeding Lab（5 部繁殖機）
+//   左下 Owner's Garden（吊床）、右下 Playground、最底大門
 export function buildHubPark(root, live) {
   const { cx, cz, r } = HUB;
   const updates = [];
 
-  // 路：入口 → 噴水池 → 繁殖機 → 大門；噴水池外面一圈；去跑步機同地塊嘅橫路
+  // 路：十字形 + 噴水池圓環 + 去跑步機／地塊嘅橫路 + 繁殖機前面嘅橫路
   pathStrip(root, 0, 0, 0, cz - 7, 5);
   pathRing(root, cx, cz, 6.2, 9);
   pathStrip(root, 0, cz + 7, 0, cz + r, 5);
-  pathStrip(root, -28, 10.5, 12, 10.5, 3);
-  pathStrip(root, -24, cz, 24, cz, 3);
-  pathStrip(root, -24, 40, 24, 40, 3);
+  pathStrip(root, -29, 10.5, 12, 10.5, 3);
+  pathStrip(root, -20, cz, -7, cz, 3.5);
+  pathStrip(root, 7, cz, 20, cz, 3.5);
+  pathStrip(root, -24, 36, 24, 36, 3);
+
+  // 區域地磚
+  tilePad(root, -19.5, 7.5, 20, 12, 0xffe0b2, 0xffb74d); // Training Zone
+  tilePad(root, 0, 4.2, 18, 7.4, 0xeeeeee, 0xbdbdbd); // 入口廣場（兩個攤位）
+  roundPad(root, -25, 25, 6.6, 0xd1c4e9, 0x9575cd); // Magic Library
+  roundPad(root, 25, 25, 5, 0xcfd8dc, 0x90a4ae); // Coming Soon
+  tilePad(root, 0, 40, 40, 6, 0xf8bbd0, 0xf06292); // Breeding Lab
+
+  // 區域牌
+  zoneSign(live, -19.5, 14.6, '🏃 TRAINING ZONE', THEMES.orange);
+  zoneSign(live, -20, 33, '🌴 OWNER\'S GARDEN', THEMES.green, -20, 0);
+  zoneSign(live, 14, 44.8, '🛝 PLAYGROUND', THEMES.blue, 14, 0);
+
+  // Breeding Lab 拱門（喺繁殖機上面）
+  const pink = mat(0xec407a);
+  for (const s of [-1, 1]) {
+    add(root, rbox(0.8, 6, 0.8), mat(0xf8bbd0), s * 20.5, 3, 40);
+    add(root, rbox(1.1, 0.4, 1.1), pink, s * 20.5, 6.2, 40);
+    addCollider(s * 20.5, 40, 0.6);
+  }
+  add(root, rbox(42, 0.5, 0.6), pink, 0, 6.0, 40);
+  const lab = makeSign([{ text: '💗 BREEDING LAB', size: 0.5 }], 7, 1.2, THEMES.pink);
+  lab.position.set(0, 6.9, 39.6);
+  lab.rotation.y = Math.PI;
+  live.add(lab);
 
   updates.push(buildFountain(root, live));
   buildStatues(root);
@@ -433,40 +491,27 @@ export function buildHubPark(root, live) {
   buildGate(root, live);
   updates.push(buildBirds(live));
 
-  // 噴水池周圍嘅花圃、長櫈、燈
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    lamp(root, cx + Math.cos(a) * 9.6, cz + Math.sin(a) * 9.6);
+  // 噴水池外面一圈樹籬（十字路口留位）
+  for (let q = 0; q < 4; q++) {
+    const gap = 0.32;
+    hedgeArc(root, cx, cz, 10, (q * Math.PI) / 2 + gap, ((q + 1) * Math.PI) / 2 - gap);
   }
-  for (const a of [0.55, 2.6, 3.7, 5.75]) bench(root, cx + Math.cos(a) * 10.2, cz + Math.sin(a) * 10.2, -a - Math.PI / 2);
-  for (const [x, z] of [[-17, 30], [17, 30], [-5, 45], [5, 45], [-26, 33], [26, 33]]) flowerBed(root, x, z, 1.6, 22);
-  for (const x of [-24, -12, 12, 24]) lamp(root, x, 41.8);
-  for (const z of [6, 14]) {
-    lamp(root, -3.2, z);
-    lamp(root, 3.2, z);
+  // 路兩邊嘅樹籬
+  for (const s of [-1, 1]) {
+    hedge(root, s * 3.2, 12, s * 3.2, 14.5);
+    hedge(root, s * 3.2, 44, s * 3.2, 58);
   }
 
-  // 圍牆內邊種一圈樹（避開入口、大門、地塊、跑步機、皮膚商店）
+  // 圍牆內邊種一圈樹（只喺下半部分，避開大門、吊床、遊樂場）
   for (let i = 0; i < 64; i++) {
     const a = (i / 64) * Math.PI * 2;
     const tx = cx + Math.cos(a) * (r - 2.6);
     const tz = cz + Math.sin(a) * (r - 2.6);
-    if (tz < 26) continue; // 上半部分有攤位
+    if (tz < 33) continue;
     if (Math.abs(tx) < 7) continue; // 大門
-    if (Math.hypot(tx - HAMMOCK.x, tz - HAMMOCK.z) < 7) continue;
-    if (Math.hypot(tx - 23, tz - 44) < 5) continue; // Coming Soon
+    if (Math.hypot(tx - HAMMOCK.x, tz - HAMMOCK.z) < 6) continue;
+    if (Math.hypot(tx - 14, tz - 51.5) < 7) continue; // 遊樂場
     tree(root, tx, tz, 0.85 + ((i * 37) % 10) / 25, i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0);
-  }
-  // 草地上嘅細花（隨機但固定）
-  let seed = 11;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 260; i++) {
-    const a = rand() * Math.PI * 2;
-    const rr = 10 + rand() * (r - 13);
-    const fx = cx + Math.cos(a) * rr;
-    const fz = cz + Math.sin(a) * rr;
-    if (fz < 26 || Math.abs(fx) < 3.5) continue;
-    add(root, new THREE.BoxGeometry(0.16, 0.16, 0.16), mat(flowerColors[i % flowerColors.length]), fx, 0.12, fz, false);
   }
 
   return (dt, time) => updates.forEach((u) => u(dt, time));
