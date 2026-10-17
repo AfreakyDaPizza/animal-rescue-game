@@ -33,7 +33,9 @@ import { updateEvents, forceEvent } from './events.js';
 import { TRASH } from './biomes.js';
 import { rarityInfo, TRASH_REWARD, LAB_REWARD } from './data/balance.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, sparkleBurst } from './lab.js';
-import { movie, updateMovie, finishMovie } from './movie.js';
+import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
+import { buildSecretBeach, beach, applyBeachSky, playCollab } from './secretBeach.js';
+import { BENCH, STRANGER } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
 import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss } from './labBoss.js';
 import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
@@ -79,6 +81,7 @@ scene.add(stars);
 
 const updateWorld = buildWorld(scene);
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
+const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const hub = createHub(scene);
 // 舊存檔買過「擴建 Hub」：而家 Hub 免費變大咗，退返啲代幣
 let hubRefund = 0;
@@ -545,6 +548,12 @@ function currentInteraction() {
   // Biome 2 沙灘嘅垃圾：執走有少少錢
   const trash = TRASH.find((t) => t.group.visible && Math.hypot(pos.x - t.x, pos.z - t.z) < 2);
   if (trash) return { prompt: `<kbd>E</kbd> Clean up the ${trash.name} 🗑️ (+$${TRASH_REWARD})`, action: () => cleanTrash(trash) };
+  // 秘密沙灘：長櫈坐低睇流星、同神秘人傾偈
+  if (beach.open) {
+    if (sitting) return { prompt: '🌠 Watching the meteors... <kbd>E</kbd> Stand up', action: standUp };
+    if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
+    if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
+  }
   const lab2 = labInteraction(pos);
   if (lab2) return lab2;
   const w = nearestAnimal(rescue);
@@ -673,6 +682,38 @@ function cleanTrash(trash) {
   play('coin');
   popup(`♻️ You cleaned up a ${trash.name}! +$${TRASH_REWARD}`);
   save();
+}
+
+// ---- 秘密沙灘 ----
+let sitting = false;
+function sitDown() {
+  sitting = true;
+  camera.rotation.set(0.35, -Math.PI / 2, 0, 'YXZ'); // 望向海同天空
+  play('click');
+  popup('🌠 Look up! Meteors are falling over the ocean...');
+}
+function standUp() {
+  sitting = false;
+  teleportPlayer(player, BENCH.x - 1.6, BENCH.z);
+  play('click');
+}
+function startCollab() {
+  sitting = false;
+  player.controls.unlock();
+  closePanel();
+  beach.collab = true;
+  playCollab({
+    scene, camera, skinId: state.rangerSkin, playMovie, once: movieOnce, shake: movieShake, play,
+    onDone() {
+      beach.collab = false;
+      const first = !state.collabSeen;
+      state.collabSeen = true;
+      save();
+      teleportPlayer(player, STRANGER.x - 4, STRANGER.z - 3);
+      announce(first ? '🤝 You found the SECRET ENDING: THE COLLAB!' : '🤝 THE COLLAB');
+      resume();
+    },
+  });
 }
 
 function interact() {
@@ -863,6 +904,9 @@ renderer.setAnimationLoop((timestamp) => {
   updateIntro(intro, dt);
   updateMovie(dt);
   if (!frozen) updateLab(dt, time, pos);
+  beach.open = state.labBossDefeated;
+  beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
+  if (!frozen) updateBeach(dt, time);
 
   hub.night = dayNight.isNight; // 夜晚繁殖機 10 倍速
   if (isPaused()) updateHub(hub, 0, time, Infinity, Infinity); // 暫停：唔訓練唔賺錢，但啲牌照畫
@@ -875,6 +919,7 @@ renderer.setAnimationLoop((timestamp) => {
     wasTraining = station;
 
     if (fling) updateFling(dt);
+    else if (sitting) camera.position.set(BENCH.x + 0.05, 1.75, BENCH.z); // 坐喺長櫈睇流星
     else updatePlayer(player, dt, station ? station.standHeight : 0);
     const { trained, earned } = updateHub(hub, dt, time, pos.x, pos.z);
     if (earned) quest('money', earned);
@@ -961,6 +1006,7 @@ renderer.setAnimationLoop((timestamp) => {
     updateBossSigns(state.speed, state.iq);
     dayNight.forceDusk = location === BIOMES[3].name; // Issue #2：Arctic Meltdown 永遠係黃昏天（夜晚照樣入夜）
     updateDayNight(dayNight, dt);
+    applyBeachSky(scene, sky.uniforms, hemi, sun); // 秘密沙灘：星空
     updateHud(dayNight, location);
   }
 

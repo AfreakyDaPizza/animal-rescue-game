@@ -61,3 +61,10 @@ export const inRect = (r, x, z, m = 0) => x >= r.minX + m && x <= r.maxX - m && 
 export const inLab = (x, z) => inRect(LAB, x, z) && z > LAB_DOOR_Z + 0.5;
 // Biome 6 座山後面嘅鎚仔（經山兩邊窄路入去）
 export const HAMMER_SPOT = { x: 0, z: -370.2 };
+
+// ---- 秘密沙灘（Issue #2 最後一樣）：前院東邊，打贏 Boss 先開 ----
+// 乾淨沙灘 + 大海，可以坐喺長櫈睇流星；遠處有個神秘人坐喺石上面，撳 E → 秘密結局「THE COLLAB」
+export const BEACH = { minX: 24, maxX: 64, minZ: 63, maxZ: 100 };
+export const BEACH_PASS = { minX: 19, maxX: 29, minZ: 77.5, maxZ: 86.5 }; // 前院去沙灘嘅入口
+export const BENCH = { x: 50, z: 72 }; // 坐低睇流星（面向 +x 個海）
+export const STRANGER = { x: 59.5, z: 94 }; // 神秘人

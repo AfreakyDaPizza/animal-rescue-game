@@ -124,6 +124,13 @@ src/data/questions.js ← 野生動物問題
   - ✅ 生態區大啲：42 闊 × 62 長（本來 36 × 50）。
   - 未做：畫面再靚啲、動物再型啲（要問小朋友邊啲最想改）。
 
+## Issue #3（2026-10-17）+ Issue #2 最後一樣
+- ✅ Boss Arena 大啲（半徑 26 → 40，`ARENA.r` 喺 `src/labShape.js`）；腐化動物每輪 4 → 2（`LAB_CORRUPTED_ANIMALS`）。
+- ✅ 寵物皮膚每款有特效（粒子 + 會郁嘅物料，`src/skins.js` `EFFECTS`）；新皮膚 Lava 75、Frost 90、Electric 120、Diamond 150。修好 `animateSkins` 從來冇叫過嘅 bug（Rainbow 而家先識轉色）。
+- ✅ 地塊寵物有稀有度光圈（Legendary／Mythic 有閃粉）。
+- 等小朋友答：邊 3–5 隻寵物最悶、想點型法。
+- ✅ 秘密沙灘（`src/secretBeach.js`，前院東邊，打贏 Boss 先開）：星空、流星、篝火、長櫈（E 坐低睇流星）、神秘 Ninja Ranger → 秘密結局 **THE COLLAB**（`state.collabSeen`，冇額外獎勵）。
+
 ## 未做
 
 - 任務／成就、每日獎勵、寵物升級、保育知識牌、Boss 戰（感化）、匯出存檔、放上網（建議清單，等小朋友揀）。
