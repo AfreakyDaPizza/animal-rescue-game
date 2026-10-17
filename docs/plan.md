@@ -139,6 +139,14 @@ src/data/questions.js ← 野生動物問題
 - ✅ Fuse Machine（`src/fuse.js`、`src/fusePets.js`）：`FUSE_OPEN_DATE` 2026-10-22 先開；3 隻寵物合成 1 隻：Rhinoblade／Spideron／Dunkleosteus／Puffaball／Endangered Combination。
 - ✅ Biome 6 山頂嘅吊橋去到邊界牆，倒數「NEW BIOME IS COMING... In N days」（`NEW_BIOME_DATE` 2026-10-24）。
 
+## 小朋友直接喺 Claude Code 講（2026-10-17 下晝）
+- ✅ 流星雨型啲（大火流星跌落海）；結局改順序：Arena → 實驗室爆炸 → 秘密沙灘（Owner 喺度俾錢）→ 黑畫面 → 喺沙灘玩。
+- ✅ 秘密沙灘搬咗去好遠（`BEACH_OFFSET` 300，唔喺實驗室隔籬），打贏 Boss 先去到：實驗室傳送門 ↔ 沙灘綠色傳送門。
+- ✅ THE COLLAB：「I'm a ranger from another game!」（小朋友揀咗唔用朋友個名）。
+- ✅ 外面森林 + 巨型高樹邊界；生態區牆變高山，每區唔同（`src/biomeBorders.js`）。
+- ✅ 吊橋 7 米闊、跌唔落；新生態區閘門變神秘大寶庫門。
+- ✅ 新升級：Royal Kingdom 地塊（+2 位、×1.5 錢）；跑步機／學生桌 Lv16 Astral King's Kingdom；繁殖機 Lv5 Dragon's Lair（×0.4 時間、一次 2 隻、答問題加速、15% Fire 變異 ×4 錢，`src/fireAura.js`）。價錢係我揀：地塊 ≈ $1.75M、Lv16 ≈ $10.6M、Dragon's Lair $15M。
+
 ## 未做
 
 - 任務／成就、每日獎勵、寵物升級、保育知識牌、Boss 戰（感化）、匯出存檔、放上網（建議清單，等小朋友揀）。
