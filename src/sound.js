@@ -5,7 +5,9 @@ let ctx = null;
 let master = null;
 let sfxGain = null;
 let musicGain = null;
+let musicPaused = false; // 睇片嗰陣暫停背景音樂
 const MASTER_VOLUME = 0.9;
+const MUSIC_VOLUME = 0.35;
 let muted = false;
 try {
   muted = localStorage.getItem('animal-rescue-muted') === '1';
@@ -23,7 +25,7 @@ function ensure() {
     sfxGain.gain.value = 1.6; // 聲效大聲啲（之前太細聲）
     sfxGain.connect(master);
     musicGain = ctx.createGain();
-    musicGain.gain.value = 0.35; // 背景音樂細聲啲，唔好蓋過聲效
+    musicGain.gain.value = musicPaused ? 0 : MUSIC_VOLUME; // 背景音樂細聲啲，唔好蓋過聲效
     musicGain.connect(master);
   }
   if (ctx.state === 'suspended') ctx.resume();
@@ -252,6 +254,17 @@ export function unlockAudio() {
 }
 
 export const isMuted = () => muted;
+// 喺跑步機睇片：背景音樂慢慢靜晒，走咗再慢慢返嚟（聲效照響）
+export function setMusicPaused(paused) {
+  if (paused === musicPaused) return;
+  musicPaused = paused;
+  if (!ctx || !musicGain) return;
+  const now = ctx.currentTime;
+  musicGain.gain.cancelScheduledValues(now);
+  musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+  musicGain.gain.linearRampToValueAtTime(paused ? 0 : MUSIC_VOLUME, now + 0.8);
+}
+export const isMusicPaused = () => musicPaused;
 export function toggleMute() {
   muted = !muted;
   if (master) master.gain.value = muted ? 0 : MASTER_VOLUME;

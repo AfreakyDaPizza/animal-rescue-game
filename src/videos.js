@@ -453,6 +453,188 @@ export const VIDEOS = [
       for (let i = 0; i < 4; i++) emoji(ctx, '🧑', 120 + i * 130 - (i > 1 ? -60 : 60), 280, 40);
     },
   },
+
+  // ---- 小朋友 2026-10-17：多啲搞笑片 + 遊戲貼士（全部有 AI 聲讀）----
+  {
+    title: 'Dancing Panda',
+    caption: 'This panda has the BEST dance moves! Pandas love to roll and tumble when they play.',
+    colors: ['#f8bbd0', '#ce93d8'],
+    pitch: 1.6, rate: 1.1,
+    draw(ctx, t) {
+      emoji(ctx, '🐼', 320, 185 + bounce(t, 7, 30), 130, Math.sin(t * 7) * 0.4);
+      for (let i = 0; i < 5; i++) emoji(ctx, ['🎵', '🎶', '✨'][i % 3], 80 + i * 120, 90 + Math.sin(t * 4 + i) * 20, 40);
+      emoji(ctx, '🪩', 520, 110, 60, t * 2);
+    },
+  },
+  {
+    title: 'Why Did the Turtle Cross the Road?',
+    caption: 'To get to the SHELL station! Haha! Real sea turtles travel thousands of km across the ocean.',
+    colors: ['#b2ebf2', '#26c6da'],
+    pitch: 1.3, rate: 1.0,
+    draw(ctx, t) {
+      emoji(ctx, '🐢', 100 + ((t * 40) % 460), 200, 90);
+      emoji(ctx, '⛽', 560, 180, 80);
+      if (t % 4 > 2) bigText(ctx, 'HAHA!', 320, 110, '#00838f');
+    },
+  },
+  {
+    title: 'Sneezing Elephant',
+    caption: 'Ahh... ahh... ACHOO! An elephant sneeze is SUPER loud. Bless you, elephant!',
+    colors: ['#e0e0e0', '#9e9e9e'],
+    pitch: 0.9, rate: 1.05,
+    draw(ctx, t) {
+      const k = t % 4;
+      emoji(ctx, '🐘', 250, 190, 150, k > 3 ? -0.3 : Math.sin(k * 2) * 0.05);
+      if (k > 3) {
+        for (let i = 0; i < 6; i++) emoji(ctx, '💨', 420 + i * 30, 160 + Math.sin(i) * 30, 50);
+        bigText(ctx, 'ACHOO!', 470, 100, '#e53935');
+      }
+    },
+  },
+  {
+    title: 'Penguin Belly Slide',
+    caption: 'Wheee! Penguins slide on their tummies because it is faster than walking. Toboggan time!',
+    colors: ['#e3f2fd', '#64b5f6'],
+    pitch: 1.5, rate: 1.15,
+    draw(ctx, t) {
+      emoji(ctx, '🐧', 60 + ((t * 90) % 560), 230, 80, Math.PI / 2.4);
+      emoji(ctx, '❄️', 520, 100, 40, t);
+      emoji(ctx, '❄️', 140, 80, 30, -t);
+    },
+  },
+  {
+    title: 'Sloth Speed Race',
+    caption: 'Ready, set... go! ... Still going... Sloths and slow lorises are both VERY slow movers!',
+    colors: ['#dcedc8', '#8bc34a'],
+    pitch: 0.7, rate: 0.75,
+    draw(ctx, t) {
+      emoji(ctx, '🏁', 560, 180, 70);
+      emoji(ctx, '🦥', 90 + t * 6, 200, 90);
+      bigText(ctx, `${(t * 0.3).toFixed(1)} km/h`, 320, 110, '#33691e');
+    },
+  },
+  {
+    title: 'Owl Joke Time',
+    caption: 'What do you call an owl magician? HOO-dini! Owls can turn their heads almost all the way round.',
+    colors: ['#d7ccc8', '#8d6e63'],
+    pitch: 1.2, rate: 1.0,
+    draw(ctx, t) {
+      emoji(ctx, '🦉', 300, 190, 130, Math.sin(t * 2) * 1.2);
+      emoji(ctx, '🎩', 300, 95, 60);
+      emoji(ctx, '🪄', 430, 200, 60, Math.sin(t * 5) * 0.5);
+    },
+  },
+  {
+    title: 'TIP: Train to Escape Bosses',
+    caption: 'Game tip! Run on the Treadmill to get more Speed, and study at the Student Table for IQ. Then the Bosses cannot catch you!',
+    colors: ['#fff59d', '#ffb300'],
+    pitch: 1.1, rate: 1.05, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🏃', 200 + Math.sin(t * 6) * 10, 200, 100);
+      emoji(ctx, '😡', 470, 200, 90, Math.sin(t * 10) * 0.1);
+      bigText(ctx, '⚡ SPEED UP!', 330, 100, '#e65100');
+    },
+  },
+  {
+    title: 'TIP: Bosses Only Chase Borrowers',
+    caption: 'Game tip! A Boss only chases you when you borrow an animal from his biome. Grab it and RUN back to the Hub!',
+    colors: ['#ffccbc', '#ff7043'],
+    pitch: 1.0, rate: 1.05, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🐼', 180, 190, 80);
+      emoji(ctx, '🏃', 280 + ((t * 30) % 120), 200, 80);
+      emoji(ctx, '🪓', 480, 200, 70, Math.sin(t * 8) * 0.4);
+      emoji(ctx, '🏠', 580, 180, 60);
+    },
+  },
+  {
+    title: 'TIP: Plot = Money',
+    caption: 'Game tip! Put your pets on your Plot. Every pet there earns money every second. Heavier and rarer pets earn more!',
+    colors: ['#c8e6c9', '#43a047'],
+    pitch: 1.1, rate: 1.0, tip: true,
+    draw(ctx, t) {
+      for (let i = 0; i < 4; i++) emoji(ctx, ['🐼', '🦏', '🐘', '🦊'][i], 140 + i * 110, 210 + bounce(t + i, 4, 10), 70);
+      for (let i = 0; i < 6; i++) emoji(ctx, '💰', 100 + i * 90, 80 + ((t * 60 + i * 30) % 80), 36);
+    },
+  },
+  {
+    title: 'TIP: Night Is Breeding Time',
+    caption: "Game tip! At night the Reproduce Machines work 10 times faster. On the Dragon's Lair you can answer a question to speed it up!",
+    colors: ['#311b92', '#1a237e'],
+    pitch: 0.95, rate: 1.0, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🌙', 110, 100, 70, Math.sin(t) * 0.2);
+      emoji(ctx, '💗', 320, 200, 90 + Math.sin(t * 6) * 8);
+      bigText(ctx, '10x', 480, 200, '#ff4081');
+      for (let i = 0; i < 5; i++) emoji(ctx, '⭐', 60 + i * 130, 60 + (i % 2) * 30, 24);
+    },
+  },
+  {
+    title: 'TIP: Fuse Machine Magic',
+    caption: 'Game tip! The Fuse Machine mixes 3 pets into one brand-new pet. Put in rare pets for a better chance of a Mythic!',
+    colors: ['#b39ddb', '#5e35b1'],
+    pitch: 1.2, rate: 1.0, tip: true,
+    draw(ctx, t) {
+      ['🐼', '🦊', '🐢'].forEach((e, i) => emoji(ctx, e, 130 + i * 90, 200 - Math.max(0, Math.sin(t * 2 - i)) * 40, 60));
+      emoji(ctx, '🧪', 430, 200, 80, Math.sin(t * 4) * 0.2);
+      emoji(ctx, '✨', 540, 150 + bounce(t, 5, 20), 60);
+    },
+  },
+  {
+    title: 'TIP: Hidden Secrets',
+    caption: 'Game tip! Some secrets hide in sneaky places... have you looked UNDER things? Something red might be waiting!',
+    colors: ['#424242', '#212121'],
+    pitch: 0.8, rate: 0.9, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🔍', 220 + Math.sin(t * 2) * 80, 190, 100, Math.sin(t) * 0.3);
+      emoji(ctx, '❓', 450, 150 + bounce(t, 3, 15), 70);
+      emoji(ctx, '🌉', 450, 250, 70);
+    },
+  },
+  {
+    title: 'TIP: Jump Over Obstacles',
+    caption: 'Game tip! Press Space to jump over rolling logs, trash and other obstacles. If they hit you, you get a question!',
+    colors: ['#a5d6a7', '#2e7d32'],
+    pitch: 1.3, rate: 1.1, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🪵', 120 + ((t * 120) % 500), 250, 60, t * 4);
+      emoji(ctx, '🦘', 320, 210 - Math.abs(Math.sin(t * 3)) * 90, 90);
+    },
+  },
+  {
+    title: 'TIP: Eternal Is the Rarest',
+    caption: 'Game tip! Rarities go Common, Rare, Epic, Legendary, Mythic... and ETERNAL! Follow the coloured light beams to find special pets.',
+    colors: ['#18ffff', '#00838f'],
+    pitch: 1.4, rate: 1.0, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🐋', 320, 190 + Math.sin(t * 2) * 15, 140);
+      emoji(ctx, '👑', 320, 95 + Math.sin(t * 2) * 15, 60);
+      for (let i = 0; i < 8; i++) emoji(ctx, '✨', 320 + Math.cos(t + i) * 200, 190 + Math.sin(t + i) * 90, 26);
+    },
+  },
+  {
+    title: 'TIP: Clean the Beach',
+    caption: 'Game tip! In Biome 2, walk to trash on the beach and press E to clean it up. You get money AND help the sea animals!',
+    colors: ['#fff3e0', '#ffcc80'],
+    pitch: 1.2, rate: 1.05, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🏖️', 140, 200, 100);
+      const k = Math.floor(t / 1.5) % 3;
+      ['🥤', '🛍️', '🧴'].forEach((e, i) => i >= k && emoji(ctx, e, 330 + i * 70, 230, 50));
+      emoji(ctx, '♻️', 520, 120, 70, t);
+    },
+  },
+  {
+    title: "TIP: Sell What You Don't Need",
+    caption: 'Game tip! Visit the Sell Stall at the front of the Hub to sell extra pets for cash. Then buy upgrades!',
+    colors: ['#dcedc8', '#7cb342'],
+    pitch: 1.1, rate: 1.05, tip: true,
+    draw(ctx, t) {
+      emoji(ctx, '🏪', 200, 200, 110);
+      emoji(ctx, '💵', 380 + Math.sin(t * 3) * 20, 170, 60);
+      emoji(ctx, '⬆️', 520, 170 + bounce(t, 4, 15), 60);
+    },
+  },
 ];
 
 function bigText(ctx, text, x, y, color) {
@@ -483,6 +665,46 @@ function wrap(ctx, text, maxWidth) {
 
 const VIDEO_LENGTH = 12; // 每條片幾多秒，播完自動去下一條
 
+// ================= AI 聲讀片（小朋友 2026-10-17）=================
+// 用瀏覽器嘅 Web Speech（speechSynthesis）；冇就唔讀；靜音就唔讀
+const speech = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
+let voice = null;
+function pickVoice() {
+  if (!speech) return null;
+  const voices = speech.getVoices() || [];
+  return voices.find((v) => /en[-_]US/i.test(v.lang) && /Google|Samantha|Aria|Jenny/i.test(v.name))
+    || voices.find((v) => /^en/i.test(v.lang)) || null;
+}
+if (speech) {
+  voice = pickVoice();
+  try {
+    speech.addEventListener?.('voiceschanged', () => (voice = pickVoice()));
+  } catch {
+    // 舊瀏覽器
+  }
+}
+export function stopNarration() {
+  try {
+    speech?.cancel();
+  } catch {
+    // 唔得就算
+  }
+}
+function narrate(video, index, muted) {
+  stopNarration();
+  if (!speech || muted) return;
+  try {
+    const u = new SpeechSynthesisUtterance(`${video.title}. ${video.caption}`);
+    if (voice) u.voice = voice;
+    u.lang = voice?.lang || 'en-US';
+    u.pitch = video.pitch ?? 1 + ((index * 37) % 5) * 0.1; // 每條片把聲唔同
+    u.rate = video.rate ?? 1;
+    speech.speak(u);
+  } catch {
+    // 唔讀得就算
+  }
+}
+
 function drawVideo(ctx, video, t, index) {
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, video.colors[0]);
@@ -498,7 +720,9 @@ function drawVideo(ctx, video, t, index) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#fff';
-  ctx.fillText(`▶ ${video.title}`, 14, 23);
+  ctx.fillStyle = video.tip ? '#ffeb3b' : '#fff'; // 貼士片：黃色標題
+  ctx.fillText(`${video.tip ? '💡' : '▶'} ${video.title}`, 14, 23);
+  ctx.fillStyle = '#fff';
   ctx.textAlign = 'right';
   ctx.font = '700 18px sans-serif';
   ctx.fillText(`${index + 1}/${VIDEOS.length}`, W - 14, 23);
@@ -538,7 +762,18 @@ export function createVideoScreen(width, height) {
   texture.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
 
-  const screen = { mesh, index: 0, t: 0, slide: 0, prev: 0, slideDir: 1, redraw: 0 };
+  const screen = { mesh, index: 0, t: 0, slide: 0, prev: 0, slideDir: 1, redraw: 0, watching: false, spoken: -1, muted: false };
+
+  // 玩家企喺跑步機睇緊片：開始／停止讀片（main.js 每格叫）
+  screen.setWatching = (on, muted = false) => {
+    if (muted && !screen.muted) stopNarration(); // 睇緊片撳咗靜音：即刻收聲
+    screen.muted = muted;
+    if (on === screen.watching) return;
+    screen.watching = on;
+    if (on) narrate(VIDEOS[screen.index], screen.index, muted);
+    else stopNarration();
+    screen.spoken = on ? screen.index : -1;
+  };
 
   screen.next = (dir) => {
     if (screen.slide > 0) return false; // 碌緊就等等
@@ -553,7 +788,13 @@ export function createVideoScreen(width, height) {
   // nearby：玩家喺附近先畫（慳電）
   screen.update = (dt, nearby) => {
     screen.t += dt;
-    if (screen.t > VIDEO_LENGTH && screen.slide === 0) screen.next(1);
+    // 讀緊嘅片：等把聲讀完先自動去下一條
+    const talking = screen.watching && !!speech?.speaking;
+    if (screen.t > VIDEO_LENGTH && screen.slide === 0 && !talking) screen.next(1);
+    if (screen.watching && screen.spoken !== screen.index && screen.slide === 0) {
+      screen.spoken = screen.index;
+      narrate(VIDEOS[screen.index], screen.index, screen.muted);
+    }
     if (!nearby) return;
     screen.redraw -= dt;
     if (screen.redraw > 0 && screen.slide === 0) return;
@@ -576,6 +817,13 @@ export function createVideoScreen(width, height) {
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     ctx.fillText('🖱️ Scroll for next video', W / 2, 62);
+    if (screen.watching) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(14, 52, 150, 26);
+      ctx.fillStyle = '#69f0ae';
+      ctx.textAlign = 'left';
+      ctx.fillText(speech && !screen.muted ? '🔊 AI voice' : '🔇 AI voice (muted)', 22, 66);
+    }
     texture.needsUpdate = true;
   };
   screen.update(0, true);
