@@ -131,6 +131,14 @@ src/data/questions.js ← 野生動物問題
 - 等小朋友答：邊 3–5 隻寵物最悶、想點型法。
 - ✅ 秘密沙灘（`src/secretBeach.js`，前院東邊，打贏 Boss 先開）：星空、流星、篝火、長櫈（E 坐低睇流星）、神秘 Ninja Ranger → 秘密結局 **THE COLLAB**（`state.collabSeen`，冇額外獎勵）。
 
+## Issue #4（2026-10-17）
+- ✅ Boss 新造型（跟小朋友張圖）：黑灰色機械人、毒綠光、綠色玻璃頭盔入面有細科學家、心口靶心眼 + 鋸齒口、生化標誌、黃黑間條手腕。
+- ✅ 三個 Phase（`src/labBoss.js`，數值喺 `balance.js` `LAB_P1_HITS` 等）：P1 手拍 + 熔岩、用球棒打 12 下；P2 每 9 秒叫 1–2 個 Boss／動物、打 24 下；P3 冇球棒、佢追你，帶佢隻手拍落 Solar Capsule（1 次，小朋友可以改 `LAB_P3_CAPSULES`）。玩家唔會扣血（俾打中只係彈返起點）。
+- ✅ Arena 半徑 52。
+- ✅ 打贏：實驗室爆炸逃走動畫（`src/labEscape.js`）→ 見到沙灘 → 原本結局。秘密沙灘撳紅掣（開大門）就開；沙灘外面一圈棕櫚樹。
+- ✅ Fuse Machine（`src/fuse.js`、`src/fusePets.js`）：`FUSE_OPEN_DATE` 2026-10-22 先開；3 隻寵物合成 1 隻：Rhinoblade／Spideron／Dunkleosteus／Puffaball／Endangered Combination。
+- ✅ Biome 6 山頂嘅吊橋去到邊界牆，倒數「NEW BIOME IS COMING... In N days」（`NEW_BIOME_DATE` 2026-10-24）。
+
 ## 未做
 
 - 任務／成就、每日獎勵、寵物升級、保育知識牌、Boss 戰（感化）、匯出存檔、放上網（建議清單，等小朋友揀）。
