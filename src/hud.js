@@ -6,15 +6,15 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney } from './data/animals.js';
+import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal } from './data/animals.js';
 import { BOSSES, rarityInfo, trainingGain, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
+import { fuseChances } from './fuse.js';
 import { plotSlots, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
-const findAnimal = (name) => ANIMALS.find((a) => a.name === name);
 
 // 畫面中間下面嘅提示（例如「[E] Borrow Giant Panda」），null 就收埋
 export function setPrompt(html) {
@@ -196,6 +196,7 @@ export function openPanel(kind) {
     stats: ['📋 My Stats', statsHtml, 'P'],
     pets: ['🐾 My Pets', petsHtml, 'E'],
     sell: ['💰 Sell Stall', sellHtml, 'E'],
+    fuse: ['🧪 Fuse Machine', fuseHtml, 'E'],
     quests: ['📜 Daily Quests', questsHtml, 'Q'],
     shop: ['🛍️ Skin Shop', shopHtml, 'E'],
     portal: ['🌀 The Portal', portalHtml, 'E'],
@@ -301,6 +302,37 @@ function sellHtml() {
     }).join('')}</div>`;
 }
 
+// Fuse Machine（Issue #4）：揀 3 隻 → 睇機會率 → FUSE
+const fusePicked = new Set();
+let confirmFuse = false;
+function fuseHtml() {
+  for (const p of [...fusePicked]) if (!state.pets.includes(p)) fusePicked.delete(p); // 賣咗／溶咗嘅
+  if (state.pets.length < 3) return '<p class="index-summary">You need at least <b>3 pets</b> to fuse. Rescue more animals!</p>';
+  const picked = [...fusePicked];
+  const chances = fuseChances(picked);
+  const pets = state.pets.map((p, i) => ({ p, i })).sort((a, b) => itemMoney(a.p) - itemMoney(b.p));
+  const ready = picked.length === 3;
+  const total = picked.reduce((n, p) => n + itemMoney(p), 0);
+  return `<p class="index-summary">Pick <b>3 pets</b> (${picked.length}/3). They will be <b>gone</b> and turn into ONE fuse-only pet! Rarer pets in = better chance.</p>
+    <div class="fuse-chances">${chances.map((c) => {
+      const r = rarityInfo(c.rarity);
+      return `<div class="fuse-chance" style="border-color:${r.color}"><div class="emoji">${c.emoji}</div><b>${c.name}</b><small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}</small><span>${c.chance.toFixed(1)}%</span></div>`;
+    }).join('')}</div>
+    <div class="pet-actions">
+      <button data-action="fuse-go" class="sell" ${ready ? '' : 'disabled'}>${!ready ? `Pick ${3 - picked.length} more` : confirmFuse ? 'Sure? FUSE them!' : `🧪 FUSE! (new pet earns more than $${fmt(total)}/s)`}</button>
+      ${picked.length ? '<button data-action="fuse-clear" class="grey">Clear</button>' : ''}
+    </div>
+    <div class="cards">${pets.map(({ p, i }) => {
+      const r = rarityInfo(p.rarity);
+      const on = fusePicked.has(p);
+      return `<div class="card-animal ${on ? 'equipped' : ''}" style="border-color:${r.color}">
+        <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
+        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · 🔥 GIANT x${p.sizeMul}` : ''}</small>
+        <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
+        <div class="card-buttons"><button data-action="fuse-pick" data-i="${i}" ${!on && picked.length >= 3 ? 'disabled' : ''}>${on ? '✔ Picked' : 'Pick'}</button></div></div>`;
+    }).join('')}</div>`;
+}
+
 // 面板入面嘅掣（main.js 話俾我知撳咗要做乜）
 let petActions = null;
 export function setPetActions(actions) {
@@ -314,9 +346,30 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
     return;
   }
   const button = e.target.closest('button[data-action]');
-  if (!button || !petActions || (openPanelKind !== 'pets' && openPanelKind !== 'sell')) return;
+  if (!button || !petActions || !['pets', 'sell', 'fuse'].includes(openPanelKind)) return;
   const pet = state.pets[Number(button.dataset.i)];
   const action = button.dataset.action;
+  if (openPanelKind === 'fuse') {
+    if (action === 'fuse-pick') {
+      if (fusePicked.has(pet)) fusePicked.delete(pet);
+      else if (fusePicked.size < 3) fusePicked.add(pet);
+      confirmFuse = false;
+    } else if (action === 'fuse-clear') {
+      fusePicked.clear();
+      confirmFuse = false;
+    } else if (action === 'fuse-go' && fusePicked.size === 3) {
+      if (!confirmFuse) confirmFuse = true;
+      else {
+        confirmFuse = false;
+        const picked = [...fusePicked];
+        fusePicked.clear();
+        petActions.fuse(picked);
+        return;
+      }
+    }
+    $('panel-body').innerHTML = fuseHtml();
+    return;
+  }
   if (action === 'sell-backpack') {
     if (!confirmSellBackpack) confirmSellBackpack = true;
     else {
