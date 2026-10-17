@@ -25,7 +25,7 @@ import {
 import { createHazards, updateHazards, hazardHit } from './hazards.js';
 import { createBosses, updateBosses, sendBossHome, resetBosses } from './bosses.js';
 import { askQuestion, isQuizOpen, finishQuiz } from './quiz.js';
-import { play, unlockAudio, toggleMute, isMuted, setMusicMood } from './sound.js';
+import { play, unlockAudio, toggleMute, isMuted, setMusicMood, setMusicPaused } from './sound.js';
 import { createIntro, updateIntro } from './intro.js';
 import { createTutorial, startTutorial, updateTutorial } from './tutorial.js';
 import { createThirdPerson, updateThirdPerson, zoomCamera, applyRangerSkin } from './thirdPerson.js';
@@ -1037,6 +1037,14 @@ function beachFinale() {
   });
 }
 
+// 睇片：停背景音樂 + 讀片（離開跑步機／暫停就回復）
+function watchVideos(on) {
+  const screen = hub.stations.find((st) => st.video)?.video;
+  if (!screen) return;
+  screen.setWatching(on, isMuted());
+  setMusicPaused(on);
+}
+
 // ================= 主迴圈 =================
 
 let pausedSince = 0; // 幾時開始暫停（0 = 冇暫停）
@@ -1092,14 +1100,18 @@ renderer.setAnimationLoop((timestamp) => {
   if (!frozen) updateBeach(dt, time);
 
   hub.night = dayNight.isNight; // 夜晚繁殖機 10 倍速
-  if (isPaused()) updateHub(hub, 0, time, Infinity, Infinity); // 暫停：唔訓練唔賺錢，但啲牌照畫
-  else {
+  if (isPaused()) {
+    updateHub(hub, 0, time, Infinity, Infinity); // 暫停：唔訓練唔賺錢，但啲牌照畫
+    watchVideos(false);
+  } else {
     const station = trainingStationAt(hub, pos.x, pos.z);
     if (station && station !== wasTraining) {
       popup(`${station.statKey === 'speed' ? '🏃' : '📚'} Training ${station.stat}!`);
       if (station.video) setTimeout(() => popup('🖱️ Scroll to watch funny videos!'), 1300);
     }
     wasTraining = station;
+    // 企喺跑步機：睇片，背景音樂停、AI 聲讀片（小朋友 2026-10-17）
+    watchVideos(!!station?.video);
 
     if (fling) updateFling(dt);
     else if (sitting) camera.position.set(BENCH.x + 0.05, 1.75, BENCH.z); // 坐喺長櫈睇流星
