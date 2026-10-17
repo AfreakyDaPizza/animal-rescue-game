@@ -8,6 +8,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
 import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
+import { showDeviceChooser, setupMobile } from './mobile.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
@@ -274,7 +275,15 @@ intro.onDone = () => {
   document.body.classList.remove('intro');
   teleportPlayer(player, 0, 14);
   camera.rotation.set(0, 0, 0, 'YXZ');
-  startScreen.hidden = false;
+  // 第一次玩：揀手機定電腦（只揀一次，小朋友 2026-10-17）
+  if (!state.device) {
+    showDeviceChooser((device) => {
+      state.device = device;
+      save();
+      if (device === 'mobile') enableMobile();
+      startScreen.hidden = false;
+    });
+  } else startScreen.hidden = false;
   introRunning = false;
   if (hubRefund) {
     save();
@@ -294,7 +303,32 @@ try {
   // 冇 sessionStorage 就照播
 }
 
-const isPaused = () => intro.active || movie.active || !startScreen.hidden || isPanelOpen() || isQuizOpen();
+const isPaused = () => intro.active || movie.active || !startScreen.hidden || isPanelOpen() || isQuizOpen() || !!document.getElementById('device-chooser');
+
+// 手機版：觸控（搖桿、拖動轉鏡頭、掣），畫質預設低啲
+let mobileOn = false;
+function enableMobile() {
+  if (mobileOn) return;
+  mobileOn = true;
+  setupMobile({
+    controls: player.controls,
+    isPaused,
+    onUse: () => {
+      if (['shop', 'pets', 'sell', 'portal', 'fuse'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
+      if (!isPaused()) interact();
+    },
+    onPause: () => {
+      if (isPanelOpen()) return togglePanel(panelKind());
+      player.controls.unlock();
+    },
+    onZoom: (dir) => zoomCamera(thirdPerson, dir),
+  });
+  if (quality.auto && quality.level > 1) {
+    quality.level = 1;
+    applyQuality();
+  }
+}
+if (state.device === 'mobile') enableMobile();
 
 // Shift Lock（好似 Roblox）：Shift = 鎖住滑鼠（滑鼠轉鏡頭）；再撳 = 放開滑鼠（見到滑鼠，右鍵拖轉鏡頭）
 function toggleShiftLock() {
@@ -1268,4 +1302,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

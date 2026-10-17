@@ -3,6 +3,7 @@
 const SAVE_KEY = 'animal-rescue-save-v1';
 
 const DEFAULTS = {
+  device: null, // 'mobile' 或者 'pc'：開場動畫之後揀一次（小朋友 2026-10-17）
   speed: 100,
   iq: 100,
   money: 0,

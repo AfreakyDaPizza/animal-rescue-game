@@ -418,3 +418,40 @@ body:has(#boss-bar:not([hidden])) #event-banner { display: none; }
 
 /* 🔥 Fire 變異寵物 */
 .card-animal .fire-tag { display: block; color: #ff6d00; font-weight: 900; }
+
+/* ===== 揀手機定電腦（只揀一次） ===== */
+#device-chooser { z-index: 60; }
+#device-chooser .card { max-width: 560px; }
+.device-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 14px 0; }
+.device-buttons button { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 200px; padding: 18px 10px; font-size: 54px; line-height: 1; border-radius: 18px; }
+.device-buttons button b { font-size: 26px; }
+.device-buttons button small { font-size: 14px; font-weight: 600; opacity: 0.85; line-height: 1.3; }
+.mobile-only { display: none; }
+body.mobile .mobile-only { display: block; }
+body.mobile .pc-only, body.mobile #hud-help, body.mobile #crosshair { display: none !important; }
+
+/* ===== 手機觸控 ===== */
+body.mobile, body.mobile canvas { touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+#touch-ui { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+#touch-ui button, #joy-base { pointer-events: auto; touch-action: none; }
+body.intro #touch-ui, body:has(#start:not([hidden])) #touch-ui, body:has(#device-chooser) #touch-ui { display: none; }
+#joy-base {
+  position: absolute; left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  width: 140px; height: 140px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); border: 3px solid rgba(255, 255, 255, 0.5);
+}
+#joy-knob {
+  position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); pointer-events: none;
+}
+#touch-buttons { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(100px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 14px; align-items: flex-end; }
+#touch-buttons button, #touch-top button {
+  border: 3px solid rgba(255, 255, 255, 0.7); color: #fff; font-weight: 900; text-shadow: 0 1px 3px #000; margin: 0; padding: 0;
+}
+#t-jump { width: 84px; height: 84px; border-radius: 50%; background: rgba(41, 182, 246, 0.55); font-size: 18px; }
+#t-use { width: 74px; height: 74px; border-radius: 50%; background: rgba(102, 187, 106, 0.6); font-size: 18px; margin-bottom: 70px !important; }
+#touch-top { position: absolute; right: calc(14px + env(safe-area-inset-right, 0px)); top: calc(62px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: row; gap: 8px; }
+#touch-top button { width: 46px; height: 46px; border-radius: 12px; background: rgba(0, 0, 0, 0.4); font-size: 22px; }
+#touch-ui button.down { filter: brightness(1.4); transform: scale(0.94); }
+/* 手機：開咗面板／問答就收埋觸控掣（唔好遮住張卡）；位置牌搬去左上 */
+body:has(#panel:not([hidden])) #touch-ui, body:has(#quiz:not([hidden])) #touch-ui { display: none; }
+body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); font-size: 15px; }
