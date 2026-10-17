@@ -13,6 +13,7 @@ import { biomeFloorTexture } from './biomeArt.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { decorateBiome } from './biomes.js';
 import { buildHubPark } from './hubPark.js';
+import { buildBiomeBorders } from './biomeBorders.js';
 import { makeSign, dynamicSign, signOnPosts, THEMES } from './signs.js';
 import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 
@@ -127,15 +128,10 @@ export function buildWorld(scene) {
 
   // 圍牆：通道（直）+ Hub 頂嘅兩截直線 + Hub 個圓弧（大門口留個窿）
   const wallMaterial = new THREE.MeshStandardMaterial({ map: stoneTexture() });
-  const stemWall = [
-    [-HUB_TOP_HALF, 0],
-    [STEM.minX, 0],
-    [STEM.minX, STEM.minZ],
-    [STEM.maxX, STEM.minZ],
-    [STEM.maxX, 0],
-    [HUB_TOP_HALF, 0],
-  ];
-  for (let i = 0; i < stemWall.length - 1; i++) addWall(scene, ...stemWall[i], ...stemWall[i + 1], wallMaterial);
+  // 生態區兩邊同最尾：唔再係石牆，改做好高嘅山丘（每個生態區唔同樣，見 biomeBorders.js）
+  addWall(scene, -HUB_TOP_HALF, 0, STEM.minX, 0, wallMaterial);
+  addWall(scene, STEM.maxX, 0, HUB_TOP_HALF, 0, wallMaterial);
+  buildBiomeBorders(staticRoot);
   const a0 = Math.asin(-HUB.cz / HUB.r); // 右上角（z = 0）嘅角度
   const a1 = Math.PI - a0; // 左上角
   const SEGMENTS = 60;
