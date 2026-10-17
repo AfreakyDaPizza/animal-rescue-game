@@ -71,7 +71,7 @@ export function buildSecretBeach(scene) {
   field.rotation.y = Math.PI / 2;
   field.position.set(minX, 2.1, (BEACH_PASS.minZ + BEACH_PASS.maxZ) / 2);
   gate.add(field);
-  const lock = makeSign([{ text: '🔒 LOCKED', size: 0.4 }, { text: 'Defeat the Mutated Scientist Poacher!', size: 0.18 }], 4, 1.2, THEMES.purple);
+  const lock = makeSign([{ text: '🔒 LOCKED', size: 0.4 }, { text: 'Press the red button behind the Magic Library!', size: 0.17 }], 4, 1.2, THEMES.purple);
   lock.position.set(minX - 0.3, 2.2, (BEACH_PASS.minZ + BEACH_PASS.maxZ) / 2);
   lock.rotation.y = -Math.PI / 2;
   gate.add(lock);
@@ -80,6 +80,11 @@ export function buildSecretBeach(scene) {
 
   // 棕櫚樹、石、貝殼、海星（乾淨，冇垃圾！）
   for (const [x, z, s] of [[27, 66, 1], [30, 97, 1.1], [41, 98, 0.9], [36, 65, 0.95], [55, 98.5, 1.05], [46, 64.5, 1]]) palm(root, x, z, s);
+  // 外面一圈樹做邊界（小朋友 Issue #4）：沙灘南北兩邊
+  for (let x = minX + 3; x < maxX + 4; x += 4.2) {
+    palm(root, x, minZ - 1.2, 0.95 + ((x * 7) % 3) * 0.1);
+    palm(root, x + 2, maxZ + 1.2, 0.95 + ((x * 5) % 3) * 0.1);
+  }
   for (const [x, z, r] of [[33, 90, 0.8], [44, 87, 0.6], [57, 66, 0.9], [38, 76, 0.5]]) {
     add(root, new THREE.DodecahedronGeometry(r), mat(0x9e9e9e, { flatShading: true }), x, r * 0.5, z);
     addCollider(x, z, r);

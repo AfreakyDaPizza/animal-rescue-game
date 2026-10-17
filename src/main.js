@@ -35,6 +35,8 @@ import { rarityInfo, TRASH_REWARD, LAB_REWARD } from './data/balance.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
 import { buildSecretBeach, beach, applyBeachSky, playCollab } from './secretBeach.js';
+import { playLabEscape } from './labEscape.js';
+let endingEscaped = false; // 實驗室爆炸動畫播咗未
 import { BENCH, STRANGER } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
 import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss, hasBat, batHit, batInRange } from './labBoss.js';
@@ -885,9 +887,15 @@ function startUnlockScene() {
 }
 
 // ================= Issue #2：結局動畫 =================
+// Issue #4：打贏之後先播實驗室爆炸逃走，之後先播原本嘅結局
 function startEnding() {
   player.controls.unlock();
   closePanel();
+  if (!endingEscaped) {
+    endingEscaped = true;
+    playLabEscape({ scene, camera, onDone: startEnding });
+    return;
+  }
   playEnding({
     scene, camera, fight,
     onPaid() {
@@ -944,7 +952,7 @@ renderer.setAnimationLoop((timestamp) => {
   updateIntro(intro, dt);
   updateMovie(dt);
   if (!frozen) updateLab(dt, time, pos);
-  beach.open = state.labBossDefeated;
+  beach.open = !!state.labUnlocked; // 小朋友 Issue #4：撳 Magic Library 後面個紅掣（開大門）就去得秘密沙灘
   beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
   if (!frozen) updateBeach(dt, time);
 
