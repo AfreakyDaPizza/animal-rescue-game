@@ -50,90 +50,123 @@ function walkLegs(legs, t, moving, speed = 7, amp = 0.5) {
 }
 
 // ================= Kitsune Of Runes（Rare） =================
-// 跟張圖：深藍色方塊狐狸、7 條大尾好似扇咁打開、身同尾有粉紅色發光符文、發光粉紅眼、尖耳（入面粉紅光）
+// 小朋友：舊款好醜 → 跟張圖重新設計：深藍色方塊狐狸（似狼咁型），頸同膊頭有一嚿嚿尖尖嘅毛、長嘴、
+// 高高尖耳、發光粉紅眼同面紋、修長嘅腳（深色襪 + 爪）、身同腳有粉紅方形符文；
+// 7 條又粗又蓬鬆嘅大尾，喺身後面「立體」咁打開（由側面都見到），尾尖有發光粉紅方形符文
 export function buildKitsuneModel() {
   const g = new THREE.Group();
   const root = pivot(g);
-  const NAVY = 0x27338f;
-  const NAVY2 = 0x3343b0;
-  const DARK = 0x161c4f;
-  const rune = glowMat(0xff3dbe, 1.2);
-  const runeSoft = glowMat(0xff80d8, 0.8);
-  const BODY_Y = 1.0;
-  // 四隻幼腳（深色襪 + 粉紅發光腳尖）
-  const legs = [[-0.28, -0.55], [0.28, -0.55], [-0.28, 0.6], [0.28, 0.6]].map(([x, z]) => {
+  const NAVY = 0x2a3596;
+  const NAVY2 = 0x3949ab;
+  const DARK = 0x1a2063;
+  const rune = glowMat(0xff3dbe, 1.0);
+  const runeSoft = glowMat(0xff80d8, 0.7);
+  const BODY_Y = 1.35;
+  // 一嚿尖毛（斜斜嘅方塊）
+  const tuft = (p, x, y, z, w, h, rx, rz, col = NAVY2) => {
+    const m = box(p, w, h, w, col, x, y, z, 0.2);
+    m.rotation.set(rx, 0, rz);
+    return m;
+  };
+  // 方形符文（一個框 + 中間一粒）
+  const runeSquare = (p, x, y, z, sz, ry = 0) => {
+    const q = pivot(p, x, y, z);
+    q.rotation.y = ry;
+    for (const [w, h, dx, dy] of [[sz, sz * 0.18, 0, sz * 0.41], [sz, sz * 0.18, 0, -sz * 0.41], [sz * 0.18, sz, sz * 0.41, 0], [sz * 0.18, sz, -sz * 0.41, 0]]) glowBox(q, w, h, 0.04, rune, dx, dy, 0, 0.2);
+    glowBox(q, sz * 0.35, sz * 0.35, 0.05, runeSoft, 0, 0, 0, 0.2);
+    return q;
+  };
+
+  // ---- 修長嘅腳 ----
+  const legs = [[-0.32, -0.62], [0.32, -0.62], [-0.32, 0.62], [0.32, 0.62]].map(([x, z], i) => {
     const hip = pivot(root, x, BODY_Y - 0.15, z);
-    box(hip, 0.24, 0.5, 0.26, NAVY, 0, -0.22, 0, 0.3);
-    box(hip, 0.2, 0.42, 0.22, DARK, 0, -0.62, 0, 0.3);
-    glowBox(hip, 0.24, 0.08, 0.3, runeSoft, 0, -0.86, -0.03, 0.3);
+    box(hip, 0.3, 0.6, 0.34, NAVY, 0, -0.25, 0, 0.3);
+    box(hip, 0.24, 0.55, 0.26, DARK, 0, -0.78, 0.02, 0.3);
+    box(hip, 0.3, 0.12, 0.38, DARK, 0, -1.1, -0.04, 0.3);
+    for (let c = -1; c <= 1; c++) box(hip, 0.07, 0.07, 0.12, 0x0d1033, c * 0.09, -1.12, -0.24, 0.3);
+    glowBox(hip, 0.04, 0.16, 0.16, rune, (x < 0 ? -1 : 1) * 0.16, -0.3, 0, 0.2); // 腳上符文
     return hip;
   });
-  // 身 + 胸口毛
+
+  // ---- 身：修長、胸口厚毛 ----
   const body = pivot(root, 0, BODY_Y, 0);
-  box(body, 0.78, 0.7, 1.55, NAVY, 0, 0.1, 0.05, 0.35);
-  box(body, 0.66, 0.25, 1.4, NAVY2, 0, 0.47, 0.05, 0.35);
-  box(body, 0.6, 0.55, 0.45, 0x5c6bc0, 0, 0.0, -0.72, 0.35); // 胸口淺色毛
-  // 身上符文：一行行粉紅色記號
+  box(body, 0.85, 0.72, 1.7, NAVY, 0, 0.1, 0.05, 0.3);
+  box(body, 0.72, 0.25, 1.5, NAVY2, 0, 0.48, 0.05, 0.3);
+  box(body, 0.75, 0.7, 0.55, NAVY2, 0, 0.05, -0.75, 0.3); // 胸
+  for (let i = 0; i < 5; i++) tuft(body, (i - 2) * 0.15, -0.3, -0.98, 0.16, 0.3, 0.4, (i - 2) * 0.2); // 胸口尖毛
   for (const s of [-1, 1]) {
-    glowBox(body, 0.04, 0.32, 0.06, rune, s * 0.4, 0.15, -0.35, 0.2);
-    glowBox(body, 0.04, 0.06, 0.32, rune, s * 0.4, 0.3, -0.2, 0.2);
-    glowBox(body, 0.04, 0.2, 0.06, rune, s * 0.4, 0.2, 0.25, 0.2);
-    glowBox(body, 0.04, 0.06, 0.25, rune, s * 0.4, 0.05, 0.4, 0.2);
-    glowBox(body, 0.04, 0.12, 0.12, runeSoft, s * 0.4, 0.3, 0.6, 0.2).rotation.x = PI / 4;
+    runeSquare(body, s * 0.44, 0.15, 0.25, 0.3, s * PI / 2);
+    glowBox(body, 0.04, 0.06, 0.45, rune, s * 0.44, 0.38, -0.3, 0.2);
+    glowBox(body, 0.04, 0.3, 0.06, rune, s * 0.44, 0.0, -0.45, 0.2);
   }
-  // 頸 + 頭
-  const head = pivot(root, 0, BODY_Y + 0.6, -0.85);
-  box(head, 0.7, 0.6, 0.62, NAVY, 0, 0, 0, 0.35);
-  box(head, 0.64, 0.2, 0.55, NAVY2, 0, 0.3, 0, 0.35);
-  box(head, 0.36, 0.28, 0.5, NAVY, 0, -0.08, -0.48, 0.35); // 長嘴
-  box(head, 0.3, 0.14, 0.45, 0x7986cb, 0, -0.2, -0.45, 0.35); // 下巴淺色
-  box(head, 0.12, 0.1, 0.08, 0x0b0b1a, 0, -0.02, -0.74, 0.35); // 鼻
+  // 頸 + 膊頭嘅尖毛鬃
+  const mane = pivot(body, 0, 0.45, -0.75);
+  for (let i = 0; i < 9; i++) {
+    const a = -PI / 2 - 1.2 + (i / 8) * 2.4; // 由左邊、頂、去右邊
+    tuft(mane, Math.cos(a) * 0.45, 0.1 + Math.sin(-a) * 0.15, 0.1, 0.22, 0.5, -0.6, -Math.cos(a) * 0.9);
+  }
+  for (let i = 0; i < 6; i++) tuft(body, 0, 0.62, -0.3 + i * 0.28, 0.2, 0.32, 0.8, 0, i % 2 ? NAVY : NAVY2); // 背脊毛
+
+  // ---- 頭：長嘴似狼、尖耳、粉紅眼 + 面紋 ----
+  const head = pivot(root, 0, BODY_Y + 0.75, -1.05);
+  box(head, 0.72, 0.6, 0.65, NAVY, 0, 0, 0, 0.3);
+  box(head, 0.66, 0.2, 0.6, NAVY2, 0, 0.32, 0, 0.3);
+  for (const s of [-1, 1]) tuft(head, s * 0.38, -0.05, 0.1, 0.2, 0.42, 0, s * 1.1); // 面頰毛
+  box(head, 0.42, 0.3, 0.6, NAVY, 0, -0.08, -0.55, 0.3); // 長嘴
+  box(head, 0.36, 0.14, 0.55, 0x5c6bc0, 0, -0.22, -0.52, 0.3); // 下巴
+  box(head, 0.16, 0.12, 0.1, 0x0b0b1a, 0, 0.0, -0.87, 0.3); // 鼻
   for (const s of [-1, 1]) {
-    // 斜斜嘅發光粉紅眼
-    glowBox(head, 0.2, 0.08, 0.05, rune, s * 0.18, 0.08, -0.32, 0.3).rotation.z = s * 0.3;
-    // 尖耳（入面粉紅）
-    const ear = pivot(head, s * 0.22, 0.35, 0.05);
-    box(ear, 0.24, 0.5, 0.14, NAVY, 0, 0.22, 0, 0.25).rotation.z = s * -0.15;
-    glowBox(ear, 0.12, 0.34, 0.04, runeSoft, -s * 0.01, 0.2, -0.08, 0.25).rotation.z = s * -0.15;
+    glowBox(head, 0.22, 0.09, 0.05, rune, s * 0.19, 0.1, -0.34, 0.3).rotation.z = s * 0.3; // 眼
+    glowBox(head, 0.04, 0.14, 0.2, runeSoft, s * 0.37, 0.15, -0.1, 0.2); // 面紋
+    const ear = pivot(head, s * 0.22, 0.36, 0.05);
+    ear.rotation.z = s * -0.18;
+    box(ear, 0.24, 0.6, 0.16, NAVY, 0, 0.28, 0, 0.2);
+    box(ear, 0.12, 0.4, 0.04, 0x9c27b0, 0, 0.24, -0.08, 0.2);
+    tuft(ear, 0, 0.62, 0, 0.12, 0.2, 0, 0, NAVY2);
   }
-  glowBox(head, 0.12, 0.12, 0.04, rune, 0, 0.22, -0.32, 0.2).rotation.z = PI / 4; // 額頭符文
-  // 7 條大尾：一節節收細，向上向外打開成扇；尾尖粉紅發光
+  glowBox(head, 0.12, 0.12, 0.04, rune, 0, 0.24, -0.34, 0.2).rotation.z = PI / 4; // 額頭符文
+
+  // ---- 7 條蓬鬆大尾：喺身後立體咁開成扇（左右 + 上下都散開） ----
   const tails = [];
   const N = 7;
   for (let k = 0; k < N; k++) {
-    const fan = (k / (N - 1) - 0.5) * 2; // -1 … 1
-    const base = pivot(root, 0, BODY_Y + 0.25, 0.75);
-    base.rotation.order = 'ZXY';
-    base.rotation.z = fan * 1.2; // 扇形向兩邊
-    base.rotation.x = 0.85; // 向後斜上（正數 = 向 +z 後面）
+    const f = k / (N - 1) - 0.5; // -0.5 … 0.5
+    const base = pivot(root, 0, BODY_Y + 0.4, 0.85);
+    base.rotation.order = 'YXZ';
+    base.rotation.y = f * 3.1; // 左右散開（立體）
+    base.rotation.x = 0.85 + Math.abs(f) * 0.5; // 中間嗰條企啲，兩邊斜啲
     const segs = [];
     let parent = base;
-    for (let i = 0; i < 6; i++) {
-      const p = pivot(parent, 0, i === 0 ? 0 : 0.4, 0);
-      const w = 0.28 + Math.sin((i / 5) * PI) * 0.2; // 中間最粗（毛茸茸）
-      box(p, w, 0.46, w, i % 2 ? NAVY2 : NAVY, 0, 0.2, 0, 0.42);
-      if (i === 3) glowBox(p, w + 0.03, 0.07, w + 0.03, rune, 0, 0.22, 0, 0.3); // 尾中間一圈符文
+    for (let i = 0; i < 5; i++) {
+      const p = pivot(parent, 0, i === 0 ? 0 : 0.42, 0);
+      const w = 0.34 + Math.sin(((i + 0.5) / 5) * PI) * 0.34;
+      box(p, w, 0.46, w * 0.8, i % 2 ? NAVY2 : NAVY, 0, 0.2, 0, 0.3);
+      if (i >= 1 && i <= 3) for (const s of [-1, 1]) tuft(p, s * w * 0.5, 0.2, 0, 0.14, 0.3, 0, s * 0.9, NAVY2); // 兩邊尖毛
       segs.push(p);
       parent = p;
     }
-    glowBox(parent, 0.22, 0.34, 0.22, rune, 0, 0.55, 0, 0.45); // 尾尖（粉紅火）
-    tails.push({ base, segs, fan, k });
+    const tip = pivot(parent, 0, 0.5, 0);
+    box(tip, 0.3, 0.32, 0.3, NAVY2, 0, 0, 0, 0.3);
+    runeSquare(tip, 0, 0.0, -0.17, 0.28);
+    runeSquare(tip, 0, 0.0, 0.17, 0.28, PI);
+    glowBox(tip, 0.16, 0.22, 0.16, runeSoft, 0, 0.24, 0, 0.3); // 尾尖粉紅火
+    tails.push({ base, segs, f, k });
   }
 
   g.userData.animate = (t, moving) => {
     walkLegs(legs, t, moving, 9, 0.6);
     root.position.y = Math.abs(Math.sin(t * 9)) * 0.05 * moving;
-    head.rotation.y = Math.sin(t * 0.9) * 0.25 * (1 - moving);
+    head.rotation.y = Math.sin(t * 0.9) * 0.22 * (1 - moving);
     head.rotation.x = Math.sin(t * 1.3) * 0.05;
     for (const tl of tails) {
-      tl.base.rotation.z = tl.fan * (1.1 + Math.sin(t * 1.4) * 0.08);
-      tl.segs.forEach((p, i) => (p.rotation.x = Math.sin(t * 2.2 - i * 0.7 + tl.k * 0.6) * 0.12 - 0.12)); // 尾向前彎少少（似問號）
+      tl.base.rotation.y = tl.f * (3.1 + Math.sin(t * 1.3) * 0.12);
+      tl.segs.forEach((p, i) => (p.rotation.x = Math.sin(t * 2 - i * 0.7 + tl.k * 0.6) * 0.08 - 0.2)); // 尾尖向上彎返
     }
-    rune.emissiveIntensity = 1.0 + Math.sin(t * 3) * 0.4;
-    runeSoft.emissiveIntensity = 0.7 + Math.sin(t * 3 + 1) * 0.25;
+    rune.emissiveIntensity = 0.9 + Math.sin(t * 3) * 0.3;
+    runeSoft.emissiveIntensity = 0.6 + Math.sin(t * 3 + 1) * 0.2;
   };
   g.userData.move = 'walk';
-  g.userData.height = 3.0;
+  g.userData.height = 3.2;
   return g;
 }
 
@@ -331,96 +364,123 @@ export function buildDreadscaleModel() {
 }
 
 // ================= Uncoiled Armadillo（Epic） =================
-// 跟張圖：犰狳，背上一圈圈深色盔甲（有橙色發光尖刺），米色頭同腳，背上有座燈塔（發光窗、會轉嘅燈）
+// 小朋友：舊款好醜 → 跟張圖重新設計：長長、矮矮、好似坦克嘅犰狳（似甲龍）：
+// 一圈圈深灰色厚盔甲（淺灰邊）、背脊同兩邊一行行橙色發光尖刺、米色粗腳（有深色箍、灰色大爪）、
+// 長長嘅三角形盔甲頭（中間一條骨脊）、背中間一座粗身燈塔（橙色發光窗條、燈房、尖頂）、長尾一節節收細
 export function buildArmadilloModel() {
   const g = new THREE.Group();
   const root = pivot(g);
-  const TAN = 0xd9b98a;
-  const TAN2 = 0xc29e6a;
-  const ARMOR = 0x2c2c35;
-  const ARMOR2 = 0x45454f;
-  const spikeM = glowMat(0xff8f00, 1.1, { flatShading: true });
-  const windowM = glowMat(0xffb300, 1.4);
-  const BODY_Y = 0.95;
-  const legs = [[-0.5, -0.65], [0.5, -0.65], [-0.5, 0.65], [0.5, 0.65]].map(([x, z]) => {
-    const hip = pivot(root, x, BODY_Y - 0.25, z);
-    box(hip, 0.36, 0.45, 0.4, TAN2, 0, -0.18, 0, 0.3);
-    box(hip, 0.4, 0.16, 0.48, ARMOR, 0, -0.42, -0.03, 0.3);
-    for (let c = -1; c <= 1; c++) cone(hip, 0.05, 0.16, 0x3e2723, c * 0.11, -0.45, -0.28, -PI / 2.3);
+  const TAN = 0xd8c09a;
+  const TAN2 = 0xbfa47a;
+  const ARMOR = 0x2b2f38;
+  const ARMOR2 = 0x3b414c;
+  const TRIM = 0x8a919c;
+  const CLAW = 0x7d8590;
+  const spikeM = glowMat(0xff6d00, 0.8, { flatShading: true });
+  const windowM = glowMat(0xff8f00, 1.1);
+  const BODY_Y = 1.05;
+  const L = 2.9; // 身長
+
+  // ---- 腳：粗、矮、米色 + 深色箍 + 灰色大爪 ----
+  const legs = [[-0.72, -0.95], [0.72, -0.95], [-0.72, 0.95], [0.72, 0.95]].map(([x, z]) => {
+    const hip = pivot(root, x, BODY_Y - 0.2, z);
+    box(hip, 0.5, 0.55, 0.55, TAN, 0, -0.2, 0, 0.3);
+    box(hip, 0.54, 0.14, 0.58, ARMOR, 0, -0.38, 0, 0.3); // 腳箍
+    box(hip, 0.46, 0.3, 0.52, TAN2, 0, -0.58, -0.02, 0.3);
+    box(hip, 0.58, 0.14, 0.66, ARMOR, 0, -0.76, -0.05, 0.3); // 腳底
+    for (let c = -1; c <= 1; c++) {
+      const cl = box(hip, 0.13, 0.12, 0.24, CLAW, c * 0.19, -0.78, -0.4, 0.3);
+      cl.rotation.x = 0.35;
+    }
     return hip;
   });
-  // 身：米色肚 + 七圈盔甲（拱形），每圈頂有一行橙色發光尖刺
+
+  // ---- 身：米色底 + 9 圈拱形盔甲（中間高、兩頭低），每圈頂同兩邊有橙刺 ----
   const body = pivot(root, 0, BODY_Y, 0);
-  box(body, 1.15, 0.6, 1.9, TAN, 0, -0.15, 0, 0.35);
+  box(body, 1.55, 0.55, L, TAN, 0, -0.2, 0, 0.3); // 肚
   const bands = [];
-  for (let i = 0; i < 7; i++) {
-    const z = -0.85 + i * 0.28;
-    const h = 0.85 + Math.sin((i / 6) * PI) * 0.25;
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const k = i / (N - 1);
+    const z = -L / 2 + 0.15 + k * (L - 0.3);
+    const h = 0.75 + Math.sin(k * PI) * 0.35; // 中間高
     const band = pivot(body, 0, 0, z);
-    // 拱形：頂一塊 + 兩邊斜斜兩塊 + 淺色邊
     const col = i % 2 ? ARMOR2 : ARMOR;
-    box(band, 0.72, 0.22, 0.27, col, 0, 0.32 + h * 0.4, 0, 0.35);
+    const d = (L - 0.3) / (N - 1) + 0.04;
+    box(band, 1.2, 0.3, d, col, 0, 0.18 + h * 0.55, 0, 0.3); // 頂
     for (const s of [-1, 1]) {
-      box(band, 0.24, h * 0.75, 0.27, col, s * 0.52, 0.12 + h * 0.12, 0, 0.35).rotation.z = s * 0.35;
-      box(band, 0.06, h * 0.7, 0.29, 0x6b6b78, s * 0.64, 0.1 + h * 0.1, 0, 0.3).rotation.z = s * 0.35;
+      box(band, 0.32, h * 0.9, d, col, s * 0.72, 0.05 + h * 0.2, 0, 0.3).rotation.z = s * 0.3; // 兩邊斜
+      box(band, 0.08, h * 0.8, d + 0.02, TRIM, s * 0.88, 0.0 + h * 0.15, 0, 0.3).rotation.z = s * 0.3; // 淺灰邊
+      cone(band, 0.14, 0.46, spikeM, s * 0.98, 0.25 + h * 0.2, 0, 0, -s * 1.2); // 兩邊尖刺
     }
-    for (let k = -1; k <= 1; k++) cone(band, 0.09, 0.32, spikeM, k * 0.42, 0.42 + h * 0.4 - Math.abs(k) * 0.12, 0, 0, -k * 0.55);
+    box(band, 1.22, 0.05, d * 0.5, TRIM, 0, 0.34 + h * 0.55, 0, 0.3); // 頂中間淺線
+    if (i !== 4) cone(band, 0.2, 0.6 + Math.sin(k * PI) * 0.2, spikeM, 0, 0.58 + h * 0.55, 0, -0.25, 0); // 背脊尖刺（燈塔位唔使）
+    for (const s of [-1, 1]) cone(band, 0.13, 0.38, spikeM, s * 0.42, 0.5 + h * 0.52, 0, -0.2, -s * 0.5);
     bands.push(band);
   }
-  // 頭：長鼻 + 細耳 + 頭甲
-  const head = pivot(root, 0, BODY_Y + 0.05, -1.1);
-  box(head, 0.55, 0.45, 0.55, TAN, 0, 0, 0, 0.32);
-  box(head, 0.5, 0.18, 0.5, ARMOR, 0, 0.25, 0.02, 0.3); // 頭甲
-  box(head, 0.3, 0.26, 0.5, TAN, 0, -0.06, -0.45, 0.32); // 長鼻
-  box(head, 0.16, 0.12, 0.08, 0x4e342e, 0, -0.02, -0.72, 0.3);
-  for (const s of [-1, 1]) {
-    box(head, 0.12, 0.2, 0.1, TAN2, s * 0.2, 0.36, 0.15, 0.3); // 耳
-    box(head, 0.1, 0.1, 0.05, 0x1a1a1a, s * 0.17, 0.08, -0.28, 0.35); // 眼
-    box(head, 0.04, 0.04, 0.02, 0xffffff, s * 0.19, 0.11, -0.31, 0.35);
+
+  // ---- 頭：長長三角形盔甲頭（米色一節節收窄，每節頂有深色甲片，中間一條骨脊），橙色發光細眼 ----
+  const head = pivot(root, 0, BODY_Y + 0.05, -L / 2 - 0.2);
+  box(head, 1.0, 0.65, 0.6, TAN2, 0, 0, -0.05, 0.3); // 頸
+  box(head, 1.05, 0.16, 0.62, ARMOR, 0, 0.36, -0.05, 0.3);
+  const snout = pivot(head, 0, 0, -0.35);
+  for (let i = 0; i < 4; i++) {
+    const w = 0.9 - i * 0.17;
+    const hh = 0.55 - i * 0.08;
+    const z = -0.2 - i * 0.32;
+    box(snout, w, hh, 0.38, i % 2 ? TAN : 0xe6d3b0, 0, -0.04 - i * 0.03, z, 0.3);
+    box(snout, w * 0.8, 0.1, 0.34, i % 2 ? ARMOR2 : ARMOR, 0, hh / 2 - 0.02 - i * 0.03, z, 0.3); // 甲片
+    box(snout, 0.12, 0.12, 0.36, TRIM, 0, hh / 2 + 0.06 - i * 0.03, z, 0.3); // 骨脊
   }
-  // 尾：一節節盔甲 + 橙色尖
-  const tail = pivot(root, 0, BODY_Y - 0.05, 1.0);
+  for (const s of [-1, 1]) glowBox(head, 0.06, 0.1, 0.18, windowM, s * 0.48, 0.12, -0.32, 0.3); // 眼（兩邊）
+  box(snout, 0.24, 0.14, 0.1, 0x3e2723, 0, -0.14, -1.25, 0.3); // 鼻
+  // 身兩邊嘅米色大甲（似張圖）
+  for (const s of [-1, 1]) {
+    box(body, 0.16, 0.42, L - 0.3, TAN2, s * 0.8, -0.18, 0, 0.3);
+    box(body, 0.18, 0.08, L - 0.3, TRIM, s * 0.82, 0.05, 0, 0.3);
+  }
+
+  // ---- 背中間嘅燈塔：粗身、深色、橙色窗條、燈房、尖頂 ----
+  const tower = pivot(body, 0, 0.9, 0.05);
+  box(tower, 0.95, 0.3, 0.95, TAN2, 0, 0.12, 0, 0.25); // 米色底座
+  box(tower, 0.8, 1.1, 0.8, ARMOR, 0, 0.8, 0, 0.2);
+  for (const s of [-1, 1]) {
+    glowBox(tower, 0.05, 0.85, 0.16, windowM, s * 0.41, 0.82, 0, 0.2); // 兩邊長窗條
+    glowBox(tower, 0.16, 0.85, 0.05, windowM, 0, 0.82, s * 0.41, 0.2); // 前後窗條
+  }
+  box(tower, 0.95, 0.12, 0.95, TRIM, 0, 1.4, 0, 0.3);
+  const lamp = glowBox(tower, 0.55, 0.42, 0.55, glowMat(0xffb74d, 1.1), 0, 1.68, 0, 0.3); // 燈房
+  for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) box(tower, 0.08, 0.45, 0.08, ARMOR, x, 1.68, z, 0.3); // 燈房框
+  box(tower, 0.72, 0.12, 0.72, ARMOR, 0, 1.94, 0, 0.3);
+  cone(tower, 0.36, 0.45, ARMOR2, 0, 2.22, 0, 0, 0, 4);
+  cone(tower, 0.06, 0.2, spikeM, 0, 2.52, 0, 0, 0, 4);
+
+  // ---- 尾：一節節盔甲收細 + 橙刺 ----
+  const tail = pivot(root, 0, BODY_Y - 0.05, L / 2);
+  const tsegs = [];
+  let tp = tail;
   for (let i = 0; i < 5; i++) {
-    box(tail, 0.28 - i * 0.04, 0.24 - i * 0.03, 0.3, i % 2 ? ARMOR2 : ARMOR, 0, -i * 0.04, 0.16 + i * 0.27, 0.3);
-    cone(tail, 0.04, 0.12, spikeM, 0, 0.13 - i * 0.04, 0.16 + i * 0.27, 0);
-  }
-  // 背上嘅燈塔（高度同個身差唔多，唔好太大）
-  const tower = pivot(body, 0, 0.95, 0.05);
-  box(tower, 0.62, 0.3, 0.62, ARMOR2, 0, 0.15, 0, 0.25);
-  for (let i = 0; i < 3; i++) {
-    const w = 0.5 - i * 0.07;
-    box(tower, w, 0.36, w, i % 2 ? 0x37373f : 0x2a2a31, 0, 0.48 + i * 0.36, 0, 0.2);
-    for (const s of [-1, 1]) glowBox(tower, 0.05, 0.16, 0.1, windowM, s * (w / 2 + 0.01), 0.48 + i * 0.36, 0, 0.2);
-    glowBox(tower, 0.1, 0.16, 0.05, windowM, 0, 0.48 + i * 0.36, -(w / 2 + 0.01), 0.2);
-  }
-  box(tower, 0.56, 0.06, 0.56, 0xffc107, 0, 1.45, 0, 0.3, { metalness: 0.7, roughness: 0.3 }); // 金色欄杆
-  const lamp = glowBox(tower, 0.32, 0.3, 0.32, glowMat(0xffe082, 1.6), 0, 1.65, 0, 0.3); // 燈房
-  cone(tower, 0.28, 0.35, ARMOR, 0, 1.97, 0, 0, 0, 6);
-  cone(tower, 0.05, 0.18, 0xffc107, 0, 2.22, 0, 0, 0, 6);
-  // 會轉嘅燈光（兩條淡黃色光束）
-  const beam = pivot(tower, 0, 1.65, 0);
-  const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff59d, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-  for (const s of [-1, 1]) {
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 10, 1, true), beamMat);
-    c.rotation.z = s * PI / 2;
-    c.position.x = s * 1.25;
-    beam.add(c);
+    const seg = pivot(tp, 0, 0, i === 0 ? 0 : 0.34);
+    seg.rotation.x = 0.06;
+    const w = 0.55 - i * 0.09;
+    box(seg, w, w * 0.8, 0.36, i % 2 ? ARMOR2 : ARMOR, 0, 0, 0.17, 0.3);
+    cone(seg, 0.06, 0.2, spikeM, 0, w * 0.45, 0.17, -0.3, 0);
+    tsegs.push(seg);
+    tp = seg;
   }
 
   g.userData.animate = (t, moving) => {
-    walkLegs(legs, t, moving, 10, 0.5);
-    root.position.y = Math.abs(Math.sin(t * 10)) * 0.04 * moving;
-    head.rotation.y = Math.sin(t * 1.1) * 0.25;
-    head.rotation.x = Math.sin(t * 2.3) * 0.06; // 嗅嗅
-    bands.forEach((b, i) => (b.position.y = Math.sin(t * 6 - i * 0.6) * 0.015 * moving));
-    tail.rotation.y = Math.sin(t * 3) * 0.3;
-    beam.rotation.y = t * 1.6;
-    windowM.emissiveIntensity = 1.2 + Math.sin(t * 9) * 0.15 + Math.sin(t * 23) * 0.1; // 燈火閃
-    lamp.material.emissiveIntensity = 1.4 + Math.sin(t * 4) * 0.3;
-    spikeM.emissiveIntensity = 0.9 + Math.sin(t * 2.5) * 0.25;
+    walkLegs(legs, t, moving, 9, 0.45);
+    root.position.y = Math.abs(Math.sin(t * 9)) * 0.04 * moving;
+    head.rotation.y = Math.sin(t * 1.1) * 0.2;
+    snout.rotation.x = Math.sin(t * 2.3) * 0.05; // 嗅嗅
+    bands.forEach((b, i) => (b.position.y = Math.sin(t * 6 - i * 0.6) * 0.012 * moving));
+    tsegs.forEach((sg, i) => (sg.rotation.y = Math.sin(t * 2.5 - i * 0.5) * 0.12));
+    windowM.emissiveIntensity = 1.0 + Math.sin(t * 9) * 0.12;
+    lamp.material.emissiveIntensity = 1.0 + Math.sin(t * 3) * 0.25;
   };
   g.userData.move = 'walk';
-  g.userData.height = 3.2;
+  g.userData.height = 3.6;
   return g;
 }
 
