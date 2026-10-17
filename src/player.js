@@ -31,6 +31,7 @@ class MouseLook extends THREE.EventDispatcher {
     this.camera = camera;
     this.domElement = domElement;
     this.isLocked = false;
+    this.virtual = false; // 手機版（小朋友 2026-10-17）：冇滑鼠鎖，「鎖住」只係代表「玩緊」
     this.freeMode = false; // Shift Lock 熄咗：見到滑鼠，按住右鍵拖先轉鏡頭
     this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
     document.addEventListener('mousemove', (e) => this.onMove(e));
@@ -58,7 +59,23 @@ class MouseLook extends THREE.EventDispatcher {
     this.euler.z = 0;
     this.camera.quaternion.setFromEuler(this.euler);
   }
+  // 手機：手指拖動轉鏡頭（dx、dy 係像素）
+  look(dx, dy, sensitivity = 0.005) {
+    this.euler.setFromQuaternion(this.camera.quaternion);
+    this.euler.y -= dx * sensitivity;
+    this.euler.x -= dy * sensitivity;
+    this.euler.x = Math.max(-1.45, Math.min(1.45, this.euler.x));
+    this.euler.z = 0;
+    this.camera.quaternion.setFromEuler(this.euler);
+  }
   lock() {
+    if (this.virtual) {
+      if (!this.isLocked) {
+        this.isLocked = true;
+        this.dispatchEvent({ type: 'lock' });
+      }
+      return;
+    }
     const el = this.domElement;
     try {
       const p = el.requestPointerLock({ unadjustedMovement: true });
@@ -69,6 +86,13 @@ class MouseLook extends THREE.EventDispatcher {
     }
   }
   unlock() {
+    if (this.virtual) {
+      if (this.isLocked) {
+        this.isLocked = false;
+        this.dispatchEvent({ type: 'unlock' });
+      }
+      return;
+    }
     if (document.pointerLockElement) document.exitPointerLock();
   }
 }
@@ -81,6 +105,9 @@ export function createPlayer(camera, domElement) {
   camera.rotation.set(0, 0, 0);
   return { controls, camera, feetY: 0, vy: 0, grounded: true, bob: 0 };
 }
+
+// 手機搖桿（mobile.js 寫入）：x = 向右、y = 向前（-1…1）；jump = 撳住 JUMP 掣
+export const touchInput = { x: 0, y: 0, jump: false };
 
 // 記住而家撳住咗邊啲掣
 const keys = new Set();
@@ -102,6 +129,14 @@ export function updatePlayer(player, dt, extraGround = 0) {
   if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) s += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) s -= 1;
+  // 手機搖桿：推得幾盡就行幾快
+  let mag = 1;
+  const touchMag = Math.hypot(touchInput.x, touchInput.y);
+  if (touchMag > 0.12 && f === 0 && s === 0) {
+    f = touchInput.y;
+    s = touchInput.x;
+    mag = Math.min(1, touchMag);
+  }
 
   const p = camera.position;
   const moving = f !== 0 || s !== 0;
@@ -117,7 +152,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
     let speed = walkSpeed(state.speed);
     // 只係喺半空先限速（企喺山／樓梯上面照跑得快，小朋友 2026-10-15）
     if (!player.grounded) speed = Math.min(speed, AIR_SPEED_CAP);
-    const step = speed * dt;
+    const step = speed * dt * mag;
     // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
     const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));
     const moveX = ((forward.x * f + right.x * s) / len) * (step / parts);
@@ -137,7 +172,8 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
   // 跳 + 地心吸力
   const ground = Math.max(extraGround, groundAt(p.x, p.z, player.feetY));
-  if (player.grounded && keys.has('Space')) {
+  const wantJump = keys.has('Space') || touchInput.jump; // 手機：撳住 JUMP 掣
+  if (player.grounded && wantJump) {
     player.vy = JUMP_SPEED;
     player.grounded = false;
     player.jumped = true; // main.js 用嚟出跳嘅聲
