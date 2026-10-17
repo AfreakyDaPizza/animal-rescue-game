@@ -413,3 +413,6 @@ body:has(#boss-bar:not([hidden])) #event-banner { display: none; }
 .fuse-chance { border: 3px solid #ccc; border-radius: 12px; padding: 6px 10px; min-width: 96px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; }
 .fuse-chance .emoji { font-size: 28px; }
 .fuse-chance span { font-weight: 900; font-size: 18px; color: #2e7d32; }
+
+/* 🔥 Fire 變異寵物 */
+.card-animal .fire-tag { display: block; color: #ff6d00; font-weight: 900; }

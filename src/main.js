@@ -31,7 +31,8 @@ import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent } from './events.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD, LAB_REWARD } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN } from './data/balance.js';
+import { animateFireAuras } from './fireAura.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
 import { buildSecretBeach, beach, applyBeachSky, playCollab } from './secretBeach.js';
@@ -450,9 +451,29 @@ const hubActions = {
     setTimeout(() => popup(`🎟️ +${tokens} Skin Tokens`), 1200);
     quest('pets', pets.length);
     const giant = pets.find((p) => p.sizeMul);
-    announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
-    play(giant ? 'tierUp' : 'ding');
+    const fire = pets.find((p) => p.mutation === 'fire');
+    if (fire) announce(`🔥🔥 FIRE MUTATION! Your ${fire.name} is ON FIRE: x${FIRE_MONEY} money! 🐉`);
+    else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
+    play(giant || fire ? 'tierUp' : 'ding');
     popup('Put it on your Plot to earn money!');
+    save();
+  },
+  // Dragon's Lair：答啱問題，繁殖快啲
+  async speedUpMachine(machine) {
+    const rec = state.machines[machine.index];
+    if (!rec || (rec.quizReadyAt || 0) > Date.now()) return;
+    const right = await quiz({ title: "🐉 Dragon's Lair: answer right to SPEED UP!", biome: rec.biome });
+    const now = state.machines[machine.index];
+    if (!now) return;
+    now.quizReadyAt = Date.now() + MACHINE_QUIZ_COOLDOWN * 1000;
+    if (right) {
+      const left = Math.max(0, now.endsAt - Date.now());
+      const cut = Math.max(left * MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT * 1000);
+      now.endsAt = Math.max(Date.now(), now.endsAt - cut);
+      quest('right');
+      popup(`⏩ Correct! ${Math.round(cut / 1000)} seconds faster!`);
+      play('magic');
+    } else popup('❌ Not this time... try again soon!');
     save();
   },
   placePet(pet) {
@@ -947,6 +968,7 @@ renderer.setAnimationLoop((timestamp) => {
   if (!frozen) {
     updateWorld(dt, time); // 水、雀、雪
     animateSkins(time); // 寵物皮膚特效
+    animateFireAuras(time); // 🔥 Fire 寵物嘅火
   }
   const pos = camera.position;
   updateIntro(intro, dt);
@@ -1066,7 +1088,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (batNow) popup('🏏 You got a BAT! Get close and press E or click to hit him!');
   }
   const sel = selectedHotbarItem();
-  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null);
+  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null, sel?.item.mutation === 'fire');
   // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
   const showTool = sel?.kind === 'tool' && !rescue.carrying;
   const bat = !!sel?.item.bat;

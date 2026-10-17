@@ -1,6 +1,7 @@
 // 動物：喺生態區出現、借、抱住返 Hub、跌咗返去生態區
 
 import * as THREE from 'three';
+import { addFireAura } from './fireAura.js';
 import { animalsInBiome, randomKg, formatKg, kgScale, findAnimal } from './data/animals.js';
 import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, randomRarity, rarityInfo } from './data/balance.js';
 import { buildAnimalModel } from './animalModels.js';
@@ -193,16 +194,18 @@ export function deliver(rescue) {
 }
 
 // 快捷欄揀咗嘅嘢拎喺手（抱住救援動物時就收埋）
-export function setHolding(rescue, name) {
+export function setHolding(rescue, name, fire = false) {
   const show = rescue.carrying ? null : name;
-  if ((rescue.holding?.name ?? null) === show) return;
+  const key = show && fire ? `${show}#fire` : show; // 🔥 Fire 寵物要換過有火嘅模型
+  if ((rescue.holding?.key ?? rescue.holding?.name ?? null) === key) return;
   if (rescue.holding) rescue.holding.model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.holding = null;
   if (show) {
     const model = handModel(findAnimal(show));
     applyPetSkin(model, state.petSkin); // 寵物皮膚
+    if (fire) addFireAura(model);
     rescue.camera.add(model);
-    rescue.holding = { name: show, model };
+    rescue.holding = { name: show, key, model };
   }
 }
 
