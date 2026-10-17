@@ -6,17 +6,18 @@ import { addCollider, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall } from './hubBuildings.js';
+import { fuseMachine } from './hubPark.js';
+import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { boost } from './events.js';
 import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
 import { buildAnimalModel } from './animalModels.js';
-import { ANIMALS, kgOf, formatKg, itemMoney, kgScale } from './data/animals.js';
+import { kgOf, formatKg, itemMoney, kgScale, findAnimal } from './data/animals.js';
 import { trainingGain, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS } from './data/balance.js';
 
 const INTERACT_DISTANCE = 2.8;
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
-const findAnimal = (name) => ANIMALS.find((a) => a.name === name);
 
 function add(group, geometry, material, x, y, z) {
   const mesh = new THREE.Mesh(geometry, material);
@@ -1607,6 +1608,13 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   // 皮膚商店
   const sh = near(hub.shopSpot.x, hub.shopSpot.z);
   if (sh < INTERACT_DISTANCE + 0.8) options.push({ dist: sh, prompt: `<kbd>E</kbd> Open the Skin Shop (🎟️ ${state.tokens} tokens)`, action: actions.openShop });
+
+  // Fuse Machine（Issue #4）
+  const fu = near(fuseMachine.spot.x, fuseMachine.spot.z);
+  if (fu < INTERACT_DISTANCE + 1) {
+    if (isFuseOpen()) options.push({ dist: fu, prompt: '<kbd>E</kbd> Open the Fuse Machine 🧪 (fuse 3 pets into 1)', action: actions.openFuse });
+    else options.push({ dist: fu, prompt: `🔒 The Fuse Machine opens on ${openDateText()} (in ${daysUntilOpen()} day${daysUntilOpen() === 1 ? '' : 's'})` });
+  }
 
   // 賣寵物攤位
   const se = near(hub.sellSpot.x, hub.sellSpot.z);

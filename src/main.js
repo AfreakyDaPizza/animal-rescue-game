@@ -39,7 +39,8 @@ import { BENCH, STRANGER } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
 import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss, hasBat, batHit, batInRange } from './labBoss.js';
 import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
-import { setGateOpen } from './hubPark.js';
+import { setGateOpen, fuseMachine } from './hubPark.js';
+import { fusePets } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
 
@@ -389,7 +390,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ') togglePanel('quests');
   if (e.code === 'KeyH') toggleHidePets();
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && ['pets', 'sell', 'portal'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.freeMode) {
@@ -461,6 +462,7 @@ const hubActions = {
   openIndex: () => togglePanel('index'),
   openPets: () => togglePanel('pets'),
   openSell: () => togglePanel('sell'),
+  openFuse: () => togglePanel('fuse'),
   openShop: () => togglePanel('shop'),
   upgradeMachines() {
     const lv = upgradeMachines(hub);
@@ -544,6 +546,21 @@ setPetActions({
     popup(`💰 Sold ${pet.name} for $${price.toLocaleString('en-US')}`);
     play('coin');
     save();
+  },
+  // Fuse Machine：3 隻變 1 隻
+  fuse(pets) {
+    const pet = fusePets(pets);
+    if (!pet) return;
+    for (const p of pets) p.onPlot = false;
+    refreshPlotPets(hub);
+    fuseMachine.showResult(pet.name);
+    play('magic');
+    setTimeout(() => play('upgrade'), 1200);
+    const r = rarityInfo(pet.rarity);
+    announce(`🧪 FUSED! You got a ${r.name.toUpperCase()} ${pet.name}! ($${itemMoney(pet).toLocaleString('en-US')}/s)`);
+    save();
+    closePanel();
+    resume();
   },
   sellMany(pets) {
     const price = pets.reduce((n, p) => n + sellPet(hub, p), 0);

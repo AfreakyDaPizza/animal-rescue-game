@@ -124,9 +124,24 @@ export const ANIMALS = [
     fact: 'A tiny rabbit with round ears that lives only on the slopes of volcanoes near Mexico City!' },
 ];
 
+// ---- Fuse Machine 先有嘅寵物（小朋友 2026-10-17 Issue #4）----
+// 唔會喺生態區出現、唔計入 Index 嘅 50 隻；每隻固定一個稀有度
+export const FUSE_PETS = [
+  { name: 'Rhinoblade', rarity: 'Common', emoji: '🦏', kg: [900, 1500], fuse: true, biome: 5, status: 'Fuse-only',
+    fact: 'A rhino with steel blade horns, made in the Fuse Machine!' },
+  { name: 'Spideron', rarity: 'Rare', emoji: '🕷️', kg: [40, 90], fuse: true, biome: 5, status: 'Fuse-only',
+    fact: 'A giant glowing spider with eight legs and six eyes!' },
+  { name: 'Dunkleosteus', rarity: 'Epic', emoji: '🐟', kg: [1000, 3500], fuse: true, biome: 5, status: 'Fuse-only',
+    fact: 'Based on a real armoured fish that lived 360 million years ago. Its jaws were sharp bony blades!' },
+  { name: 'Puffaball', rarity: 'Legendary', emoji: '🐡', kg: [5, 15], fuse: true, biome: 5, status: 'Fuse-only',
+    fact: 'A round puffer-fish ball that floats in the air and puffs up when it is happy!' },
+  { name: 'Endangered Combination', rarity: 'Mythic', emoji: '🌟', kg: [500, 2000], fuse: true, biome: 5, status: 'Fuse-only',
+    fact: 'Panda head, elephant trunk, eagle wings, turtle shell and tiger stripes - all endangered animals in one!' },
+];
+
 export const animalsInBiome = (biome) => ANIMALS.filter((a) => a.biome === biome);
 
-export const findAnimal = (name) => ANIMALS.find((a) => a.name === name);
+export const findAnimal = (name) => ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {
@@ -145,7 +160,7 @@ export function kgOf(item) {
 export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
 
 // 一隻救返嚟嘅動物／寵物每秒賺幾多（重量 × 生態區 × 稀有度）
-export const itemMoney = (item) => petMoney(kgOf(item), item.biome, item.rarity);
+export const itemMoney = (item) => item.money ?? petMoney(kgOf(item), item.biome, item.rarity); // Fuse 寵物有自己定好嘅 money
 
 // 越重越大隻：同一種動物，最輕嗰隻 ×0.8，最重嗰隻 ×1.25（小朋友：大細要跟重量）
 export function kgScale(item) {

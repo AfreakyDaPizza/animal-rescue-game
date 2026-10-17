@@ -87,6 +87,18 @@ export const plotUpgradeCost = (plotLevel) => Math.round(200 * 2.2 ** plotLevel 
 // ---- 賣寵物：賣得幾錢 = 佢 1 分鐘賺到嘅錢 ----
 export const SELL_SECONDS = 60;
 
+// ---- 🧪 FUSE MACHINE (Issue #4): put in 3 pets, get 1 special fuse-only pet ----
+// The day the Fuse Machine opens (year-month-day). Before this day it shows a countdown.
+export const FUSE_OPEN_DATE = '2026-10-22';
+// How good each rarity is when you put it IN (3 pets → score 0 to 12)
+export const FUSE_RARITY_SCORE = { Common: 0, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4 };
+// Chance (%) of each result: Rhinoblade (Common), Spideron (Rare), Dunkleosteus (Epic), Puffaball (Legendary), Endangered Combination (Mythic)
+// LOW = when you put in 3 Commons (score 0). HIGH = when you put in 3 Mythics (score 12). In between = a mix.
+export const FUSE_CHANCES_LOW = [62, 28, 9, 1, 0];
+export const FUSE_CHANCES_HIGH = [4, 10, 21, 35, 30];
+// The new pet earns: (money/sec of the 3 pets you put in, added up) x this number (depends on what you get)
+export const FUSE_MONEY_BONUS = { Common: 1.3, Rare: 1.6, Epic: 2.2, Legendary: 3.5, Mythic: 6 };
+
 // ---- Biome 2 沙灘執垃圾：執一件有幾錢 ----
 export const TRASH_REWARD = 20;
 

@@ -9,7 +9,8 @@ import { addCollider } from './world.js';
 import { buildAnimalModel } from './animalModels.js';
 import { findAnimal } from './data/animals.js';
 import { applyPetSkin } from './skins.js';
-import { makeSign, makeLabel, THEMES } from './signs.js';
+import { makeSign, makeLabel, dynamicSign, THEMES } from './signs.js';
+import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { buildOwner } from './owner.js';
 
 // 位置（開場動畫都會用）
@@ -252,47 +253,129 @@ export function standUp(owner, x, z, faceAngle) {
   owner.label.position.set(0, 4.1, 0);
 }
 
-// ---------- 「COMING SOON」機器（用帆布冚住、圍住黃色膠帶） ----------
+// ---------- Fuse Machine（Issue #4）：未開（FUSE_OPEN_DATE 之前）用帆布冚住 + 倒數；開咗就係發光嘅溶合機 ----
+// 3 個入料艙（後面）+ 1 個出貨艙（前面，面向噴水池）；fuseMachine.showResult(名) 播溶合動畫
+export const FUSE_MACHINE = { x: 25, z: 25 };
+export const fuseMachine = { spot: { x: 25 - 3.6, z: 25 }, showResult: null };
 function buildComingSoon(rootScene, liveScene) {
-  // 喺噴水池右邊，面向噴水池（-x）
+  // 喺噴水池右邊，面向噴水池（本地 -z → 世界 -x）
   const x = 0;
   const z = 0;
   const root = new THREE.Group();
   const live = new THREE.Group();
   for (const g of [root, live]) {
-    g.position.set(25, 0, 25);
+    g.position.set(FUSE_MACHINE.x, 0, FUSE_MACHINE.z);
     g.rotation.y = Math.PI / 2;
   }
   rootScene.add(root);
   liveScene.add(live);
   const metal = mat(0x78909c, { metalness: 0.6, roughness: 0.4 });
-  add(root, rbox(4.2, 0.6, 3.4), mat(0x546e7a), x, 0.3, z);
-  add(root, rbox(3.4, 2.8, 2.6), metal, x, 2.0, z);
-  // 帆布（藍色、少少皺）
+  add(root, rbox(4.6, 0.6, 3.8), mat(0x546e7a), x, 0.3, z);
+
+  // ===== 未開：帆布、膠帶、閃燈 =====
+  const closed = new THREE.Group();
+  live.add(closed);
+  add(closed, rbox(3.4, 2.8, 2.6), metal, x, 2.0, z);
   const tarp = mat(0x1e88e5);
-  add(root, rbox(3.7, 2.2, 2.9), tarp, x, 2.4, z);
-  add(root, rbox(3.0, 0.8, 2.3), tarp, x - 0.2, 3.8, z + 0.1).rotation.z = 0.08;
-  for (const s of [-1, 1]) add(root, new THREE.CylinderGeometry(0.15, 0.15, 1.6, 8), metal, x + s * 1.3, 4.6, z);
-  // 膠帶圍欄
+  add(closed, rbox(3.7, 2.2, 2.9), tarp, x, 2.4, z);
+  add(closed, rbox(3.0, 0.8, 2.3), tarp, x - 0.2, 3.8, z + 0.1).rotation.z = 0.08;
+  for (const s of [-1, 1]) add(closed, new THREE.CylinderGeometry(0.15, 0.15, 1.6, 8), metal, x + s * 1.3, 4.6, z);
   const cone = mat(0xff6d00);
   const tape = mat(0xffd600, { emissive: 0x332b00 });
   const pts = [[-2.8, -2.4], [2.8, -2.4], [2.8, 2.4], [-2.8, 2.4]];
   pts.forEach(([ax, az], i) => {
-    add(root, new THREE.ConeGeometry(0.3, 0.8, 8), cone, x + ax, 0.4, z + az);
+    add(closed, new THREE.ConeGeometry(0.3, 0.8, 8), cone, x + ax, 0.4, z + az);
     const [bx, bz] = pts[(i + 1) % 4];
     const len = Math.hypot(bx - ax, bz - az);
-    const t = add(root, new THREE.BoxGeometry(0.04, 0.12, len), tape, x + (ax + bx) / 2, 0.7, z + (az + bz) / 2);
-    t.rotation.y = Math.atan2(bx - ax, bz - az);
+    add(closed, new THREE.BoxGeometry(0.04, 0.12, len), tape, x + (ax + bx) / 2, 0.7, z + (az + bz) / 2).rotation.y = Math.atan2(bx - ax, bz - az);
   });
-  // 一粒閃下閃下嘅燈
-  const lamp = add(live, new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 2 }), x, 5.1, z, false);
-  const sign = makeSign([{ text: 'COMING SOON', size: 0.42 }, { text: 'A new machine is being built...', size: 0.2 }], 3.6, 1.2, THEMES.orange);
-  sign.position.set(x, 3.0, z - 1.75);
-  sign.rotation.y = Math.PI;
-  live.add(sign);
-  addCollider(25, 25, 2.8);
+  const lamp = add(closed, new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 2 }), x, 5.1, z, false);
+
+  // ===== 開咗：溶合機 =====
+  const open = new THREE.Group();
+  live.add(open);
+  const dark = mat(0x263238, { metalness: 0.6, roughness: 0.35 });
+  const neon = new THREE.MeshStandardMaterial({ color: 0x76ff03, emissive: 0x76ff03, emissiveIntensity: 2 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0xb2ff59, transparent: true, opacity: 0.25, roughness: 0.05 });
+  // 中間：能量核心（會轉）
+  add(open, rbox(2.2, 3.2, 2.0), dark, x, 2.2, z + 0.6);
+  const core = add(open, new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xccff90, emissive: 0x76ff03, emissiveIntensity: 2.5 }), x, 4.4, z + 0.6, false);
+  const coreRing = add(open, new THREE.TorusGeometry(0.85, 0.07, 8, 32), neon, x, 4.4, z + 0.6, false);
+  // 3 個入料艙（後面一排）
+  const inputs = [-1.5, 0, 1.5].map((dx) => {
+    add(open, new THREE.CylinderGeometry(0.6, 0.7, 0.4, 16), dark, x + dx, 0.8, z + 1.6);
+    add(open, new THREE.CylinderGeometry(0.55, 0.55, 1.4, 16, 1, true), glassMat, x + dx, 1.7, z + 1.6, false);
+    const light = add(open, new THREE.CylinderGeometry(0.5, 0.5, 0.06, 16), neon.clone(), x + dx, 1.02, z + 1.6, false);
+    add(open, new THREE.CylinderGeometry(0.62, 0.62, 0.12, 16), dark, x + dx, 2.45, z + 1.6);
+    // 喉管去核心
+    const pipe = add(open, new THREE.CylinderGeometry(0.08, 0.08, 1.6, 8), neon, x + dx * 0.5, 3.2, z + 1.1, false);
+    pipe.rotation.x = 0.8;
+    pipe.rotation.z = -dx * 0.3;
+    return light;
+  });
+  // 出貨艙（前面，大啲）
+  add(open, new THREE.CylinderGeometry(1.0, 1.15, 0.5, 20), dark, x, 0.85, z - 1.3);
+  const outRing = add(open, new THREE.TorusGeometry(1.0, 0.08, 8, 32), neon, x, 1.12, z - 1.3, false);
+  outRing.rotation.x = Math.PI / 2;
+  const beam = add(open, new THREE.CylinderGeometry(0.9, 0.9, 3, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xb2ff59, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }), x, 2.6, z - 1.3, false);
+  const resultSlot = new THREE.Group();
+  resultSlot.position.set(x, 1.15, z - 1.3);
+  open.add(resultSlot);
+  for (const s of [-1, 1]) add(open, rbox(0.3, 3.4, 0.3), dark, x + s * 1.25, 1.7, z - 1.3);
+
+  // 牌（會變：倒數／FUSE MACHINE）
+  const sign = dynamicSign(3.8, 1.3);
+  sign.mesh.position.set(x, 3.2, z - 2.05);
+  sign.mesh.rotation.y = Math.PI;
+  live.add(sign.mesh);
+  addCollider(FUSE_MACHINE.x, FUSE_MACHINE.z + 0, 2.6);
+
+  // 溶合動畫：入料艙閃、光柱、新寵物喺出貨艙轉
+  let fx = null;
+  fuseMachine.showResult = (name) => {
+    resultSlot.clear();
+    const model = buildAnimalModel(findAnimal(name));
+    const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+    model.scale.multiplyScalar(1.8 / Math.max(size.x, size.y, size.z));
+    if (model.userData.move === 'fly') model.userData.flying = false;
+    resultSlot.add(model);
+    fx = { t: 0, model };
+  };
+
   return (dt, time) => {
-    lamp.material.emissiveIntensity = Math.sin(time * 5) > 0 ? 2.5 : 0.2;
+    const isOpen = isFuseOpen();
+    closed.visible = !isOpen;
+    open.visible = isOpen;
+    if (!isOpen) {
+      lamp.material.emissiveIntensity = Math.sin(time * 5) > 0 ? 2.5 : 0.2;
+      const days = daysUntilOpen();
+      sign.draw(THEMES.orange, [
+        { text: '🧪 FUSE MACHINE', size: 0.36 },
+        { text: `Opens ${openDateText()}`, size: 0.24 },
+        { text: days > 1 ? `in ${days} days` : 'TOMORROW!', size: 0.22, color: '#fff59d' },
+      ]);
+      return;
+    }
+    sign.draw(THEMES.green, [{ text: '🧪 FUSE MACHINE', size: 0.4 }, { text: 'Press E: fuse 3 pets into 1!', size: 0.2 }]);
+    core.rotation.y = time * 1.5;
+    core.position.y = 4.4 + Math.sin(time * 2) * 0.12;
+    coreRing.rotation.x = time;
+    coreRing.rotation.y = time * 0.7;
+    inputs.forEach((l, i) => (l.material.emissiveIntensity = 1.2 + Math.sin(time * 3 + i * 2) * 0.8));
+    if (fx) {
+      fx.t += dt;
+      const k = fx.t;
+      inputs.forEach((l) => (l.material.emissiveIntensity = k < 1.5 ? 4 + Math.sin(k * 40) * 2 : l.material.emissiveIntensity));
+      beam.material.opacity = k < 1.5 ? Math.min(0.7, k) : Math.max(0, 0.7 - (k - 1.5));
+      fx.model.visible = k > 1.2;
+      fx.model.rotation.y = k * 2;
+      fx.model.userData.animate?.(time, 0);
+      if (k > 9) {
+        resultSlot.clear();
+        fx = null;
+        beam.material.opacity = 0;
+      }
+    }
   };
 }
 

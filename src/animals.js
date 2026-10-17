@@ -1,7 +1,7 @@
 // 動物：喺生態區出現、借、抱住返 Hub、跌咗返去生態區
 
 import * as THREE from 'three';
-import { animalsInBiome, ANIMALS, randomKg, formatKg, kgScale } from './data/animals.js';
+import { animalsInBiome, randomKg, formatKg, kgScale, findAnimal } from './data/animals.js';
 import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, randomRarity, rarityInfo } from './data/balance.js';
 import { buildAnimalModel } from './animalModels.js';
 import { biomeRect } from './world.js';
@@ -199,7 +199,7 @@ export function setHolding(rescue, name) {
   if (rescue.holding) rescue.holding.model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.holding = null;
   if (show) {
-    const model = handModel(ANIMALS.find((a) => a.name === show));
+    const model = handModel(findAnimal(show));
     applyPetSkin(model, state.petSkin); // 寵物皮膚
     rescue.camera.add(model);
     rescue.holding = { name: show, model };

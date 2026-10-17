@@ -408,3 +408,8 @@ body:has(#boss-bar:not([hidden])) #event-banner { display: none; }
 .portal-open { font-size: 20px; color: #4a148c; }
 #boss-bar small.you { display: block; margin-top: 2px; color: #b9f6ca; }
 #movie-final .collab { display: block; font-size: clamp(36px, 10vh, 84px); color: #ffd54f; letter-spacing: 4px; text-shadow: 0 0 24px #ff9100; }
+/* Issue #4：Fuse Machine 機會率 */
+.fuse-chances { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px 0 12px; }
+.fuse-chance { border: 3px solid #ccc; border-radius: 12px; padding: 6px 10px; min-width: 96px; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; }
+.fuse-chance .emoji { font-size: 28px; }
+.fuse-chance span { font-weight: 900; font-size: 18px; color: #2e7d32; }
