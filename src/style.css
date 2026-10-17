@@ -395,6 +395,8 @@ body.intro #lab-arrow { display: none !important; }
 }
 #boss-bar b { font-size: 18px; color: #ea80fc; letter-spacing: 1px; }
 #boss-bar .hp { font-size: 24px; margin: 2px 0; }
+#boss-bar .hpbar { height: 14px; margin: 6px 0 2px; background: #1a0b2e; border: 2px solid #ea80fc; border-radius: 8px; overflow: hidden; }
+#boss-bar .hpbar i { display: block; height: 100%; background: linear-gradient(90deg, #76ff03, #c6ff00); transition: width 0.2s; }
 #boss-bar small { font-size: 14px; color: #ffe082; }
 #boss-bar .status { font-size: 15px; margin-top: 3px; color: #b9f6ca; font-weight: 700; }
 body:has(#boss-bar:not([hidden])) #event-banner { display: none; }

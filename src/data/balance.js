@@ -98,6 +98,16 @@ export const LAB_PODS = 4; // 有幾多個玻璃艙
 export const LAB_PORTAL_BY_LEGENDARY = true; // 方法 B：交 Legendary 寵物俾傳送門（佢哋會由 Index 消失！）
 export const LAB_LEGENDARY_NEEDED = 3; // 要交幾多隻 Legendary
 // Boss 戰：每一輪佢會放無人機、叫腐化動物、開傳送門叫 Boss、用手拍你；之後佢會攰
+// ---- Issue #4（2026-10-17）：三個 Phase，玩家唔會扣血（俾打中只係彈返起點）----
+export const LAB_P1_HITS = 12; // Phase 1：用球棒打佢幾多下
+export const LAB_P2_HITS = 24; // Phase 2：用球棒打佢幾多下
+export const LAB_P3_CAPSULES = 1; // Phase 3：要帶佢隻手拍落幾多次 Solar Capsule
+export const LAB_LAVA_EVERY = 5; // Phase 1：每幾秒佢腳底出一灘熔岩
+export const LAB_LAVA_SECONDS = 7; // 熔岩留幾耐
+export const LAB_P2_SPAWN_EVERY = 9; // Phase 2：每幾秒叫 1–2 個 Boss／動物
+export const LAB_P2_MINION_SECONDS = 15; // Phase 2 叫出嚟嘅嘢追你幾耐
+export const LAB_BAT_RANGE = 6.5; // 球棒：離佢幾近先打得中
+export const LAB_BAT_COOLDOWN = 0.35; // 球棒：打完隔幾耐先打得再
 export const LAB_LIVES = 5; // 你有幾多個心（俾打中就扣 1 個；扣晒就返實驗室，可以再挑戰）
 export const LAB_DRONES = 3; // 每輪幾多部炸彈無人機（之後每輪多 1 部）
 export const LAB_CORRUPTED_ANIMALS = 2; // 每輪叫幾多隻腐化動物（小朋友 2026-10-17：唔好咁多，本來 4）

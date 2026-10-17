@@ -925,6 +925,16 @@ export function pressButton() {
   lab.button.press = 1;
 }
 
+// ---------- 球棒（Issue #4：Boss 戰 Phase 1、2 用） ----------
+export function batModel() {
+  const g = new THREE.Group();
+  add(g, new THREE.CylinderGeometry(0.06, 0.05, 0.4, 10), mat(0x212121), 0, -0.35, 0); // 手柄（黑膠布）
+  add(g, new THREE.CylinderGeometry(0.13, 0.065, 1.1, 12), mat(0xd7a86e), 0, 0.38, 0);
+  add(g, new THREE.SphereGeometry(0.13, 12, 8), mat(0xd7a86e), 0, 0.93, 0);
+  add(g, new THREE.CylinderGeometry(0.135, 0.135, 0.08, 12), mat(0xd32f2f), 0, 0.15, 0); // 紅色間條
+  return g;
+}
+
 // ---------- Biome 6 座山後面嘅鎚仔 ----------
 export function hammerModel() {
   const g = new THREE.Group();

@@ -22,7 +22,8 @@ import { lab, breakCapsule, resetCapsules } from './lab.js';
 import { ARENA, BOSS_HOME, BOSS_PORTAL as PORTAL, clampArena } from './labShape.js';
 import {
   BOSSES, LAB_DRONES, LAB_CORRUPTED_ANIMALS, LAB_CORRUPTED_SECONDS, LAB_PORTAL_BOSSES, LAB_PORTAL_SECONDS,
-  LAB_SQUASH_FOLLOW, LAB_SQUASH_WARNING, LAB_TIRED_SECONDS, LAB_CAPSULE_HITS, LAB_LIVES,
+  LAB_SQUASH_FOLLOW, LAB_SQUASH_WARNING, LAB_LIVES,
+  LAB_P1_HITS, LAB_P2_HITS, LAB_P3_CAPSULES, LAB_LAVA_EVERY, LAB_LAVA_SECONDS, LAB_P2_SPAWN_EVERY, LAB_P2_MINION_SECONDS, LAB_BAT_RANGE, LAB_BAT_COOLDOWN,
 } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -91,143 +92,177 @@ const CHROME = { metalness: 0.35, roughness: 0.3 }; // 冇環境反光，太金�
 const NEON_C = 0x00e5ff;
 const NEON_M = 0xea00ff;
 
+// 小朋友 2026-10-17（Issue #4，有張圖）：再型啲 → 黑灰色大機械人、毒綠色發光、
+// 綠色玻璃頭盔（入面有個細細嘅科學家）、心口兩個靶心「眼」+ 鋸齒口、肚有生化標誌、手腕有黃黑警告間條
+const TOXIC = 0x76ff03;
+const BLACK = 0x23272e;
+const GREY = 0x9aa3ad;
+const DGREY = 0x4a525c;
+let bioTex = null;
+function biohazardTexture() {
+  if (bioTex) return bioTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#9aa3ad';
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillStyle = '#23272e';
+  ctx.font = 'bold 104px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('☣', 64, 70);
+  bioTex = new THREE.CanvasTexture(c);
+  bioTex.colorSpace = THREE.SRGBColorSpace;
+  return bioTex;
+}
+let stripeTex = null;
+export function hazardStripes() {
+  if (stripeTex) return stripeTex;
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 32;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffc400';
+  ctx.fillRect(0, 0, 128, 32);
+  ctx.fillStyle = '#111';
+  for (let x = -32; x < 160; x += 24) {
+    ctx.beginPath();
+    ctx.moveTo(x, 32);
+    ctx.lineTo(x + 12, 32);
+    ctx.lineTo(x + 28, 0);
+    ctx.lineTo(x + 16, 0);
+    ctx.fill();
+  }
+  stripeTex = new THREE.CanvasTexture(c);
+  stripeTex.colorSpace = THREE.SRGBColorSpace;
+  stripeTex.wrapS = THREE.RepeatWrapping;
+  stripeTex.repeat.x = 3;
+  return stripeTex;
+}
+
 function buildScientist() {
   const g = new THREE.Group();
   const root = pivot(g, 0, 0, 0);
-  const SILVER = 0xdfe6ec;
-  const DARK = 0x2b3445;
-  const SKIN = 0xd7f0b8; // 少少綠（俾藥水變異咗），但係可愛
-  const COAT = 0xffffff;
+  const glowMat = () => new THREE.MeshStandardMaterial({ color: 0x76ff03, ...GLOW(TOXIC, 0.9) }); // 每塊發光板一份（會閃）
+  const vials = []; // 所有綠色發光板（一齊一閃一閃）
+  const panel = (parent, w, h, d, x, y, z) => {
+    const m = soft(parent, w, h, d, glowMat(), x, y, z, undefined, 0.25);
+    vials.push(m);
+    return m;
+  };
 
-  // ---- 機械腳（會行）----
+  // ---- 大隻機械腳 ----
   const legs = [-1, 1].map((s) => {
-    const hip = pivot(root, s * 0.55, 1.25, 0);
-    ball(hip, 0.26, DARK, 0, 0, 0, CHROME);
-    tube(hip, 0.17, 0.55, SILVER, 0, -0.3, 0, CHROME);
-    ball(hip, 0.2, NEON_C, 0, -0.62, 0, GLOW(NEON_C, 2.5)); // 發光膝頭
-    soft(hip, 0.42, 0.5, 0.42, DARK, 0, -0.92, 0, CHROME);
-    soft(hip, 0.6, 0.22, 0.85, SILVER, 0, -1.16, -0.1, CHROME, 0.45); // 大腳板
-    soft(hip, 0.62, 0.05, 0.1, NEON_C, 0, -1.1, -0.53, GLOW(NEON_C, 2.5));
+    const hip = pivot(root, s * 0.62, 1.35, 0);
+    soft(hip, 0.62, 0.7, 0.66, BLACK, 0, -0.25, 0, CHROME, 0.25);
+    panel(hip, 0.2, 0.3, 0.05, 0, -0.25, -0.34);
+    soft(hip, 0.5, 0.25, 0.55, GREY, 0, -0.65, -0.03, CHROME, 0.3); // 膝頭
+    soft(hip, 0.66, 0.55, 0.7, BLACK, 0, -0.95, 0, CHROME, 0.25);
+    panel(hip, 0.22, 0.18, 0.05, 0, -0.95, -0.37);
+    soft(hip, 0.78, 0.32, 1.0, BLACK, 0, -1.2, -0.12, CHROME, 0.3); // 大腳板
+    soft(hip, 0.7, 0.14, 0.3, GREY, 0, -1.08, -0.55, CHROME, 0.3);
     return hip;
   });
-  // ---- 機械人身（駕駛艙）：銀色圓潤 + 霓虹邊 ----
-  soft(root, 1.25, 0.35, 0.9, DARK, 0, 1.35, 0, CHROME, 0.4); // 腰
-  const torso = soft(root, 1.9, 1.15, 1.35, SILVER, 0, 1.95, 0, CHROME, 0.38);
-  const trim = new THREE.Mesh(new THREE.TorusGeometry(0.98, 0.045, 8, 48), mat(NEON_C, GLOW(NEON_C, 3)));
-  trim.rotation.x = Math.PI / 2;
-  trim.scale.set(1, 0.72, 1);
-  trim.position.y = 2.45;
-  root.add(trim);
-  // 前面：圓形發光標誌（原子）+ 兩粒大燈
-  const emblem = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 8, 32), mat(NEON_M, GLOW(NEON_M, 3)));
-  emblem.position.set(0, 1.85, -0.69);
-  root.add(emblem);
-  ball(root, 0.08, 0xffffff, 0, 1.85, -0.7, GLOW(0xffffff, 3));
-  for (const s of [-1, 1]) {
-    ball(root, 0.13, 0xfff59d, s * 0.6, 1.7, -0.62, GLOW(0xffee58, 3), 1, 1, 0.5);
-    soft(root, 0.08, 0.6, 0.06, NEON_C, s * 0.93, 1.95, -0.3, GLOW(NEON_C, 2.5));
-  }
-  // ---- 科學家（坐喺駕駛艙，上半身露出嚟）----
-  const coat = soft(root, 1.15, 0.85, 0.8, COAT, 0, 2.75, 0.05, undefined, 0.35);
-  for (const s of [-1, 1]) {
-    const lapel = soft(root, 0.28, 0.6, 0.06, 0xeeeeee, s * 0.2, 2.85, -0.36, undefined, 0.4); // 衫領
-    lapel.rotation.z = s * 0.35;
-  }
-  soft(root, 0.14, 0.42, 0.05, 0x7b1fa2, 0, 2.78, -0.37); // 紫色呔
-  soft(root, 0.2, 0.16, 0.04, 0x90caf9, 0.32, 2.62, -0.38); // 心口袋
-  for (let i = 0; i < 2; i++) tube(root, 0.025, 0.2, [0xff5252, 0x40c4ff][i], 0.27 + i * 0.08, 2.72, -0.39, undefined, 6); // 筆
-  // 自己兩隻手（紫色手套）揸住控制桿
-  for (const s of [-1, 1]) {
-    const arm = pivot(root, s * 0.62, 2.95, 0);
-    const sleeve = tube(arm, 0.14, 0.55, COAT, 0, -0.22, -0.12);
-    sleeve.rotation.x = 0.6;
-    ball(arm, 0.15, 0x8e24aa, 0, -0.45, -0.32); // 紫色手套
-    tube(arm, 0.035, 0.35, DARK, 0, -0.55, -0.32, CHROME, 8);
-    ball(arm, 0.07, 0xff1744, 0, -0.38, -0.32, GLOW(0xff1744, 2.5)); // 控制桿紅掣
-  }
-  // ---- 大頭 ----
-  const head = pivot(root, 0, 3.55, 0);
-  soft(head, 1.05, 1.0, 0.95, SKIN, 0, 0, 0, undefined, 0.42);
-  ball(head, 0.17, 0xc5e1a5, 0, -0.08, -0.5); // 大鼻
-  for (const s of [-1, 1]) ball(head, 0.13, 0xc5e1a5, s * 0.55, 0, 0); // 耳仔
-  // 奸笑大口 + 牙
-  soft(head, 0.5, 0.14, 0.06, 0x4e342e, 0, -0.3, -0.47, undefined, 0.45);
-  for (let i = 0; i < 4; i++) soft(head, 0.1, 0.07, 0.03, 0xffffff, -0.15 + i * 0.1, -0.26, -0.5, undefined, 0.2);
-  // 護目鏡：金色厚框 + 發光鏡片 + 黑色帶
-  soft(head, 1.1, 0.16, 1.0, 0x263238, 0, 0.18, 0, undefined, 0.4);
+  // ---- 身：黑色大箱 + 灰色胸甲（上面有個「面」）----
+  soft(root, 1.5, 0.4, 1.0, DGREY, 0, 1.45, 0, CHROME, 0.3); // 腰
+  const torso = soft(root, 2.3, 1.7, 1.45, BLACK, 0, 2.35, 0, CHROME, 0.22);
+  soft(root, 1.55, 1.25, 0.12, GREY, 0, 2.3, -0.72, CHROME, 0.2); // 胸甲
+  soft(root, 1.25, 0.95, 0.1, BLACK, 0, 2.35, -0.78, CHROME, 0.2);
+  // 兩個靶心眼（lenses：會發光）
   const lenses = [-1, 1].map((s) => {
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.065, 10, 24), mat(0xffb300, CHROME));
-    rim.position.set(s * 0.24, 0.18, -0.52);
-    head.add(rim);
-    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.2, 24), new THREE.MeshStandardMaterial({ color: 0xb9f6ca, ...GLOW(0x69f0ae, 3) }));
-    lens.position.set(s * 0.24, 0.18, -0.535);
-    lens.rotation.y = Math.PI;
-    head.add(lens);
-    ball(head, 0.05, 0xffffff, s * 0.24 + 0.07, 0.25, -0.55, GLOW(0xffffff, 2)); // 反光
-    const brow = soft(head, 0.32, 0.09, 0.08, 0xffffff, s * 0.25, 0.43, -0.48, undefined, 0.45); // 白色粗眉
-    brow.rotation.z = s * 0.35;
-    return lens;
+    for (const [r, t] of [[0.24, 0.05], [0.14, 0.04]]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, t, 8, 28), mat(TOXIC, GLOW(TOXIC, 1.2)));
+      ring.position.set(s * 0.33, 2.55, -0.84);
+      root.add(ring);
+    }
+    return ball(root, 0.06, 0xccff90, s * 0.33, 2.55, -0.85, { ...GLOW(TOXIC, 1.5) });
   });
-  // 蓬鬆白髮（一舊舊雲咁）
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.9 });
-  for (const [x, y, z, r] of [[0, 0.55, 0.15, 0.32], [-0.38, 0.48, 0.1, 0.27], [0.38, 0.48, 0.1, 0.27], [-0.58, 0.18, 0.15, 0.24], [0.58, 0.18, 0.15, 0.24], [-0.22, 0.45, 0.42, 0.26], [0.22, 0.45, 0.42, 0.26], [0, 0.28, 0.5, 0.28], [-0.62, 0.45, 0.3, 0.17], [0.62, 0.45, 0.3, 0.17]]) {
-    ball(head, r, hairMat, x, y, z);
+  // 鋸齒口
+  for (let i = 0; i < 6; i++) {
+    const z = soft(root, 0.2, 0.06, 0.04, 0xccff90, -0.4 + i * 0.16, 2.12 + (i % 2 ? 0.06 : -0.06), -0.84, GLOW(TOXIC, 1.3), 0.3);
+    z.rotation.z = i % 2 ? -0.6 : 0.6;
   }
-  // ---- 背後：發綠光嘅藥水缸（啵啵聲）+ 喉管 ----
-  const tankGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.3, 20), new THREE.MeshStandardMaterial({ color: 0xccff90, transparent: true, opacity: 0.35, roughness: 0.05 }));
-  tankGlass.position.set(0, 2.55, 0.95);
-  root.add(tankGlass);
-  const tank = tube(root, 0.36, 1.15, 0x76ff03, 0, 2.5, 0.95, { ...GLOW(0x64dd17, 1.6), transparent: true, opacity: 0.9 });
-  for (const y of [1.88, 3.22]) tube(root, 0.46, 0.14, SILVER, 0, y, 0.95, CHROME);
-  ball(root, 0.12, NEON_C, 0, 3.35, 0.95, GLOW(NEON_C, 3));
-  const vials = [];
-  for (let i = 0; i < 3; i++) vials.push(ball(root, 0.09, 0xe8f5e9, (i - 1) * 0.15, 2, 0.95, GLOW(0xccff90, 2)));
-  // ---- 四個機械膊頭（上兩個、下兩個）----
+  // 肚：生化標誌
+  const bio = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), new THREE.MeshStandardMaterial({ map: biohazardTexture(), roughness: 0.5 }));
+  bio.position.set(0, 1.62, -0.56);
+  bio.rotation.y = Math.PI;
+  root.add(bio);
+  // 身兩邊嘅綠色燈
+  for (const s of [-1, 1]) {
+    panel(root, 0.06, 0.5, 0.5, s * 1.16, 2.45, -0.2);
+    panel(root, 0.3, 0.3, 0.06, s * 0.85, 2.95, -0.74);
+  }
+  // 膊頭：灰色大肩甲
+  for (const s of [-1, 1]) {
+    soft(root, 0.75, 0.55, 1.15, GREY, s * 1.35, 2.95, 0, CHROME, 0.3);
+    panel(root, 0.06, 0.3, 0.5, s * 1.73, 2.95, 0);
+  }
+  // ---- 頭：黑色頸圈 + 綠色玻璃頭盔，入面有個細科學家 ----
+  const head = pivot(root, 0, 3.6, -0.05);
+  soft(head, 1.25, 0.3, 1.1, BLACK, 0, -0.42, 0, CHROME, 0.3);
+  const helmet = soft(head, 1.15, 1.0, 1.0, new THREE.MeshStandardMaterial({ color: 0x76ff03, emissive: 0x33691e, emissiveIntensity: 0.4, transparent: true, opacity: 0.4, roughness: 0.05 }), 0, 0.15, 0, undefined, 0.38);
+  helmet.castShadow = false;
+  soft(head, 1.2, 0.12, 1.05, BLACK, 0, 0.7, 0, CHROME, 0.4); // 頭盔頂框
+  const face = pivot(head, 0, 0.1, 0);
+  soft(face, 0.6, 0.6, 0.55, 0x9ccc65, 0, 0, 0, undefined, 0.35); // 綠色（變異咗）科學家面
+  for (const s of [-1, 1]) {
+    soft(face, 0.13, 0.11, 0.04, 0xffee58, s * 0.13, 0.05, -0.28, GLOW(0xffea00, 2.5), 0.3); // 黃色發光眼
+    soft(face, 0.14, 0.04, 0.03, 0x33691e, s * 0.13, 0.17, -0.28, undefined, 0.3); // 嬲嬲眉
+  }
+  soft(face, 0.26, 0.05, 0.03, 0x33691e, 0, -0.14, -0.28, undefined, 0.3);
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x33691e, roughness: 0.9 });
+  soft(face, 0.64, 0.16, 0.58, hairMat, 0, 0.32, 0.02, undefined, 0.4); // 頭髮
+  // 頭頂兩支天線（綠燈）
+  for (const s of [-1, 1]) {
+    tube(head, 0.04, 0.5, DGREY, s * 0.38, 0.95, 0.1, CHROME, 8);
+    ball(head, 0.09, 0xccff90, s * 0.38, 1.22, 0.1, GLOW(TOXIC, 1.5));
+  }
+  // ---- 背後：毒液缸 ----
+  soft(root, 1.2, 1.5, 0.6, BLACK, 0, 2.4, 0.95, CHROME, 0.25);
+  const tank = tube(root, 0.32, 1.2, 0x76ff03, 0, 2.4, 1.28, { ...GLOW(0x64dd17, 1.6), transparent: true, opacity: 0.9 });
+  // ---- 四個機械膊頭（上兩個喺肩甲上面、下兩個喺身兩邊）----
   const shoulders = [
-    pivot(root, -1.05, 2.25, 0.05), pivot(root, 1.05, 2.25, 0.05),
-    pivot(root, -1.0, 1.65, 0.1), pivot(root, 1.0, 1.65, 0.1),
+    pivot(root, -1.3, 3.25, 0.25), pivot(root, 1.3, 3.25, 0.25),
+    pivot(root, -1.35, 2.35, 0.0), pivot(root, 1.35, 2.35, 0.0),
   ];
-  shoulders.forEach((sh, i) => {
-    ball(sh, 0.3, DARK, 0, 0, 0, CHROME);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 8, 24), mat(i < 2 ? NEON_C : NEON_M, GLOW(i < 2 ? NEON_C : NEON_M, 3)));
+  shoulders.forEach((sh) => {
+    ball(sh, 0.32, DGREY, 0, 0, 0, CHROME);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 8, 24), mat(TOXIC, GLOW(TOXIC, 1.2)));
     ring.rotation.y = Math.PI / 2;
     sh.add(ring);
   });
 
-  // ---- 受傷樣（每拍中一次 Capsule 多一層）----
+  // ---- 受傷樣（Phase 越後越殘）----
   const damage = [new THREE.Group(), new THREE.Group(), new THREE.Group()];
   damage.forEach((d) => {
     d.visible = false;
     root.add(d);
   });
-  const SOOT = 0x37474f;
-  // 第 1 層：護目鏡裂、機身燶黑
-  for (const s of [-1, 1]) soft(damage[0], 0.04, 0.34, 0.02, 0x111111, s * 0.24, 3.73, -0.56).rotation.z = 0.6 * s;
-  for (const [x, y] of [[-0.5, 2.1], [0.55, 1.75], [0.2, 2.25]]) ball(damage[0], 0.15, SOOT, x, y, -0.66, undefined, 1, 1, 0.3);
-  // 第 2 層：頭紮繃帶、藥水缸冒煙、袍燶咗
-  soft(damage[1], 1.08, 0.18, 1.0, 0xfffde7, 0, 3.92, 0, undefined, 0.4);
-  soft(damage[1], 0.16, 0.16, 0.05, 0xef9a9a, 0.3, 3.92, -0.5);
-  for (const [x, y] of [[-0.35, 2.9], [0.3, 2.5]]) ball(damage[1], 0.12, SOOT, x, y, -0.4, undefined, 1, 1, 0.3);
+  const SOOT = 0x111111;
+  // 第 1 層：頭盔裂、身燶黑
+  for (const r of [0.6, -0.4]) soft(damage[0], 0.03, 0.5, 0.02, 0xffffff, 0.25, 3.8, -0.56, { transparent: true, opacity: 0.8 }).rotation.z = r;
+  for (const [x, y] of [[-0.75, 2.0], [0.7, 2.6], [0.3, 1.75]]) ball(damage[0], 0.18, SOOT, x, y, -0.76, undefined, 1, 1, 0.3);
+  // 第 2 層：冒煙、胸甲甩咗一塊
   const smoke = [];
   for (let i = 0; i < 4; i++) {
-    const p = soft(damage[1], 0.4, 0.4, 0.4, 0x616161, 0, 3.4, 0.95, { transparent: true, opacity: 0.7 });
+    const p = soft(damage[1], 0.45, 0.45, 0.45, 0x424242, 0, 3.4, 0.95, { transparent: true, opacity: 0.7 });
     p.material = p.material.clone();
     p.castShadow = false;
     smoke.push(p);
   }
-  // 第 3 層：電火花、機身凹咗
-  for (const [x, y, z] of [[0.75, 2.3, -0.5], [-0.8, 1.9, -0.4], [0, 2.9, 1.2]]) ball(damage[2], 0.08, 0xffeb3b, x, y, z, GLOW(0xffea00, 4));
-  for (const [x, y] of [[0.35, 1.6], [-0.3, 2.3]]) ball(damage[2], 0.2, 0x212121, x, y, -0.68, undefined, 1, 1, 0.25);
+  soft(damage[1], 0.5, 0.4, 0.14, 0x111111, 0.45, 2.75, -0.8);
+  // 第 3 層：電火花、凹咗
+  for (const [x, y, z] of [[0.95, 2.3, -0.6], [-0.95, 2.0, -0.5], [0, 3.1, 1.2], [-0.4, 2.9, -0.8]]) ball(damage[2], 0.09, 0xffeb3b, x, y, z, GLOW(0xffea00, 4));
 
   // 暈咗嘅星星
   const stars = new THREE.Group();
   for (let i = 0; i < 6; i++) {
     const st = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffeb3b }));
     const a = (i / 6) * Math.PI * 2;
-    st.position.set(Math.cos(a) * 0.8, 0, Math.sin(a) * 0.8);
+    st.position.set(Math.cos(a) * 0.9, 0, Math.sin(a) * 0.9);
     stars.add(st);
   }
-  stars.position.y = 4.4;
+  stars.position.y = 5.2;
   stars.visible = false;
   root.add(stars);
 
@@ -239,36 +274,37 @@ function buildScientist() {
 const SEG = new THREE.CylinderGeometry(1, 1, 1, 14).rotateX(Math.PI / 2).translate(0, 0, 0.5); // 由起點向 +z 伸 1 米
 function buildArm(scene, i) {
   const mutant = i >= 2;
-  const neon = mutant ? NEON_M : NEON_C;
-  const thick = (mutant ? 0.3 : 0.26) * S;
-  const upper = new THREE.Mesh(SEG, mat(0xcfd8dc, CHROME));
-  const lower = new THREE.Mesh(SEG, mat(0x90a4ae, CHROME));
-  const elbow = new THREE.Mesh(new THREE.SphereGeometry(thick * 1.25, 14, 10), mat(neon, GLOW(neon, 2.5)));
+  const neon = TOXIC;
+  const thick = (mutant ? 0.36 : 0.24) * S; // 下面兩隻大手（似張圖）
+  const upper = new THREE.Mesh(SEG, mat(BLACK, CHROME));
+  const lower = new THREE.Mesh(SEG, mat(mutant ? BLACK : DGREY, CHROME));
+  const elbow = new THREE.Mesh(new THREE.SphereGeometry(thick * 1.25, 14, 10), mat(DGREY, CHROME));
   for (const m of [upper, lower, elbow]) {
     m.castShadow = true;
     scene.add(m);
   }
   // 機械爪：手腕 + 掌 + 3 隻彎爪（爪尖發光）
   const hand = new THREE.Group();
-  tube(hand, 0.32, 0.35, 0x37474f, 0, 0.35, 0, CHROME);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.05, 8, 24), mat(neon, GLOW(neon, 3)));
+  tube(hand, 0.32, 0.35, BLACK, 0, 0.35, 0, CHROME);
+  if (mutant) tube(hand, 0.42, 0.3, new THREE.MeshStandardMaterial({ map: hazardStripes(), roughness: 0.5 }), 0, 0.62, 0); // 黃黑警告間條手腕
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.05, 8, 24), mat(neon, GLOW(neon, 1.3)));
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.3;
   hand.add(ring);
-  soft(hand, 0.9, 0.35, 0.9, 0xdfe6ec, 0, 0.05, 0, CHROME, 0.4);
+  soft(hand, 0.9, 0.35, 0.9, GREY, 0, 0.05, 0, CHROME, 0.4);
   for (let f = 0; f < 3; f++) {
     const a = (f / 3) * Math.PI * 2;
     const claw = new THREE.Group();
     claw.position.set(Math.sin(a) * 0.38, -0.1, Math.cos(a) * 0.38);
     claw.rotation.y = a;
-    const c1 = soft(claw, 0.16, 0.42, 0.16, 0x546e7a, 0, -0.2, 0, CHROME, 0.45);
+    const c1 = soft(claw, 0.18, 0.42, 0.18, BLACK, 0, -0.2, 0, CHROME, 0.45);
     c1.rotation.x = 0.35;
-    const c2 = soft(claw, 0.13, 0.32, 0.13, 0x37474f, 0, -0.48, -0.12, CHROME, 0.45);
+    const c2 = soft(claw, 0.15, 0.34, 0.15, DGREY, 0, -0.48, -0.12, CHROME, 0.45);
     c2.rotation.x = -0.4;
-    ball(claw, 0.07, neon, 0, -0.64, -0.2, GLOW(neon, 3));
+    ball(claw, 0.07, neon, 0, -0.64, -0.2, GLOW(neon, 1.5));
     hand.add(claw);
   }
-  hand.scale.setScalar(S * 0.72);
+  hand.scale.setScalar(S * (mutant ? 0.9 : 0.68));
   scene.add(hand);
   return { i, mutant, thick, upper, lower, elbow, hand, pos: V(), busy: false, limp: false };
 }
@@ -295,7 +331,7 @@ export function createLabFight(scene) {
   const fight = {
     scene, rig, group, label, arms, fx,
     phase: state.labBossDefeated ? 'gone' : 'sleep', // sleep → wake → attack → tired → hurt → (attack …) → defeated
-    t: 0, round: 0, hp: LAB_CAPSULE_HITS, runPhase: 0,
+    t: 0, round: 0, hp: LAB_P3_CAPSULES, runPhase: 0, stage: 1, batHits: 0, batCd: 0, flinch: 0, lavas: [], nextStage: 2,
     drones: [], bombs: [], animals: [], portalBosses: [], slams: [], effects: [],
     nextSquash: 0, nextLazy: 0, events: new Set(), onDefeat: null, hitInfo: null,
     clock: 0, pending: [], away: 0, timeScale: 1, lives: LAB_LIVES, // clock：一直行嘅時鐘（傳送門 Boss 排隊出嚟用）；away：你喺實驗室外面幾耐
@@ -345,15 +381,16 @@ export function updateLabFight(fight, dt, time, player) {
       announce('🧪 The MUTATED SCIENTIST POACHER woke up!');
       setTimeout(() => popup('Dodge! Red boxes follow you for 3 seconds, then his hand slams down!'), 1600);
     }
-    if (fight.t > 3) startRound(fight, fight.round);
+    if (fight.t > 3) startStage(fight, 1);
   } else if (fight.phase === 'attack') {
-    updateAttackRound(fight, P);
+    updateStage(fight, P);
   } else if (fight.phase === 'tired') {
     updateTired(fight, dt, P);
   } else if (fight.phase === 'hurt') {
     if (fight.t > 3.2) {
-      if (fight.hp <= 0) setPhase(fight, 'defeated');
-      else startRound(fight, fight.round + 1);
+      if (fight.stage === 3 && fight.hp <= 0) setPhase(fight, 'defeated');
+      else if (fight.stage < 3) startStage(fight, fight.nextStage);
+      else setPhase(fight, 'tired'); // Phase 3 仲未完：繼續追
     }
   } else if (fight.phase === 'defeated') {
     if (once(fight, 'defeated')) {
@@ -378,12 +415,13 @@ export function updateLabFight(fight, dt, time, player) {
     const dx = P.x - pos.x;
     const dz = P.z - pos.z;
     const d = Math.hypot(dx, dz);
-    if (d > 7) {
-      const step = Math.min(d - 7, 2.6 * dt);
+    // Phase 3（小朋友 Issue #4）：冇晒招式，淨係追你；撞到你就彈飛你
+    if (d > 2.6) {
+      const step = Math.min(d - 2.6, Math.min(walkSpeed(state.speed) * 0.7, 10) * dt);
       pos.x += (dx / d) * step;
       pos.z += (dz / d) * step;
-      moving = 0.4;
-    }
+      moving = 1;
+    } else if (P.feetY < 1.5) hit(fight, P, 'his giant body');
   } else if (fight.phase === 'attack' && P.inside) {
     // 小朋友 2026-10-15：Boss 要喺場入面行嚟行去：每幾秒揀一個新位（喺你附近 9–13 米），慢慢行過去
     const summoning = (fight.t > T_ANIMALS - 0.8 && fight.t < T_ANIMALS + 1.2) || (fight.t > T_PORTAL - 0.5 && fight.t < T_PORTAL + 2);
@@ -414,8 +452,12 @@ export function updateLabFight(fight, dt, time, player) {
   r.head.rotation.z = fight.phase === 'wake' ? Math.sin(time * 18) * 0.15 : 0;
   r.root.position.y = fight.phase === 'wake' ? Math.abs(Math.sin(time * 10)) * 0.15 : Math.abs(Math.sin(fight.runPhase)) * 0.08 * moving;
   r.root.rotation.x = fight.phase === 'defeated' ? r.root.rotation.x : -0.08 * moving; // 行嗰陣向前傾少少
+  // 俾球棒打中：震一震
+  fight.flinch = Math.max(0, fight.flinch - dt);
+  fight.batCd = Math.max(0, fight.batCd - dt);
+  if (fight.flinch > 0) r.root.rotation.z = Math.sin(fight.flinch * 40) * 0.12;
   r.shoulders.forEach((sh, i) => (sh.rotation.z = Math.sin(time * 3 + i) * 0.2));
-  r.vials.forEach((v, i) => (v.material.emissiveIntensity = 1.5 + Math.sin(time * 5 + i) * 1));
+  r.vials.forEach((v, i) => (v.material.emissiveIntensity = 0.8 + Math.sin(time * 5 + i) * 0.4));
   // 受傷冒煙（第 2 層）
   r.smoke.forEach((p, i) => {
     const k = (time * 0.6 + i / 4) % 1;
@@ -425,7 +467,7 @@ export function updateLabFight(fight, dt, time, player) {
   });
   // 攰咗：Capsule 頭頂有跳下跳下嘅黃色大箭咀
   updateCapsuleArrows(fight, time);
-  r.lenses.forEach((l) => (l.material.emissiveIntensity = tired ? 0.8 : 3 + Math.sin(time * 7) * 0.8));
+  r.lenses.forEach((l) => (l.material.emissiveIntensity = tired ? 0.5 : 1.5 + Math.sin(time * 7) * 0.4));
   if (fight.phase === 'hurt') {
     r.stars.visible = true;
     r.stars.rotation.y = time * 5;
@@ -449,6 +491,7 @@ export function updateLabFight(fight, dt, time, player) {
   updateCorrupted(fight, dt, time, P);
   updatePortalBosses(fight, dt, time, P);
   updateSlams(fight, dt, time, P);
+  updateLavas(fight, dt, time, P);
   updateEffects(fight, dt);
 
   showBar(fight);
@@ -467,33 +510,113 @@ function hit(fight, P, what) {
   if (!P.safe && !fight.hitInfo) fight.hitInfo = what;
 }
 
-// ================= 一輪攻擊 =================
-function startRound(fight, round) {
-  const again = fight.phase !== 'wake';
-  fight.round = round;
-  setPhase(fight, 'attack');
-  fight.nextSquash = 3;
-  if (again) {
-    announce('😡 He caught his breath... here he comes again!');
-    play('roar');
+// ================= 三個 Phase（小朋友 Issue #4） =================
+// Phase 1：淨係用手拍 + 腳底出熔岩；你有球棒，打佢 12 下
+// Phase 2：每 9 秒叫 1–2 個生態區 Boss 或者腐化動物；打佢 24 下
+// Phase 3：冇咗球棒；佢冇晒招，淨係追你 → 帶佢隻手拍落 Solar Energy Capsule
+const STAGE_TEXT = {
+  1: ['⚔️ PHASE 1!', `Hit him ${LAB_P1_HITS} times with your 🏏 BAT! Don't step on the lava!`],
+  2: ['🌀 PHASE 2!', `He calls Bosses and animals! Hit him ${LAB_P2_HITS} times!`],
+  3: ['☀️ PHASE 3!', 'You lost your bat! He chases you... lead his slam onto a Solar Capsule!'],
+};
+function startStage(fight, n) {
+  fight.stage = n;
+  fight.batHits = 0;
+  const [title, help] = STAGE_TEXT[n];
+  announce(title);
+  setTimeout(() => popup(help), 1400);
+  play('roar');
+  if (n < 3) {
+    setPhase(fight, 'attack');
+    fight.nextSquash = 2;
+    fight.nextLava = 2.5;
+    fight.nextSpawn = 2;
+  } else {
+    fight.hp = LAB_P3_CAPSULES;
+    setPhase(fight, 'tired');
+    fight.nextLazy = 2;
+  }
+}
+// 舊名（debugFight 用）
+const startRound = (fight) => startStage(fight, fight.stage);
+export const hasBat = (fight) => fight.stage < 3 && ['wake', 'attack', 'hurt'].includes(fight.phase);
+
+function updateStage(fight, P) {
+  const t = fight.t;
+  // 用手拍（兩個 Phase 都有；Phase 2 慢啲）
+  if (t >= fight.nextSquash && P.inside && !fight.slams.length && startSlam(fight, P, false)) fight.nextSquash = t + (fight.stage === 1 ? 3.5 : 6);
+  if (fight.stage === 1 && t >= fight.nextLava) {
+    spawnLava(fight);
+    fight.nextLava = t + LAB_LAVA_EVERY;
+  }
+  if (fight.stage === 2 && t >= fight.nextSpawn) {
+    const n = 1 + (Math.random() < 0.5 ? 1 : 0);
+    if (Math.random() < 0.5) summonCorrupted(fight, n, LAB_P2_MINION_SECONDS);
+    else openPortal(fight, n, LAB_P2_MINION_SECONDS);
+    fight.nextSpawn = t + LAB_P2_SPAWN_EVERY;
+  }
+  const need = fight.stage === 1 ? LAB_P1_HITS : LAB_P2_HITS;
+  if (fight.batHits >= need) {
+    // 呢個 Phase 打完：佢受傷（越嚟越殘）、收晒招
+    clearMinions(fight, true);
+    fight.lavas.forEach((l) => fight.fx.remove(l.mesh));
+    fight.lavas.length = 0;
+    fight.rig.damage[fight.stage - 1].visible = true;
+    if (fight.stage === 2) fight.rig.hairMat.color.set(0x757575); // 頭髮燶咗
+    fight.nextStage = fight.stage + 1;
+    play('ouch');
+    burst(fight, V(fight.group.position.x, 4, fight.group.position.z), 0x76ff03, 50, 8);
+    announce(fight.stage === 1 ? '💥 PHASE 1 DONE! He is getting angry...' : '💥 PHASE 2 DONE! He broke your bat!');
+    setPhase(fight, 'hurt');
   }
 }
 
-function updateAttackRound(fight, P) {
-  const t = fight.t;
-  if (t >= T_DRONES && once(fight, 'drones')) launchDrones(fight, LAB_DRONES + fight.round);
-  if (t >= T_ANIMALS && once(fight, 'animals')) summonCorrupted(fight, LAB_CORRUPTED_ANIMALS);
-  if (t >= T_PORTAL && once(fight, 'portal')) openPortal(fight);
-  // 招式 d：用手拍（出其他招嗰陣都會拍）
-  if (t >= fight.nextSquash && P.inside && !fight.slams.length) startSlam(fight, P, false);
-  // 出晒招、啲手下走晒 → 佢攰咗
-  const busy = fight.drones.length || fight.bombs.length || fight.animals.length || fight.portalBosses.length || fight.pending.length || lab.bossPortal.target > 0;
-  if (t > T_PORTAL + 3 && !busy && !fight.slams.length) {
-    setPhase(fight, 'tired');
-    fight.nextLazy = 1.5;
-    announce('😮‍💨 He is TIRED! Lead his lazy slam onto a ☀️ Solar Energy Capsule!');
-    play('yawn');
-    setTimeout(() => popup('The red box follows you: lead it next to a glowing capsule, then RUN when it stops!'), 2500);
+// 球棒打佢（main.js：撳 E／click）：回傳 true = 打中
+export function batHit(fight, P) {
+  if (fight.phase !== 'attack' || !P.inside || fight.batCd > 0) return false;
+  const pos = fight.group.position;
+  if (Math.hypot(P.x - pos.x, P.z - pos.z) > LAB_BAT_RANGE) return false;
+  fight.batCd = LAB_BAT_COOLDOWN;
+  fight.batHits += 1;
+  fight.flinch = 0.3;
+  play('hit');
+  burst(fight, V((P.x + pos.x) / 2, 2.5, (P.z + pos.z) / 2), 0xffffff, 14, 4);
+  return true;
+}
+export const batInRange = (fight, P) => fight.phase === 'attack' && Math.hypot(P.x - fight.group.position.x, P.z - fight.group.position.z) <= LAB_BAT_RANGE;
+
+// 熔岩：喺佢腳底出一灘，慢慢變大；踩中就彈飛
+const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff6d00, emissive: 0xff3d00, emissiveIntensity: 1.6, roughness: 0.6 });
+function spawnLava(fight) {
+  const { x, z } = fight.group.position;
+  const mesh = new THREE.Group();
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.08, 28), lavaMat);
+  mesh.add(disc);
+  for (let i = 0; i < 6; i++) {
+    const bub = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mat(0xffd180, GLOW(0xffab00, 2)));
+    bub.position.set(Math.cos(i) * 0.6, 0.08, Math.sin(i * 1.7) * 0.6);
+    mesh.add(bub);
+  }
+  mesh.position.set(x, 0.05, z);
+  mesh.scale.setScalar(0.01);
+  fight.fx.add(mesh);
+  fight.lavas.push({ mesh, x, z, r: 3.4, life: LAB_LAVA_SECONDS, age: 0 });
+  play('swoosh');
+}
+function updateLavas(fight, dt, time, P) {
+  for (let i = fight.lavas.length - 1; i >= 0; i--) {
+    const l = fight.lavas[i];
+    l.age += dt;
+    l.life -= dt;
+    const grow = Math.min(1, l.age / 0.8);
+    const fade = Math.min(1, l.life / 0.6);
+    l.mesh.scale.set(l.r * grow * fade, 1, l.r * grow * fade);
+    l.mesh.children.forEach((b, k) => k && (b.position.y = 0.08 + Math.abs(Math.sin(time * 4 + k)) * 0.15));
+    if (grow > 0.6 && P.inside && P.feetY < 0.4 && Math.hypot(P.x - l.x, P.z - l.z) < l.r * grow * 0.9) hit(fight, P, 'the lava');
+    if (l.life <= 0) {
+      fight.fx.remove(l.mesh);
+      fight.lavas.splice(i, 1);
+    }
   }
 }
 
@@ -504,10 +627,6 @@ function updateTired(fight, dt, P) {
     c.label.userData.setLines([{ text: '⬇ LEAD HIS HAND HERE ⬇', color: '#ffeb3b' }, { text: '☀️ SOLAR ENERGY CAPSULE', color: '#ffe082' }]);
   }
   if (fight.t >= fight.nextLazy && P.inside && !fight.slams.length) startSlam(fight, P, true);
-  if (fight.t > LAB_TIRED_SECONDS && !fight.slams.length) {
-    resetCapsuleLabels();
-    startRound(fight, fight.round + 1);
-  }
 }
 function resetCapsuleLabels() {
   for (const c of lab.capsules) if (!c.used) c.label.userData.setLines([{ text: '☀️ SOLAR ENERGY CAPSULE', color: '#ffe082' }]);
@@ -523,18 +642,11 @@ function capsuleHit(fight, capsule) {
   play('ouch');
   burst(fight, V(capsule.x, 2, capsule.z), 0xffd740, 60, 9);
   burst(fight, V(capsule.x, 2, capsule.z), 0xffffff, 25, 6);
-  // 受傷樣：每拍中一次多一層
-  const hits = LAB_CAPSULE_HITS - fight.hp;
-  fight.rig.damage.forEach((d, i) => (d.visible = hits >= i + 1));
-  if (hits >= 2) fight.rig.hairMat.color.set(0x757575); // 頭髮燶咗
-  if (hits >= 3) fight.arms[3].limp = true; // 一隻變異手冇力
-  if (fight.hp > 0) {
-    announce(`☀️ SOLAR BLAST! He got hurt! ${fight.hp} more to go!`);
-    setPhase(fight, 'hurt');
-  } else {
-    announce('☀️☀️ FINAL SOLAR BLAST! The Mutated Scientist Poacher is DEFEATED! 🎉');
-    setPhase(fight, 'hurt');
-  }
+  fight.rig.damage[2].visible = true;
+  fight.arms[3].limp = true; // 一隻大手冇力
+  if (fight.hp > 0) announce(`☀️ SOLAR BLAST! ${fight.hp} more to go!`);
+  else announce('☀️ FINAL SOLAR BLAST! The Mutated Scientist Poacher is DEFEATED! 🎉');
+  setPhase(fight, 'hurt');
 }
 
 // 攰咗嗰陣：每個未用嘅 Capsule 頭頂一個黃色箭咀
@@ -869,10 +981,10 @@ function explode(fight, at) {
 
 // ================= b. 腐化動物（30 秒後變灰燼） =================
 const PURPLE = new THREE.Color(0x4a148c);
-function summonCorrupted(fight, n) {
+function summonCorrupted(fight, n, life = LAB_CORRUPTED_SECONDS) {
   play('portal');
   announce(`😵 He corrupted ${n} endangered animals! RUN!`);
-  setTimeout(() => popup(`They hunt you for ${LAB_CORRUPTED_SECONDS} seconds... jump to dodge!`), 1500);
+  setTimeout(() => popup(`They hunt you for ${life} seconds... jump to dodge!`), 1500);
   const land = ANIMALS.filter((a) => a.biome !== 1);
   for (let i = 0; i < n; i++) {
     let model = null;
@@ -910,7 +1022,7 @@ function summonCorrupted(fight, n) {
     g.position.set(BOSS_HOME.x + Math.cos(a) * 6, 0, BOSS_HOME.z - 4 + Math.sin(a) * 4);
     fight.fx.add(g);
     burst(fight, V(g.position.x, 0.5, g.position.z), 0xd500f9, 12, 4);
-    fight.animals.push({ g, model, mats, aura, label, animal, life: LAB_CORRUPTED_SECONDS, ash: 0 });
+    fight.animals.push({ g, model, mats, aura, label, animal, life, ash: 0 });
   }
 }
 
@@ -969,16 +1081,16 @@ function updateCorrupted(fight, dt, time, P) {
 }
 
 // ================= c. 傳送門 Boss（1 分鐘後返入傳送門） =================
-function openPortal(fight) {
+function openPortal(fight, count = LAB_PORTAL_BOSSES, life = LAB_PORTAL_SECONDS) {
   lab.bossPortal.target = 1;
   play('portal');
   announce('🌀 He opened a PORTAL! Biome Bosses are coming out!');
-  const picks = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, LAB_PORTAL_BOSSES);
+  const picks = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, count);
   // 排隊：一個一個由傳送門行出嚟（用 fight.clock，暫停／收招都唔會亂出）
-  picks.forEach((b, i) => fight.pending.push({ at: fight.clock + 1.5 + i * 0.9, biome: b, slot: i, count: picks.length }));
+  picks.forEach((b, i) => fight.pending.push({ at: fight.clock + 1.5 + i * 0.9, biome: b, slot: i, count: picks.length, life }));
 }
 
-function spawnPortalBoss(fight, { biome: b, slot: i, count }) {
+function spawnPortalBoss(fight, { biome: b, slot: i, count, life = LAB_PORTAL_SECONDS }) {
   {
     const rig = buildBossRig(b);
     const group = new THREE.Group();
@@ -989,7 +1101,7 @@ function spawnPortalBoss(fight, { biome: b, slot: i, count }) {
     group.add(label);
     group.position.set(PORTAL.x + (i - (count - 1) / 2) * 1.5, 0, PORTAL.z + 0.6);
     fight.fx.add(group);
-    fight.portalBosses.push({ biome: b, rig, group, label, life: LAB_PORTAL_SECONDS, runPhase: 0, grow: 0 });
+    fight.portalBosses.push({ biome: b, rig, group, label, life, runPhase: 0, grow: 0 });
     play('alarm');
   }
 }
@@ -1061,8 +1173,8 @@ function updateBossLabel(fight) {
   const lines = {
     sleep: 'Sleeping... 💤',
     wake: '😠 WAKING UP!',
-    attack: '😈 ATTACKING!',
-    tired: '😮‍💨 So tired...',
+    attack: `😈 PHASE ${fight.stage}!`,
+    tired: '😡 PHASE 3: CHASING YOU!',
     hurt: '💫 OUCH!',
     defeated: '💫 Defeated!',
   };
@@ -1075,16 +1187,16 @@ function showBar(fight) {
   const show = fight && fight.phase !== 'sleep' && fight.phase !== 'gone' && fight.phase !== 'defeated' && fight.playerInside;
   el.hidden = !show;
   if (!show) return;
-  const hits = LAB_CAPSULE_HITS - fight.hp;
-  const suns = Array.from({ length: LAB_CAPSULE_HITS }, (_, i) => (i < hits ? '💥' : '☀️')).join(' ');
+  const need = fight.stage === 1 ? LAB_P1_HITS : LAB_P2_HITS;
+  const left = fight.stage < 3 ? Math.max(0, need - fight.batHits) : fight.hp;
+  const pct = fight.stage < 3 ? Math.round((left / need) * 100) : Math.round((fight.hp / LAB_P3_CAPSULES) * 100);
   const status = {
     wake: '😠 Waking up...',
-    attack: fight.t < T_ANIMALS ? '🛸 Bomber drones!' : fight.t < T_PORTAL ? '😵 Corrupted animals!' : '🌀 Portal Bosses! Dodge the red boxes!',
-    tired: `😮‍💨 TIRED! Lead his lazy slam onto a capsule! (${Math.max(0, Math.ceil(LAB_TIRED_SECONDS - fight.t))}s)`,
+    attack: fight.stage === 1 ? `🏏 Hit him with your bat! ${left} more · 🌋 don't step on the lava!` : `🏏 Hit him! ${left} more · 🌀 Bosses and animals are coming!`,
+    tired: `☀️ No bat! Lead his slam onto a Solar Capsule! (${fight.hp} to go)`,
     hurt: '💫 OUCH!',
   }[fight.phase] || '';
-  const lives = `${'💚'.repeat(Math.max(0, fight.lives))}${'🤍'.repeat(Math.max(0, LAB_LIVES - fight.lives))}`;
-  const html = `<b>🧪 MUTATED SCIENTIST POACHER</b><div class="hp">${'❤️'.repeat(Math.max(0, fight.hp))}${'🖤'.repeat(hits)}</div><small>Capsule hits: ${suns}</small><div class="status">${status}</div><small class="you">You: ${lives}</small>`;
+  const html = `<b>🧪 MUTATED SCIENTIST POACHER · PHASE ${fight.stage}/3</b><div class="hpbar"><i style="width:${pct}%"></i></div><div class="status">${status}</div>`;
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 
@@ -1128,9 +1240,12 @@ export function debugFight(fight, what) {
 // 新一場（測試用／重新挑戰）
 export function resetFight(fight) {
   clearMinions(fight);
-  fight.hp = LAB_CAPSULE_HITS;
+  fight.hp = LAB_P3_CAPSULES;
+  fight.stage = 1;
+  fight.batHits = 0;
+  fight.lavas.length = 0;
   fight.rig.damage.forEach((d) => (d.visible = false));
-  fight.rig.hairMat.color.set(0xf5f5f5);
+  fight.rig.hairMat.color.set(0x33691e);
   fight.rig.root.rotation.set(0, 0, 0);
   fight.rig.root.position.set(0, 0, 0);
   fight.arms.forEach((a) => (a.limp = false));

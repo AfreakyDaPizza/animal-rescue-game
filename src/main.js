@@ -10,7 +10,7 @@ import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
-  selectedHotbarItem, selectSlot, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
+  selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
 } from './hud.js';
 import { state, save } from './state.js';
 import {
@@ -32,12 +32,12 @@ import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animate
 import { updateEvents, forceEvent } from './events.js';
 import { TRASH } from './biomes.js';
 import { rarityInfo, TRASH_REWARD, LAB_REWARD } from './data/balance.js';
-import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, sparkleBurst } from './lab.js';
+import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
 import { buildSecretBeach, beach, applyBeachSky, playCollab } from './secretBeach.js';
 import { BENCH, STRANGER } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
-import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss } from './labBoss.js';
+import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss, hasBat, batHit, batInRange } from './labBoss.js';
 import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
 import { setGateOpen } from './hubPark.js';
 import { ANIMALS } from './data/animals.js';
@@ -179,6 +179,16 @@ avatarHammer.rotation.set(-0.35, 0, -0.25); // 鎚頭向上，喺手臂旁邊（
 avatarHammer.scale.setScalar(1.3);
 avatarHammer.visible = false;
 thirdPerson.avatar.arms[1].add(avatarHammer);
+const handBat = batModel();
+handBat.position.set(0.45, -0.45, -0.8);
+handBat.scale.setScalar(0.4);
+handBat.visible = false;
+camera.add(handBat);
+const avatarBat = batModel();
+avatarBat.position.set(0.22, -0.7, -0.15);
+avatarBat.scale.setScalar(1.4);
+avatarBat.visible = false;
+thirdPerson.avatar.arms[1].add(avatarBat);
 applyRangerSkin(thirdPerson, RANGER_SKINS.find((s) => s.id === state.rangerSkin) || RANGER_SKINS[0]);
 
 // 任務有進度：完成就提你去領代幣
@@ -554,6 +564,11 @@ function currentInteraction() {
     if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
     if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
   }
+  // Boss 戰：用球棒打佢
+  if (selectedHotbarItem()?.item.bat && whereIs(pos.x, pos.z) === 'Boss Arena') {
+    if (batInRange(fight, pos)) return { prompt: '<kbd>E</kbd> / Click: SMACK him with your bat! 🏏', action: swingBat };
+    return { prompt: '🏏 Get closer to the Scientist to hit him!' };
+  }
   const lab2 = labInteraction(pos);
   if (lab2) return lab2;
   const w = nearestAnimal(rescue);
@@ -567,7 +582,7 @@ function currentInteraction() {
 
 // ================= Issue #2：鎚仔、紅色掣、玻璃艙、傳送門 =================
 const near = (pos, p, d) => Math.hypot(pos.x - p.x, pos.z - p.z) < d;
-const holdingHammer = () => selectedHotbarItem()?.kind === 'tool';
+const holdingHammer = () => selectedHotbarItem()?.kind === 'tool' && !selectedHotbarItem().item.bat;
 function labInteraction(pos) {
   // Biome 6 座山後面嘅鎚仔
   if (!state.hasHammer && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
@@ -640,9 +655,22 @@ setPortalActions({
     save();
   },
 });
-// 撳滑鼠左鍵（拎住鎚仔）都打得爛玻璃艙
+// 球棒：揮一下（打中就計一下）
+let batSwing = 0;
+function swingBat() {
+  batSwing = 0.25;
+  play('swoosh');
+  if (batHit(fight, { x: camera.position.x, z: camera.position.z, inside: true })) popup('🏏 SMACK!');
+}
+
+// 撳滑鼠左鍵（拎住鎚仔）都打得爛玻璃艙；拎住球棒就揮棒
 window.addEventListener('mousedown', (e) => {
-  if (e.button !== 0 || isPaused() || !player.controls.isLocked || !holdingHammer()) return;
+  if (e.button !== 0 || isPaused() || !player.controls.isLocked) return;
+  if (selectedHotbarItem()?.item.bat) {
+    swingBat();
+    return;
+  }
+  if (!holdingHammer()) return;
   const it = labInteraction(camera.position);
   if (it?.action && lab.pods.some((p) => !p.free && near(camera.position, p, 3.6))) it.action();
 });
@@ -766,14 +794,9 @@ let fling = null; // 彈飛緊：{ from, to, t, dur }
 function onLabHit(what) {
   play('hit');
   play('boing');
-  fight.lives -= 1;
+  // Issue #4：玩家唔會扣血，俾打中只係彈返起點
   const who = `${what[0].toUpperCase()}${what.slice(1)}`;
-  if (fight.lives <= 0) {
-    // 心冇晒：返實驗室，成場重新嚟過（傳送門仲開住，可以再挑戰）
-    leaveArena('😵 Knocked out! Train more and try again - the portal is still open!');
-    return;
-  }
-  announce(`💥 ${who} hit you! ${fight.lives} ${fight.lives === 1 ? 'heart' : 'hearts'} left`);
+  announce(`💥 ${who} sent you flying!`);
   const from = camera.position.clone();
   fling = { from, to: new THREE.Vector3(ARENA_START.x, from.y, ARENA_START.z), t: 0, dur: 1.2 };
   safeTime = 99;
@@ -1010,12 +1033,26 @@ renderer.setAnimationLoop((timestamp) => {
     updateHud(dayNight, location);
   }
 
+  // Issue #4：Boss 戰 Phase 1、2 有球棒（一出現就揀咗佢）
+  const batNow = whereIs(camera.position.x, camera.position.z) === 'Boss Arena' && hasBat(fight);
+  if (batNow !== toolFlags.bat) {
+    toolFlags.bat = batNow;
+    selectSlot(0);
+    if (batNow) popup('🏏 You got a BAT! Get close and press E or click to hit him!');
+  }
   const sel = selectedHotbarItem();
   setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null);
-  // 鎚仔：第一身拎喺手，第三身拎喺右手
-  const showHammer = sel?.kind === 'tool' && !rescue.carrying;
-  handHammer.visible = showHammer && thirdPerson.zoom === 0;
-  avatarHammer.visible = showHammer;
+  // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
+  const showTool = sel?.kind === 'tool' && !rescue.carrying;
+  const bat = !!sel?.item.bat;
+  handHammer.visible = showTool && !bat && thirdPerson.zoom === 0;
+  avatarHammer.visible = showTool && !bat;
+  handBat.visible = showTool && bat && thirdPerson.zoom === 0;
+  avatarBat.visible = showTool && bat;
+  batSwing = Math.max(0, batSwing - dt);
+  const k = batSwing > 0 ? Math.sin((1 - batSwing / 0.25) * Math.PI) : 0; // 揮棒
+  handBat.rotation.set(-0.5 - k * 1.6, 0, 0.4 + k * 0.6);
+  avatarBat.rotation.set(-0.35 - k * 2.2, 0, -0.25);
   if (!frozen) updateRescue(rescue, dt, time, player.walking);
   // 拎住寵物／抱住動物：第三身，寵物頂喺頭上
   const inMovie = intro.active || movie.active;
@@ -1118,4 +1155,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

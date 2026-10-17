@@ -139,8 +139,12 @@ let selected = 0;
 
 // 鎚仔（Issue #2）：執咗就永遠喺第一格
 export const HAMMER_ITEM = { kind: 'tool', item: { name: 'Hammer', tool: true } };
+// 球棒（Issue #4）：Boss 戰 Phase 1、2 先有，喺第一格
+export const BAT_ITEM = { kind: 'tool', item: { name: 'Bat', tool: true, bat: true } };
+export const toolFlags = { bat: false };
 export function hotbarItems() {
   return [
+    ...(toolFlags.bat ? [BAT_ITEM] : []),
     ...(state.hasHammer ? [HAMMER_ITEM] : []),
     ...state.borrowed.map((item) => ({ kind: 'rescued', item })),
     ...state.pets.filter((p) => !p.onPlot).map((item) => ({ kind: 'pet', item })),
@@ -171,12 +175,14 @@ function renderHotbar() {
     const slot = document.createElement('div');
     slot.className = `slot ${it ? it.kind : ''} ${i === selected ? 'selected' : ''}`;
     if (it && i !== selected) slot.style.borderColor = it.kind === 'tool' ? '#ffd600' : rarityInfo(it.item.rarity).color; // 邊框顏色 = 稀有度
-    slot.innerHTML = `<span class="num">${(i + 1) % 10}</span>${it ? (it.kind === 'tool' ? '🔨' : findAnimal(it.item.name).emoji) : ''}`;
+    slot.innerHTML = `<span class="num">${(i + 1) % 10}</span>${it ? (it.kind === 'tool' ? (it.item.bat ? '🏏' : '🔨') : findAnimal(it.item.name).emoji) : ''}`;
     slot.addEventListener('click', () => selectSlot(i));
     bar.appendChild(slot);
   }
   const it = items[selected];
-  $('hotbar-label').textContent = it?.kind === 'tool'
+  $('hotbar-label').textContent = it?.item.bat
+    ? '🏏 Bat - get close to the Scientist and press E or click to SMACK him!'
+    : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
     : it
     ? `${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`

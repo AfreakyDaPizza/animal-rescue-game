@@ -31,7 +31,7 @@ export const LAB_RETURN = { x: 0, z: 140 };
 
 // ---- Boss Arena（小朋友：入咗傳送門去一個「圓形、未來感」嘅場）----
 // 好遠（z = 320），只可以經傳送門去；四周有圓形力場牆，行唔出去、跌唔落去
-export const ARENA = { x: 0, z: 320, r: 40 }; // 小朋友 2026-10-17（Issue #3）：大啲（本來 26）
+export const ARENA = { x: 0, z: 320, r: 52 }; // 小朋友 Issue #3、#4：再大啲（本來 26 → 40 → 52）
 export const ARENA_START = { x: 0, z: ARENA.z + ARENA.r - 8 }; // 入嚟／俾 Boss 打中之後企嘅位（南邊）
 export const BOSS_HOME = { x: 0, z: 310 };
 export const BOSS_PORTAL = { x: 0, z: ARENA.z - (ARENA.r - 2.5), y: 4.2 }; // Boss 叫生態區 Boss 出嚟嘅傳送門（北邊）
