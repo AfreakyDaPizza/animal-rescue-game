@@ -6,6 +6,7 @@ import { addCollider, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall } from './hubBuildings.js';
+import { addFireAura } from './fireAura.js';
 import { fuseMachine } from './hubPark.js';
 import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { boost } from './events.js';
@@ -14,7 +15,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { state } from './state.js';
 import { buildAnimalModel } from './animalModels.js';
 import { kgOf, formatKg, itemMoney, kgScale, findAnimal } from './data/animals.js';
-import { trainingGain, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS } from './data/balance.js';
+import { trainingGain, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
 
 const INTERACT_DISTANCE = 2.8;
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
@@ -50,6 +51,8 @@ export const TIERS = [
   { name: 'Luminous', base: 0x0d1b2a, trim: 0x80deea, metal: 0.3, glow: 0x18ffff, emissive: 0x0a3d4a, extra: 'luminous' },
   { name: 'Mountain Magic', base: 0x5d4e6d, trim: 0xb39ddb, metal: 0.4, glow: 0xb388ff, extra: 'mountain' },
   { name: 'Astral', base: 0x1a0b3d, trim: 0xb388ff, metal: 0.5, glow: 0xea80fc, emissive: 0x12052e, extra: 'astral' },
+  // Lv16（小朋友 2026-10-17）：宇宙皇國 —— 星空機身 + 金色城堡塔、皇冠、礦石、星星
+  { name: "Astral King's Kingdom", base: 0x1a0b3d, trim: 0xffd54f, metal: 0.9, glow: 0xffd740, emissive: 0x12052e, extra: 'kingdom' },
 ].map((t, i) => ({ ...t, minLevel: i + 1 }));
 export const tierOf = (level) => Math.min(TIERS.length, Math.max(1, level)) - 1;
 
@@ -93,9 +96,9 @@ function applyTier(station, level = state[station.levelKey]) {
   station.sparkles.material.color.setHex(tier.glow || 0xffffff);
   station.ring.visible = index >= 4; // Neon 起：地上有圈光
   station.sparkles.visible = index >= 3; // Golden Steel 起：有閃粉
-  for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra;
+  for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra || (tier.extra === 'kingdom' && name === 'astral'); // 皇國：連埋 Astral 嘅宇宙特效
   // Astral：機身變星空
-  const starry = tier.extra === 'astral' ? starTexture() : null;
+  const starry = tier.extra === 'astral' || tier.extra === 'kingdom' ? starTexture() : null;
   if (station.baseMat.map !== starry) {
     station.baseMat.map = starry;
     station.baseMat.emissiveMap = starry;
@@ -399,6 +402,54 @@ function addFancyBits(station, group, y) {
   astral.add(corona);
   astral.userData.corona = corona;
 
+  // ---- Astral King's Kingdom（Lv16）：四座金色城堡塔、浮喺頭頂嘅皇冠、發光礦石、圍住轉嘅星星 ----
+  const kingdom = make('kingdom');
+  {
+    const gold = M(0xffc107, { metalness: 0.95, roughness: 0.2, emissive: 0x5d3a00, emissiveIntensity: 0.4 });
+    const stone = M(0x2a1b4d, { metalness: 0.3, roughness: 0.5 });
+    const flags = [];
+    for (const [x, z] of corners) {
+      add(kingdom, new THREE.CylinderGeometry(0.32, 0.38, 2.6, 8), stone, x * 1.12, 1.3, z * 1.08);
+      add(kingdom, new THREE.CylinderGeometry(0.42, 0.42, 0.3, 8), gold, x * 1.12, 2.7, z * 1.08);
+      for (let k = 0; k < 4; k++) add(kingdom, new THREE.BoxGeometry(0.16, 0.22, 0.16), gold, x * 1.12 + Math.cos((k / 4) * Math.PI * 2) * 0.34, 2.95, z * 1.08 + Math.sin((k / 4) * Math.PI * 2) * 0.34); // 城垛
+      add(kingdom, new THREE.ConeGeometry(0.36, 0.9, 8), M(0x6a1b9a, { emissive: 0x4a148c, emissiveIntensity: 0.6 }), x * 1.12, 3.5, z * 1.08);
+      add(kingdom, new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4), gold, x * 1.12, 4.3, z * 1.08);
+      const flag = add(kingdom, new THREE.BoxGeometry(0.5, 0.3, 0.03), glowMat(0xffd740, 1.2), x * 1.12 + 0.26, 4.55, z * 1.08);
+      flags.push(flag);
+    }
+    // 礦石：黑石 + 金礦、鑽石、紫水晶
+    const oreColors = [0xffd740, 0x80deea, 0xea80fc, 0x69f0ae];
+    const ores = [];
+    [[-2.6, 0], [2.6, 0.4], [0, -3.3], [-1.2, 3.4], [1.3, 3.3]].forEach(([x, z], i) => {
+      add(kingdom, new THREE.DodecahedronGeometry(0.45, 0), M(0x37474f, { flatShading: true }), x, 0.3, z);
+      for (let k = 0; k < 3; k++) {
+        const c = oreColors[(i + k) % oreColors.length];
+        const gem = add(kingdom, new THREE.OctahedronGeometry(0.16 + k * 0.03), glowMat(c, 1.8), x + (k - 1) * 0.22, 0.55 + (k % 2) * 0.15, z + 0.15);
+        gem.scale.y = 1.7;
+        ores.push(gem);
+      }
+    });
+    // 浮喺頭頂嘅大皇冠（有寶石）
+    const crown = new THREE.Group();
+    const band = add(crown, new THREE.CylinderGeometry(0.8, 0.8, 0.35, 16, 1, true), gold, 0, 0, 0);
+    band.material.side = THREE.DoubleSide;
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      add(crown, new THREE.ConeGeometry(0.13, 0.45, 4), gold, Math.cos(a) * 0.8, 0.38, Math.sin(a) * 0.8);
+      add(crown, new THREE.SphereGeometry(0.08, 8, 6), glowMat(oreColors[k % 4], 2), Math.cos(a) * 0.82, 0.02, Math.sin(a) * 0.82);
+    }
+    crown.position.set(0, 6.2, 0);
+    kingdom.add(crown);
+    // 圍住轉嘅金色星星
+    const stars = [];
+    for (let k = 0; k < 10; k++) {
+      const st = add(kingdom, new THREE.OctahedronGeometry(0.14), glowMat(k % 2 ? 0xfff59d : 0xffd740, 2.5), 0, 0, 0);
+      st.castShadow = false;
+      stars.push(st);
+    }
+    kingdom.userData = { crown, stars, flags, ores };
+  }
+
   // ---- Mountain Magic：細雪山、魔法水晶、紫色魔法陣 ----
   const mountain = make('mountain');
   const rock = M(0x6d6359, { flatShading: true });
@@ -687,6 +738,18 @@ function animateExtras(station, time) {
     orb.position.set(Math.cos(a) * 2.6, 1.2 + Math.sin(time * 2 + i) * 0.8, Math.sin(a) * 3);
   });
   if (e.mountain.visible) e.mountain.userData.rune.rotation.z = time * 0.5;
+  if (e.kingdom.visible) {
+    const u = e.kingdom.userData;
+    u.crown.rotation.y = time * 0.6;
+    u.crown.position.y = 6.2 + Math.sin(time * 1.5) * 0.2;
+    u.stars.forEach((st, i) => {
+      const a = time * 0.9 + (i / u.stars.length) * Math.PI * 2;
+      st.position.set(Math.cos(a) * 3.2, 3.5 + Math.sin(time * 2 + i) * 0.6, Math.sin(a) * 3.6);
+      st.rotation.y = time * 3;
+    });
+    u.flags.forEach((f, i) => (f.rotation.y = Math.sin(time * 4 + i) * 0.4));
+    u.ores.forEach((g, i) => (g.material.emissiveIntensity = 1.4 + Math.sin(time * 3 + i) * 0.6));
+  }
   if (e.astral.visible) {
     const u = e.astral.userData;
     u.galaxy.rotation.y = time * 0.35;
@@ -983,6 +1046,55 @@ function buildMachine(scene, index, x, z) {
   combo.userData = { helix, gems };
   combo.visible = false;
   g.add(combo);
+  // Dragon's Lair（小朋友 2026-10-17）：兩隻會拍嘅龍翼、龍頭 + 角、鱗片尖刺、火光圈、火星
+  const dragon = new THREE.Group();
+  {
+    const scale = M(0x7f0000, { roughness: 0.4, metalness: 0.3 });
+    const dark = M(0x3e0000, { roughness: 0.5 });
+    const horn = M(0xffe0b2, { roughness: 0.4 });
+    const fire = M(0xff6d00, { emissive: 0xff3d00, emissiveIntensity: 1.8 });
+    const wings = [-1, 1].map((s) => {
+      const p = new THREE.Group();
+      p.position.set(s * 1.3, 1.6, 0.6);
+      add(p, new THREE.BoxGeometry(0.14, 0.14, 2.2), dark, s * 0.9, 0.9, 0).rotation.z = s * -0.6; // 翼骨
+      for (let k = 0; k < 3; k++) {
+        const mem = add(p, new THREE.BoxGeometry(1.6, 0.05, 0.7), M(0xb71c1c, { emissive: 0x4a0000, emissiveIntensity: 0.6, transparent: true, opacity: 0.92 }), s * (0.6 + k * 0.35), 0.5 - k * 0.15, -0.6 + k * 0.6);
+        mem.rotation.set(0, 0, s * (0.35 + k * 0.1));
+      }
+      dragon.add(p);
+      return { p, s };
+    });
+    // 龍頭（喺機前面，面向 -z）
+    const head = new THREE.Group();
+    head.position.set(0, 2.55, -0.9);
+    add(head, new THREE.BoxGeometry(0.7, 0.55, 0.8), scale, 0, 0, 0);
+    add(head, new THREE.BoxGeometry(0.5, 0.35, 0.5), scale, 0, -0.08, -0.55); // 嘴
+    for (const s of [-1, 1]) {
+      add(head, new THREE.ConeGeometry(0.08, 0.5, 6), horn, s * 0.22, 0.45, 0.2).rotation.x = -0.5;
+      add(head, new THREE.BoxGeometry(0.12, 0.08, 0.05), M(0xffee58, { emissive: 0xffd600, emissiveIntensity: 2.5 }), s * 0.18, 0.12, -0.41); // 發光眼
+      add(head, new THREE.BoxGeometry(0.06, 0.06, 0.04), M(0x212121), s * 0.1, -0.05, -0.81); // 鼻孔
+    }
+    dragon.add(head);
+    // 底座一圈鱗片尖刺
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const sp = add(dragon, new THREE.ConeGeometry(0.16, 0.5, 4), i % 2 ? scale : dark, Math.cos(a) * 1.55, 0.55, Math.sin(a) * 1.55);
+      sp.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+    }
+    const ringFire = add(dragon, new THREE.TorusGeometry(1.45, 0.09, 8, 40), fire, 0, 0.66, 0);
+    ringFire.rotation.x = Math.PI / 2;
+    // 火星
+    const N = 30;
+    const pos = new Float32Array(N * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const embers = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffab40, size: 0.12, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    embers.frustumCulled = false;
+    dragon.add(embers);
+    dragon.userData = { wings, head, fire, pos, geo };
+  }
+  dragon.visible = false;
+  g.add(dragon);
 
   // 進度燈（綠色光圈）
   const light = new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0x000000, emissiveIntensity: 1.5 });
@@ -1003,7 +1115,7 @@ function buildMachine(scene, index, x, z) {
     heart.visible = false;
     hearts.push({ heart, phase: i / 4 });
   }
-  return { index, x, z, group: g, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, rune, orb, pink };
+  return { index, x, z, group: g, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, rune, orb, pink };
 }
 
 function machineStatus(i) {
@@ -1095,6 +1207,7 @@ export const PLOT_SKINS = [
   { name: 'Crystal Cave', ground: 0x4a148c, fence: 0x80deea, deco: 'crystal' },
   { name: 'Golden Palace', ground: 0xfff3c4, fence: 0xffc107, deco: 'gold' },
   { name: 'Rainbow Paradise', ground: 0xb2ebf2, fence: 0xff4081, deco: 'rainbow' },
+  { name: 'Royal Kingdom', ground: 0x4a2c6e, fence: 0xffc107, deco: 'royal' }, // 小朋友 2026-10-17：+2 隻位、錢 x1.5
 ];
 
 function buildPlotSkins(scene) {
@@ -1183,6 +1296,16 @@ function buildPlotSkins(scene) {
   make('rainbow', (g, i) => {
     piece(g, new THREE.SphereGeometry(0.3, 12, 8), glow([0xff1744, 0xff9100, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9][i % 6], 1.2), 0, 0.6, 0);
   });
+  // Royal Kingdom：金柱 + 皇冠 + 紅色旗
+  const royalGold = M(0xffc107, { metalness: 0.95, roughness: 0.2, emissive: 0x5d3a00, emissiveIntensity: 0.4 });
+  make('royal', (g, i) => {
+    piece(g, new THREE.CylinderGeometry(0.18, 0.24, 2.2, 8), royalGold, 0, 1.1, 0);
+    piece(g, new THREE.CylinderGeometry(0.3, 0.3, 0.12, 8), royalGold, 0, 2.25, 0);
+    if (i % 2) {
+      for (let k = 0; k < 5; k++) piece(g, new THREE.ConeGeometry(0.06, 0.22, 4), royalGold, Math.cos((k / 5) * Math.PI * 2) * 0.22, 2.42, Math.sin((k / 5) * Math.PI * 2) * 0.22);
+      piece(g, new THREE.SphereGeometry(0.1, 10, 8), glow(0xe040fb, 2), 0, 2.45, 0);
+    } else piece(g, new THREE.BoxGeometry(0.04, 0.8, 0.5), M(0xc62828), 0, 1.6, 0.27); // 紅色旗
+  });
   // 彩虹拱門（Rainbow Paradise 先有）
   const arch = new THREE.Group();
   [0xff1744, 0xff9100, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9].forEach((c, i) => {
@@ -1211,6 +1334,7 @@ function addPetToPlot(plot, scene, pet) {
   // 用返真實大細（之前縮到最多 2.4 米，大象變到好細），再跟重量放大縮細；
   // 只有超大嘅（例如藍鯨）先縮到地塊放得落
   applyPetSkin(model, state.petSkin); // 寵物皮膚
+  if (pet.mutation === 'fire') addFireAura(model); // 🔥 Fire 變異：一圈火
   const maxDim = Math.max(size.x, size.y, size.z);
   const giant = pet.sizeMul || 1; // La Combination 變大嘅寵物
   // 普通寵物最大 7 米；巨型寵物（GIANT／BIG PET FRENZY）可以大到 60 米（同野生動物一樣）
@@ -1222,7 +1346,7 @@ function addPetToPlot(plot, scene, pet) {
   const rarity = rarityInfo(pet.rarity);
   const label = makeLabel([
     { text: pet.name },
-    { text: pet.sizeMul ? `${rarity.name} · 🔥 GIANT x${pet.sizeMul}` : rarity.name, color: pet.sizeMul ? '#ff9100' : rarity.color },
+    { text: `${pet.mutation === 'fire' ? '🔥 FIRE · ' : ''}${pet.sizeMul ? `${rarity.name} · GIANT x${pet.sizeMul}` : rarity.name}`, color: pet.mutation === 'fire' ? '#ff6d00' : pet.sizeMul ? '#ff9100' : rarity.color },
     { text: `${formatKg(kg)} · $${fmt(itemMoney(pet))}/s`, color: '#76ff03' },
   ], 0.8);
   label.position.y = new THREE.Box3().setFromObject(model).max.y + 0.7;
@@ -1278,7 +1402,8 @@ function randomPlotSpot() {
 }
 
 export function moneyPerSecond() {
-  return state.pets.filter((p) => p.onPlot).reduce((sum, p) => sum + itemMoney(p), 0) * boost.money; // Pet Frenzy ×10
+  // Pet Frenzy ×10；Royal Kingdom 地塊 ×1.5
+  return state.pets.filter((p) => p.onPlot).reduce((sum, p) => sum + itemMoney(p), 0) * boost.money * plotMoneyMulti(state.plotLevel);
 }
 
 // ================= 圖鑑檯 =================
@@ -1504,6 +1629,20 @@ export function updateHub(hub, dt, time, px, pz) {
     { text: nextLv ? 'Press E' : 'You did it!', size: 0.09, color: '#f8bbd0' },
   ]);
   for (const m of hub.machines) {
+    if (m.dragon.visible) {
+      const u = m.dragon.userData;
+      for (const { p, s } of u.wings) p.rotation.z = s * Math.sin(time * 4 + m.index) * 0.45; // 拍翼
+      u.head.rotation.y = Math.sin(time * 0.8 + m.index) * 0.35;
+      u.fire.emissiveIntensity = 1.4 + Math.sin(time * 6 + m.index) * 0.6;
+      for (let i = 0; i < u.pos.length / 3; i++) {
+        const k = (time * 0.5 + i / 30) % 1;
+        const a = i * 2.4 + time * 0.7;
+        u.pos[i * 3] = Math.cos(a) * 1.4;
+        u.pos[i * 3 + 1] = 0.7 + k * 2.8;
+        u.pos[i * 3 + 2] = Math.sin(a) * 1.4;
+      }
+      u.geo.attributes.position.needsUpdate = true;
+    }
     if (m.mountain.visible) {
       m.rune.rotation.z = time * 0.6;
       m.orb.position.y = 2.6 + Math.sin(time * 2 + m.index) * 0.2;
@@ -1527,10 +1666,10 @@ export function updateHub(hub, dt, time, px, pz) {
   hub.plotUpgradeSpot.sign.draw(THEMES.dark, [
     { text: 'BIGGER PLOT', size: 0.15, color: '#ffd54f' },
     { text: `Skin: ${PLOT_SKINS[state.plotLevel].name}`, size: 0.11, color: '#80deea' },
-    { text: `Pets: ${plotSlots(state.plotLevel)} (max 18)`, size: 0.11 },
+    { text: `Pets: ${plotSlots(state.plotLevel)} (max ${plotSlots(PLOT_MAX_UPGRADES)})${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 x${plotMoneyMulti(state.plotLevel)} money` : ''}`, size: 0.11 },
     maxedPlot
       ? { text: '★ MAX ★', size: 0.15, color: '#ffd54f' }
-      : { text: `+1 pet: $${fmt(plotUpgradeCost(state.plotLevel))}`, size: 0.15, color: state.money >= plotUpgradeCost(state.plotLevel) ? '#69f0ae' : '#ff8a80' },
+      : { text: `${state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `👑 +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money` : '+1 pet'}: $${fmt(plotUpgradeCost(state.plotLevel))}`, size: 0.14, color: state.money >= plotUpgradeCost(state.plotLevel) ? '#69f0ae' : '#ff8a80' },
     { text: maxedPlot ? 'Full size!' : 'Press E', size: 0.11, color: '#cfd8dc' },
   ]);
 
@@ -1570,7 +1709,12 @@ export function hubInteraction(hub, px, pz, selected, actions) {
       if (item) options.push({ dist: d, prompt: `<kbd>E</kbd> Put ${item.name}${second ? ` + ${second.name}` : ''} in the Reproduce Machine`, action: () => actions.fillMachine(m, item) });
       else options.push({ dist: d, prompt: 'This machine is empty - rescue an animal from a biome first!' });
     } else if (status.kind === 'working') {
-      options.push({ dist: d, prompt: `💗 ${status.name}: ${formatLeft(status.left)} left` });
+      const rec = state.machines[m.index];
+      const lv = MACHINE_LEVELS[state.machineLevel - 1];
+      const wait = Math.ceil(((rec.quizReadyAt || 0) - Date.now()) / 1000);
+      if (lv.quiz && wait <= 0) options.push({ dist: d, prompt: `🐉 ${status.name}: ${formatLeft(status.left)} left · <kbd>E</kbd> Answer a question to SPEED UP!`, action: () => actions.speedUpMachine(m) });
+      else if (lv.quiz) options.push({ dist: d, prompt: `🐉 ${status.name}: ${formatLeft(status.left)} left · next question in ${wait}s` });
+      else options.push({ dist: d, prompt: `💗 ${status.name}: ${formatLeft(status.left)} left` });
     } else {
       options.push({ dist: d, prompt: `<kbd>E</kbd> Collect your ${status.name}!`, action: () => actions.collect(m) });
     }
@@ -1591,7 +1735,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   const mu = near(hub.machineUpgradeSpot.x, hub.machineUpgradeSpot.z);
   if (mu < INTERACT_DISTANCE) {
     const next = MACHINE_LEVELS[state.machineLevel];
-    if (!next) options.push({ dist: mu, prompt: '★ Reproduce Machines are MAX level: La Combination!' });
+    if (!next) options.push({ dist: mu, prompt: `★ Reproduce Machines are MAX level: ${MACHINE_LEVELS[MACHINE_LEVELS.length - 1].name}!` });
     else if (state.money >= next.cost) options.push({ dist: mu, prompt: `<kbd>E</kbd> Upgrade all machines to ${next.name} (${Math.round((1 - next.timeFactor) * 100)}% faster) for $${fmt(next.cost)}`, action: actions.upgradeMachines });
     else options.push({ dist: mu, prompt: `💰 Need $${fmt(next.cost)} to upgrade the Reproduce Machines` });
   }
@@ -1601,7 +1745,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   if (pu < INTERACT_DISTANCE) {
     const cost = plotUpgradeCost(state.plotLevel);
     if (state.plotLevel >= PLOT_MAX_UPGRADES) options.push({ dist: pu, prompt: `★ Your Plot is MAX size: ${plotSlots(state.plotLevel)} pets!` });
-    else if (state.money >= cost) options.push({ dist: pu, prompt: `<kbd>E</kbd> Upgrade Plot to ${plotSlots(state.plotLevel) + 1} pets for $${fmt(cost)}`, action: actions.upgradePlot });
+    else if (state.money >= cost) options.push({ dist: pu, prompt: state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `<kbd>E</kbd> 👑 Upgrade to the ROYAL KINGDOM: +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money for $${fmt(cost)}` : `<kbd>E</kbd> Upgrade Plot to ${plotSlots(state.plotLevel) + 1} pets for $${fmt(cost)}`, action: actions.upgradePlot });
     else options.push({ dist: pu, prompt: `💰 Need $${fmt(cost)} to make your Plot bigger` });
   }
 
@@ -1654,7 +1798,8 @@ function applyMachineLook(m, level) {
   m.nature.visible = level === 2;
   m.mountain.visible = level === 3;
   m.combo.visible = level === 4;
-  m.pink.color.setHex([0xec407a, 0x66bb6a, 0x9575cd, 0xffc107][level - 1]);
+  m.dragon.visible = level === 5;
+  m.pink.color.setHex([0xec407a, 0x66bb6a, 0x9575cd, 0xffc107, 0xd84315][level - 1]);
 }
 
 export function applyMachineLevel(hub) {
@@ -1691,6 +1836,8 @@ export function collectPet(machine) {
   return [m, m.second].filter(Boolean).map((a) => {
     const pet = { name: a.name, biome: a.biome, kg: a.kg, rarity: a.rarity, onPlot: false };
     if (a.sizeMul) pet.sizeMul = a.sizeMul; // 巨型入、巨型出（之前會變返細）
+    if (a.mutation) pet.mutation = a.mutation;
+    if (level.fireChance && Math.random() < level.fireChance) pet.mutation = 'fire'; // Dragon's Lair：🔥 Fire 變異
     if (level.giantChance && Math.random() < level.giantChance) {
       const extra = Math.max(1.5, Math.round((1 + Math.random() * 9) * 10) / 10);
       pet.sizeMul = Math.round((pet.sizeMul || 1) * extra * 10) / 10;

@@ -1,7 +1,7 @@
 // 50 隻瀕危動物（原稿 30 隻 + 小朋友加嘅每區 2 隻 + Biome 6 嘅 10 隻）（原稿：docs/design-prompt.md）
 // biome：0 = Biome 1 … 4 = Biome 5
 // status：IUCN 紅色名錄保育狀況（2026 年資料，有啲物種係「整體唔算瀕危，但部分族群好危險」）
-import { petMoney } from './balance.js';
+import { petMoney, FIRE_MONEY } from './balance.js';
 
 // emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
 // kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
@@ -160,7 +160,7 @@ export function kgOf(item) {
 export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
 
 // 一隻救返嚟嘅動物／寵物每秒賺幾多（重量 × 生態區 × 稀有度）
-export const itemMoney = (item) => item.money ?? petMoney(kgOf(item), item.biome, item.rarity); // Fuse 寵物有自己定好嘅 money
+export const itemMoney = (item) => (item.money ?? petMoney(kgOf(item), item.biome, item.rarity)) * (item.mutation === 'fire' ? FIRE_MONEY : 1); // Fuse 寵物有自己定好嘅 money；🔥 Fire ×4
 
 // 越重越大隻：同一種動物，最輕嗰隻 ×0.8，最重嗰隻 ×1.25（小朋友：大細要跟重量）
 export function kgScale(item) {

@@ -55,7 +55,14 @@ export const MACHINE_LEVELS = [
   { name: 'Mountain Magic', timeFactor: 0.65, cost: 75000 }, // 加強：快 35%（本來 25%）
   // La Combination（小朋友 2026-10-11）：再快 30%（0.65 × 0.7 ≈ 快 55%）、一次放 2 隻、20% 機會寵物變大 1–10 倍
   { name: 'La Combination', timeFactor: 0.455, cost: 1000000, double: true, giantChance: 0.2 },
+  // Dragon's Lair (kid 2026-10-17): 60% faster than Basic, 2 animals at a time, answer questions to speed up,
+  // and a chance that the pet comes out with the 🔥 FIRE mutation (fire aura + x4 money)
+  { name: "Dragon's Lair", timeFactor: 0.4, cost: 15000000, double: true, giantChance: 0.2, quiz: true, fireChance: 0.15 },
 ];
+export const MACHINE_QUIZ_CUT = 0.3; // Right answer: cut this much of the time that is left (0.3 = 30%)...
+export const MACHINE_QUIZ_MIN_CUT = 20; // ...but always at least this many seconds
+export const MACHINE_QUIZ_COOLDOWN = 10; // Seconds before the same machine can ask another question
+export const FIRE_MONEY = 4; // 🔥 FIRE pets earn this many times more money
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
 export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000];
@@ -66,9 +73,9 @@ export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 400
 // 例：Lv1→2 $50、Lv5→6 $1,659、Lv10→11 $132,000、Lv13→14 $1,826,000
 // 跑步機再慢 10%（小朋友要求）：stat = 'speed' 就 × 0.9
 // 15 級，每級一個款：Basic → … → Mountain Magic（14）→ Astral（15，MAX）
-export const MAX_TRAINING_LEVEL = 15;
+export const MAX_TRAINING_LEVEL = 16; // Lv16 Astral King's Kingdom（小朋友 2026-10-17）
 // 小朋友 2026-10-11 加強：Lv14 Mountain Magic ×1.5、Lv15 Astral ×2
-const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2 };
+const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 3 }; // Lv16 Astral King's Kingdom: x3
 export const trainingGain = (level, stat = 'iq') =>
   Math.round(5 * 2 ** (level - 1) * (stat === 'speed' ? 0.9 : 1) * (TOP_LEVEL_BUFF[level] ?? 1));
 // 升去 Lv2–13 貴 10%（小朋友 2026-10-11），升去 Lv14／15 價錢唔變
@@ -80,9 +87,15 @@ export const HAZARD_SPEED = [3, 4, 5, 6, 7.5, 9];
 
 // ---- 地塊：一開始放到 8 隻，可以升級 10 次（每次 +1），最多 18 隻 ----
 export const PLOT_START_SLOTS = 8;
-export const PLOT_MAX_UPGRADES = 10;
-export const plotSlots = (plotLevel) => PLOT_START_SLOTS + plotLevel;
-export const plotUpgradeCost = (plotLevel) => Math.round(200 * 2.2 ** plotLevel * 1.1); // 貴 10%
+// The last upgrade (number 11) is the ROYAL KINGDOM: +2 pets and x1.5 money for every pet on the plot
+export const PLOT_ROYAL_LEVEL = 11; // 小朋友 2026-10-17：最後一級 +2 隻位 + 錢 x1.5
+export const PLOT_ROYAL_SLOTS = 2; // Royal Kingdom gives this many extra pet slots
+export const PLOT_ROYAL_MONEY = 1.5; // Royal Kingdom money multiplier for all plot pets
+export const PLOT_ROYAL_COST_MULTI = 3; // Royal Kingdom costs this many times a normal upgrade
+export const PLOT_MAX_UPGRADES = PLOT_ROYAL_LEVEL;
+export const plotSlots = (plotLevel) => PLOT_START_SLOTS + Math.min(plotLevel, PLOT_ROYAL_LEVEL - 1) + (plotLevel >= PLOT_ROYAL_LEVEL ? PLOT_ROYAL_SLOTS : 0);
+export const plotMoneyMulti = (plotLevel) => (plotLevel >= PLOT_ROYAL_LEVEL ? PLOT_ROYAL_MONEY : 1);
+export const plotUpgradeCost = (plotLevel) => Math.round(200 * 2.2 ** plotLevel * 1.1 * (plotLevel + 1 === PLOT_ROYAL_LEVEL ? PLOT_ROYAL_COST_MULTI : 1)); // 貴 10%
 
 // ---- 賣寵物：賣得幾錢 = 佢 1 分鐘賺到嘅錢 ----
 export const SELL_SECONDS = 60;

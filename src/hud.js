@@ -11,7 +11,7 @@ import { BOSSES, rarityInfo, trainingGain, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
-import { plotSlots, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
+import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.floor(n).toLocaleString('en-US');
@@ -185,7 +185,7 @@ function renderHotbar() {
     : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
     : it
-    ? `${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
+    ? `${it.item.mutation === 'fire' ? '🔥 FIRE ' : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
     : items.length ? '' : 'Rescued animals and pets go here';
 }
 
@@ -269,12 +269,12 @@ function petsHtml() {
     const r = rarityInfo(p.rarity);
     return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
       <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
-      <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · 🔥 GIANT x${p.sizeMul}` : ''}</small>
+      <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : ''}
       <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.where || (p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack')}</p>${buttons}</div>`;
   };
   // 賺得最多排最前
   const pets = state.pets.map((p, i) => ({ p, i })).sort((a, b) => itemMoney(b.p) - itemMoney(a.p));
-  return `<p class="index-summary">Plot: <b>${used}/${slots}</b> pets · earning <b>$${fmt(total)}/sec</b></p>
+  return `<p class="index-summary">Plot: <b>${used}/${slots}</b> pets · earning <b>$${fmt(total)}/sec</b>${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 Royal Kingdom x${plotMoneyMulti(state.plotLevel)}` : ''}</p>
     <div class="pet-actions">
       <button data-action="best">⭐ Equip Best</button>
       <button data-action="unequip-all" class="grey">Unequip All</button>
@@ -302,7 +302,7 @@ function sellHtml() {
       const r = rarityInfo(p.rarity);
       return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
         <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
-        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · 🔥 GIANT x${p.sizeMul}` : ''}</small>
+        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : ''}
         <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="sell" data-i="${i}" class="sell">${confirmSell === i ? 'Sure? Sell!' : `Sell $${fmt(sellPrice(p))}`}</button></div></div>`;
     }).join('')}</div>`;
@@ -333,7 +333,7 @@ function fuseHtml() {
       const on = fusePicked.has(p);
       return `<div class="card-animal ${on ? 'equipped' : ''}" style="border-color:${r.color}">
         <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
-        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · 🔥 GIANT x${p.sizeMul}` : ''}</small>
+        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : ''}
         <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="fuse-pick" data-i="${i}" ${!on && picked.length >= 3 ? 'disabled' : ''}>${on ? '✔ Picked' : 'Pick'}</button></div></div>`;
     }).join('')}</div>`;
