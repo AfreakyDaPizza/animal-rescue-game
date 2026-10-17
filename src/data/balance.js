@@ -87,6 +87,9 @@ export const plotUpgradeCost = (plotLevel) => Math.round(200 * 2.2 ** plotLevel 
 // ---- 賣寵物：賣得幾錢 = 佢 1 分鐘賺到嘅錢 ----
 export const SELL_SECONDS = 60;
 
+// ---- New biome countdown (Issue #4): the wall at the end of the mountain bridge counts down to this day ----
+export const NEW_BIOME_DATE = '2026-10-24';
+
 // ---- 🧪 FUSE MACHINE (Issue #4): put in 3 pets, get 1 special fuse-only pet ----
 // The day the Fuse Machine opens (year-month-day). Before this day it shows a countdown.
 export const FUSE_OPEN_DATE = '2026-10-22';
