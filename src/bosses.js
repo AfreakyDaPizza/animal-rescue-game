@@ -308,6 +308,7 @@ export function createBosses(scene) {
     const home = biome === 6 ? new THREE.Vector3(0, KINGDOM_Y, rect.minZ + 18) // Biome 7：守喺皇宮前面（天空王國嘅高度）
       : new THREE.Vector3(0, 0, biome === 5 ? rect.maxZ - 8 : rect.minZ + 4);
     group.position.copy(home);
+    if (biome === 6) group.scale.setScalar(3); // 小朋友：最後個生態區嘅 Boss 要大隻啲（Enchanted Royal Guardian，大約 10 米高）
     scene.add(group);
     return { biome, info, rect, group, rig, label, stars, home, aura, auraInner, auraMat, auraColor: new THREE.Color(color), shards, mode: 'guard', stun: 0, grace: 0, runPhase: 0, angry: 0 };
   });
@@ -425,7 +426,7 @@ export function updateBosses(bosses, dt, time, player) {
     animateRig(b, dt, time, moving);
 
     // Boss 唔識跳：你企喺高處佢捉你唔到
-    if (b.mode === 'chase' && dist < CATCH_DISTANCE && (player.feetY ?? 0) - b.group.position.y < 1.5 && !caught) caught = b;
+    if (b.mode === 'chase' && dist < CATCH_DISTANCE * b.group.scale.x && (player.feetY ?? 0) - b.group.position.y < 1.5 && !caught) caught = b;
   }
   return caught;
 }
