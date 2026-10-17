@@ -435,6 +435,25 @@ function buildGate(root, live) {
     const side = i % 2 ? 1 : -1;
     tree(root, x + side * (34 + (i * 7) % 16), z + 4 + i * 4.4, 0.9 + (i % 3) * 0.15, i % 3 === 0 ? 1 : 0);
   }
+  // 森林（小朋友：外面要有森林，最外面用巨型高樹做邊界）
+  let seed = 21;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) {
+    const side = rnd() < 0.5 ? -1 : 1;
+    const tx = x + side * (36 + rnd() * 34);
+    const tz = z + 4 + rnd() * 124;
+    tree(root, tx, tz, 0.8 + rnd() * 0.6, rnd() < 0.5 ? 1 : 0);
+  }
+  for (let tz = z + 2; tz <= z + 128; tz += 9) for (const side of [-1, 1]) giantTree(root, x + side * 72, tz + (side > 0 ? 4 : 0), 1 + rnd() * 0.4);
+  for (let tx = x - 63; tx <= x + 63; tx += 9) if (Math.abs(tx - x) > 6) giantTree(root, tx, z + 128, 1 + rnd() * 0.4);
+}
+
+// 巨型高樹（20–30 米）：森林邊界
+function giantTree(root, x, z, s) {
+  add(root, new THREE.BoxGeometry(2.2 * s, 22 * s, 2.2 * s), mat(0x4e342e), x, 11 * s, z);
+  add(root, new THREE.BoxGeometry(11 * s, 6 * s, 11 * s), leafA, x, 23 * s, z);
+  add(root, new THREE.BoxGeometry(8 * s, 4 * s, 8 * s), leafB, x + 1.5 * s, 27.5 * s, z - 1 * s);
+  add(root, new THREE.BoxGeometry(5 * s, 3 * s, 5 * s), leafC, x - 1.5 * s, 30 * s, z + 1.2 * s);
 }
 
 // 閘門開幾多（0 關、1 開），開場動畫用
