@@ -1505,6 +1505,7 @@ function addPetToPlot(plot, scene, pet) {
   // 只有超大嘅（例如藍鯨）先縮到地塊放得落
   applyPetSkin(model, state.petSkin); // 寵物皮膚
   if (pet.mutation === 'fire') addFireAura(model); // 🔥 Fire 變異：一圈火
+  if (pet.mutation === 'eclipse') addFireAura(model, 'eclipse'); // 🌑 Eclipse 變異：黑紫火 + 白光環
   const maxDim = Math.max(size.x, size.y, size.z);
   const giant = pet.sizeMul || 1; // La Combination 變大嘅寵物
   // 普通寵物最大 7 米；巨型寵物（GIANT／BIG PET FRENZY）可以大到 60 米（同野生動物一樣）
@@ -1516,7 +1517,7 @@ function addPetToPlot(plot, scene, pet) {
   const rarity = rarityInfo(pet.rarity);
   const label = makeLabel([
     { text: pet.name },
-    { text: `${pet.mutation === 'fire' ? '🔥 FIRE · ' : ''}${pet.sizeMul ? `${rarity.name} · GIANT x${pet.sizeMul}` : rarity.name}`, color: pet.mutation === 'fire' ? '#ff6d00' : pet.sizeMul ? '#ff9100' : rarity.color },
+    { text: `${pet.mutation === 'fire' ? '🔥 FIRE · ' : pet.mutation === 'eclipse' ? '🌑 ECLIPSE · ' : ''}${pet.sizeMul ? `${rarity.name} · GIANT x${pet.sizeMul}` : rarity.name}`, color: pet.mutation === 'fire' ? '#ff6d00' : pet.mutation === 'eclipse' ? '#ea80fc' : pet.sizeMul ? '#ff9100' : rarity.color },
     { text: `${formatKg(kg)} · $${fmt(itemMoney(pet))}/s`, color: '#76ff03' },
   ], 0.8);
   label.position.y = new THREE.Box3().setFromObject(model).max.y + 0.7;
@@ -1682,6 +1683,10 @@ export function updateHub(hub, dt, time, px, pz) {
   if (hub.night && dt > 0) {
     for (const rec of state.machines) if (rec && rec.endsAt > Date.now()) rec.endsAt -= dt * 9000;
   }
+  // Eclipse 活動：繁殖機 ×20（每秒額外扣 19 秒；夜晚會再疊埋）
+  if (boost.machine > 1 && dt > 0) {
+    for (const rec of state.machines) if (rec && rec.endsAt > Date.now()) rec.endsAt -= dt * 1000 * (boost.machine - 1);
+  }
 
   // 繁殖機
   for (const m of hub.machines) {
@@ -1720,7 +1725,7 @@ export function updateHub(hub, dt, time, px, pz) {
       m.light.emissiveIntensity = 0.8 + Math.sin(time * 6) * 0.5;
       m.sign.draw(THEMES.pink, [
         { text: status.name, size: 0.2 },
-        { text: `${formatLeft(status.left)} left · ${Math.floor(progress * 100)}%${hub.night ? ' · 🌙x10' : ''}`, size: 0.22, color: hub.night ? '#b388ff' : '#ffeb3b' },
+        { text: `${formatLeft(status.left)} left · ${Math.floor(progress * 100)}%${hub.night ? ' · 🌙x10' : ''}${boost.machine > 1 ? ` · 🌑x${boost.machine}` : ''}`, size: 0.22, color: hub.night ? '#b388ff' : '#ffeb3b' },
       ]);
     } else {
       m.light.color.setHex(0x00e676);

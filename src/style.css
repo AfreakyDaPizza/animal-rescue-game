@@ -456,3 +456,4 @@ body.intro #touch-ui, body:has(#start:not([hidden])) #touch-ui, body:has(#device
 body:has(#panel:not([hidden])) #touch-ui, body:has(#quiz:not([hidden])) #touch-ui { display: none; }
 body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); font-size: 15px; }
 .device-switch button { margin: 0 4px; padding: 6px 12px; font-size: 15px; }
+.card-animal .eclipse-tag { color: #aa00ff; }

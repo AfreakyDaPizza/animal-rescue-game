@@ -8,11 +8,14 @@ export const EVENTS = [
   { id: 'rare', emoji: '✨', name: 'RARE RUSH', desc: 'Only Legendary & Mythic animals spawn - hurry!', duration: 30 },
   { id: 'frenzy', emoji: '💰', name: 'PET FRENZY', desc: 'All pets on your Plot earn 10x money!', duration: 300 },
   { id: 'training', emoji: '🏋️', name: 'TRAINING NO MERCY', desc: 'Treadmill & Student Table give 100x!', duration: 20 },
+  // 小朋友 2026-10-17：Troll Frenzy（好稀有嘅寵物，但 Boss 快 1,000,000 倍）同 Eclipse（日蝕：繁殖機 x20、日蝕激光）
+  { id: 'troll', emoji: '🤡', name: 'TROLL FRENZY', desc: 'CRAZY rare pets everywhere... but every Boss is 1,000,000x FASTER! Good luck! 🤡', duration: 60 },
+  { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180 },
 ];
 // （秘密拉桿同 BIG PET FRENZY：2026-10-15 小朋友叫刪走）
 
 // 而家生效嘅加成（其他檔案讀呢度）
-export const boost = { size: 1, money: 1, train: 1 };
+export const boost = { size: 1, money: 1, train: 1, bossSpeed: 1, machine: 1, eclipse: false };
 
 // 測試用：game.forceEvent('frenzy') 即刻開始一個活動
 let forced = null;
@@ -60,6 +63,9 @@ export function updateEvents() {
   boost.size = !s.active ? 1 : s.ev.id === 'giant' ? 3 : 1; // Giant ×3
   boost.money = s.active && s.ev.id === 'frenzy' ? 10 : 1;
   boost.train = s.active && s.ev.id === 'training' ? 100 : 1;
+  boost.bossSpeed = s.active && s.ev.id === 'troll' ? 1000000 : 1; // Troll Frenzy：Boss Speed ×1,000,000
+  boost.machine = s.active && s.ev.id === 'eclipse' ? 20 : 1; // Eclipse：繁殖機 ×20
+  boost.eclipse = s.active && s.ev.id === 'eclipse';
   if (s.active && s.ev.id === 'giant' && !out.started) {
     const tick = Math.floor(s.into / 30);
     if (tick !== lastTick) {

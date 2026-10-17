@@ -5,7 +5,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom } from './world.js';
+import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
 import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
 import { showDeviceChooser, setupMobile } from './mobile.js';
@@ -31,7 +31,9 @@ import { createTutorial, startTutorial, updateTutorial } from './tutorial.js';
 import { createThirdPerson, updateThirdPerson, zoomCamera, applyRangerSkin } from './thirdPerson.js';
 import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
-import { updateEvents, forceEvent } from './events.js';
+import { updateEvents, forceEvent, boost } from './events.js';
+import { createEclipse, updateEclipse, applyEclipseSky, playEclipseIntro, STRIKE_RADIUS } from './eclipse.js';
+import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
 import { rarityInfo, TRASH_REWARD, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN } from './data/balance.js';
 import { animateFireAuras } from './fireAura.js';
@@ -93,6 +95,7 @@ scene.add(stars);
 const updateWorld = buildWorld(scene);
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
+const eclipse = createEclipse(scene); // Eclipse 日蝕活動（天上嘅日蝕、DNA 激光）
 const hub = createHub(scene);
 // 舊存檔：Enchanted Sunlion 改咗名做 Celestial Sunlion
 {
@@ -881,6 +884,61 @@ async function onHazardHit(h) {
 }
 
 // Boss 撞到你：唔使答問題，直接彈飛返 Hub（小朋友 2026-10-15）；抱住嘅動物走返去生態區
+// ---- Eclipse 日蝕 ----
+function startEclipseIntro() {
+  if (intro.active || movie.active) return; // 播緊其他片：淨係變天
+  player.controls.unlock();
+  closePanel();
+  playEclipseIntro({ ec: eclipse, camera, playMovie, once: movieOnce, shake: movieShake, play, onDone: () => resume() });
+}
+// 揀激光打邊度：地塊寵物、野生動物，或者你附近（小心！）
+function eclipseTarget() {
+  const pos = camera.position;
+  const roll = Math.random();
+  const plot = hub.plot.pets.filter((p) => !p.pet.mutation);
+  if (roll < 0.45 && plot.length) {
+    const p = plot[Math.floor(Math.random() * plot.length)].group.position;
+    return { pos: p.clone(), groundY: 0 };
+  }
+  const wild = rescue.wild.filter((w) => !w.mutation);
+  if (roll < 0.7 && wild.length) {
+    const w = wild[Math.floor(Math.random() * wild.length)];
+    return { pos: w.group.position.clone(), groundY: groundAt(w.group.position.x, w.group.position.z, 999) };
+  }
+  const a = Math.random() * Math.PI * 2;
+  const r = Math.random() * 4;
+  const p = new THREE.Vector3(pos.x + Math.cos(a) * r, 0, pos.z + Math.sin(a) * r);
+  return { pos: p, groundY: groundAt(p.x, p.z, player.feetY + 0.5) };
+}
+function eclipseStrike(at) {
+  play('hit');
+  const near = (p) => Math.hypot(p.x - at.x, p.z - at.z) < STRIKE_RADIUS + 0.6;
+  // 地塊寵物：70% 機會變 🌑 ECLIPSE（Fire 寵物唔會變）
+  const hit = hub.plot.pets.filter((p) => !p.pet.mutation && near(p.group.position) && Math.random() < 0.7).map((p) => p.pet);
+  for (const pet of hit) pet.mutation = 'eclipse';
+  if (hit.length) {
+    refreshPlotPets(hub);
+    announce(`🌑 ECLIPSE MUTATION! Your ${hit.map((p) => p.name).join(' and ')} earn${hit.length > 1 ? '' : 's'} x6 money!`);
+    play('tierUp');
+    save();
+  }
+  // 野生動物：救返嚟、繁殖出嚟都係 Eclipse
+  for (const w of rescue.wild) {
+    if (w.mutation || !near(w.group.position)) continue;
+    w.mutation = 'eclipse';
+    addFireAura(w.model, 'eclipse');
+    popup(`🌑 The wild ${w.animal.name} got the ECLIPSE mutation! Rescue it!`);
+  }
+  // 你：彈飛返 Hub（抱住嘅動物唔會走）
+  if (near(camera.position) && player.feetY - groundAt(camera.position.x, camera.position.z, player.feetY + 0.5) < 1.5 && !fling) {
+    play('boing');
+    announce('💥 The ECLIPSE laser hit you! You flew back to the Hub!');
+    const from = camera.position.clone();
+    fling = { from, to: new THREE.Vector3(0, from.y, 14), t: 0, dur: 1.8 };
+    safeTime = 99;
+  }
+}
+
 function onBossCatch(boss) {
   play('hit');
   play('boing');
@@ -939,7 +997,9 @@ function handleEvents() {
   const { started, ended, tick, tickNo, status } = updateEvents();
   const tag = `${status.key}-${started?.id ?? status.ev.id}`;
   if (ended && !started) {
-    if (['giant', 'rare'].includes(lastEventId)) respawnWild(); // 變返呢段白天嘅正常動物
+    if (['giant', 'rare', 'troll'].includes(lastEventId)) respawnWild(); // 變返呢段白天嘅正常動物
+    if (lastEventId === 'troll') announce('🤡 TROLL FRENZY is over! The Bosses are back to normal.');
+    if (lastEventId === 'eclipse') announce('🌞 The ECLIPSE is over! The sun is back.');
     popup('The event is over! See you at the next one!');
   }
   if (started) {
@@ -948,8 +1008,10 @@ function handleEvents() {
     play('magic');
     const prev = lastEventId;
     if (started.id === 'giant') respawnWild(false, `${tag}-t${tickNo}`);
-    else if (started.id === 'rare') respawnWild(true, tag);
-    else if (['giant', 'rare'].includes(prev)) respawnWild(); // 由巨型轉去其他活動：變返正常
+    else if (started.id === 'rare' || started.id === 'troll') respawnWild(true, tag); // Troll Frenzy：好稀有嘅寵物（但 Boss 快 1,000,000 倍！）
+    else if (['giant', 'rare', 'troll'].includes(prev)) respawnWild(); // 由巨型轉去其他活動：變返正常
+    if (started.id === 'troll') setTimeout(() => popup('🤡 The Bosses are 1,000,000x FASTER! Rescue if you dare...'), 3200);
+    if (started.id === 'eclipse') startEclipseIntro();
   }
   if (started) lastEventId = started.id;
   if (tick) respawnWild(false, `${tag}-t${tickNo}`); // Giant Pets：每 30 秒換一批
@@ -1098,6 +1160,7 @@ renderer.setAnimationLoop((timestamp) => {
   }
   beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
   if (!frozen) updateBeach(dt, time);
+  updateEclipse(eclipse, frozen ? 0 : dt, time, { active: boost.eclipse, playing: !isPaused(), camera, pickTarget: eclipseTarget, onStrike: eclipseStrike, onWarn: () => play('alarm') });
 
   hub.night = dayNight.isNight; // 夜晚繁殖機 10 倍速
   if (isPaused()) {
@@ -1202,12 +1265,14 @@ renderer.setAnimationLoop((timestamp) => {
     dayNight.forceDusk = location === BIOMES[3].name; // Issue #2：Arctic Meltdown 永遠係黃昏天（夜晚照樣入夜）
     updateDayNight(dayNight, dt);
     applyBeachSky(scene, sky.uniforms, hemi, sun); // 秘密沙灘：星空
+    applyEclipseSky(eclipse, scene, sky.uniforms, hemi, sun); // Eclipse：成個地圖變日蝕色
     updateHud(dayNight, location);
   }
   // 電影入面（例如沙灘結局）：天空照樣跟沙灘變星空
   if (movie.active) {
     updateDayNight(dayNight, 0);
     applyBeachSky(scene, sky.uniforms, hemi, sun);
+    applyEclipseSky(eclipse, scene, sky.uniforms, hemi, sun);
   }
 
   // Issue #4：Boss 戰 Phase 1、2 有球棒（一出現就揀咗佢）
@@ -1218,7 +1283,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (batNow) popup('🏏 You got a BAT! Get close and press E or click to hit him!');
   }
   const sel = selectedHotbarItem();
-  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null, sel?.item.mutation === 'fire');
+  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null, sel?.item.mutation ?? null);
   // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
   const showTool = sel?.kind === 'tool' && !rescue.carrying;
   const bat = !!sel?.item.bat;
@@ -1332,4 +1397,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

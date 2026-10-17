@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { buildGuardianRig } from './enchantedModels.js';
+import { boost } from './events.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { biomeRect, STEM, KINGDOM_Y, groundAt } from './world.js';
 import { makeLabel } from './signs.js';
@@ -308,12 +309,12 @@ export function createBosses(scene) {
       : new THREE.Vector3(0, 0, biome === 5 ? rect.maxZ - 8 : rect.minZ + 4);
     group.position.copy(home);
     scene.add(group);
-    return { biome, info, rect, group, rig, stars, home, aura, auraInner, auraMat, auraColor: new THREE.Color(color), shards, mode: 'guard', stun: 0, grace: 0, runPhase: 0, angry: 0 };
+    return { biome, info, rect, group, rig, label, stars, home, aura, auraInner, auraMat, auraColor: new THREE.Color(color), shards, mode: 'guard', stun: 0, grace: 0, runPhase: 0, angry: 0 };
   });
 }
 
 export function bossSpeed(boss) {
-  return walkSpeed(boss.info.speed);
+  return walkSpeed(boss.info.speed * boost.bossSpeed); // Troll Frenzy：×1,000,000
 }
 
 // 手腳動畫：moving 0 = 企定，1 = 全速跑
@@ -333,8 +334,20 @@ export function animateRig(b, dt, time, moving) {
 
 // mode：guard（守住）→ chase（追）→ stunned（暈）／ return（返屋企）
 // 回傳捉到玩家嗰個 Boss（冇就 null）
+let lastTroll = 1;
 export function updateBosses(bosses, dt, time, player) {
   let caught = null;
+  // Troll Frenzy 開始／完：Boss 頭頂個牌跟住變
+  if (boost.bossSpeed !== lastTroll) {
+    lastTroll = boost.bossSpeed;
+    for (const b of bosses) {
+      const troll = boost.bossSpeed > 1;
+      b.label.userData.setLines([
+        { text: `${troll ? '🤡 TROLL ' : ''}BOSS: ${b.info.name}`, color: troll ? '#ff9100' : '#ff5252' },
+        { text: `${(b.info.speed * boost.bossSpeed).toLocaleString('en-US')} Speed`, color: '#ffeb3b' },
+      ]);
+    }
+  }
   for (const b of bosses) {
     const pos = b.group.position;
     const inBiome = player.z <= b.rect.maxZ && player.z >= b.rect.minZ;

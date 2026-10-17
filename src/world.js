@@ -13,6 +13,7 @@ import { biomeFloorTexture } from './biomeArt.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { decorateBiome } from './biomes.js';
 import { buildHubPark } from './hubPark.js';
+import { boost } from './events.js';
 import { buildBiomeBorders } from './biomeBorders.js';
 import { makeSign, dynamicSign, signOnPosts, THEMES } from './signs.js';
 import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
@@ -265,11 +266,12 @@ const fmt = (n) => Math.floor(n).toLocaleString('en-US');
 export function updateBossSigns(speed, iq) {
   for (const { i, sign } of bossSigns) {
     const boss = BOSSES[i];
-    const speedOk = speed >= boss.speed;
+    const need = boss.speed * boost.bossSpeed; // Troll Frenzy：×1,000,000
+    const speedOk = speed >= need;
     const iqOk = iq >= boss.iq;
     sign.draw(THEMES.red, [
-      { text: `BOSS: ${boss.name.toUpperCase()}`, size: 0.17, color: '#ffeb3b' },
-      { text: `Speed needed: ${fmt(boss.speed)} ${speedOk ? '✔' : '✘'}`, size: 0.12, color: speedOk ? '#b9f6ca' : '#ffcdd2' },
+      { text: `${boost.bossSpeed > 1 ? '🤡 TROLL ' : ''}BOSS: ${boss.name.toUpperCase()}`, size: 0.17, color: '#ffeb3b' },
+      { text: `Speed needed: ${fmt(need)} ${speedOk ? '✔' : '✘'}`, size: 0.12, color: speedOk ? '#b9f6ca' : '#ffcdd2' },
       { text: `IQ needed: ${fmt(boss.iq)} ${iqOk ? '✔' : '✘'}`, size: 0.12, color: iqOk ? '#b9f6ca' : '#ffcdd2' },
       { text: `You: ${fmt(speed)} Speed · ${fmt(iq)} IQ`, size: 0.1 },
       { text: `Pets from here: $${fmt(BIOME_BASE_MONEY[i])}+/sec (heavier = more)`, size: 0.1, color: '#fff59d' },
