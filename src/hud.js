@@ -1,6 +1,6 @@
 // 畫面上嘅資料（HUD）：數值、夜晚倒數、位置、快捷欄、My Stats 同 Animal Index 面板
 
-import { state } from './state.js';
+import { state, save } from './state.js';
 import { walkSpeed } from './player.js';
 import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
@@ -227,8 +227,10 @@ function statsHtml() {
     return `<li>Machine ${i + 1}: ${m.name}${m.second ? ` + ${m.second.name}` : ''} - ${left ? `${left}s left` : 'READY!'}</li>`;
   }).join('');
   const level = (key) => `Lv ${state[key]} · ${TIERS[tierOf(state[key])].name}`;
+  const dev = (id, label) => `<button data-device="${id}" class="${state.device === id ? '' : 'grey'}">${label}${state.device === id ? ' ✔' : ''}</button>`;
   return `
     <h3>Stats</h3>
+    <p class="device-switch">🎮 Playing on: ${dev('pc', '💻 PC')} ${dev('mobile', '📱 Mobile')}</p>
     <table>
       <tr><td>💰 Money</td><td>$${fmt(state.money)}</td></tr>
       <tr><td>💵 Plot earns</td><td>$${fmt(moneyPerSecond())} / sec</td></tr>
@@ -344,6 +346,19 @@ let petActions = null;
 export function setPetActions(actions) {
   petActions = actions;
 }
+// Stats 入面轉 Mobile／PC（小朋友：喺 Stats 都揀得）：存低再重新載入（唔再播開場）
+document.getElementById('panel-body').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-device]');
+  if (!b || b.dataset.device === state.device) return;
+  state.device = b.dataset.device;
+  save();
+  try {
+    sessionStorage.setItem('animal-rescue-skip-intro', '1');
+  } catch {
+    // 照載入
+  }
+  location.reload();
+});
 document.getElementById('panel-body').addEventListener('click', (e) => {
   const tabButton = e.target.closest('button[data-tab]');
   if (tabButton && openPanelKind === 'index') {

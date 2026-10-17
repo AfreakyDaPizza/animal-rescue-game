@@ -18,7 +18,7 @@ export function showDeviceChooser(onChosen) {
         <button data-device="mobile">📱<b>MOBILE</b><small>Phone or tablet<br>Touch controls</small></button>
         <button data-device="pc">💻<b>PC</b><small>Computer<br>Keyboard + mouse</small></button>
       </div>
-      <p class="hint">⚠️ You can only choose <b>once!</b></p>
+      <p class="hint">You can change it later in <b>📋 My Stats</b> (P).</p>
     </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', (e) => {
