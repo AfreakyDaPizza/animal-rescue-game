@@ -305,7 +305,7 @@ export function createBosses(scene) {
       group.add(shard);
       shards.push(shard);
     }
-    const home = biome === 6 ? new THREE.Vector3(0, KINGDOM_Y, rect.minZ + 18) // Biome 7：守喺皇宮前面（天空王國嘅高度）
+    const home = biome === 6 ? new THREE.Vector3(0, KINGDOM_Y, rect.minZ + 42) // Biome 7：守喺皇宮前面（天空王國嘅高度）
       : new THREE.Vector3(0, 0, biome === 5 ? rect.maxZ - 8 : rect.minZ + 4);
     group.position.copy(home);
     if (biome === 6) group.scale.setScalar(3); // 小朋友：最後個生態區嘅 Boss 要大隻啲（Enchanted Royal Guardian，大約 10 米高）
