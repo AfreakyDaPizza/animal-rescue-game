@@ -74,6 +74,7 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
   sizeMul = sizeMul ?? (boost.size > 1 ? boost.size : null);
   kg = kg ?? (sizeMul ? Math.round(randomKg(animal) * sizeMul * 10) / 10 : randomKg(animal));
   rarity = animal.rarity || (rarity ?? randomRarity()); // 魔法動物：固定稀有度
+  if (rarity === 'Eternal' && !sizeMul && Math.random() < 0.03) sizeMul = 3; // 小朋友：Eternal 有 3% 機會係巨型
   const info = rarityInfo(rarity);
   const special = rarity === 'Legendary' || rarity === 'Mythic' || rarity === 'Eternal';
   const rect = biomeRect(biome);

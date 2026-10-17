@@ -130,6 +130,17 @@ const SOUNDS = {
     tone(70, t, 3, { type: 'sawtooth', vol: 0.06, slide: 1.4 });
   },
   type: (t) => tone(1500 + Math.random() * 300, t, 0.03, { type: 'square', vol: 0.04 }),
+  // 打鼓（Eternal 出現）：越打越快越大聲，最尾一下鑔
+  drumroll: (t) => {
+    for (let i = 0; i < 28; i++) noise(t + i * 0.055, 0.05, { vol: 0.08 + i * 0.008, freq: 250 + i * 6 });
+    noise(t + 1.6, 0.9, { vol: 0.35, freq: 6000, q: 0.5, type: 'highpass' });
+    tone(110, t + 1.6, 0.5, { type: 'triangle', vol: 0.3, slide: 0.6 });
+  },
+  // 水晶聲：高音叮叮
+  crystal: (t) => {
+    [1568, 2093, 2637, 3136, 2637, 3520].forEach((f, i) => tone(f, t + i * 0.08, 0.6, { type: 'sine', vol: 0.09 }));
+    tone(4186, t + 0.5, 1.2, { type: 'sine', vol: 0.05 });
+  },
   swoosh: (t) => noise(t, 0.25, { vol: 0.2, freq: 1500, q: 0.7, type: 'bandpass' }),
   // Issue #2：實驗室 Boss 戰
   boom: (t) => {

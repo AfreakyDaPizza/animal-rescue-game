@@ -191,14 +191,13 @@ function crystalCliffs(root, rect, rand) {
   for (let x = rect.minX + 12; x < rect.maxX - 8; x += 15) strangeTree(root, x, rect.minZ + 5, 2.4 + rand() * 0.5, rand);
 }
 
-// 中間嘅水晶噴泉（發光水）
+// 中間嘅水晶噴泉（發光水）；小朋友：要行得穿（冇撞嘢圈）
 function crystalFountain(root, x, z) {
   add(root, new THREE.CylinderGeometry(6, 6.6, 1.2, 12), mat(0xede7f6), x, 0.6, z);
   add(root, new THREE.CylinderGeometry(5.4, 5.4, 0.2, 12), mat(0x40c4ff, { emissive: 0x00b0ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.85 }), x, 1.15, z, false);
   add(root, new THREE.CylinderGeometry(0.8, 1.2, 5, 8), mat(0xede7f6), x, 3.2, z);
   const c = add(root, new THREE.OctahedronGeometry(2), mat(0xea80fc, { emissive: 0xd500f9, emissiveIntensity: 1.3, flatShading: true }), x, 7.4, z, false);
   c.scale.y = 1.6;
-  addCollider(x, z, 6.4);
 }
 
 // 彩虹拱門（跨過中間條路）
@@ -227,6 +226,8 @@ export function enchanted(staticRoot, rect, rand, live) {
   crystalCliffs(root, rect, rand);
   castle(root, rect);
   crystalFountain(root, 0, cz + 8);
+  crystalFountain(root, -40, cz - 40);
+  crystalFountain(root, 40, cz - 40);
   rainbowArch(root, rect.maxZ - 22);
   // 中間金色大道（由閘門去皇宮）
   add(root, new THREE.BoxGeometry(6, 0.05, d - 14), mat(0xfff59d, { emissive: 0xffd740, emissiveIntensity: 0.25 }), 0, 0.03, cz + 4, false);
@@ -238,22 +239,22 @@ export function enchanted(staticRoot, rect, rand, live) {
       if (Math.abs(x) > 6 && Math.hypot(x, z - (cz + 8)) > 9) return [x, z];
     }
   };
-  for (let n = 0; n < 40; n++) {
+  for (let n = 0; n < 90; n++) {
     const [x, z] = spot();
     crystalTree(root, x, z, 1.1 + rand() * 0.9, rand);
     addCollider(x, z, 0.7);
   }
-  for (let n = 0; n < 34; n++) {
+  for (let n = 0; n < 70; n++) {
     const [x, z] = spot();
     strangeTree(root, x, z, 1.2 + rand() * 1.0, rand);
     addCollider(x, z, 0.8);
   }
-  for (let n = 0; n < 120; n++) {
+  for (let n = 0; n < 240; n++) {
     const [x, z] = spot();
     glowShroom(root, x, z, 0.8 + rand() * 1.6, rand);
   }
   vines(root, rect, rand);
-  for (let n = 0; n < 260; n++) {
+  for (let n = 0; n < 500; n++) {
     const c = [0xea80fc, 0x80d8ff, 0xffe57f, 0xb9f6ca][n % 4];
     const [x, z] = spot();
     add(root, new THREE.BoxGeometry(0.2, 0.2, 0.2), glow(c, 1), x, 0.12, z, false);
@@ -263,7 +264,7 @@ export function enchanted(staticRoot, rect, rand, live) {
 
   // ---- 會郁嘅嘢 ----
   // 地上嘅魔法符文（慢慢轉，大大個）
-  const runes = Array.from({ length: 10 }, (_, i) => {
+  const runes = Array.from({ length: 18 }, (_, i) => {
     const r = buildRune([0xb388ff, 0x80d8ff, 0xffe57f, 0xea80fc, 0xffd54f][i % 5]);
     const [x, z] = spot();
     r.position.set(x, 0.06, z);
@@ -272,7 +273,7 @@ export function enchanted(staticRoot, rect, rand, live) {
     return r;
   });
   // 浮喺天上嘅島（大啲、多啲）
-  const islands = Array.from({ length: 9 }, (_, i) => {
+  const islands = Array.from({ length: 16 }, (_, i) => {
     const s = 1 + rand() * 1.4;
     const g = new THREE.Group();
     add(g, new THREE.ConeGeometry(4 * s, 6 * s, 7), mat(0x6d4c41, { flatShading: true }), 0, -3 * s, 0).rotation.x = Math.PI;
@@ -293,7 +294,7 @@ export function enchanted(staticRoot, rect, rand, live) {
   whaleG.add(whale);
   view.add(whaleG);
   // 水晶蝴蝶（多啲）
-  const butterflies = Array.from({ length: 70 }, (_, i) => {
+  const butterflies = Array.from({ length: 110 }, (_, i) => {
     const b = buildCrystalButterfly([0xea80fc, 0x80d8ff, 0xffe57f, 0xb9f6ca, 0xb388ff][i % 5]);
     b.scale.setScalar(1.6);
     view.add(b);
@@ -301,7 +302,7 @@ export function enchanted(staticRoot, rect, rand, live) {
     return { b, x, z, h: 1.5 + rand() * 8, r: 1 + rand() * 4, s: 0.5 + rand(), p: rand() * 6 };
   });
   // 魔法閃粉
-  const SP = 320;
+  const SP = 500;
   const sp = new Float32Array(SP * 3);
   const spSeeds = Array.from({ length: SP }, () => ({ x: (rand() * 2 - 1) * (half - 2), z: rect.minZ + 2 + rand() * (d - 4), k: rand(), s: 0.3 + rand() * 0.5 }));
   const spGeo = new THREE.BufferGeometry();

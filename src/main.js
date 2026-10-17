@@ -94,6 +94,17 @@ const updateWorld = buildWorld(scene);
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const hub = createHub(scene);
+// 舊存檔：Enchanted Sunlion 改咗名做 Celestial Sunlion
+{
+  const fix = (o) => o && o.name === 'Enchanted Sunlion' && (o.name = 'Celestial Sunlion');
+  state.pets.forEach(fix);
+  state.borrowed.forEach(fix);
+  state.machines.forEach((m) => {
+    fix(m);
+    fix(m?.second);
+  });
+  state.indexFound = state.indexFound.map((n) => (n === 'Enchanted Sunlion' ? 'Celestial Sunlion' : n));
+}
 // 舊存檔買過「擴建 Hub」：而家 Hub 免費變大咗，退返啲代幣
 let hubRefund = 0;
 if (state.hubLevel > 0) {
@@ -224,6 +235,13 @@ function spawnAll() {
 function announceSpecials(specials) {
   if (introRunning) return; // 開場動畫完咗先講（見 intro.onDone）
   specials.forEach((e, i) => setTimeout(() => {
+    if (e.rarity === 'Eternal') {
+      // 小朋友：Eternal 出現要有打鼓聲同水晶聲
+      play('drumroll');
+      setTimeout(() => play('crystal'), 1700);
+      setTimeout(() => announce(`🥁✨ ETERNAL ${e.animal.name}${e.sizeMul ? ' (GIANT!)' : ''} appeared in ${BIOMES[e.biome].name}! ✨🥁`), 1700);
+      return;
+    }
     announce(`✨ ${e.rarity.toUpperCase()} ${e.animal.name} in ${BIOMES[e.biome].name}!`);
     play('magic');
     popup('Follow the coloured light beam!');

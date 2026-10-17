@@ -29,7 +29,7 @@ export const STEM = { minX: -21, maxX: 21, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; /
 export const kingdom = { open: false };
 // 小朋友 2026-10-17：入咗閘門之後地面要同閘門一樣高（天空王國），仲要大啲
 export const KINGDOM_Y = 13;
-export const KINGDOM_RECT = { minX: -50, maxX: 50, minZ: -6 * BIOME_LENGTH - 110, maxZ: -6 * BIOME_LENGTH };
+export const KINGDOM_RECT = { minX: -75, maxX: 75, minZ: -6 * BIOME_LENGTH - 200, maxZ: -6 * BIOME_LENGTH }; // 小朋友：要好大（150 × 200 米）
 const KINGDOM_DOOR = { minX: -3.4, maxX: 3.4, minZ: -6 * BIOME_LENGTH - 4, maxZ: -6 * BIOME_LENGTH + 3 }; // 閘門個窿（接住條橋同入面嘅樓梯）
 
 const WALL_HEIGHT = 3.5;

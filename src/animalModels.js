@@ -14,7 +14,8 @@ import { buildSkywhaleModel, buildSunlionModel, buildOctophantModel } from './en
 import { buildKitsuneModel, buildGemDragonModel, buildDreadscaleModel, buildArmadilloModel, buildCitadelSnailModel } from './kingdomPets.js';
 const ENCHANTED_MODELS = {
   'Royal Skywhale': buildSkywhaleModel,
-  'Enchanted Sunlion': buildSunlionModel,
+  'Celestial Sunlion': buildSunlionModel,
+  'Enchanted Sunlion': buildSunlionModel, // 舊名
   'Octophant': buildOctophantModel,
   'Kitsune Of Runes': buildKitsuneModel,
   'Gem Dragon': buildGemDragonModel,

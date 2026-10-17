@@ -276,8 +276,8 @@ export function buildLab(scene) {
     lab.labPortal.target = portalReady() || state.labBossDefeated ? 1 : 0; // 打贏咗：傳送門去秘密沙灘
     // 紅色掣：撳落去再彈返上嚟
     lab.button.press = Math.max(0, lab.button.press - dt * 2);
-    lab.button.cap.position.y = 1.0 - Math.sin(Math.min(1, lab.button.press) * Math.PI) * 0.18;
-    lab.button.ring.material.emissiveIntensity = 1.5 + Math.sin(time * 4) * 1;
+    lab.button.cap.position.y = 0.8 - Math.sin(Math.min(1, lab.button.press) * Math.PI) * 0.08;
+    lab.button.ring.material.emissiveIntensity = 0.2 + Math.max(0, Math.sin(time * 0.7)) * 0.25; // 好暗，間中微微一閃
     // 鎚仔：浮下浮下、轉
     if (lab.hammer.g.visible) {
       lab.hammer.tool.position.y = 1.4 + Math.sin(time * 2) * 0.15;
@@ -909,14 +909,15 @@ function buildArena(root, live, updates) {
 function buildRedButton(live) {
   const g = new THREE.Group();
   g.position.set(RED_BUTTON.x, 0, RED_BUTTON.z);
-  add(g, cyl(0.9, 1.0, 20), mat(0x37474f, { metalness: 0.6 }), 0, 0.5, 0);
-  const ring = add(g, new THREE.TorusGeometry(0.72, 0.08, 8, 28), glow(0xffd600, 1.5).clone(), 0, 1.02, 0, false);
+  // 小朋友：要扮成石頭（camo），好難搵：一嚿同座山一樣色嘅石，上面得一粒好暗嘅紅色細掣，冇牌
+  const rock = mat(0x7a6f63, { flatShading: true });
+  add(g, new THREE.DodecahedronGeometry(0.8, 0), rock, 0, 0.35, 0).scale.set(1.2, 0.6, 1);
+  add(g, new THREE.DodecahedronGeometry(0.45, 0), mat(0x8c8072, { flatShading: true }), 0.7, 0.2, 0.3);
+  add(g, new THREE.DodecahedronGeometry(0.35, 0), rock, -0.7, 0.15, -0.2);
+  const ring = add(g, new THREE.TorusGeometry(0.22, 0.03, 6, 16), mat(0x5d4037, { emissive: 0x3e0000, emissiveIntensity: 0.2 }).clone(), 0, 0.82, 0, false);
   ring.rotation.x = Math.PI / 2;
-  const cap = add(g, new THREE.SphereGeometry(0.6, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xff1744, { emissive: 0xd50000, emissiveIntensity: 0.6 }), 0, 1.25, 0);
+  const cap = add(g, new THREE.SphereGeometry(0.18, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x7f2a1e, { emissive: 0x5d0000, emissiveIntensity: 0.25 }), 0, 0.8, 0);
   cap.scale.y = 0.6;
-  const sign = makeLabel([{ text: '🔴 DO NOT PRESS', color: '#ff5252' }], 0.9);
-  sign.position.y = 2.4;
-  g.add(sign);
   live.add(g);
   lab.button = { g, cap, ring, press: 0 }; // 冇撳嘢圈：條路好窄，唔好擋住
 }

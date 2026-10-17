@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { buildGuardianRig } from './enchantedModels.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { biomeRect, STEM, KINGDOM_Y } from './world.js';
+import { biomeRect, STEM, KINGDOM_Y, groundAt } from './world.js';
 import { makeLabel } from './signs.js';
 import { BOSSES } from './data/balance.js';
 import { walkSpeed } from './player.js';
@@ -397,10 +397,13 @@ export function updateBosses(bosses, dt, time, player) {
         moving = b.mode === 'chase' ? 1 : 0.6;
       }
       // 留喺生態區通道入面：可以向 Hub 方向追出去，但唔可以入 Hub（Hub 係安全區）
-      // Biome 7（天空王國）：留喺王國入面（闊啲），唔會飛出條橋
-      const limitX = b.biome === 6 ? (b.rect.maxX - b.rect.minX) / 2 - 2 : (STEM.maxX - STEM.minX) / 2 - 1;
+      // Biome 7（天空王國）：王國入面可以行闊啲；追你嘅時候都會經閘門、條橋追出去（小朋友：佢唔好卡喺牆）
+      const inKingdom = b.biome === 6 && pos.z < b.rect.maxZ - 1;
+      const limitX = inKingdom ? (b.rect.maxX - b.rect.minX) / 2 - 2 : (STEM.maxX - STEM.minX) / 2 - 1;
+      if (b.biome === 6 && !inKingdom && Math.abs(pos.x) > 2.4 && pos.z < b.rect.maxZ + 8) pos.x = THREE.MathUtils.clamp(pos.x, -2.4, 2.4); // 經閘門個窿出去
       pos.x = THREE.MathUtils.clamp(pos.x, -limitX, limitX);
-      pos.z = THREE.MathUtils.clamp(pos.z, b.rect.minZ + 1, b.biome === 6 ? b.rect.maxZ - 2 : STEM.maxZ - 1);
+      pos.z = THREE.MathUtils.clamp(pos.z, b.rect.minZ + 1, STEM.maxZ - 1);
+      if (b.biome === 6) pos.y = groundAt(pos.x, pos.z, pos.y + 0.5); // 跟住地面高度（王國、橋、樓梯）
       if (b.mode === 'return' && d < 0.3) b.mode = 'guard';
     } else if (inBiome) {
       // 守住：望住玩家

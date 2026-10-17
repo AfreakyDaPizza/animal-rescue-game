@@ -888,6 +888,44 @@ function buildBridge(scene, live, rect) {
   }
   live.add(bars);
   Object.assign(KINGDOM_GATE, { bars, swirl, z: wallZ, y: top });
+  // 開咗之後：一道會閃嘅魔法傳送門（行得穿）：星空漩渦 + 兩圈會轉嘅光環 + 吸入去嘅閃粉
+  const pc = document.createElement('canvas');
+  pc.width = pc.height = 256;
+  const pctx = pc.getContext('2d');
+  const pg = pctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  pg.addColorStop(0, 'rgba(255,255,255,1)');
+  pg.addColorStop(0.3, 'rgba(128,216,255,0.9)');
+  pg.addColorStop(0.65, 'rgba(234,128,252,0.7)');
+  pg.addColorStop(1, 'rgba(49,27,146,0)');
+  pctx.fillStyle = pg;
+  pctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 90; i++) {
+    pctx.fillStyle = ['#fff', '#fff59d', '#b9f6ca'][i % 3];
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * 120;
+    pctx.fillRect(128 + Math.cos(a) * r, 128 + Math.sin(a) * r, 2.5, 2.5);
+  }
+  const portalTex = new THREE.CanvasTexture(pc);
+  portalTex.colorSpace = THREE.SRGBColorSpace;
+  const portal = new THREE.Group();
+  portal.position.set(0, doorY, wallZ + 0.7);
+  const face = new THREE.Mesh(new THREE.CircleGeometry(R - 0.1, 48), new THREE.MeshBasicMaterial({ map: portalTex, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  portal.add(face);
+  const rings = [[R + 0.2, 0xffd740], [R - 0.6, 0x18ffff], [R - 1.6, 0xea80fc]].map(([rr, c]) => {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.12, 8, 64), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    portal.add(m);
+    return m;
+  });
+  const PN = 60;
+  const pPos = new Float32Array(PN * 3);
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  const pPts = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pPts.frustumCulled = false;
+  portal.add(pPts);
+  portal.visible = false;
+  live.add(portal);
+  Object.assign(KINGDOM_GATE, { portal, face, rings, pPos, pGeo, R });
   // 兩圈會轉嘅符文
   const runes = [R + 1.7, R + 2.6].map((rr, k) => {
     const g = new THREE.Group();
@@ -950,6 +988,27 @@ function buildBridge(scene, live, rect) {
     swirl.material.opacity = 0.95 * (1 - k);
     swirl.visible = k < 0.98;
     lock.visible = k < 0.5;
+    // 魔法傳送門（開咗先有）
+    const G = KINGDOM_GATE;
+    G.portal.visible = k > 0.3;
+    if (G.portal.visible) {
+      G.portal.scale.setScalar(Math.min(1, (k - 0.3) / 0.6));
+      G.face.rotation.z = t * 0.6;
+      G.face.material.opacity = 0.55 + Math.sin(t * 2.5) * 0.15;
+      G.rings.forEach((r, i) => {
+        r.rotation.z = t * (i % 2 ? -0.8 : 1.1);
+        r.rotation.x = Math.sin(t * 0.9 + i) * 0.25;
+      });
+      for (let i = 0; i < 60; i++) {
+        const kk = (t * 0.35 + i / 60) % 1;
+        const a = i * 2.4 + kk * 6;
+        const r = G.R * (1 - kk);
+        G.pPos[i * 3] = Math.cos(a) * r;
+        G.pPos[i * 3 + 1] = Math.sin(a) * r;
+        G.pPos[i * 3 + 2] = 0.3 - kk * 0.6;
+      }
+      G.pGeo.attributes.position.needsUpdate = true;
+    }
     if (Math.floor(t) !== lastCheck && (kingdom.open || state.bigButton || isNewBiomeOpen())) {
       lastCheck = Math.floor(t);
       sign.draw(THEMES.purple, [

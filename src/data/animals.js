@@ -129,9 +129,9 @@ export const ANIMALS = [
 // ---- Biome 7：Enchanted Kingdom（小朋友 2026-10-17）：魔法動物（唔係真嘅！）其他動物小朋友遲啲講 ----
 // rarity：呢啲動物嘅稀有度係固定嘅（小朋友 Issue #5 定），唔係隨機
 export const ENCHANTED_ANIMALS = [
-  { name: 'Royal Skywhale', biome: 6, emoji: '🐋', kg: [8000, 15000], rarity: 'Eternal', status: 'Magical (not a real animal!)', magical: true,
+  { name: 'Royal Skywhale', biome: 6, emoji: '🐋', kg: [20000, 40000], rarity: 'Eternal', status: 'Magical (not a real animal!)', magical: true,
     fact: 'The Royal Skywhale is a magical creature from the Enchanted Kingdom. It is not real, but real Blue Whales are Endangered: only about 10,000-25,000 are left!' },
-  { name: 'Enchanted Sunlion', biome: 6, emoji: '🦁', kg: [180, 260], rarity: 'Mythic', status: 'Magical (not a real animal!)', magical: true,
+  { name: 'Celestial Sunlion', biome: 6, emoji: '🦁', kg: [450, 700], rarity: 'Mythic', status: 'Magical (not a real animal!)', magical: true,
     fact: 'Magical! But real lions are Vulnerable: about 23,000 are left in the wild, and they have lost over 90% of the land they used to live on.' },
   { name: 'Octophant', biome: 6, emoji: '🐘', kg: [3000, 5500], rarity: 'Legendary', status: 'Magical (not a real animal!)', magical: true,
     fact: 'Half elephant, half octopus, all magic! Real octopuses have three hearts and blue blood.' },
@@ -163,7 +163,9 @@ export const FUSE_PETS = [
 
 export const animalsInBiome = (biome) => ANIMALS.filter((a) => a.biome === biome);
 
-export const findAnimal = (name) => ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name);
+// 舊名（2026-10-17 小朋友改名）
+const OLD_NAMES = { 'Enchanted Sunlion': 'Celestial Sunlion' };
+export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {
