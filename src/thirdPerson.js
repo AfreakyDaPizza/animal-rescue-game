@@ -100,6 +100,101 @@ export function buildAvatar() {
     const w = box(wings, 0.08, 1.0, 0.6, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 }), s * 0.6, 1.7, 0.4);
     w.rotation.z = s * -0.5;
   }
+  // ---- 新皮膚（小朋友 2026-10-17）：每款有頭上嘅（name）同身上嘅（name + 'Body'）配件 ----
+  const SM = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
+  const SG = (color, k = 1) => SM(color, { emissive: color, emissiveIntensity: k });
+  // 海盜船長：黑色三角帽（金邊）+ 眼罩 + 紅色腰帶
+  const pirate = make('pirate', head);
+  box(pirate, 0.95, 0.12, 0.8, 0x212121, 0, 0.38, 0);
+  box(pirate, 0.7, 0.3, 0.62, 0x212121, 0, 0.55, 0);
+  box(pirate, 0.97, 0.04, 0.82, SM(0xffd54f, { metalness: 0.8 }), 0, 0.45, 0);
+  box(pirate, 0.18, 0.16, 0.04, 0x111111, 0.15, 0.05, -0.36); // 眼罩
+  box(pirate, 0.7, 0.03, 0.03, 0x111111, 0, 0.12, -0.35).rotation.z = -0.3;
+  const pirateBody = make('pirateBody', g);
+  box(pirateBody, 0.88, 0.16, 0.48, 0xc62828, 0, 0.95, 0);
+  box(pirateBody, 0.18, 0.18, 0.05, SM(0xffd54f, { metalness: 0.8 }), 0, 0.95, -0.25);
+  // 魔法師：好高嘅紫色星星帽 + 白鬍子 + 披風
+  const wizard = make('wizard', head);
+  box(wizard, 0.95, 0.08, 0.95, 0x4a148c, 0, 0.36, 0);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 8), SM(0x6a1b9a));
+  cone.position.set(0, 0.95, 0.05);
+  cone.rotation.x = -0.15;
+  cone.castShadow = true;
+  wizard.add(cone);
+  for (const [x, y, z] of [[0.15, 0.7, -0.3], [-0.12, 0.95, -0.22], [0.05, 1.2, -0.12]]) box(wizard, 0.09, 0.09, 0.03, SG(0xffeb3b, 1.4), x, y, z);
+  box(wizard, 0.5, 0.45, 0.12, 0xf5f5f5, 0, -0.32, -0.32); // 鬍子
+  box(wizard, 0.2, 0.2, 0.1, 0xf5f5f5, 0, -0.6, -0.32);
+  const wizardBody = make('wizardBody', g);
+  box(wizardBody, 0.95, 1.3, 0.08, 0x311b92, 0, 1.2, 0.3); // 披風
+  // 電子忍者：發光藍色護目鏡 + 身上霓虹線
+  const cyber = make('cyber', head);
+  box(cyber, 0.7, 0.16, 0.06, SG(0x00e5ff, 1.6), 0, 0.06, -0.35);
+  box(cyber, 0.72, 0.12, 0.72, 0x263238, 0, 0.3, 0);
+  box(cyber, 0.06, 0.4, 0.06, SG(0xff4081, 1.4), 0.3, 0.45, 0.2); // 天線
+  const cyberBody = make('cyberBody', g);
+  for (const s of [-1, 1]) box(cyberBody, 0.05, 0.85, 0.05, SG(0x00e5ff, 1.4), s * 0.36, 1.35, -0.24);
+  box(cyberBody, 0.6, 0.05, 0.05, SG(0xff4081, 1.4), 0, 1.6, -0.24);
+  // 龍騎士：紅色龍頭盔（角）+ 紅色龍翼
+  const dragon = make('dragon', head);
+  box(dragon, 0.74, 0.22, 0.74, 0xb71c1c, 0, 0.32, 0);
+  box(dragon, 0.5, 0.12, 0.2, 0xb71c1c, 0, 0.28, -0.42); // 龍嘴罩
+  for (const s of [-1, 1]) {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 6), SM(0xfff8e1));
+    horn.position.set(s * 0.25, 0.55, 0.1);
+    horn.rotation.set(-0.5, 0, s * -0.4);
+    dragon.add(horn);
+    box(dragon, 0.06, 0.06, 0.02, SG(0xffab00, 1.6), s * 0.14, 0.2, -0.53); // 頭盔眼
+  }
+  const dragonBody = make('dragonBody', g);
+  for (const s of [-1, 1]) {
+    const w = box(dragonBody, 0.06, 0.9, 0.9, SM(0xd32f2f, { transparent: true, opacity: 0.9 }), s * 0.75, 1.75, 0.45);
+    w.rotation.z = s * -0.6;
+    box(dragonBody, 0.08, 0.9, 0.08, 0x4e0000, s * 0.62, 1.95, 0.3).rotation.z = s * -0.6; // 翼骨
+  }
+  // 皇帝：大金皇冠（寶石）+ 紅色披風（白毛邊）
+  const king = make('king', head);
+  const kg = SM(0xffd600, { metalness: 0.9, roughness: 0.2, emissive: 0x6d4c00 });
+  box(king, 0.78, 0.2, 0.78, kg, 0, 0.44, 0);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    box(king, 0.14, 0.24, 0.14, kg, Math.cos(a) * 0.32, 0.64, Math.sin(a) * 0.32);
+  }
+  for (const [c, x] of [[0xd50000, 0], [0x2962ff, -0.2], [0x00c853, 0.2]]) box(king, 0.1, 0.1, 0.04, SG(c, 0.8), x, 0.45, -0.4);
+  const kingBody = make('kingBody', g);
+  box(kingBody, 1.0, 1.45, 0.08, 0xb71c1c, 0, 1.15, 0.3);
+  box(kingBody, 1.05, 0.16, 0.5, 0xfafafa, 0, 1.85, 0.08); // 白毛領
+  // 冰之守護者：水晶頭盔 + 冰水晶膊頭
+  const ice = make('ice', head);
+  box(ice, 0.74, 0.2, 0.74, SM(0xb3e5fc, { metalness: 0.4, roughness: 0.1 }), 0, 0.32, 0);
+  for (const [x, h] of [[-0.22, 0.4], [0, 0.6], [0.22, 0.4]]) {
+    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), SG(0x80d8ff, 0.9));
+    c.position.set(x, 0.42 + h / 2, 0);
+    c.scale.y = h / 0.2;
+    ice.add(c);
+  }
+  const iceBody = make('iceBody', g);
+  for (const s of [-1, 1]) {
+    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), SG(0x80d8ff, 0.8));
+    c.position.set(s * 0.62, 1.95, 0);
+    c.scale.y = 1.6;
+    iceBody.add(c);
+  }
+  // 熔岩騎士：黑色頭盔（發光橙色縫）+ 背後火焰劍
+  const lava = make('lava', head);
+  box(lava, 0.74, 0.74, 0.74, 0x212121, 0, 0.02, 0);
+  box(lava, 0.5, 0.06, 0.04, SG(0xff6d00, 1.8), 0, 0.04, -0.375); // 眼縫
+  box(lava, 0.08, 0.4, 0.42, SG(0xff3d00, 1.4), 0, 0.5, 0.05); // 火焰冠
+  const lavaBody = make('lavaBody', g);
+  box(lavaBody, 0.1, 1.3, 0.05, SG(0xff6d00, 1.5), 0.2, 1.55, 0.3).rotation.z = 0.4; // 背後劍
+  box(lavaBody, 0.4, 0.08, 0.08, 0x424242, 0.06, 1.0, 0.3).rotation.z = 0.4;
+  // 銀河探險家：透明星空頭盔 + 星星背包
+  const galaxy = make('galaxy', head);
+  const dome = box(galaxy, 0.86, 0.86, 0.86, SM(0x7c4dff, { transparent: true, opacity: 0.35, roughness: 0.05, emissive: 0x311b92, emissiveIntensity: 0.6 }), 0, 0.02, 0);
+  dome.castShadow = false;
+  for (const [x, y, z] of [[0.3, 0.3, -0.3], [-0.32, 0.2, 0.2], [0.1, 0.42, 0.3]]) box(galaxy, 0.05, 0.05, 0.05, SG(0xffffff, 2), x, y, z);
+  const galaxyBody = make('galaxyBody', g);
+  box(galaxyBody, 0.6, 0.7, 0.3, 0x1a237e, 0, 1.4, 0.38);
+  box(galaxyBody, 0.15, 0.15, 0.05, SG(0xffeb3b, 1.6), 0, 1.5, 0.55);
   return { g, legs, arms, head, mats, extras, hat, badge };
 }
 
@@ -111,8 +206,8 @@ export function applyRangerSkin(tp, skin) {
     mats[k].metalness = skin.metal ? 0.85 : 0;
     mats[k].roughness = skin.metal ? 0.25 : 0.55;
   }
-  for (const [name, e] of Object.entries(extras)) e.visible = name === skin.extra || (name === 'pack' && skin.extra === 'astronaut');
-  hat.visible = !['ninja', 'panda', 'astronaut', 'knight', 'crown'].includes(skin.extra);
+  for (const [name, e] of Object.entries(extras)) e.visible = name === skin.extra || name === `${skin.extra}Body` || (name === 'pack' && skin.extra === 'astronaut');
+  hat.visible = !skin.extra || skin.extra === 'wings'; // 有自己頭飾嘅皮膚就收埋護林員帽
   badge.visible = skin.id === 'ranger';
   tp.rainbow = !!skin.rainbow;
 }
