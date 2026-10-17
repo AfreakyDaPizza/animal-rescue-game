@@ -71,9 +71,11 @@ export const parkGate = { open: false };
 // ---- 石台（可以跳上去企）----
 // { minX, maxX, minZ, maxZ, top }：top 係台面有幾高
 export const platforms = [];
-export function addPlatform(rect, top) {
-  platforms.push({ ...rect, top });
+// bottom（可以唔俾）：塊台有幾厚 → 例如天橋，下面夠高就可以喺下面行過（唔會當牆）
+export function addPlatform(rect, top, bottom = null) {
+  platforms.push({ ...rect, top, bottom });
 }
+const HEADROOM = 2.2; // 喺天橋下面行要幾高位
 const STEP_UP = 0.45; // 低過呢個高度嘅台，行過去自動踏上去（例如跑步機）
 
 // 喺 (x, z) 腳下最高嘅台面（腳嘅高度 feetY 要夠高先企得上去）；冇台就係地面 0
@@ -90,6 +92,7 @@ export function isWalkable(x, z, radius, feetY = 0) {
   if (gate.locked && z < 0.8) return false; // 閘口落咗，入唔到通道
   for (const p of platforms) {
     // 矮嘅樓梯級唔計公仔闊度（級太淺，計埋就會俾第二級擋住，踏唔上第一級）
+    if (p.bottom !== null && feetY + HEADROOM < p.bottom) continue; // 喺天橋下面行過
     const m = p.top - feetY <= STEP_UP * 2.2 ? 0 : radius;
     if (feetY + STEP_UP < p.top && x > p.minX - m && x < p.maxX + m && z > p.minZ - m && z < p.maxZ + m) return false;
   }

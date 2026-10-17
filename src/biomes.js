@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import { addPlatform, addCollider } from './world.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
+import { dynamicSign, THEMES } from './signs.js';
+import { NEW_BIOME_DATE } from './data/balance.js';
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
 // 固定嘅「隨機」：每次開遊戲裝飾都喺同一個位，唔會成日變
@@ -715,6 +717,112 @@ function coolMountain(scene, live, rect, rand) {
   };
 }
 
+// Biome 6 山頂後面嘅吊橋（小朋友 Issue #4）：由山頂一路去到生態區盡頭幅牆，
+// 兩頭有高高嘅橋塔 + 吊索；盡頭幅牆有個倒數牌「NEW BIOME IS COMING...」
+// 橋面係一塊薄台（addPlatform 有 bottom），下面嘅人照行得過（去攞山後面嘅鎚仔）
+export function newBiomeCountdown(now = new Date()) {
+  const [y, m, d] = NEW_BIOME_DATE.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((target - today) / 86400000);
+  if (days > 1) return `In ${days} days`;
+  if (days === 1) return 'Tomorrow!';
+  if (days === 0) return 'Coming today!';
+  return 'Coming soon!';
+}
+function buildBridge(scene, live, rect) {
+  const top = SUMMIT.top;
+  const z1 = SUMMIT.z - SUMMIT.halfZ - 0.9; // 山頂背面（最頂嗰層嘅邊）
+  const z2 = rect.minZ + 0.5; // 盡頭幅牆
+  const len = z1 - z2;
+  const zc = (z1 + z2) / 2;
+  const W = 3; // 橋面闊
+  const wood = mat(0x8d6e63);
+  const wood2 = mat(0x6d4c41);
+  const rope = mat(0xd7ccc8);
+  const iron = mat(0x546e7a, { metalness: 0.6, roughness: 0.4 });
+  // 橋面：一塊塊木板
+  const n = Math.floor(len / 0.5);
+  for (let i = 0; i < n; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.18, 0.44), i % 2 ? wood : wood2), 0, top - 0.09, z1 - 0.25 - i * (len / n), false);
+  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, len), wood2), s * (W / 2), top - 0.2, zc);
+  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2, maxZ: z1 }, top, top - 0.3);
+  // 兩邊欄杆（細柱 + 繩）
+  for (const s of [-1, 1]) {
+    for (let i = 0; i <= 8; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, 0.1), wood2), s * (W / 2), top + 0.55, z1 - (i * len) / 8);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, len), rope), s * (W / 2), top + 1.05, zc, false);
+  }
+  // 兩座高橋塔：一座喺山頂背面、一座喺幅牆前面（由地面起），中間有吊索 + 一條條吊繩
+  const TOWER_H = 9; // 高過橋面幾多
+  // [z, 由幾高起, 離中間幾遠]：盡頭座塔貼住幅牆、企開啲（唔好遮住個倒數牌，亦唔阻住去攞鎚仔）
+  const towers = [[z1 - 0.6, top - 3, W / 2 + 0.6], [z2 + 0.4, 0, 4.7]];
+  for (const [tz, base, towerX] of towers) {
+    for (const s of [-1, 1]) {
+      const h = top + TOWER_H - base;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.7, h, 0.7), iron), s * towerX, base + h / 2, tz);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), mat(0xd32f2f)), s * towerX, top + TOWER_H + 0.2, tz);
+      if (base === 0) addCollider(s * towerX, tz, 0.4);
+    }
+    for (const y of base === 0 ? [top + TOWER_H - 0.4] : [top + 2.6, top + TOWER_H - 0.4]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(towerX * 2 + 0.7, 0.4, 0.5), iron), 0, y, tz);
+  }
+  // 吊索：兩座塔頂之間彎彎咁垂落嚟（一段段），每段落一條吊繩去橋面
+  const tA = towers[0][0];
+  const tB = towers[1][0];
+  const SEG = 16;
+  for (const s of [-1, 1]) {
+    let prev = null;
+    for (let i = 0; i <= SEG; i++) {
+      const k = i / SEG;
+      const z = tA + (tB - tA) * k;
+      const y = top + TOWER_H - Math.sin(k * Math.PI) * (TOWER_H - 1.6);
+      const p = new THREE.Vector3(s * (towers[0][2] + (towers[1][2] - towers[0][2]) * k), y, z);
+      if (prev) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, prev.distanceTo(p), 6), rope);
+        seg.position.copy(prev).add(p).multiplyScalar(0.5);
+        seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p.clone().sub(prev).normalize());
+        scene.add(seg);
+        if (i < SEG) {
+          // 吊繩：由吊索斜斜落去橋邊
+          const foot = new THREE.Vector3(s * (W / 2), top + 1.05, z);
+          const h = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, p.distanceTo(foot), 4), rope);
+          h.position.copy(p).add(foot).multiplyScalar(0.5);
+          h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), foot.clone().sub(p).normalize());
+          scene.add(h);
+        }
+      }
+      prev = p;
+    }
+  }
+  // 盡頭：封住嘅工地大牆（黃黑間條）+ 倒數牌
+  const wallZ = rect.minZ + 0.2;
+  const WALL_W = 14;
+  const WALL_H = top + 7;
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(WALL_W, WALL_H, 0.6), mat(0x37474f, { metalness: 0.4 })), 0, WALL_H / 2, wallZ);
+  const stripes = [0xffc400, 0x212121];
+  for (let i = 0; i < 14; i++) {
+    const st = add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.05), mat(stripes[i % 2])), -WALL_W / 2 + 0.55 + i, top + 6.2, wallZ + 0.33, false);
+    st.rotation.z = 0.5;
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.05), mat(stripes[(i + 1) % 2])), -WALL_W / 2 + 0.55 + i, 1.0, wallZ + 0.33, false).rotation.z = 0.5;
+  }
+  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.8, WALL_H + 1, 0.9), mat(0xffc400)), s * (WALL_W / 2), (WALL_H + 1) / 2, wallZ);
+  // 閃燈（喺牆頂）
+  const lamps = [-5, 0, 5].map((x) => add(live, new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff6d00, emissive: 0xff6d00, emissiveIntensity: 2 })), x, WALL_H + 0.3, wallZ, false));
+  const sign = dynamicSign(8, 3.4);
+  sign.mesh.position.set(0, top + 3, wallZ + 0.4);
+  live.add(sign.mesh);
+  let lastCheck = -1;
+  return (dt, t) => {
+    if (Math.floor(t) !== lastCheck) {
+      lastCheck = Math.floor(t);
+      sign.draw(THEMES.orange, [
+        { text: '🚧 NEW BIOME IS COMING... 🚧', size: 0.13, color: '#fff59d' },
+        { text: newBiomeCountdown(), size: 0.2 },
+        { text: 'Something big is being built here!', size: 0.075 },
+      ]);
+    }
+    lamps.forEach((l, i) => (l.material.emissiveIntensity = Math.sin(t * 6 + i * 2) > 0 ? 2.5 : 0.2));
+  };
+}
+
 // Biome 6：採礦山 — 中間一座好大嘅三角形山（要跳上去），山前面有石、水晶、鑽機
 function mining(scene, rect, rand, live) {
   const k = density(rect);
@@ -752,8 +860,10 @@ function mining(scene, rect, rand, live) {
     drills.push(bit);
   }
   const updateCool = coolMountain(scene, live, rect, rand);
+  const updateBridge = buildBridge(scene, live, rect);
   return (dt, t) => {
     updateCool(dt, t);
+    updateBridge(dt, t);
     drills.forEach((bit, i) => {
       bit.position.y = 2 + Math.sin(t * 3 + i) * 1.2;
       bit.rotation.y = t * 8;
