@@ -16,6 +16,7 @@ export const isQuizOpen = () => current !== null;
 
 function pickQuestion(biome, hard) {
   let pool = QUESTIONS.filter((q) => q.biome === biome && !!q.hard === hard);
+  if (!pool.length) pool = QUESTIONS.filter((q) => !!q.hard === hard); // 新生態區（例如 Biome 7）未有題目：用全部
   const fresh = pool.filter((q) => !recent.includes(q));
   if (fresh.length) pool = fresh;
   const q = pool[Math.floor(Math.random() * pool.length)];

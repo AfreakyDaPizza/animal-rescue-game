@@ -2,7 +2,8 @@
 // 裝飾放喺兩邊，中間留條路（|x| < 3）俾玩家行。
 
 import * as THREE from 'three';
-import { addPlatform, addCollider } from './world.js';
+import { addPlatform, addCollider, kingdom } from './world.js';
+import { enchanted } from './enchanted.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
 import { dynamicSign, makeLabel, THEMES } from './signs.js';
 import { NEW_BIOME_DATE } from './data/balance.js';
@@ -72,7 +73,7 @@ function roundTree(scene, x, z, s = 1) {
 // scene：放唔會郁嘅裝飾（之後會焊埋做一大件，畫得快啲）；live：放會郁嘅嘢
 export function decorateBiome(scene, i, rect, live) {
   const rand = seededRandom(100 + i);
-  return [deforestation, ocean, birds, arcticV2, smugglersV2, mining][i](scene, rect, rand, live);
+  return [deforestation, ocean, birds, arcticV2, smugglersV2, mining, enchanted][i](scene, rect, rand, live);
 }
 
 // Biome 1：砍伐森林 — 有啲樹仲企喺度，有啲已經俾人斬咗淨返樹頭
@@ -520,6 +521,8 @@ function smugglers(scene, rect, rand, live) {
 
 // Biome 6 嘅山頂：動物喺度出現，唔會落山（小朋友：「a massive triangle mountain」，要跳上去）
 export const SUMMIT = { x: 0, z: 0, top: 0, halfX: 1, halfZ: 1 };
+// Biome 6 盡頭通去 Biome 7 嘅閘門：open 0（關）→ 1（開）；fast = 開門動畫慢慢開
+export const KINGDOM_GATE = { open: 0, fast: false, bars: null, swirl: null, z: 0, y: 0 };
 export const MOUNTAIN = { minX: -15, maxX: 15, minZ: 0, maxZ: 0 }; // 山腳範圍（main／hazards 用）
 const STAIRS = { z: 0 }; // 樓梯口
 
@@ -720,6 +723,11 @@ function coolMountain(scene, live, rect, rand) {
 // Biome 6 山頂後面嘅吊橋（小朋友 Issue #4）：由山頂一路去到生態區盡頭幅牆，
 // 兩頭有高高嘅橋塔 + 吊索；盡頭幅牆有個倒數牌「NEW BIOME IS COMING...」
 // 橋面係一塊薄台（addPlatform 有 bottom），下面嘅人照行得過（去攞山後面嘅鎚仔）
+// 新生態區開咗未（日期到咗）
+export function isNewBiomeOpen(now = new Date()) {
+  const [y, m, d] = NEW_BIOME_DATE.split('-').map(Number);
+  return now >= new Date(y, m - 1, d);
+}
 export function newBiomeCountdown(now = new Date()) {
   const [y, m, d] = NEW_BIOME_DATE.split('-').map(Number);
   const target = new Date(y, m - 1, d);
@@ -820,13 +828,20 @@ function buildBridge(scene, live, rect) {
   }
 
   // ---- 盡頭：神秘大閘門（新生態區）----
+// （KINGDOM_GATE：main.js／開門動畫用）
   // 好大嘅石框 + 圓形金庫門（有會轉嘅符文圈）+ 鐵枝後面旋轉緊嘅紫色能量 + 會浮嘅「?」+ 火花 + 個鎖一閃一閃
   const wallZ = rect.minZ + 0.25;
   const GATE_W = 24;
   const GATE_H = top + 14;
   const stone = mat(0x263238, { roughness: 0.8, flatShading: true });
   const stone2 = mat(0x37474f, { roughness: 0.8, flatShading: true });
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(GATE_W, GATE_H, 1.2), stone), 0, GATE_H / 2, wallZ);
+  // 牆中間留個門窿（閘門開咗就行得入 Biome 7）
+  const HOLE_W = 8.4;
+  const HOLE_TOP = top + 10.4;
+  const sideW = (GATE_W - HOLE_W) / 2;
+  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(sideW, GATE_H, 1.2), stone), s * (HOLE_W / 2 + sideW / 2), GATE_H / 2, wallZ);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(HOLE_W, top, 1.2), stone), 0, top / 2, wallZ);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(HOLE_W, GATE_H - HOLE_TOP, 1.2), stone), 0, (GATE_H + HOLE_TOP) / 2, wallZ);
   for (const s of [-1, 1]) {
     add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.4, GATE_H + 4, 2.4), stone2), s * (GATE_W / 2), (GATE_H + 4) / 2, wallZ + 0.4); // 大柱
     add(scene, new THREE.Mesh(new THREE.OctahedronGeometry(1.3), mat(0xd500f9, { emissive: 0xd500f9, emissiveIntensity: 1.4, flatShading: true })), s * (GATE_W / 2), GATE_H + 5, wallZ + 0.4);
@@ -864,11 +879,14 @@ function buildBridge(scene, live, rect) {
   const swirl = new THREE.Mesh(new THREE.CircleGeometry(R, 48), new THREE.MeshBasicMaterial({ map: swirlTex, transparent: true, opacity: 0.95 }));
   swirl.position.set(0, doorY, wallZ + 0.65);
   live.add(swirl);
-  // 鐵枝（擋住個能量門）
+  // 鐵枝（擋住個能量門）：閘門開嗰陣升上去
+  const bars = new THREE.Group();
   for (let i = -4; i <= 4; i++) {
     const hh = 2 * Math.sqrt(Math.max(0, R * R - (i * 1.15) ** 2));
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.22, hh, 0.22), iron), i * 1.15, doorY, wallZ + 0.85);
+    add(bars, new THREE.Mesh(new THREE.BoxGeometry(0.22, hh, 0.22), iron), i * 1.15, doorY, wallZ + 0.85);
   }
+  live.add(bars);
+  Object.assign(KINGDOM_GATE, { bars, swirl, z: wallZ, y: top });
   // 兩圈會轉嘅符文
   const runes = [R + 1.7, R + 2.6].map((rr, k) => {
     const g = new THREE.Group();
@@ -923,7 +941,22 @@ function buildBridge(scene, live, rect) {
   live.add(sign.mesh);
   let lastCheck = -1;
   return (dt, t) => {
-    if (Math.floor(t) !== lastCheck) {
+    // 閘門開：鐵枝升上去、漩渦消失、鎖唔見
+    const target = kingdom.open ? 1 : 0;
+    KINGDOM_GATE.open += (target - KINGDOM_GATE.open) * Math.min(1, dt * (KINGDOM_GATE.fast ? 0.8 : 3));
+    const k = KINGDOM_GATE.open;
+    bars.position.y = k * 12;
+    swirl.material.opacity = 0.95 * (1 - k);
+    swirl.visible = k < 0.98;
+    lock.visible = k < 0.5;
+    if (Math.floor(t) !== lastCheck && kingdom.open) {
+      lastCheck = Math.floor(t);
+      sign.draw(THEMES.purple, [
+        { text: '👑 THE ENCHANTED KINGDOM 👑', size: 0.14, color: '#fff59d' },
+        { text: 'IS OPEN!', size: 0.22 },
+        { text: 'Walk through the gate...', size: 0.08, color: '#e1bee7' },
+      ]);
+    } else if (Math.floor(t) !== lastCheck) {
       lastCheck = Math.floor(t);
       sign.draw(THEMES.purple, [
         { text: '✨ NEW BIOME IS COMING... ✨', size: 0.13, color: '#fff59d' },

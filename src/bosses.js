@@ -2,6 +2,7 @@
 // 只有你借咗佢生態區嘅動物，佢先會追你；佢唔可以走出自己嘅生態區
 
 import * as THREE from 'three';
+import { buildGuardianRig } from './enchantedModels.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { biomeRect, STEM } from './world.js';
 import { makeLabel } from './signs.js';
@@ -252,9 +253,9 @@ function megaDigger() {
   return { g, root, legs, arms, head, torso };
 }
 
-const BUILDERS = [lumberjack, captainOil, hunter, oilDriller, smugglerKing, megaDigger];
+const BUILDERS = [lumberjack, captainOil, hunter, oilDriller, smugglerKing, megaDigger, buildGuardianRig]; // 7：Enchanted Royal Guardian
 // 每個 Boss 嘅主題色（光環同碎片）
-const AURA_COLORS = [0xff7043, 0x7c4dff, 0xffab00, 0x00b0ff, 0xffd600, 0xff9100];
+const AURA_COLORS = [0xff7043, 0x7c4dff, 0xffab00, 0x00b0ff, 0xffd600, 0xff9100, 0xffd54f];
 
 // 開場動畫用：攞一個 Boss 公仔
 export const buildBossRig = (i) => BUILDERS[i]();

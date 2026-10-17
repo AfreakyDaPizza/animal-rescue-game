@@ -126,6 +126,13 @@ export const ANIMALS = [
 
 // ---- Fuse Machine 先有嘅寵物（小朋友 2026-10-17 Issue #4）----
 // 唔會喺生態區出現、唔計入 Index 嘅 50 隻；每隻固定一個稀有度
+// ---- Biome 7：Enchanted Kingdom（小朋友 2026-10-17）：魔法動物（唔係真嘅！）其他動物小朋友遲啲講 ----
+export const ENCHANTED_ANIMALS = [
+  { name: 'Royal Skywhale', biome: 6, emoji: '🐋', kg: [8000, 15000], status: 'Magical (not a real animal!)', magical: true,
+    fact: 'The Royal Skywhale is a magical creature from the Enchanted Kingdom. It is not real, but real Blue Whales are Endangered: only about 10,000-25,000 are left!' },
+];
+ANIMALS.push(...ENCHANTED_ANIMALS);
+
 export const FUSE_PETS = [
   { name: 'Rhinoblade', rarity: 'Common', emoji: '🦏', kg: [900, 1500], fuse: true, biome: 5, status: 'Fuse-only',
     fact: 'A rhino with steel blade horns, made in the Fuse Machine!' },

@@ -24,7 +24,10 @@ import { beach } from './secretBeach.js';
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
 export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
-export const STEM = { minX: -21, maxX: 21, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道（小朋友 2026-10-15：生態區大啲、長啲）
+export const STEM = { minX: -21, maxX: 21, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道（小朋友 2026-10-15：生態區大啲、長啲）；Biome 7 喺閘門後面，另外計（KINGDOM）
+// Biome 7 Enchanted Kingdom：Biome 6 座山頂條橋盡頭嗰道閘門後面；閘門開咗先行得入（kingdom.open，main.js 睇日期）
+export const kingdom = { open: false };
+const KINGDOM_DOOR = { minX: -3.4, maxX: 3.4, minZ: -6 * BIOME_LENGTH - 4, maxZ: -6 * BIOME_LENGTH + 3 }; // 閘門個窿（接住條橋同入面嘅樓梯）
 
 const WALL_HEIGHT = 3.5;
 const WALL_THICKNESS = 1;
@@ -36,6 +39,7 @@ export const BIOMES = [
   { name: 'Biome 4 - Arctic Meltdown', short: 'Arctic Meltdown', floor: 0xeef6fa },
   { name: "Biome 5 - Smuggler's Compound", short: "Smuggler's Compound", floor: 0x4a4550 },
   { name: 'Biome 6 - Mining Mountain', short: 'Mining Mountain', floor: 0x8a7f72 },
+  { name: 'Biome 7 - Enchanted Kingdom', short: 'Enchanted Kingdom', floor: 0x9fa8da },
 ];
 
 // 每個生態區嘅範圍（i = 0 係 Biome 1）
@@ -105,7 +109,8 @@ export function isWalkable(x, z, radius, feetY = 0) {
   const stemIntoHub = { ...STEM, maxZ: 8 };
   const outside = parkGate.open && (inRect(GATE_LANE) || inRect(YARD) || inRect(LAB_DOOR) || inRect(LAB) || (beach.open && inRect(BEACH)));
   if (Math.hypot(x - ARENA.x, z - ARENA.z) <= ARENA.r - r) return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius); // 圓形 Arena：圓形力場牆擋住
-  if (!inHub && !inRect(stemIntoHub) && !outside) return false;
+  const inKingdom = kingdom.open && (inRect(biomeRect(6)) || inRect(KINGDOM_DOOR));
+  if (!inHub && !inRect(stemIntoHub) && !outside && !inKingdom) return false;
   return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius);
 }
 
@@ -121,8 +126,9 @@ export function buildWorld(scene) {
   BIOMES.forEach((biome, i) => {
     const rect = biomeRect(i);
     addFloor(scene, rect, biome.floor, i === 3 ? 0.03 : 0.1, i);
-    addBanner(scene, biome.name, rect.maxZ - 0.5, i);
-    addBossSign(scene, i, rect.maxZ - 3);
+    // Biome 7：入口喺閘門（高處），入面行完樓梯先見到牌
+    addBanner(scene, biome.name, i === 6 ? rect.maxZ - 17 : rect.maxZ - 0.5, i);
+    addBossSign(scene, i, i === 6 ? rect.maxZ - 19 : rect.maxZ - 3);
     animators.push(decorateBiome(staticRoot, i, rect, scene));
   });
 
@@ -202,8 +208,8 @@ function addWall(scene, x1, z1, x2, z2, material, extra = WALL_THICKNESS) {
   scene.add(wall);
 }
 
-export const BIOME_THEMES = [THEMES.green, THEMES.blue, THEMES.orange, THEMES.ice, THEMES.purple, THEMES.wood];
-const PILLAR_COLORS = [0x6d4c41, 0x546e7a, 0x8d6e63, 0xb3e5fc, 0x4a3b52, 0x5d5d5d];
+export const BIOME_THEMES = [THEMES.green, THEMES.blue, THEMES.orange, THEMES.ice, THEMES.purple, THEMES.wood, THEMES.purple];
+const PILLAR_COLORS = [0x6d4c41, 0x546e7a, 0x8d6e63, 0xb3e5fc, 0x4a3b52, 0x5d5d5d, 0xffd54f];
 
 // 每個生態區入口：兩條方柱 + 橫樑 + 大牌（好似一道門）
 function addBanner(scene, text, z, i) {

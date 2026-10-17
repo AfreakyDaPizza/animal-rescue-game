@@ -158,6 +158,46 @@ Object.assign(KINDS, {
   },
 });
 
+// Biome 7 Enchanted Kingdom（小朋友：障礙物係火同 essence）
+Object.assign(KINDS, {
+  fire: {
+    title: '🔥 A magic fire burned you!', hx: 1.0, hz: 1.0,
+    build(g) {
+      const flames = [0xff6d00, 0xffab00, 0xffee58].map((c, i) => {
+        const f = mesh(g, new THREE.ConeGeometry(0.75 - i * 0.2, 2.2 - i * 0.5, 8), mat(c, { emissive: c, emissiveIntensity: 2.4 - i * 0.4, transparent: true, opacity: 0.9 }), 0, 1.1 - i * 0.15, 0);
+        f.castShadow = false;
+        return f;
+      });
+      mesh(g, new THREE.CylinderGeometry(0.9, 1.0, 0.25, 10), mat(0x4a148c, { emissive: 0x7c4dff, emissiveIntensity: 1.2 }), 0, 0.12, 0); // 魔法火盤
+      return (dt, h, t) => flames.forEach((f, i) => {
+        f.scale.set(1 + Math.sin(t * 9 + i) * 0.12, 1 + Math.sin(t * 7 + i * 2) * 0.25, 1 + Math.cos(t * 8 + i) * 0.12);
+        f.rotation.y = t * (i + 1);
+      });
+    },
+  },
+  essence: {
+    title: '✨ Magic essence zapped you!', hx: 0.9, hz: 0.9,
+    build(g) {
+      const orb = mesh(g, new THREE.SphereGeometry(0.6, 16, 12), mat(0xe1bee7, { emissive: 0xd500f9, emissiveIntensity: 1.8, transparent: true, opacity: 0.85 }), 0, 1.3, 0);
+      orb.castShadow = false;
+      const wisps = [0, 1, 2, 3].map((i) => {
+        const w = mesh(g, new THREE.OctahedronGeometry(0.18), mat(0x80d8ff, { emissive: 0x00e5ff, emissiveIntensity: 2 }), 0, 1.3, 0);
+        w.castShadow = false;
+        return w;
+      });
+      return (dt, h, t) => {
+        orb.position.y = 1.3 + Math.sin(t * 3) * 0.25;
+        orb.scale.setScalar(1 + Math.sin(t * 5) * 0.08);
+        wisps.forEach((w, i) => {
+          const a = t * 3 + (i / 4) * Math.PI * 2;
+          w.position.set(Math.cos(a) * 0.95, orb.position.y + Math.sin(a * 2) * 0.3, Math.sin(a) * 0.95);
+          w.rotation.y = t * 4;
+        });
+      };
+    },
+  },
+});
+
 const BIOME_KINDS = [
   ['log', 'smoke'],
   ['trash', 'oil'],
@@ -165,6 +205,7 @@ const BIOME_KINDS = [
   ['barrel', 'oil', 'smoke'],
   ['truck', 'cage'],
   ['boulder', 'minecart', 'dust'],
+  ['fire', 'essence'],
 ];
 
 // 每個障礙物點樣郁：axis 'x'（打橫來回）或者 'z'（打直）；oneWay = 去到尾就由頭再嚟（滾石碌落山）

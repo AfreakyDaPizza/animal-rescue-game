@@ -39,6 +39,7 @@ const STYLES = [
   { side: 0xb3d4e6, top: 0xf5f9fc, h: [11, 18], deco: 'ice' }, // 4 北極：雪山 + 冰
   { side: 0x8d5a3b, top: 0xa1704f, h: [12, 16], steep: true, deco: 'canyon' }, // 5 走私營地：峽谷石牆 + 鐵絲網
   { side: 0x3e3a3f, top: 0x524c55, h: [14, 18], steep: true, deco: 'crystal' }, // 6 礦山：黑石懸崖 + 水晶
+  { side: 0x9575cd, top: 0xd1c4e9, h: [14, 20], deco: 'crystal' }, // 7 魔法王國：紫色水晶山
 ];
 
 const DEPTH = 13; // 山丘向外有幾闊
@@ -58,15 +59,16 @@ export function buildBiomeBorders(root) {
       }
     }
   }
-  // 最尾（Biome 6 後面）：橫住嘅黑石懸崖（喺倒數牆後面，唔會遮住個牌）
-  const end = STYLES[5];
+  // 最尾（Biome 7 後面）：橫住嘅水晶懸崖
+  const end = STYLES[6];
+  const endZ = biomeRect(6).minZ;
   const rand = seededRandom(999);
   for (let x = STEM.minX - DEPTH; x < STEM.maxX + DEPTH; x += STEP_Z) {
     const h = end.h[0] + rand() * (end.h[1] - end.h[0]);
     const w = STEP_Z + 0.6;
-    block(root, mat(end.side), x + w / 2, h / 2, STEM.minZ - DEPTH / 2 - 0.5, w, h, DEPTH);
-    block(root, mat(end.top), x + w / 2, h + 0.3, STEM.minZ - DEPTH / 2 - 0.5, w * 0.9, 0.6, DEPTH * 0.9);
-    if (rand() < 0.6) crystal(root, x + w / 2, h + 0.6, STEM.minZ - 2 - rand() * 6, rand);
+    block(root, mat(end.side), x + w / 2, h / 2, endZ - DEPTH / 2 - 0.5, w, h, DEPTH);
+    block(root, mat(end.top), x + w / 2, h + 0.3, endZ - DEPTH / 2 - 0.5, w * 0.9, 0.6, DEPTH * 0.9);
+    if (rand() < 0.6) crystal(root, x + w / 2, h + 0.6, endZ - 2 - rand() * 6, rand);
   }
 }
 

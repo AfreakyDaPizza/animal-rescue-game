@@ -10,6 +10,8 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { ANIMALS_20 } from './animals20.js'; // 頭 20 隻嘅新設計
 import { ANIMALS_30 } from './animals30.js'; // 其餘 30 隻嘅新設計
 import { FUSE_MODELS } from './fusePets.js'; // Fuse Machine 寵物（Issue #4）
+import { buildSkywhaleModel } from './enchantedModels.js'; // Biome 7 魔法動物
+const ENCHANTED_MODELS = { 'Royal Skywhale': buildSkywhaleModel };
 
 // ---- 方塊工具 ----
 const geometries = new Map();
@@ -908,7 +910,7 @@ const MODELS = {
 };
 
 export function buildAnimalModel(animal) {
-  const g = (ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || MODELS[animal.name] || fallback)();
+  const g = (ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || ENCHANTED_MODELS[animal.name] || MODELS[animal.name] || fallback)();
   g.userData.height *= g.scale.y;
   g.userData.move ??= 'walk';
   return g;

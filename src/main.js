@@ -5,7 +5,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate } from './world.js';
+import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom } from './world.js';
+let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
 import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
@@ -36,6 +37,8 @@ import { animateFireAuras } from './fireAura.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
 import { buildSecretBeach, beach, applyBeachSky, playCollab, playBeachFinale } from './secretBeach.js';
+import { playKingdomReveal, KINGDOM_STAIRS } from './enchanted.js';
+import { KINGDOM_GATE, isNewBiomeOpen } from './biomes.js';
 import { playLabEscape } from './labEscape.js';
 import { ENDING_ANIMALS } from './labScenes.js';
 import { park, standUp as ownerStandUp, lieOnHammock } from './hubPark.js';
@@ -212,7 +215,7 @@ const rescue = createRescue(scene, camera);
 let introRunning = true; // 開場動畫播緊
 function spawnAll() {
   const cycle = dayCycle(dayNight);
-  const specials = BIOMES.map((_, b) => spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}` })).filter((e) => e?.special);
+  const specials = BIOMES.map((_, b) => spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}` })).filter((e) => e?.special && (e.biome !== 6 || kingdom.open));
   announceSpecials(specials);
 }
 function announceSpecials(specials) {
@@ -277,7 +280,7 @@ intro.onDone = () => {
   }
   if (state.labUnlocked) setGateOpen(1); // 開場動畫會閂返個閘
   startTutorial(tutorial); // 新玩家：開始教學
-  announceSpecials(rescue.wild.filter((w) => w.special));
+  announceSpecials(rescue.wild.filter((w) => w.special && (w.biome !== 6 || kingdom.open)));
 };
 // 跳過開場（要喺 onDone 設定好之後先跳，唔係就唔會執返 HUD）
 try {
@@ -1002,6 +1005,24 @@ renderer.setAnimationLoop((timestamp) => {
   updateMovie(dt);
   if (!frozen) updateLab(dt, time, pos);
   beach.open = !!state.labBossDefeated; // 小朋友：打完 Boss 先見到秘密沙灘
+  // Biome 7：NEW_BIOME_DATE 到咗先開；第一次行到閘門前面就播開門動畫
+  kingdom.open = (isNewBiomeOpen() || kingdomDebug) && (state.kingdomSeen || movie.active);
+  if ((isNewBiomeOpen() || kingdomDebug) && !state.kingdomSeen && !movie.active && !intro.active && pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10) {
+    player.controls.unlock();
+    closePanel();
+    playKingdomReveal({
+      camera, playMovie, once: movieOnce, shake: movieShake, play, gate: KINGDOM_GATE,
+      onDone() {
+        state.kingdomSeen = true;
+        save();
+        teleportPlayer(player, 0, KINGDOM_STAIRS.z + 3);
+        player.feetY = KINGDOM_STAIRS.top;
+        camera.rotation.set(0, 0, 0, 'YXZ');
+        announce('👑 The ENCHANTED KINGDOM is open! Go down the royal stairs!');
+        resume();
+      },
+    });
+  }
   beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
   if (!frozen) updateBeach(dt, time);
 
@@ -1070,7 +1091,7 @@ renderer.setAnimationLoop((timestamp) => {
       play('alarm');
       popup('⚠️ The Boss is chasing you! RUN!');
     }
-    setSightings(rescue.wild.filter((w) => w.special), camera);
+    setSightings(rescue.wild.filter((w) => w.special && (w.biome !== 6 || kingdom.open)), camera); // Biome 7 未開唔好講
     // 背景音樂跟住情況轉：俾 Boss 追 > 夜晚 > 生態區 > Hub
     const labHit = updateLabFight(fight, dt, time, {
       x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Boss Arena', safe: safeTime > 0 || !!fling || labDebug.god,
@@ -1234,4 +1255,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
