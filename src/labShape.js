@@ -31,15 +31,15 @@ export const LAB_RETURN = { x: 0, z: 140 };
 
 // ---- Boss Arena（小朋友：入咗傳送門去一個「圓形、未來感」嘅場）----
 // 好遠（z = 320），只可以經傳送門去；四周有圓形力場牆，行唔出去、跌唔落去
-export const ARENA = { x: 0, z: 320, r: 26 };
-export const ARENA_START = { x: 0, z: 338 }; // 入嚟／俾 Boss 打中之後企嘅位（南邊）
+export const ARENA = { x: 0, z: 320, r: 40 }; // 小朋友 2026-10-17（Issue #3）：大啲（本來 26）
+export const ARENA_START = { x: 0, z: ARENA.z + ARENA.r - 8 }; // 入嚟／俾 Boss 打中之後企嘅位（南邊）
 export const BOSS_HOME = { x: 0, z: 310 };
-export const BOSS_PORTAL = { x: 0, z: ARENA.z - 23.5, y: 4.2 }; // Boss 叫生態區 Boss 出嚟嘅傳送門（北邊）
-export const EXIT_PORTAL = { x: 0, z: ARENA.z + 23.5, y: 2.6 }; // 離開：返實驗室（南邊，任何時候都用得）
+export const BOSS_PORTAL = { x: 0, z: ARENA.z - (ARENA.r - 2.5), y: 4.2 }; // Boss 叫生態區 Boss 出嚟嘅傳送門（北邊）
+export const EXIT_PORTAL = { x: 0, z: ARENA.z + (ARENA.r - 2.5), y: 2.6 }; // 離開：返實驗室（南邊，任何時候都用得）
 // 4 個 Solar Energy Capsule：圍住個場
 export const CAPSULES = [45, 135, 225, 315].map((deg) => {
   const a = (deg * Math.PI) / 180;
-  return { x: ARENA.x + Math.cos(a) * 15, z: ARENA.z + Math.sin(a) * 15 };
+  return { x: ARENA.x + Math.cos(a) * ARENA.r * 0.58, z: ARENA.z + Math.sin(a) * ARENA.r * 0.58 };
 });
 export const inArena = (x, z, margin = 0) => Math.hypot(x - ARENA.x, z - ARENA.z) <= ARENA.r - margin;
 // 將一個位置拉返入 Arena 入面（Boss、手下、紅框用）

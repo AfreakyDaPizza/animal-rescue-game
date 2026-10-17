@@ -855,7 +855,10 @@ renderer.setAnimationLoop((timestamp) => {
     for (const rec of state.machines) if (rec && rec.endsAt > pausedSince) rec.endsAt += pausedFor;
     pausedSince = 0;
   }
-  if (!frozen) updateWorld(dt, time); // 水、雀、雪、拉桿
+  if (!frozen) {
+    updateWorld(dt, time); // 水、雀、雪
+    animateSkins(time); // 寵物皮膚特效
+  }
   const pos = camera.position;
   updateIntro(intro, dt);
   updateMovie(dt);

@@ -436,6 +436,7 @@ const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 const PET_SWATCH = {
   none: ['#a5d6a7', '#8d6e63'], shadow: ['#1a1a24', '#4527a0'], golden: ['#fff59d', '#ffa000'],
   neon: ['#ff4081', '#18ffff'], galaxy: ['#1a0640', '#7c4dff', '#0b2a6b'], rainbow: ['#ff1744', '#ffea00', '#00e676', '#2979ff', '#d500f9'],
+  lava: ['#2b1a14', '#ff5722', '#ffab00'], frost: ['#e1f5fe', '#81d4fa', '#ffffff'], electric: ['#1a237e', '#00b0ff', '#e1f5fe'], diamond: ['#e0f7fa', '#f8bbd0', '#b2ebf2', '#ffffff'],
 };
 function shopHtml() {
   const tab = (id, label) => `<button data-shop-tab="${id}" class="${shopTab === id ? 'active' : ''}">${label}</button>`;

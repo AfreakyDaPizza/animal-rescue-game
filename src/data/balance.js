@@ -100,7 +100,7 @@ export const LAB_LEGENDARY_NEEDED = 3; // 要交幾多隻 Legendary
 // Boss 戰：每一輪佢會放無人機、叫腐化動物、開傳送門叫 Boss、用手拍你；之後佢會攰
 export const LAB_LIVES = 5; // 你有幾多個心（俾打中就扣 1 個；扣晒就返實驗室，可以再挑戰）
 export const LAB_DRONES = 3; // 每輪幾多部炸彈無人機（之後每輪多 1 部）
-export const LAB_CORRUPTED_ANIMALS = 4; // 每輪叫幾多隻腐化動物
+export const LAB_CORRUPTED_ANIMALS = 2; // 每輪叫幾多隻腐化動物（小朋友 2026-10-17：唔好咁多，本來 4）
 export const LAB_CORRUPTED_SECONDS = 30; // 腐化動物追你幾多秒，之後變灰燼
 export const LAB_PORTAL_BOSSES = 2; // 傳送門出幾多個生態區 Boss
 export const LAB_PORTAL_SECONDS = 60; // 傳送門 Boss 追你幾多秒，之後返入傳送門

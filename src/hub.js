@@ -1225,12 +1225,45 @@ function addPetToPlot(plot, scene, pet) {
     { text: `${formatKg(kg)} · $${fmt(itemMoney(pet))}/s`, color: '#76ff03' },
   ], 0.8);
   label.position.y = new THREE.Box3().setFromObject(model).max.y + 0.7;
+  // 稀有度光圈（小朋友 2026-10-17 Issue #3：寵物要型啲）：Rare 藍、Epic 紫、Legendary 金、Mythic 粉紅；Legendary 以上仲有閃粉
+  let aura = null;
+  if (pet.rarity && pet.rarity !== 'Common') {
+    const box = new THREE.Box3().setFromObject(model);
+    const r = Math.max(0.8, Math.max(box.max.x - box.min.x, box.max.z - box.min.z) * 0.6);
+    const color = new THREE.Color(rarity.color);
+    aura = new THREE.Group();
+    const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.85, r, 40), ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    aura.add(ring);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(r * 0.4, r * 0.48, 6), ringMat);
+    inner.rotation.x = -Math.PI / 2;
+    aura.add(inner);
+    if (pet.rarity === 'Legendary' || pet.rarity === 'Mythic') {
+      const n = 14;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        pos[i * 3] = Math.cos(a) * r * 0.9;
+        pos[i * 3 + 1] = (i % 5) * 0.3 * (box.max.y - box.min.y) * 0.25;
+        pos[i * 3 + 2] = Math.sin(a) * r * 0.9;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const sparkle = new THREE.Points(geo, new THREE.PointsMaterial({ color, size: 0.18, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      sparkle.userData.rise = (box.max.y - box.min.y) * 1.1;
+      aura.add(sparkle);
+      aura.userData.sparkle = sparkle;
+    }
+    aura.position.y = 0.06;
+    g.add(aura);
+  }
   g.add(label);
   const spot = randomPlotSpot();
   g.position.set(spot.x, 0, spot.z);
   scene.add(g);
   plot.pets.push({
-    pet, group: g, model, move, target: randomPlotSpot(), wait: Math.random() * 3,
+    pet, group: g, model, move, aura, target: randomPlotSpot(), wait: Math.random() * 3,
     // 飛圈用
     angle: Math.random() * Math.PI * 2, radius: 3 + Math.random() * 4, height: 4 + Math.random() * 3, speed: 0.4 + Math.random() * 0.4,
   });
@@ -1414,6 +1447,16 @@ export function updateHub(hub, dt, time, px, pz) {
   const plotCenterX = (PLOT.minX + PLOT.maxX) / 2;
   const plotCenterZ = (PLOT.minZ + PLOT.maxZ) / 2;
   for (const p of hub.plot.pets) {
+    if (p.aura) {
+      p.aura.rotation.y = time * 0.8;
+      p.aura.visible = p.move !== 'fly' || p.group.position.y < 1; // 飛緊嘅唔使地上光圈
+      const sp = p.aura.userData.sparkle;
+      if (sp) {
+        const arr = sp.geometry.attributes.position.array;
+        for (let i = 0; i < arr.length / 3; i++) arr[i * 3 + 1] = ((time * 0.5 + i / 7) % 1) * sp.userData.rise;
+        sp.geometry.attributes.position.needsUpdate = true;
+      }
+    }
     if (p.move === 'fly') {
       // 喺地塊上面飛圈圈
       p.angle += dt * p.speed;

@@ -814,7 +814,8 @@ function buildArena(root, live, updates) {
   add(root, cyl(r + 0.8, 0.2, 64), techFloor(r / 3, r / 3), cx, -0.09, cz, false);
   // 地上霓虹圈 + 由中間射出去嘅光線
   const rings = [];
-  [[6, MAGENTA], [12, CYAN], [18.5, MAGENTA], [24.6, CYAN]].forEach(([rr, c]) => {
+  const k = r / 26; // 地上嘅圈跟 Arena 大細
+  [[6 * k, MAGENTA], [12 * k, CYAN], [18.5 * k, MAGENTA], [(r - 1.4), CYAN]].forEach(([rr, c]) => {
     const m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2, side: THREE.DoubleSide });
     const ring = add(live, new THREE.RingGeometry(rr - 0.16, rr + 0.16, 96), m, cx, 0.03, cz, false);
     ring.rotation.x = -Math.PI / 2;
@@ -822,7 +823,7 @@ function buildArena(root, live, updates) {
   });
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
-    const seg = add(root, box(0.14, 0.05, 6), i % 2 ? neonC : neonM, cx + Math.cos(a) * 15.2, 0.03, cz + Math.sin(a) * 15.2, false);
+    const seg = add(root, box(0.14, 0.05, 6 * k), i % 2 ? neonC : neonM, cx + Math.cos(a) * r * 0.585, 0.03, cz + Math.sin(a) * r * 0.585, false);
     seg.rotation.y = -a + Math.PI / 2;
   }
   // 圓形力場牆（透明六角格仔，會流動）+ 底座 + 頂部霓虹圈
