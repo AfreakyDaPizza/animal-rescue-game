@@ -975,6 +975,221 @@ function drawUpgradeSign(station) {
 
 // ================= 繁殖機 =================
 
+// ================= Dragon's Lair（繁殖機 Lv5）=================
+// 小朋友 2026-10-17：「redesign the dragons lair」→ 成部機變做一個龍穴：
+// 後面一道火山石拱門（有熔岩裂縫）、一條大紅龍圍住部機捲埋一圈（頭擱喺前面、尾巴捲到後面）、
+// 一對蝙蝠翼慢慢張開又拍、前面一堆金幣同寶石、玻璃罩入面一隻發光龍蛋（冇動物喺入面先見到）、
+// 鼻孔出煙、火星飄、火光一閃一閃
+// 5 部機共用同一套物料同幾何體
+const DL = {};
+const dlMat = (key, make) => (DL[key] ??= make());
+const STD = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...extra });
+function dragonMats() {
+  return {
+    scale: dlMat('scale', () => STD(0x8e0e0e, { roughness: 0.35, metalness: 0.25 })),
+    belly: dlMat('belly', () => STD(0xffb74d, { roughness: 0.5 })),
+    dark: dlMat('dark', () => STD(0x3b0a0a)),
+    horn: dlMat('horn', () => STD(0xfff3e0, { roughness: 0.35 })),
+    rock: dlMat('rock', () => STD(0x2b2522, { roughness: 0.95, flatShading: true })),
+    rock2: dlMat('rock2', () => STD(0x403632, { roughness: 0.95, flatShading: true })),
+    lava: dlMat('lava', () => STD(0xff6d00, { emissive: 0xff3d00, emissiveIntensity: 1.8 })),
+    eye: dlMat('eye', () => STD(0xffee58, { emissive: 0xffd600, emissiveIntensity: 2.6 })),
+    pupil: dlMat('pupil', () => STD(0x111111)),
+    wing: dlMat('wing', () => STD(0xc62828, { emissive: 0x4a0000, emissiveIntensity: 0.5, side: THREE.DoubleSide, transparent: true, opacity: 0.93 })),
+    gold: dlMat('gold', () => STD(0xffc107, { metalness: 0.9, roughness: 0.25, emissive: 0x6d4c00, emissiveIntensity: 0.35 })),
+    gemR: dlMat('gemR', () => STD(0xff1744, { emissive: 0xd50000, emissiveIntensity: 1.2, flatShading: true })),
+    gemB: dlMat('gemB', () => STD(0x40c4ff, { emissive: 0x0091ea, emissiveIntensity: 1.2, flatShading: true })),
+    gemG: dlMat('gemG', () => STD(0x69f0ae, { emissive: 0x00c853, emissiveIntensity: 1.2, flatShading: true })),
+    egg: dlMat('egg', () => STD(0x7f1d0c, { emissive: 0xb71c1c, emissiveIntensity: 0.5, roughness: 0.3 })),
+    eggSpot: dlMat('eggSpot', () => STD(0xffab40, { emissive: 0xffab00, emissiveIntensity: 2 })),
+    smoke: dlMat('smoke', () => STD(0x616161, { transparent: true, opacity: 0.6 })),
+  };
+}
+const dlBox = (w, h, d) => (DL[`b${w},${h},${d}`] ??= new RoundedBoxGeometry(w, h, d, 2, Math.min(w, h, d) * 0.2));
+const dlGeo = (key, make) => (DL[`g${key}`] ??= make());
+
+function buildDragonLair() {
+  const M = dragonMats();
+  const dragon = new THREE.Group();
+  const put = (parent, geo, m, x, y, z) => add(parent, geo, m, x, y, z);
+
+  // ---- 後面嘅火山石拱門（頂唔好高過 3 米，唔會遮住機頂個牌）----
+  const arch = new THREE.Group();
+  arch.position.set(0, 0, 1.55);
+  dragon.add(arch);
+  const rocks = [[-2.0, 0.55, 1.1], [-2.05, 1.5, 0.95], [-1.85, 2.25, 0.8], [-1.2, 2.7, 0.75], [-0.4, 2.85, 0.7], [0.4, 2.85, 0.7], [1.2, 2.7, 0.75], [1.85, 2.25, 0.8], [2.05, 1.5, 0.95], [2.0, 0.55, 1.1]];
+  rocks.forEach(([x, y, r], i) => {
+    const rk = put(arch, dlGeo(`rock${i % 3}`, () => new THREE.DodecahedronGeometry(1, 0)), i % 2 ? M.rock : M.rock2, x, y, 0);
+    rk.scale.set(r, r * 0.95, r * 0.8);
+    rk.rotation.set(i, i * 0.7, 0);
+  });
+  // 熔岩裂縫（發光細條）
+  for (const [x, y, rz] of [[-2.0, 0.8, 0.4], [-1.9, 1.7, -0.3], [-0.8, 2.75, 1.4], [0.6, 2.9, 1.2], [1.95, 1.3, 0.5], [2.0, 0.5, -0.4]]) {
+    put(arch, dlGeo('crack', () => new THREE.BoxGeometry(0.08, 0.7, 0.06)), M.lava, x, y, -0.62).rotation.z = rz;
+  }
+
+  // ---- 大紅龍：身一節節圍住部機捲一圈 ----
+  // 由前面（-z，頭）沿住右邊轉去後面再返去左邊（尾）
+  const R = 1.78;
+  const SEG = 15;
+  const segs = [];
+  for (let i = 0; i < SEG; i++) {
+    const k = i / (SEG - 1);
+    const a = -Math.PI / 2 + 0.35 + k * Math.PI * 1.75;
+    const size = 0.62 - k * 0.38; // 越近尾越幼
+    const g = new THREE.Group();
+    g.position.set(Math.cos(a) * R, 0.32 + size * 0.45, Math.sin(a) * R);
+    g.rotation.y = -a;
+    put(g, dlBox(size * 1.25, size, size * 1.1), M.scale, 0, 0, 0);
+    put(g, dlBox(size * 1.1, size * 0.35, size * 1.0), M.belly, 0, -size * 0.38, 0); // 肚
+    if (i % 2 === 0) put(g, dlGeo('spike', () => new THREE.ConeGeometry(0.1, 0.32, 4)), M.horn, 0, size * 0.6, 0); // 背脊尖刺
+    dragon.add(g);
+    segs.push({ g, a, base: g.position.y });
+  }
+  // 尾巴尖（箭頭形）
+  const TAIL_A = -Math.PI / 2 + 0.35 + Math.PI * 1.75 + 0.18;
+  const tail = new THREE.Group();
+  tail.position.set(Math.cos(TAIL_A) * R, 0.42, Math.sin(TAIL_A) * R);
+  tail.rotation.y = -TAIL_A;
+  const tip = put(tail, dlGeo('tailtip', () => new THREE.OctahedronGeometry(0.28, 0)), M.dark, 0, 0, 0.1);
+  tip.scale.set(0.5, 0.35, 1.2);
+  dragon.add(tail);
+
+  // ---- 龍頭：擱喺前面左手邊，望住你（-z）----
+  const neck = put(dragon, dlBox(0.55, 0.5, 0.7), M.scale, -0.55, 0.85, -1.62);
+  neck.rotation.y = 0.3;
+  const head = new THREE.Group();
+  head.position.set(-0.75, 1.05, -2.0);
+  dragon.add(head);
+  put(head, dlBox(0.78, 0.55, 0.8), M.scale, 0, 0.05, 0); // 頭殼
+  put(head, dlBox(0.6, 0.3, 0.6), M.scale, 0, 0.02, -0.6); // 上顎（鼻）
+  const jaw = new THREE.Group(); // 下顎（會郁）
+  jaw.position.set(0, -0.15, -0.15);
+  head.add(jaw);
+  put(jaw, dlBox(0.55, 0.16, 0.7), M.belly, 0, -0.06, -0.38);
+  for (let t = 0; t < 4; t++) put(jaw, dlGeo('tooth', () => new THREE.ConeGeometry(0.04, 0.12, 4)), M.horn, -0.18 + t * 0.12, 0.06, -0.66);
+  for (const sx of [-1, 1]) {
+    const h1 = put(head, dlGeo('horn', () => new THREE.ConeGeometry(0.09, 0.62, 6)), M.horn, sx * 0.26, 0.48, 0.28);
+    h1.rotation.set(0.9, 0, sx * -0.25); // 角向後
+    put(head, dlBox(0.16, 0.12, 0.05), M.eye, sx * 0.22, 0.17, -0.41); // 發光眼
+    put(head, dlBox(0.05, 0.11, 0.03), M.pupil, sx * 0.22, 0.17, -0.44); // 直瞳孔
+    put(head, dlBox(0.07, 0.06, 0.04), M.dark, sx * 0.13, 0.08, -0.91); // 鼻孔
+    put(head, dlGeo('frill', () => new THREE.ConeGeometry(0.12, 0.4, 4)), M.dark, sx * 0.42, 0.05, 0.2).rotation.z = sx * 1.2; // 腮邊尖
+  }
+
+  // ---- 蝙蝠翼（由背脊伸出嚟，慢慢張開又拍）----
+  const wings = [-1, 1].map((sx) => {
+    const p = new THREE.Group();
+    p.position.set(sx * 1.25, 1.05, 0.9);
+    p.scale.setScalar(0.72); // 唔好撞到隔籬部機
+    dragon.add(p);
+    put(p, dlGeo('wingbone', () => new THREE.BoxGeometry(1.7, 0.12, 0.12)), M.dark, sx * 0.78, 0.53, 0).rotation.z = sx * 0.6;
+    // 三支「手指」骨 + 中間膜
+    const elbow = new THREE.Vector3(sx * 1.55, 1.05, 0);
+    const tips = [[1.35, 1.25], [1.6, 0.6], [1.45, -0.05]].map(([len, dy]) => new THREE.Vector3(elbow.x + sx * len, elbow.y + dy, 0));
+    for (const end of tips) {
+      const bone = put(p, dlGeo('finger', () => new THREE.BoxGeometry(1, 0.07, 0.07)), M.dark, (elbow.x + end.x) / 2, (elbow.y + end.y) / 2, 0);
+      bone.scale.x = elbow.distanceTo(end);
+      bone.rotation.z = Math.atan2(end.y - elbow.y, end.x - elbow.x);
+      put(p, dlGeo('claw', () => new THREE.ConeGeometry(0.06, 0.2, 4)), M.horn, end.x, end.y, 0).rotation.z = -sx * Math.PI / 2;
+    }
+    // 翼膜：膊頭 → 手肘 → 三隻指尖 → 返去身
+    const pts = [[0, 0], [elbow.x, elbow.y], ...tips.map((v) => [v.x, v.y]), [sx * 0.6, -0.4]];
+    const shape = new THREE.Shape();
+    pts.forEach(([x, y], i) => (i ? shape.lineTo(x, y) : shape.moveTo(x, y)));
+    shape.closePath();
+    put(p, dlGeo(`mem${sx}`, () => new THREE.ShapeGeometry(shape)), M.wing, 0, 0, 0.01);
+    return { p, sx };
+  });
+
+  // ---- 前面一堆金幣同寶石 ----
+  const coin = dlGeo('coin', () => new THREE.CylinderGeometry(0.11, 0.11, 0.03, 10));
+  for (let i = 0; i < 26; i++) {
+    const a = (i * 2.4) % (Math.PI * 2);
+    const r = (i % 7) * 0.09;
+    const c = put(dragon, coin, M.gold, 0.85 + Math.cos(a) * r, 0.04 + Math.floor(i / 7) * 0.05, -1.75 + Math.sin(a) * r);
+    c.rotation.set(i * 0.6, 0, i * 0.3);
+  }
+  put(dragon, dlGeo('chest', () => new THREE.BoxGeometry(0.5, 0.32, 0.36)), M.gold, 1.25, 0.18, -1.45).rotation.y = -0.4; // 金箱
+  [M.gemR, M.gemB, M.gemG, M.gemR].forEach((m, i) => {
+    const gem = put(dragon, dlGeo('gem', () => new THREE.OctahedronGeometry(0.11, 0)), m, 0.55 + i * 0.22, 0.16, -1.95 + (i % 2) * 0.2);
+    gem.scale.y = 1.5;
+  });
+
+  // ---- 玻璃罩入面嘅龍蛋（冇動物喺入面先見到）----
+  const egg = new THREE.Group();
+  egg.position.set(0, 1.15, 0);
+  const shell = put(egg, dlGeo('egg', () => new THREE.SphereGeometry(0.36, 16, 12)), M.egg, 0, 0, 0);
+  shell.scale.y = 1.3;
+  for (let i = 0; i < 7; i++) {
+    const a = i * 2.1;
+    put(egg, dlGeo('eggspot', () => new THREE.SphereGeometry(0.06, 8, 6)), M.eggSpot, Math.cos(a) * 0.33, ((i % 3) - 1) * 0.22, Math.sin(a) * 0.33);
+  }
+  dragon.add(egg);
+
+  // ---- 地下火光圈 ----
+  const ring = put(dragon, dlGeo('firering', () => new THREE.TorusGeometry(1.45, 0.08, 8, 40)), M.lava, 0, 0.66, 0);
+  ring.rotation.x = Math.PI / 2;
+
+  // ---- 火星 + 鼻孔煙 ----
+  const N = 34;
+  const pos = new Float32Array(N * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const embers = new THREE.Points(geo, dlMat('emberMat', () => new THREE.PointsMaterial({ color: 0xffab40, size: 0.13, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+  embers.frustumCulled = false;
+  dragon.add(embers);
+  const smoke = [0, 1, 2, 3].map((i) => {
+    const m = new THREE.Mesh(dlBox(0.22, 0.22, 0.22), M.smoke.clone()); // 每粒煙自己透明度
+    m.castShadow = false;
+    dragon.add(m);
+    return { m, phase: i / 4 };
+  });
+
+  dragon.userData = { wings, head, jaw, segs, tail, tailA: TAIL_A, egg, pos, geo, smoke, lava: M.lava, eggMat: M.eggSpot };
+  return dragon;
+}
+
+// 每格畫面郁龍穴（updateHub 叫）
+function animateDragonLair(m, time) {
+  const u = m.dragon.userData;
+  const t = time + m.index * 1.3;
+  // 翼：慢慢扇，間中大力張開
+  const open = 0.5 + Math.sin(t * 0.7) * 0.5; // 0 收埋 → 1 張開
+  for (const { p, sx } of u.wings) {
+    p.rotation.z = sx * (-0.55 + open * 0.75 + Math.sin(t * 3.2) * 0.12);
+    p.rotation.y = sx * (0.6 - open * 0.5);
+  }
+  // 頭：慢慢左右望，下顎一開一合
+  u.head.rotation.y = Math.sin(t * 0.6) * 0.3;
+  u.head.position.y = 1.05 + Math.sin(t * 1.4) * 0.03;
+  u.jaw.rotation.x = Math.max(0, Math.sin(t * 1.1)) * 0.35;
+  // 身：好似呼吸咁輕輕起伏；尾巴擺
+  u.segs.forEach((s, i) => (s.g.position.y = s.base + Math.sin(t * 1.4 - i * 0.4) * 0.025));
+  u.tail.rotation.y = -u.tailA + Math.sin(t * 2) * 0.35;
+  // 火光、蛋（冇動物喺入面先出）
+  u.lava.emissiveIntensity = 1.4 + Math.sin(time * 5) * 0.5;
+  u.egg.visible = !m.inside;
+  u.egg.rotation.y = time * 0.5;
+  u.egg.position.y = 1.15 + Math.sin(t * 2) * 0.05;
+  u.eggMat.emissiveIntensity = 1.4 + Math.sin(time * 3) * 0.8;
+  for (let i = 0; i < u.pos.length / 3; i++) {
+    const k = (time * 0.45 + i / 34) % 1;
+    const a = i * 2.4 + time * 0.6;
+    u.pos[i * 3] = Math.cos(a) * (1.3 + k * 0.6);
+    u.pos[i * 3 + 1] = 0.7 + k * 3.0;
+    u.pos[i * 3 + 2] = Math.sin(a) * (1.3 + k * 0.6);
+  }
+  u.geo.attributes.position.needsUpdate = true;
+  // 鼻孔出煙（由頭前面向上飄）
+  for (const s of u.smoke) {
+    const k = (time * 0.6 + s.phase) % 1;
+    s.m.position.set(-0.75 + Math.sin(k * 6) * 0.1, 1.1 + k * 1.3, -2.95 + k * 0.4);
+    s.m.scale.setScalar(0.6 + k * 1.6);
+    s.m.material.opacity = 0.55 * (1 - k);
+  }
+}
+
 function buildMachine(scene, index, x, z) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
@@ -1046,53 +1261,8 @@ function buildMachine(scene, index, x, z) {
   combo.userData = { helix, gems };
   combo.visible = false;
   g.add(combo);
-  // Dragon's Lair（小朋友 2026-10-17）：兩隻會拍嘅龍翼、龍頭 + 角、鱗片尖刺、火光圈、火星
-  const dragon = new THREE.Group();
-  {
-    const scale = M(0x7f0000, { roughness: 0.4, metalness: 0.3 });
-    const dark = M(0x3e0000, { roughness: 0.5 });
-    const horn = M(0xffe0b2, { roughness: 0.4 });
-    const fire = M(0xff6d00, { emissive: 0xff3d00, emissiveIntensity: 1.8 });
-    const wings = [-1, 1].map((s) => {
-      const p = new THREE.Group();
-      p.position.set(s * 1.3, 1.6, 0.6);
-      add(p, new THREE.BoxGeometry(0.14, 0.14, 2.2), dark, s * 0.9, 0.9, 0).rotation.z = s * -0.6; // 翼骨
-      for (let k = 0; k < 3; k++) {
-        const mem = add(p, new THREE.BoxGeometry(1.6, 0.05, 0.7), M(0xb71c1c, { emissive: 0x4a0000, emissiveIntensity: 0.6, transparent: true, opacity: 0.92 }), s * (0.6 + k * 0.35), 0.5 - k * 0.15, -0.6 + k * 0.6);
-        mem.rotation.set(0, 0, s * (0.35 + k * 0.1));
-      }
-      dragon.add(p);
-      return { p, s };
-    });
-    // 龍頭（喺機前面，面向 -z）
-    const head = new THREE.Group();
-    head.position.set(0, 2.55, -0.9);
-    add(head, new THREE.BoxGeometry(0.7, 0.55, 0.8), scale, 0, 0, 0);
-    add(head, new THREE.BoxGeometry(0.5, 0.35, 0.5), scale, 0, -0.08, -0.55); // 嘴
-    for (const s of [-1, 1]) {
-      add(head, new THREE.ConeGeometry(0.08, 0.5, 6), horn, s * 0.22, 0.45, 0.2).rotation.x = -0.5;
-      add(head, new THREE.BoxGeometry(0.12, 0.08, 0.05), M(0xffee58, { emissive: 0xffd600, emissiveIntensity: 2.5 }), s * 0.18, 0.12, -0.41); // 發光眼
-      add(head, new THREE.BoxGeometry(0.06, 0.06, 0.04), M(0x212121), s * 0.1, -0.05, -0.81); // 鼻孔
-    }
-    dragon.add(head);
-    // 底座一圈鱗片尖刺
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      const sp = add(dragon, new THREE.ConeGeometry(0.16, 0.5, 4), i % 2 ? scale : dark, Math.cos(a) * 1.55, 0.55, Math.sin(a) * 1.55);
-      sp.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
-    }
-    const ringFire = add(dragon, new THREE.TorusGeometry(1.45, 0.09, 8, 40), fire, 0, 0.66, 0);
-    ringFire.rotation.x = Math.PI / 2;
-    // 火星
-    const N = 30;
-    const pos = new Float32Array(N * 3);
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const embers = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffab40, size: 0.12, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    embers.frustumCulled = false;
-    dragon.add(embers);
-    dragon.userData = { wings, head, fire, pos, geo };
-  }
+  // Dragon's Lair（小朋友 2026-10-17；之後話要重新設計）：見 buildDragonLair
+  const dragon = buildDragonLair();
   dragon.visible = false;
   g.add(dragon);
 
@@ -1629,20 +1799,7 @@ export function updateHub(hub, dt, time, px, pz) {
     { text: nextLv ? 'Press E' : 'You did it!', size: 0.09, color: '#f8bbd0' },
   ]);
   for (const m of hub.machines) {
-    if (m.dragon.visible) {
-      const u = m.dragon.userData;
-      for (const { p, s } of u.wings) p.rotation.z = s * Math.sin(time * 4 + m.index) * 0.45; // 拍翼
-      u.head.rotation.y = Math.sin(time * 0.8 + m.index) * 0.35;
-      u.fire.emissiveIntensity = 1.4 + Math.sin(time * 6 + m.index) * 0.6;
-      for (let i = 0; i < u.pos.length / 3; i++) {
-        const k = (time * 0.5 + i / 30) % 1;
-        const a = i * 2.4 + time * 0.7;
-        u.pos[i * 3] = Math.cos(a) * 1.4;
-        u.pos[i * 3 + 1] = 0.7 + k * 2.8;
-        u.pos[i * 3 + 2] = Math.sin(a) * 1.4;
-      }
-      u.geo.attributes.position.needsUpdate = true;
-    }
+    if (m.dragon.visible) animateDragonLair(m, time);
     if (m.mountain.visible) {
       m.rune.rotation.z = time * 0.6;
       m.orb.position.y = 2.6 + Math.sin(time * 2 + m.index) * 0.2;
