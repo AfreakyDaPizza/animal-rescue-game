@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { addPlatform, addCollider } from './world.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
-import { dynamicSign, THEMES } from './signs.js';
+import { dynamicSign, makeLabel, THEMES } from './signs.js';
 import { NEW_BIOME_DATE } from './data/balance.js';
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
@@ -736,54 +736,80 @@ function buildBridge(scene, live, rect) {
   const z2 = rect.minZ + 0.5; // 盡頭幅牆
   const len = z1 - z2;
   const zc = (z1 + z2) / 2;
-  const W = 3; // 橋面闊
+  const W = 7; // 橋面闊（小朋友：要大啲）
   const wood = mat(0x8d6e63);
   const wood2 = mat(0x6d4c41);
-  const rope = mat(0xd7ccc8);
-  const iron = mat(0x546e7a, { metalness: 0.6, roughness: 0.4 });
-  // 橋面：一塊塊木板
-  const n = Math.floor(len / 0.5);
-  for (let i = 0; i < n; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.18, 0.44), i % 2 ? wood : wood2), 0, top - 0.09, z1 - 0.25 - i * (len / n), false);
-  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, len), wood2), s * (W / 2), top - 0.2, zc);
-  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2, maxZ: z1 }, top, top - 0.3);
-  // 兩邊欄杆（細柱 + 繩）
+  const iron = mat(0x455a64, { metalness: 0.6, roughness: 0.4 });
+  const gold = mat(0xffc400, { metalness: 0.7, roughness: 0.3 });
+  const glass = mat(0xb3e5fc, { transparent: true, opacity: 0.35, roughness: 0.05 });
+  // 橋面：闊木板 + 中間一條紅地毯
+  const n = Math.floor(len / 0.6);
+  for (let i = 0; i < n; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.25, 0.54), i % 2 ? wood : wood2), 0, top - 0.125, z1 - 0.3 - i * (len / n), false);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, len), mat(0xb71c1c)), 0, top + 0.01, zc, false);
+  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, len), iron), s * (W / 2), top - 0.35, zc);
+  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2, maxZ: z1 }, top, top - 0.4);
+  // 跌唔落去（小朋友：unfallable）：兩邊有高高嘅隱形欄杆台，只會擋住企喺橋上面嘅人；
+  // 有 bottom，所以喺地面行嘅人照可以喺橋下面行過去攞鎚仔
+  const GUARD = 3.2; // 欄杆擋到幾高（高過跳得到）
+  const hx = SUMMIT.halfX + 0.9; // 山頂最頂嗰層有幾闊（一半）
   for (const s of [-1, 1]) {
-    for (let i = 0; i <= 8; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, 0.1), wood2), s * (W / 2), top + 0.55, z1 - (i * len) / 8);
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, len), rope), s * (W / 2), top + 1.05, zc, false);
+    addPlatform({ minX: s > 0 ? W / 2 : -W / 2 - 0.4, maxX: s > 0 ? W / 2 + 0.4 : -W / 2, minZ: z2, maxZ: z1 + 0.05 }, top + GUARD, top - 0.1);
+    // 接山頂嗰頭：山頂比橋窄，橋兩邊角位都封住
+    addPlatform({ minX: s > 0 ? hx : -W / 2 - 0.4, maxX: s > 0 ? W / 2 + 0.4 : -hx, minZ: z1, maxZ: z1 + 0.4 }, top + GUARD, top - 0.1);
   }
-  // 兩座高橋塔：一座喺山頂背面、一座喺幅牆前面（由地面起），中間有吊索 + 一條條吊繩
-  const TOWER_H = 9; // 高過橋面幾多
-  // [z, 由幾高起, 離中間幾遠]：盡頭座塔貼住幅牆、企開啲（唔好遮住個倒數牌，亦唔阻住去攞鎚仔）
-  const towers = [[z1 - 0.6, top - 3, W / 2 + 0.6], [z2 + 0.4, 0, 4.7]];
+  // 睇得見嘅欄杆：鐵柱 + 玻璃板 + 金色扶手
+  const posts = Math.floor(len / 3);
+  for (const s of [-1, 1]) {
+    for (let i = 0; i <= posts; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 0.25), iron), s * (W / 2 + 0.1), top + 0.8, z1 - (i * len) / posts);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, len), glass), s * (W / 2 + 0.1), top + 0.7, zc, false);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, len), gold), s * (W / 2 + 0.1), top + 1.6, zc, false);
+  }
+  // 燈籠水晶（沿住欄杆，會一閃一閃）
+  const lanterns = [];
+  const LN = Math.floor(len / 5);
+  for (const s of [-1, 1]) {
+    for (let i = 0; i <= LN; i++) {
+      const c = [0x00e5ff, 0xd500f9, 0x76ff03][(i + (s > 0 ? 1 : 0)) % 3];
+      const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.6, flatShading: true }));
+      m.scale.y = 1.6;
+      m.position.set(s * (W / 2 + 0.1), top + 2.15, z1 - (i * len) / LN);
+      live.add(m);
+      lanterns.push(m);
+    }
+  }
+  // 兩座更高嘅橋塔 + 粗吊索
+  const TOWER_H = 15;
+  // 盡頭座塔貼住幅牆（z2 - 0.2），唔好阻住喺橋下面行過去攞鎚仔（z ≈ -370.2）
+  const towers = [[z1 - 0.8, top - 3, W / 2 + 1.1], [z2 - 0.2, 0, 5.6]];
   for (const [tz, base, towerX] of towers) {
     for (const s of [-1, 1]) {
       const h = top + TOWER_H - base;
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.7, h, 0.7), iron), s * towerX, base + h / 2, tz);
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), mat(0xd32f2f)), s * towerX, top + TOWER_H + 0.2, tz);
-      if (base === 0) addCollider(s * towerX, tz, 0.4);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), iron), s * towerX, base + h / 2, tz);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 1.5), gold), s * towerX, top + TOWER_H + 0.25, tz);
+      add(scene, new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 4), mat(0xd32f2f)), s * towerX, top + TOWER_H + 1.3, tz).rotation.y = Math.PI / 4;
+      if (base === 0) addCollider(s * towerX, tz, 0.5);
     }
-    for (const y of base === 0 ? [top + TOWER_H - 0.4] : [top + 2.6, top + TOWER_H - 0.4]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(towerX * 2 + 0.7, 0.4, 0.5), iron), 0, y, tz);
+    for (const y of [top + 4.5, top + TOWER_H - 0.6]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(towerX * 2 + 1.2, 0.6, 0.7), iron), 0, y, tz);
   }
-  // 吊索：兩座塔頂之間彎彎咁垂落嚟（一段段），每段落一條吊繩去橋面
+  const rope = mat(0xbcaaa4);
   const tA = towers[0][0];
   const tB = towers[1][0];
-  const SEG = 16;
+  const SEG = 18;
   for (const s of [-1, 1]) {
     let prev = null;
     for (let i = 0; i <= SEG; i++) {
       const k = i / SEG;
       const z = tA + (tB - tA) * k;
-      const y = top + TOWER_H - Math.sin(k * Math.PI) * (TOWER_H - 1.6);
+      const y = top + TOWER_H - Math.sin(k * Math.PI) * (TOWER_H - 2.4);
       const p = new THREE.Vector3(s * (towers[0][2] + (towers[1][2] - towers[0][2]) * k), y, z);
       if (prev) {
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, prev.distanceTo(p), 6), rope);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, prev.distanceTo(p), 8), rope);
         seg.position.copy(prev).add(p).multiplyScalar(0.5);
         seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p.clone().sub(prev).normalize());
         scene.add(seg);
         if (i < SEG) {
-          // 吊繩：由吊索斜斜落去橋邊
-          const foot = new THREE.Vector3(s * (W / 2), top + 1.05, z);
-          const h = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, p.distanceTo(foot), 4), rope);
+          const foot = new THREE.Vector3(s * (W / 2 + 0.1), top + 1.6, z);
+          const h = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, p.distanceTo(foot), 5), rope);
           h.position.copy(p).add(foot).multiplyScalar(0.5);
           h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), foot.clone().sub(p).normalize());
           scene.add(h);
@@ -792,34 +818,139 @@ function buildBridge(scene, live, rect) {
       prev = p;
     }
   }
-  // 盡頭：封住嘅工地大牆（黃黑間條）+ 倒數牌
-  const wallZ = rect.minZ + 0.2;
-  const WALL_W = 14;
-  const WALL_H = top + 7;
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(WALL_W, WALL_H, 0.6), mat(0x37474f, { metalness: 0.4 })), 0, WALL_H / 2, wallZ);
-  const stripes = [0xffc400, 0x212121];
-  for (let i = 0; i < 14; i++) {
-    const st = add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.05), mat(stripes[i % 2])), -WALL_W / 2 + 0.55 + i, top + 6.2, wallZ + 0.33, false);
-    st.rotation.z = 0.5;
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.05), mat(stripes[(i + 1) % 2])), -WALL_W / 2 + 0.55 + i, 1.0, wallZ + 0.33, false).rotation.z = 0.5;
+
+  // ---- 盡頭：神秘大閘門（新生態區）----
+  // 好大嘅石框 + 圓形金庫門（有會轉嘅符文圈）+ 鐵枝後面旋轉緊嘅紫色能量 + 會浮嘅「?」+ 火花 + 個鎖一閃一閃
+  const wallZ = rect.minZ + 0.25;
+  const GATE_W = 24;
+  const GATE_H = top + 14;
+  const stone = mat(0x263238, { roughness: 0.8, flatShading: true });
+  const stone2 = mat(0x37474f, { roughness: 0.8, flatShading: true });
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(GATE_W, GATE_H, 1.2), stone), 0, GATE_H / 2, wallZ);
+  for (const s of [-1, 1]) {
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.4, GATE_H + 4, 2.4), stone2), s * (GATE_W / 2), (GATE_H + 4) / 2, wallZ + 0.4); // 大柱
+    add(scene, new THREE.Mesh(new THREE.OctahedronGeometry(1.3), mat(0xd500f9, { emissive: 0xd500f9, emissiveIntensity: 1.4, flatShading: true })), s * (GATE_W / 2), GATE_H + 5, wallZ + 0.4);
   }
-  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.8, WALL_H + 1, 0.9), mat(0xffc400)), s * (WALL_W / 2), (WALL_H + 1) / 2, wallZ);
-  // 閃燈（喺牆頂）
-  const lamps = [-5, 0, 5].map((x) => add(live, new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff6d00, emissive: 0xff6d00, emissiveIntensity: 2 })), x, WALL_H + 0.3, wallZ, false));
-  const sign = dynamicSign(8, 3.4);
-  sign.mesh.position.set(0, top + 3, wallZ + 0.4);
+  // 圓形金庫門（喺橋嘅高度）
+  const doorY = top + 5.5;
+  const R = 5.2;
+  add(scene, new THREE.Mesh(new THREE.TorusGeometry(R + 0.5, 0.7, 10, 48), gold), 0, doorY, wallZ + 0.7);
+  // 旋轉嘅紫色能量（canvas 漩渦）
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const grd = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grd.addColorStop(0, '#ffffff');
+  grd.addColorStop(0.25, '#ea80fc');
+  grd.addColorStop(0.7, '#6a1b9a');
+  grd.addColorStop(1, '#12002b');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 3;
+  for (let k = 0; k < 4; k++) {
+    ctx.beginPath();
+    for (let a = 0; a < 9; a += 0.1) {
+      const r = a * 6.5;
+      const x = 64 + Math.cos(a + (k * Math.PI) / 2) * r;
+      const y = 64 + Math.sin(a + (k * Math.PI) / 2) * r;
+      if (a === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  const swirlTex = new THREE.CanvasTexture(c);
+  swirlTex.colorSpace = THREE.SRGBColorSpace;
+  const swirl = new THREE.Mesh(new THREE.CircleGeometry(R, 48), new THREE.MeshBasicMaterial({ map: swirlTex, transparent: true, opacity: 0.95 }));
+  swirl.position.set(0, doorY, wallZ + 0.65);
+  live.add(swirl);
+  // 鐵枝（擋住個能量門）
+  for (let i = -4; i <= 4; i++) {
+    const hh = 2 * Math.sqrt(Math.max(0, R * R - (i * 1.15) ** 2));
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.22, hh, 0.22), iron), i * 1.15, doorY, wallZ + 0.85);
+  }
+  // 兩圈會轉嘅符文
+  const runes = [R + 1.7, R + 2.6].map((rr, k) => {
+    const g = new THREE.Group();
+    const runeMat = new THREE.MeshStandardMaterial({ color: k ? 0x00e5ff : 0x76ff03, emissive: k ? 0x00e5ff : 0x76ff03, emissiveIntensity: 1.5 });
+    const count = k ? 16 : 12;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.1), runeMat);
+      m.position.set(Math.cos(a) * rr, Math.sin(a) * rr, 0);
+      m.rotation.z = a + (i % 2 ? 0.8 : 0);
+      g.add(m);
+    }
+    g.position.set(0, doorY, wallZ + 0.75);
+    live.add(g);
+    return g;
+  });
+  // 大鎖（一閃一閃）
+  const lock = makeLabel([{ text: '🔒', color: '#ffffff' }], 3.2);
+  lock.position.set(0, doorY - R - 1.3, wallZ + 1.6);
+  live.add(lock);
+  const lockScale = lock.scale.clone();
+  // 會浮嘅「?」同方塊
+  const qMat = new THREE.MeshStandardMaterial({ color: 0xffd600, emissive: 0xffab00, emissiveIntensity: 1 });
+  const qs = [-9, -6, 6, 9].map((x, i) => {
+    const q = makeLabel([{ text: '❓', color: '#ffeb3b' }], 1.6);
+    q.position.set(x, top + 7 + (i % 2) * 2, wallZ + 1.4);
+    live.add(q);
+    const cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), qMat);
+    cube.position.set(x * 0.85, top + 11 + (i % 2), wallZ + 1.6);
+    live.add(cube);
+    return { q, cube, base: q.position.y, cbase: cube.position.y, i };
+  });
+  // 牆頂後面嘅神秘剪影（似一座座好大嘅嘢喺霧入面）
+  for (const [x, h, w] of [[-7, 9, 4], [-2, 14, 3], [4, 11, 5], [9, 7, 3]]) {
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(w, h, 2), mat(0x1a1030)), x, GATE_H + h / 2 - 2, wallZ - 3, false);
+  }
+  const fog = new THREE.Mesh(new THREE.PlaneGeometry(GATE_W + 4, 10), new THREE.MeshBasicMaterial({ color: 0xb39ddb, transparent: true, opacity: 0.35, depthWrite: false }));
+  fog.position.set(0, GATE_H + 3, wallZ - 1.4);
+  live.add(fog);
+  // 火花（由能量門噴出嚟）
+  const SP = 50;
+  const spPos = new Float32Array(SP * 3);
+  const spGeo = new THREE.BufferGeometry();
+  spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+  const sparks = new THREE.Points(spGeo, new THREE.PointsMaterial({ color: 0xea80fc, size: 0.25, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sparks.frustumCulled = false;
+  live.add(sparks);
+  const seeds = Array.from({ length: SP }, () => ({ a: Math.random() * Math.PI * 2, k: Math.random(), s: 0.5 + Math.random() }));
+  // 全息倒數牌（喺能量門上面）
+  const sign = dynamicSign(11, 3.2);
+  sign.mesh.position.set(0, doorY + R + 3.6, wallZ + 1.0);
   live.add(sign.mesh);
   let lastCheck = -1;
   return (dt, t) => {
     if (Math.floor(t) !== lastCheck) {
       lastCheck = Math.floor(t);
-      sign.draw(THEMES.orange, [
-        { text: '🚧 NEW BIOME IS COMING... 🚧', size: 0.13, color: '#fff59d' },
-        { text: newBiomeCountdown(), size: 0.2 },
-        { text: 'Something big is being built here!', size: 0.075 },
+      sign.draw(THEMES.purple, [
+        { text: '✨ NEW BIOME IS COMING... ✨', size: 0.13, color: '#fff59d' },
+        { text: newBiomeCountdown(), size: 0.22 },
+        { text: 'Something BIG is behind this gate...', size: 0.075, color: '#e1bee7' },
       ]);
     }
-    lamps.forEach((l, i) => (l.material.emissiveIntensity = Math.sin(t * 6 + i * 2) > 0 ? 2.5 : 0.2));
+    swirl.rotation.z = -t * 0.8;
+    runes[0].rotation.z = t * 0.3;
+    runes[1].rotation.z = -t * 0.2;
+    lock.scale.copy(lockScale).multiplyScalar(1 + Math.sin(t * 3) * 0.08);
+    for (const q of qs) {
+      q.q.position.y = q.base + Math.sin(t * 2 + q.i) * 0.5;
+      q.cube.position.y = q.cbase + Math.sin(t * 1.5 + q.i * 2) * 0.4;
+      q.cube.rotation.set(t * 0.7 + q.i, t + q.i, 0);
+    }
+    lanterns.forEach((l, i) => (l.material.emissiveIntensity = 1.1 + Math.sin(t * 3 + i * 0.7) * 0.6));
+    for (let i = 0; i < SP; i++) {
+      const sd = seeds[i];
+      const k = (sd.k + t * 0.4 * sd.s) % 1;
+      const r = R * (0.2 + k * 0.9);
+      spPos[i * 3] = Math.cos(sd.a + t * 0.5) * r;
+      spPos[i * 3 + 1] = doorY + Math.sin(sd.a + t * 0.5) * r;
+      spPos[i * 3 + 2] = wallZ + 1.0 + k * 4;
+    }
+    spGeo.attributes.position.needsUpdate = true;
+    fog.material.opacity = 0.3 + Math.sin(t * 0.7) * 0.08;
   };
 }
 
