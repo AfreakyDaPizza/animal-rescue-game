@@ -11,7 +11,15 @@ import { ANIMALS_20 } from './animals20.js'; // 頭 20 隻嘅新設計
 import { ANIMALS_30 } from './animals30.js'; // 其餘 30 隻嘅新設計
 import { FUSE_MODELS } from './fusePets.js'; // Fuse Machine 寵物（Issue #4）
 import { buildSkywhaleModel } from './enchantedModels.js'; // Biome 7 魔法動物
-const ENCHANTED_MODELS = { 'Royal Skywhale': buildSkywhaleModel };
+import { buildKitsuneModel, buildGemDragonModel, buildDreadscaleModel, buildArmadilloModel, buildCitadelSnailModel } from './kingdomPets.js';
+const ENCHANTED_MODELS = {
+  'Royal Skywhale': buildSkywhaleModel,
+  'Kitsune Of Runes': buildKitsuneModel,
+  'Gem Dragon': buildGemDragonModel,
+  'Dreadscale': buildDreadscaleModel,
+  'Uncoiled Armadillo': buildArmadilloModel,
+  'Citadel Snail': buildCitadelSnailModel,
+};
 
 // ---- 方塊工具 ----
 const geometries = new Map();
