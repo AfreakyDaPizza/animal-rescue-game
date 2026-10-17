@@ -273,7 +273,7 @@ export function buildLab(scene) {
       } else if (p.runner) updateFreedAnimal(p, dt, time);
     }
     // 實驗室傳送門：開咗先有旋渦（打贏咗就閂）
-    lab.labPortal.target = portalReady() && !state.labBossDefeated ? 1 : 0;
+    lab.labPortal.target = portalReady() || state.labBossDefeated ? 1 : 0; // 打贏咗：傳送門去秘密沙灘
     // 紅色掣：撳落去再彈返上嚟
     lab.button.press = Math.max(0, lab.button.press - dt * 2);
     lab.button.cap.position.y = 1.0 - Math.sin(Math.min(1, lab.button.press) * Math.PI) * 0.18;

@@ -127,8 +127,9 @@ export function playUnlockScene({ scene, camera, onDone }) {
 // 2. 佢捉咗嘅瀕危動物（包括你交俾傳送門嗰幾隻）醒咗，避開啲 Boss，由出口走
 // 3. 跑過大門 → 4. 跑入你個地塊（開心到跳）
 // 5. Owner 多謝你，俾 $1000 → 6. 黑畫面大字（小朋友寫嘅結局）
-const ENDING_ANIMALS = ['Giant Panda', 'Red Panda', 'Polar Bear', 'Snow Leopard', 'Sumatran Tiger', 'Mountain Gorilla'];
-export function playEnding({ scene, camera, fight, onPaid, onDone }) {
+export const ENDING_ANIMALS = ['Giant Panda', 'Red Panda', 'Polar Bear', 'Snow Leopard', 'Sumatran Tiger', 'Mountain Gorilla'];
+// short = true：淨係播 Arena 嗰段（0–11 秒，動物醒、走出傳送門），之後由 main.js 接住播爆炸同沙灘（小朋友 Issue #4 之後）
+export function playEnding({ scene, camera, fight, onPaid, onDone, short = false }) {
   const root = new THREE.Group();
   scene.add(root);
   const B = fight.group.position.clone();
@@ -216,11 +217,11 @@ export function playEnding({ scene, camera, fight, onPaid, onDone }) {
   const EXIT = V(EXIT_PORTAL.x, 0, EXIT_PORTAL.z - 1);
 
   playMovie(camera, {
-    length: 46,
+    length: short ? 11 : 46,
     skipText: 'Click or press any key to keep playing ▶',
-    final: { at: 31, html: finalLines },
+    final: short ? null : { at: 31, html: finalLines },
     shots: [
-      [0, 5, { p: V(B.x + 9, 5, B.z + 10), l: V(B.x, 1.5, B.z) }, { p: V(B.x + 6, 3.5, B.z + 7), l: V(B.x, 1.2, B.z) }], // Boss 瞓低咗
+      [0, 5, { p: V(B.x + 17, 10, B.z + 19), l: V(B.x, 1.5, B.z) }, { p: V(B.x + 13, 8, B.z + 15), l: V(B.x, 1.2, B.z) }], // Boss 瞓低咗（企遠啲，佢好大隻）
       [5, 11, { p: V(ARENA.x, 10, AZ + 22), l: V(ARENA.x, 1.5, AZ - 6) }, { p: V(ARENA.x, 7, AZ + 18), l: V(ARENA.x, 1.5, AZ) }], // 動物醒，走去出口
       [11, 16, { p: V(0, 2.4, 50), l: V(0, 1.6, 72) }, { p: V(0, 2.8, 45), l: V(0, 1.6, 60) }], // 跑過大門
       [16, 21, { p: V(2, 7, 27), l: V(19, 0.5, 10) }, { p: V(5, 5, 23), l: V(19, 0.5, 10) }], // 跑入地塊

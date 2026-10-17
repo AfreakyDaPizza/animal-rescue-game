@@ -18,7 +18,7 @@ import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
 import { HUB } from './hubShape.js';
-import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, BEACH_PASS } from './labShape.js';
+import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH } from './labShape.js';
 import { beach } from './secretBeach.js';
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
@@ -102,7 +102,7 @@ export function isWalkable(x, z, radius, feetY = 0) {
   const inHub = z >= HUB.minZ + r && Math.hypot(x - HUB.cx, z - HUB.cz) <= HUB.r - r;
   // 通道向下伸入 Hub 少少，等兩部分接得順，唔會喺接口卡住
   const stemIntoHub = { ...STEM, maxZ: 8 };
-  const outside = parkGate.open && (inRect(GATE_LANE) || inRect(YARD) || inRect(LAB_DOOR) || inRect(LAB) || (beach.open && (inRect(BEACH_PASS) || inRect(BEACH))));
+  const outside = parkGate.open && (inRect(GATE_LANE) || inRect(YARD) || inRect(LAB_DOOR) || inRect(LAB) || (beach.open && inRect(BEACH)));
   if (Math.hypot(x - ARENA.x, z - ARENA.z) <= ARENA.r - r) return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius); // 圓形 Arena：圓形力場牆擋住
   if (!inHub && !inRect(stemIntoHub) && !outside) return false;
   return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius);

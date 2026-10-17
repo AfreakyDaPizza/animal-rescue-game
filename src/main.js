@@ -34,10 +34,13 @@ import { TRASH } from './biomes.js';
 import { rarityInfo, TRASH_REWARD, LAB_REWARD } from './data/balance.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
-import { buildSecretBeach, beach, applyBeachSky, playCollab } from './secretBeach.js';
+import { buildSecretBeach, beach, applyBeachSky, playCollab, playBeachFinale } from './secretBeach.js';
 import { playLabEscape } from './labEscape.js';
-let endingEscaped = false; // 實驗室爆炸動畫播咗未
-import { BENCH, STRANGER } from './labShape.js';
+import { ENDING_ANIMALS } from './labScenes.js';
+import { park, standUp as ownerStandUp, lieOnHammock } from './hubPark.js';
+import { buildAnimalModel } from './animalModels.js';
+import { findAnimal } from './data/animals.js';
+import { BENCH, STRANGER, BEACH_PORTAL, BEACH_ARRIVE } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
 import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss, hasBat, batHit, batInRange } from './labBoss.js';
 import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
@@ -579,6 +582,8 @@ function currentInteraction() {
   if (trash) return { prompt: `<kbd>E</kbd> Clean up the ${trash.name} 🗑️ (+$${TRASH_REWARD})`, action: () => cleanTrash(trash) };
   // 秘密沙灘：長櫈坐低睇流星、同神秘人傾偈
   if (beach.open) {
+    if (Math.hypot(pos.x - BEACH_PORTAL.x, pos.z - BEACH_PORTAL.z) < 2.6) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Park', action: () => travel(0, 14, 0, '🏡 Back to the Animal Rescue Park!') };
+    if (whereIs(pos.x, pos.z) === 'Laboratory' && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: () => travel(BEACH_ARRIVE.x, BEACH_ARRIVE.z, -Math.PI / 2, '🏖️ The Secret Beach!') };
     if (sitting) return { prompt: '🌠 Watching the meteors... <kbd>E</kbd> Stand up', action: standUp };
     if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
     if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
@@ -732,6 +737,13 @@ function cleanTrash(trash) {
 }
 
 // ---- 秘密沙灘 ----
+function travel(x, z, rotY, text) {
+  flashScreen();
+  play('portal');
+  teleportPlayer(player, x, z);
+  camera.rotation.set(0, rotY, 0, 'YXZ');
+  announce(text);
+}
 let sitting = false;
 function sitDown() {
   sitting = true;
@@ -887,17 +899,29 @@ function startUnlockScene() {
 }
 
 // ================= Issue #2：結局動畫 =================
-// Issue #4：打贏之後先播實驗室爆炸逃走，之後先播原本嘅結局
+// 打贏 Boss 之後嘅結局（小朋友 Issue #4 之後再改）：
+// 1. Arena：Boss 瞓低、動物醒咗走出傳送門 → 2. 實驗室爆炸，你走得切 → 3. 去到秘密沙灘，Owner 俾你錢 → 黑畫面 → 喺沙灘繼續玩
+let endingRunning = false;
 function startEnding() {
+  if (endingRunning) return;
+  endingRunning = true;
   player.controls.unlock();
   closePanel();
-  if (!endingEscaped) {
-    endingEscaped = true;
-    playLabEscape({ scene, camera, onDone: startEnding });
-    return;
-  }
   playEnding({
-    scene, camera, fight,
+    scene, camera, fight, short: true,
+    onDone: () => playLabEscape({ scene, camera, onDone: beachFinale }),
+  });
+}
+function beachFinale() {
+  const animals = ENDING_ANIMALS.map((name) => {
+    const model = buildAnimalModel(findAnimal(name));
+    const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+    model.scale.multiplyScalar(Math.min(1.4, 2.2 / Math.max(size.x, size.y, size.z)));
+    return model;
+  });
+  beach.collab = true; // 星空
+  playBeachFinale({
+    scene, camera, playMovie, once: movieOnce, play, owner: park.owner, standUp: ownerStandUp, ranger: state.rangerSkin, animals, reward: LAB_REWARD,
     onPaid() {
       // Owner 俾你 $1000（只俾一次）
       if (state.labRewardPaid) return;
@@ -907,14 +931,17 @@ function startEnding() {
       save();
     },
     onDone() {
+      beach.collab = false;
+      endingRunning = false;
       state.labEndingSeen = true;
       hideBoss(fight);
       fight.phase = 'gone';
+      lieOnHammock();
       save();
-      // 企喺地塊門口，同你啲寵物一齊（之後可以照玩）
-      teleportPlayer(player, 6, 12.5);
+      // 喺秘密沙灘繼續玩
+      teleportPlayer(player, BEACH_ARRIVE.x, BEACH_ARRIVE.z);
       camera.rotation.set(0, -Math.PI / 2, 0, 'YXZ');
-      announce('🐾 You and your pets live happily together! Keep playing!');
+      announce('🏖️ Welcome to the SECRET BEACH! Sit on the bench to watch the meteors 🌠');
       play('day');
       resume();
     },
@@ -952,7 +979,7 @@ renderer.setAnimationLoop((timestamp) => {
   updateIntro(intro, dt);
   updateMovie(dt);
   if (!frozen) updateLab(dt, time, pos);
-  beach.open = !!state.labUnlocked; // 小朋友 Issue #4：撳 Magic Library 後面個紅掣（開大門）就去得秘密沙灘
+  beach.open = !!state.labBossDefeated; // 小朋友：打完 Boss 先見到秘密沙灘
   beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
   if (!frozen) updateBeach(dt, time);
 
@@ -1056,6 +1083,11 @@ renderer.setAnimationLoop((timestamp) => {
     updateDayNight(dayNight, dt);
     applyBeachSky(scene, sky.uniforms, hemi, sun); // 秘密沙灘：星空
     updateHud(dayNight, location);
+  }
+  // 電影入面（例如沙灘結局）：天空照樣跟沙灘變星空
+  if (movie.active) {
+    updateDayNight(dayNight, 0);
+    applyBeachSky(scene, sky.uniforms, hemi, sun);
   }
 
   // Issue #4：Boss 戰 Phase 1、2 有球棒（一出現就揀咗佢）
