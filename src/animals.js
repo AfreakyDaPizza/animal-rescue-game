@@ -167,12 +167,12 @@ export function borrow(rescue, w) {
   rescue.wild = rescue.wild.filter((x) => x !== w);
   const held = handModel(w.animal);
   rescue.camera.add(held);
-  rescue.carrying = { animal: w.animal, kg: w.kg, rarity: w.rarity, seed: w.seed, sizeMul: w.sizeMul, model: held };
+  rescue.carrying = { animal: w.animal, kg: w.kg, rarity: w.rarity, seed: w.seed, sizeMul: w.sizeMul, mutation: w.mutation, model: held };
 }
 
 // 答錯問題：動物跑返佢嘅生態區
 export function loseAnimal(rescue) {
-  const { animal, kg, rarity, seed, sizeMul, model } = rescue.carrying;
+  const { animal, kg, rarity, seed, sizeMul, mutation, model } = rescue.carrying;
   model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.carrying = null;
   spawnAnimal(rescue, animal.biome, animal, kg, rarity, { seed, sizeMul });
@@ -187,7 +187,7 @@ export function deliver(rescue) {
   if (seed) state.takenSpawns = [...state.takenSpawns, seed].slice(-60); // F5 都唔會再出
 
   state.rescued += 1;
-  state.borrowed.push({ name: animal.name, biome: animal.biome, kg, rarity, sizeMul }); // 等繁殖機（巨型都記住）
+  state.borrowed.push({ name: animal.name, biome: animal.biome, kg, rarity, sizeMul, ...(mutation ? { mutation } : {}) }); // 等繁殖機（巨型、Eclipse 變異都記住）
   let reward = 0;
   let biomeBonus = 0;
   if (!state.indexFound.includes(animal.name)) {
@@ -202,16 +202,16 @@ export function deliver(rescue) {
 }
 
 // 快捷欄揀咗嘅嘢拎喺手（抱住救援動物時就收埋）
-export function setHolding(rescue, name, fire = false) {
+export function setHolding(rescue, name, mutation = null) {
   const show = rescue.carrying ? null : name;
-  const key = show && fire ? `${show}#fire` : show; // 🔥 Fire 寵物要換過有火嘅模型
+  const key = show && mutation ? `${show}#${mutation}` : show; // 🔥 Fire／🌑 Eclipse 寵物要換過有光環嘅模型
   if ((rescue.holding?.key ?? rescue.holding?.name ?? null) === key) return;
   if (rescue.holding) rescue.holding.model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.holding = null;
   if (show) {
     const model = handModel(findAnimal(show));
     applyPetSkin(model, state.petSkin); // 寵物皮膚
-    if (fire) addFireAura(model);
+    if (mutation) addFireAura(model, mutation);
     rescue.camera.add(model);
     rescue.holding = { name: show, key, model };
   }

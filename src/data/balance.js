@@ -66,6 +66,7 @@ export const MACHINE_QUIZ_CUT = 0.3; // Right answer: cut this much of the time 
 export const MACHINE_QUIZ_MIN_CUT = 20; // ...but always at least this many seconds
 export const MACHINE_QUIZ_COOLDOWN = 10; // Seconds before the same machine can ask another question
 export const FIRE_MONEY = 4; // 🔥 FIRE pets earn this many times more money
+export const ECLIPSE_MONEY = 6; // 🌑 ECLIPSE pets (hit by an Eclipse laser) earn this many times more money
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
 export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000];
