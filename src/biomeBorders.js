@@ -46,7 +46,7 @@ const DEPTH = 13; // 山丘向外有幾闊
 const STEP_Z = 5.2; // 每一嚿山沿住通道有幾長
 
 export function buildBiomeBorders(root) {
-  for (let i = 0; i < STYLES.length; i++) {
+  for (let i = 0; i < 6; i++) { // Biome 7 王國有自己嘅邊界（enchanted.js）
     const rect = biomeRect(i);
     const rand = seededRandom(900 + i);
     for (const side of [-1, 1]) {
@@ -58,17 +58,6 @@ export function buildBiomeBorders(root) {
         hill(root, style, wallX, side, cz, len, rand);
       }
     }
-  }
-  // 最尾（Biome 7 後面）：橫住嘅水晶懸崖
-  const end = STYLES[6];
-  const endZ = biomeRect(6).minZ;
-  const rand = seededRandom(999);
-  for (let x = STEM.minX - DEPTH; x < STEM.maxX + DEPTH; x += STEP_Z) {
-    const h = end.h[0] + rand() * (end.h[1] - end.h[0]);
-    const w = STEP_Z + 0.6;
-    block(root, mat(end.side), x + w / 2, h / 2, endZ - DEPTH / 2 - 0.5, w, h, DEPTH);
-    block(root, mat(end.top), x + w / 2, h + 0.3, endZ - DEPTH / 2 - 0.5, w * 0.9, 0.6, DEPTH * 0.9);
-    if (rand() < 0.6) crystal(root, x + w / 2, h + 0.6, endZ - 2 - rand() * 6, rand);
   }
 }
 

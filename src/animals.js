@@ -5,7 +5,7 @@ import { addFireAura } from './fireAura.js';
 import { animalsInBiome, randomKg, formatKg, kgScale, findAnimal } from './data/animals.js';
 import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, randomRarity, rarityInfo } from './data/balance.js';
 import { buildAnimalModel } from './animalModels.js';
-import { biomeRect } from './world.js';
+import { biomeRect, KINGDOM_Y } from './world.js';
 import { SUMMIT } from './biomes.js';
 import { boost } from './events.js';
 import { applyPetSkin } from './skins.js';
@@ -113,7 +113,7 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
 
   // 放喺生態區上半部（近 Boss），要走得快先救到；會喺附近行嚟行去
   const half = (rect.maxX - rect.minX) / 2 - 3;
-  let home = new THREE.Vector3((Math.random() * 2 - 1) * half, 0, rect.minZ + 9 + Math.random() * 16);
+  let home = new THREE.Vector3((Math.random() * 2 - 1) * half, biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 26 : 9) + Math.random() * (biome === 6 ? 40 : 16));
   let wander = 3;
   if (biome === 5) {
     // Mining Mountain：動物企喺山頂，要跳上去先救到

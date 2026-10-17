@@ -252,7 +252,7 @@ export function createHazards(scene) {
       g.add(warn);
       const h = {
         biome, kind, group: g, warn, ...path,
-        followGround: biome === 5, // 山上面嘅滾石跟住山嘅高度
+        followGround: biome === 5 || biome === 6, // 山上面嘅滾石跟住山嘅高度；天空王國喺高處
         dir: path.oneWay ? 1 : Math.random() < 0.5 ? -1 : 1,
         speed: kind.still ? 0 : HAZARD_SPEED[biome] * (0.7 + Math.random() * 0.6),
       };

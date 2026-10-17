@@ -27,6 +27,9 @@ export const BIOME_LENGTH = 62;                                     // 每個生
 export const STEM = { minX: -21, maxX: 21, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道（小朋友 2026-10-15：生態區大啲、長啲）；Biome 7 喺閘門後面，另外計（KINGDOM）
 // Biome 7 Enchanted Kingdom：Biome 6 座山頂條橋盡頭嗰道閘門後面；閘門開咗先行得入（kingdom.open，main.js 睇日期）
 export const kingdom = { open: false };
+// 小朋友 2026-10-17：入咗閘門之後地面要同閘門一樣高（天空王國），仲要大啲
+export const KINGDOM_Y = 13;
+export const KINGDOM_RECT = { minX: -50, maxX: 50, minZ: -6 * BIOME_LENGTH - 110, maxZ: -6 * BIOME_LENGTH };
 const KINGDOM_DOOR = { minX: -3.4, maxX: 3.4, minZ: -6 * BIOME_LENGTH - 4, maxZ: -6 * BIOME_LENGTH + 3 }; // 閘門個窿（接住條橋同入面嘅樓梯）
 
 const WALL_HEIGHT = 3.5;
@@ -44,6 +47,7 @@ export const BIOMES = [
 
 // 每個生態區嘅範圍（i = 0 係 Biome 1）
 export function biomeRect(i) {
+  if (i === 6) return KINGDOM_RECT; // Biome 7 王國：另外一塊（闊啲、長啲、高 KINGDOM_Y）
   const maxZ = STEM.maxZ - i * BIOME_LENGTH;
   return { minX: STEM.minX, maxX: STEM.maxX, minZ: maxZ - BIOME_LENGTH, maxZ };
 }
@@ -125,10 +129,11 @@ export function buildWorld(scene) {
 
   BIOMES.forEach((biome, i) => {
     const rect = biomeRect(i);
-    addFloor(scene, rect, biome.floor, i === 3 ? 0.03 : 0.1, i);
-    // Biome 7：入口喺閘門（高處），入面行完樓梯先見到牌
-    addBanner(scene, biome.name, i === 6 ? rect.maxZ - 17 : rect.maxZ - 0.5, i);
-    addBossSign(scene, i, i === 6 ? rect.maxZ - 19 : rect.maxZ - 3);
+    // Biome 7：成個王國喺 KINGDOM_Y 高；地板由 enchanted.js 起
+    const host = i === 6 ? kingdomHost(scene) : scene;
+    if (i !== 6) addFloor(scene, rect, biome.floor, i === 3 ? 0.03 : 0.1, i);
+    addBanner(host, biome.name, i === 6 ? rect.maxZ - 8 : rect.maxZ - 0.5, i);
+    addBossSign(host, i, i === 6 ? rect.maxZ - 10 : rect.maxZ - 3);
     animators.push(decorateBiome(staticRoot, i, rect, scene));
   });
 
@@ -172,6 +177,17 @@ function addFloor(scene, rect, color, variation, i = -1) {
   floor.position.set(rect.minX + w / 2, -0.5, rect.minZ + d / 2);
   floor.receiveShadow = true;
   scene.add(floor);
+}
+
+// Biome 7 嘅牌等放喺王國嘅高度
+let kHost = null;
+function kingdomHost(scene) {
+  if (!kHost) {
+    kHost = new THREE.Group();
+    kHost.position.y = KINGDOM_Y;
+    scene.add(kHost);
+  }
+  return kHost;
 }
 
 // 圓形 Hub 地板（頂嗰截 z < 0 切走）

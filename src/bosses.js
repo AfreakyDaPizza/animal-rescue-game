@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { buildGuardianRig } from './enchantedModels.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { biomeRect, STEM } from './world.js';
+import { biomeRect, STEM, KINGDOM_Y } from './world.js';
 import { makeLabel } from './signs.js';
 import { BOSSES } from './data/balance.js';
 import { walkSpeed } from './player.js';
@@ -304,7 +304,8 @@ export function createBosses(scene) {
       group.add(shard);
       shards.push(shard);
     }
-    const home = new THREE.Vector3(0, 0, biome === 5 ? rect.maxZ - 8 : rect.minZ + 4);
+    const home = biome === 6 ? new THREE.Vector3(0, KINGDOM_Y, rect.minZ + 18) // Biome 7：守喺皇宮前面（天空王國嘅高度）
+      : new THREE.Vector3(0, 0, biome === 5 ? rect.maxZ - 8 : rect.minZ + 4);
     group.position.copy(home);
     scene.add(group);
     return { biome, info, rect, group, rig, stars, home, aura, auraInner, auraMat, auraColor: new THREE.Color(color), shards, mode: 'guard', stun: 0, grace: 0, runPhase: 0, angry: 0 };
@@ -396,9 +397,10 @@ export function updateBosses(bosses, dt, time, player) {
         moving = b.mode === 'chase' ? 1 : 0.6;
       }
       // 留喺生態區通道入面：可以向 Hub 方向追出去，但唔可以入 Hub（Hub 係安全區）
-      const limitX = (STEM.maxX - STEM.minX) / 2 - 1;
+      // Biome 7（天空王國）：留喺王國入面（闊啲），唔會飛出條橋
+      const limitX = b.biome === 6 ? (b.rect.maxX - b.rect.minX) / 2 - 2 : (STEM.maxX - STEM.minX) / 2 - 1;
       pos.x = THREE.MathUtils.clamp(pos.x, -limitX, limitX);
-      pos.z = THREE.MathUtils.clamp(pos.z, b.rect.minZ + 1, STEM.maxZ - 1);
+      pos.z = THREE.MathUtils.clamp(pos.z, b.rect.minZ + 1, b.biome === 6 ? b.rect.maxZ - 2 : STEM.maxZ - 1);
       if (b.mode === 'return' && d < 0.3) b.mode = 'guard';
     } else if (inBiome) {
       // 守住：望住玩家
@@ -407,7 +409,7 @@ export function updateBosses(bosses, dt, time, player) {
     animateRig(b, dt, time, moving);
 
     // Boss 唔識跳：你企喺高處佢捉你唔到
-    if (b.mode === 'chase' && dist < CATCH_DISTANCE && (player.feetY ?? 0) < 1.5 && !caught) caught = b;
+    if (b.mode === 'chase' && dist < CATCH_DISTANCE && (player.feetY ?? 0) - b.group.position.y < 1.5 && !caught) caught = b;
   }
   return caught;
 }
