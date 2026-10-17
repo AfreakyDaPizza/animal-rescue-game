@@ -12,9 +12,9 @@ export const BOSSES = [
   { name: 'Captain Oil Spill', speed: 2200, iq: 1000 },
   { name: 'Hunter', speed: 33000, iq: 45000 },
   { name: 'Oil Driller', speed: 330000, iq: 450000 },
-  { name: 'Smuggler King', speed: 2200000, iq: 3000000 },
-  { name: 'Mega Digger', speed: 22000000, iq: 30000000 },
-  { name: 'Enchanted Royal Guardian', speed: 220000000, iq: 300000000 }, // Biome 7（小朋友 2026-10-17）
+  { name: 'Smuggler King', speed: 4400000, iq: 3000000 }, // 小朋友 2026-10-17：快啲（×2）
+  { name: 'Mega Digger', speed: 44000000, iq: 30000000 }, // 小朋友 2026-10-17：快啲（×2）
+  { name: 'Enchanted Royal Guardian', speed: 440000000, iq: 300000000 }, // Biome 7（小朋友 2026-10-17）；再快啲（×2）
 ];
 
 // ---- 寵物每秒賺幾多錢：生態區底價 × (1 + √重量 × 0.1) × 稀有度 ----
