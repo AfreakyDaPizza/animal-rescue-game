@@ -1,5 +1,5 @@
 // 野生動物問題（9–11 歲程度）
-// biome：0 = Biome 1 … 4 = Biome 5；hard: true = Boss 問嘅難題
+// biome：0 = Biome 1 … 6 = Biome 7（Enchanted Kingdom）；hard: true = Boss 問嘅難題
 // answers 第一個係正確答案（遊戲會打亂次序）
 
 export const QUESTIONS = [
@@ -194,4 +194,70 @@ export const QUESTIONS = [
   { biome: 5, q: 'What do Ethiopian wolves mostly hunt?', answers: ['Small rodents like mole-rats', 'Elephants', 'Fish', 'Bananas'] },
   { biome: 5, hard: true, q: 'Why are mountain animals in danger when the climate warms?', answers: ['Their cold habitat shrinks and moves higher up', 'Mountains get taller', 'They grow too big', 'The snow turns into sugar'] },
   { biome: 5, hard: true, q: 'Fill in the blanks: When old mines are ____, plants and animals can slowly ____.', answers: ['restored ... return', 'painted ... vanish', 'locked ... freeze', 'sold ... sleep'] },
+
+  // ---- 小朋友 2026-10-17：再加多啲題目 ----
+  // Biome 1
+  { biome: 0, q: 'How much bamboo can a giant panda eat in one day?', answers: ['Up to about 12-38 kg', 'About 1 spoonful', 'About 1 kg', 'None, pandas only drink water'] },
+  { biome: 0, q: 'What colour is a red panda?', answers: ['Reddish-brown with a ringed tail', 'Black and white', 'Bright blue', 'Green'] },
+  { biome: 0, q: 'An okapi looks a bit like a zebra, but its closest relative is the...', answers: ['Giraffe', 'Horse', 'Cow', 'Zebra'] },
+  { biome: 0, q: 'How do elephants keep cool on hot days?', answers: ['Flapping their big ears and spraying water', 'Eating ice cream', 'Sleeping in caves', 'Swimming in snow'] },
+  { biome: 0, q: 'Which of these is made from trees?', answers: ['Paper', 'Glass', 'Plastic', 'Metal'] },
+  { biome: 0, q: 'What can you do with old paper to save trees?', answers: ['Recycle it', 'Burn it', 'Throw it in a river', 'Bury it in the garden'] },
+  { biome: 0, hard: true, q: 'What is a "wildlife corridor"?', answers: ['A safe path that connects two habitats', 'A hallway in a zoo', 'A road for trucks', 'A type of tree'] },
+  { biome: 0, hard: true, q: 'Why do rangers sometimes put tracking collars on elephants?', answers: ['To know where they go and keep them safe from poachers', 'To make them look pretty', 'To stop them eating', 'To teach them tricks'] },
+  // Biome 2
+  { biome: 1, q: 'What does a whale shark mostly eat?', answers: ['Tiny plankton', 'Big fish', 'Seals', 'Boats'] },
+  { biome: 1, q: 'Dugongs are sometimes called "sea cows" because they eat...', answers: ['Seagrass', 'Fish', 'Crabs', 'Coral'] },
+  { biome: 1, q: 'Where do sea turtles lay their eggs?', answers: ['In the sand on beaches', 'In trees', 'Under the ice', 'In caves under the sea'] },
+  { biome: 1, q: 'How long can a blue whale grow?', answers: ['About 30 metres - as long as 3 buses', 'About 3 metres', 'About 300 metres', 'About as long as a car'] },
+  { biome: 1, q: 'What is a "ghost net"?', answers: ['A lost fishing net that keeps trapping animals', 'A net made by ghosts', 'A net for catching butterflies', 'A net used in tennis'] },
+  { biome: 1, q: 'Which item helps the ocean the most?', answers: ['A reusable shopping bag', 'A plastic straw', 'A balloon released into the sky', 'A plastic bottle thrown on the beach'] },
+  { biome: 1, hard: true, q: 'Why are oil spills so dangerous for seabirds?', answers: ['Oil sticks to their feathers so they cannot stay warm or fly', 'Oil makes them fly faster', 'Oil gives them food', 'Oil turns them into fish'] },
+  { biome: 1, hard: true, q: 'What are fishing nets called that catch vaquitas by accident?', answers: ['Gillnets', 'Butterfly nets', 'Hair nets', 'Tennis nets'] },
+  // Biome 3
+  { biome: 2, q: 'The kakapo is a parrot that cannot...', answers: ['Fly', 'Walk', 'Eat', 'See'] },
+  { biome: 2, q: 'Which bird has the biggest wingspan in North America?', answers: ['California condor', 'Sparrow', 'Pigeon', 'Robin'] },
+  { biome: 2, q: 'What colour is a hyacinth macaw?', answers: ['Bright blue', 'Pink', 'Green and red', 'Black and white'] },
+  { biome: 2, q: 'Why should you never buy a wild bird as a pet?', answers: ['It may have been stolen from the wild', 'Birds are too quiet', 'Birds cannot eat seeds', 'Birds are always too big'] },
+  { biome: 2, q: 'What does the Philippine eagle mostly hunt?', answers: ['Monkeys and other forest animals', 'Fish only', 'Grass', 'Fruit'] },
+  { biome: 2, q: 'Where do the kakapo live?', answers: ['On islands in New Zealand', 'In Antarctica', 'In the Sahara Desert', 'In London'] },
+  { biome: 2, hard: true, q: 'Why did California condors almost go extinct?', answers: ['They ate animals shot with lead bullets and got poisoned', 'They flew too high', 'They ate too much fruit', 'They forgot how to fly'] },
+  { biome: 2, hard: true, q: 'What is "habitat loss"?', answers: ['When the place an animal lives is destroyed', 'When an animal gets lost in its home', 'When animals move to a new house', 'When animals lose their feathers'] },
+  // Biome 4
+  { biome: 3, q: 'What colour is a polar bear\'s skin under its fur?', answers: ['Black', 'White', 'Pink', 'Blue'] },
+  { biome: 3, q: 'What does the narwhal\'s long tusk grow from?', answers: ['It is a long tooth', 'It is a horn', 'It is a bone in its nose', 'It is ice'] },
+  { biome: 3, q: 'Emperor penguin dads keep the egg warm by holding it on their...', answers: ['Feet', 'Heads', 'Backs', 'Wings'] },
+  { biome: 3, q: 'Why do polar bears need sea ice?', answers: ['To hunt seals', 'To build houses', 'To skate for fun', 'To keep their food cold'] },
+  { biome: 3, q: 'What do walruses use their tusks for?', answers: ['To pull themselves onto the ice', 'To eat ice cream', 'To dig for gold', 'To comb their hair'] },
+  { biome: 3, q: 'How can you help slow down climate change?', answers: ['Walk or cycle instead of using the car', 'Leave the TV on all night', 'Waste food', 'Use more plastic'] },
+  { biome: 3, hard: true, q: 'Why is the Arctic sea ice melting?', answers: ['The Earth is getting warmer', 'Polar bears are too heavy', 'Penguins are eating it', 'The sun is getting closer every day'] },
+  { biome: 3, hard: true, q: 'Fill in the blanks: Burning ____ fuels puts ____ gases into the air.', answers: ['fossil ... greenhouse', 'rocket ... happy', 'candy ... cold', 'bubble ... blue'] },
+  // Biome 5
+  { biome: 4, q: 'What do pangolins eat?', answers: ['Ants and termites', 'Fish', 'Leaves', 'Rocks'] },
+  { biome: 4, q: 'What does a pangolin do when it is scared?', answers: ['Rolls into a ball', 'Flies away', 'Changes colour', 'Sings loudly'] },
+  { biome: 4, q: 'Slow lorises are...', answers: ['One of the only venomous primates', 'Fast like cheetahs', 'A kind of bird', 'Always awake in the day'] },
+  { biome: 4, q: 'Which big cat has orange fur with black stripes?', answers: ['Sumatran tiger', 'Snow leopard', 'Lion', 'Cheetah'] },
+  { biome: 4, q: 'If you see someone selling a wild animal, you should...', answers: ['Tell an adult and report it', 'Buy it to save it', 'Take a selfie with it', 'Ignore it'] },
+  { biome: 4, q: 'What is the saola sometimes called?', answers: ['The Asian unicorn', 'The flying cow', 'The sea dog', 'The jungle cat'] },
+  { biome: 4, hard: true, q: 'What does "wildlife trafficking" mean?', answers: ['Illegally catching and selling wild animals', 'Animals stuck in traffic jams', 'Animals crossing the road', 'Zoo animals on holiday'] },
+  { biome: 4, hard: true, q: 'Why do smugglers want pangolins?', answers: ['For their scales and meat', 'To keep them as guard dogs', 'For their milk', 'To use their feathers'] },
+  // Biome 6
+  { biome: 5, q: 'What helps the snow leopard walk on snow?', answers: ['Big furry paws like snowshoes', 'Tiny feet', 'Wheels', 'Wings'] },
+  { biome: 5, q: 'Golden snub-nosed monkeys live in cold...', answers: ['Mountain forests in China', 'Deserts in Africa', 'Oceans', 'Caves under the sea'] },
+  { biome: 5, q: 'What does the takin look like?', answers: ['A mix of a goat and a moose with golden fur', 'A blue bird', 'A small fish', 'A spotted snake'] },
+  { biome: 5, q: 'Where does the mountain pygmy possum sleep in winter?', answers: ['Under the snow between rocks', 'In a tree house', 'In the ocean', 'In a bird nest'] },
+  { biome: 5, hard: true, q: 'Why can mining hurt animals?', answers: ['It destroys habitats and can pollute rivers', 'It makes mountains taller', 'It gives animals more food', 'It makes the weather sunny'] },
+  { biome: 5, hard: true, q: 'Why does the mountain pygmy possum need snow?', answers: ['Snow keeps it warm while it hibernates', 'It eats snow for dinner', 'It builds snowmen', 'Snow helps it fly'] },
+  // Biome 7：Enchanted Kingdom（魔法動物嘅知識卡講真動物）
+  { biome: 6, q: 'About how many blue whales are left in the world?', answers: ['About 10,000-25,000', 'About 10', 'About 10 billion', 'None'] },
+  { biome: 6, q: 'How many hearts does an octopus have?', answers: ['Three', 'One', 'Ten', 'None'] },
+  { biome: 6, q: 'What colour is octopus blood?', answers: ['Blue', 'Red', 'Green', 'Yellow'] },
+  { biome: 6, q: 'About how many wild lions are left in Africa?', answers: ['About 23,000', 'About 23', 'About 23 million', 'About 2 billion'] },
+  { biome: 6, q: 'Where does the Komodo dragon live?', answers: ['On islands in Indonesia', 'In the Arctic', 'In England', 'In the clouds'] },
+  { biome: 6, q: 'The Giant Armadillo digs burrows. Who else uses them?', answers: ['Many other animals', 'Only dragons', 'Nobody', 'Only fish'] },
+  { biome: 6, q: 'The Island Fox was saved by...', answers: ['People working together to protect it', 'Magic', 'Robots', 'Moving it to the Moon'] },
+  { biome: 6, q: 'Which animal is the most trafficked mammal in the world?', answers: ['Pangolin', 'Cat', 'Dog', 'Rabbit'] },
+  { biome: 6, hard: true, q: 'Why are rising seas a danger to the Komodo dragon?', answers: ['They can flood its small island homes', 'The water is too cold for it to drink', 'It cannot see the sea', 'It turns into a fish'] },
+  { biome: 6, hard: true, q: 'What does a "conservation" project try to do?', answers: ['Protect nature and animals for the future', 'Build more roads', 'Catch animals for pets', 'Cut down forests faster'] },
+  { biome: 6, hard: true, q: 'Fill in the blanks: Real animals are not ____, but they need our ____ to survive.', answers: ['magic ... help', 'robots ... toys', 'clouds ... rain', 'cars ... fuel'] },
 ];

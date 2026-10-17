@@ -11,6 +11,15 @@ export const RANGER_SKINS = [
   { id: 'knight', name: 'Knight', cost: 24, shirt: 0xb0bec5, pants: 0x78909c, skin: 0xb0bec5, hat: 0xb0bec5, shoes: 0x546e7a, metal: true, extra: 'knight' },
   { id: 'golden', name: 'Golden Hero', cost: 35, shirt: 0xffc107, pants: 0xffa000, skin: 0xffd54f, hat: 0xffc107, shoes: 0xff8f00, metal: true, extra: 'crown' },
   { id: 'rainbow', name: 'Rainbow Legend', cost: 50, shirt: 0xff1744, pants: 0x2979ff, skin: 0xf5c99b, hat: 0xffea00, shoes: 0x00e676, rainbow: true, extra: 'wings' },
+  // 小朋友 2026-10-17：再多啲皮膚
+  { id: 'pirate', name: 'Pirate Captain', cost: 60, shirt: 0xfafafa, pants: 0x3e2723, skin: 0xf5c99b, hat: 0x212121, shoes: 0x212121, extra: 'pirate' },
+  { id: 'wizard', name: 'Wizard', cost: 75, shirt: 0x4a148c, pants: 0x311b92, skin: 0xf5c99b, hat: 0x6a1b9a, shoes: 0x1a0033, extra: 'wizard' },
+  { id: 'cyber', name: 'Cyber Ninja', cost: 90, shirt: 0x263238, pants: 0x1c262b, skin: 0xf5c99b, hat: 0x263238, shoes: 0x00e5ff, extra: 'cyber' },
+  { id: 'dragon', name: 'Dragon Rider', cost: 110, shirt: 0x8e0000, pants: 0x3e2723, skin: 0xf5c99b, hat: 0xb71c1c, shoes: 0x4e0000, extra: 'dragon' },
+  { id: 'king', name: 'Royal King', cost: 130, shirt: 0x6a1b9a, pants: 0x4a148c, skin: 0xf5c99b, hat: 0xffd600, shoes: 0x212121, extra: 'king' },
+  { id: 'ice', name: 'Ice Guardian', cost: 150, shirt: 0x81d4fa, pants: 0x4fc3f7, skin: 0xe1f5fe, hat: 0xb3e5fc, shoes: 0x0288d1, metal: true, extra: 'ice' },
+  { id: 'lava', name: 'Lava Knight', cost: 170, shirt: 0x212121, pants: 0x3e2723, skin: 0x424242, hat: 0x212121, shoes: 0xbf360c, metal: true, extra: 'lava' },
+  { id: 'galaxy', name: 'Galaxy Explorer', cost: 200, shirt: 0x1a237e, pants: 0x0d1452, skin: 0xf5c99b, hat: 0x311b92, shoes: 0x7c4dff, extra: 'galaxy' },
 ];
 
 export const PET_SKINS = [
