@@ -147,6 +147,14 @@ src/data/questions.js ← 野生動物問題
 - ✅ 吊橋 7 米闊、跌唔落；新生態區閘門變神秘大寶庫門。
 - ✅ 新升級：Royal Kingdom 地塊（+2 位、×1.5 錢）；跑步機／學生桌 Lv16 Astral King's Kingdom；繁殖機 Lv5 Dragon's Lair（×0.4 時間、一次 2 隻、答問題加速、15% Fire 變異 ×4 錢，`src/fireAura.js`）。價錢係我揀：地塊 ≈ $1.75M、Lv16 ≈ $10.6M、Dragon's Lair $15M。
 
+## Biome 7 Enchanted Kingdom（2026-10-17）
+- 小朋友揀：10 月 24 日（`NEW_BIOME_DATE`）先開；第一次行到山頂橋盡頭嘅閘門 → 開門動畫（`playKingdomReveal`，`state.kingdomSeen`）。
+- 閘門後面皇家大樓梯落去；皇宮、水晶樹、浮島、天上嘅 Royal Skywhale、水晶蝴蝶、魔法符文、閃粉（`src/enchanted.js`；模型 `src/enchantedModels.js`）。
+- 動物：Royal Skywhale（魔法動物，唔係真嘅，知識卡講真藍鯨）；其他動物小朋友遲啲講（會喺 GitHub 開 Issue）。
+- Boss：Enchanted Royal Guardian（220M Speed／300M IQ）；障礙物：火同 essence。
+- Dragon's Lair 繁殖機重新設計：龍圍住部機、蝙蝠翼、火山石拱門、金幣、玻璃罩入面有龍蛋。
+- 測試：dev console `game.openKingdom()` 唔使等日期。
+
 ## 未做
 
 - 任務／成就、每日獎勵、寵物升級、保育知識牌、Boss 戰（感化）、匯出存檔、放上網（建議清單，等小朋友揀）。
