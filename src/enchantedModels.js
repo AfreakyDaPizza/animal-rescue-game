@@ -67,386 +67,434 @@ function blockCanopy(parent, x, y, z, s, rand) {
 }
 const seeded = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
+// ================= 共用：魔法閃粉光環（Mythic／Eternal 先有） =================
+// 一圈慢慢轉、上上落落嘅閃粉；回傳 update(t)
+let dotTex = null;
+// 圓圓、邊邊淡出嘅閃粉（唔係四方格）
+export function sparkleTexture() {
+  if (dotTex) return dotTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const grd = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.7)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, 32, 32);
+  dotTex = new THREE.CanvasTexture(c);
+  return dotTex;
+}
+function sparkleAura(parent, { n = 26, rx = 1.6, rz = 1.6, y0 = 0.5, h = 2.5, color = 0xfff59d, size = 0.16 } = {}) {
+  const pos = new Float32Array(n * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size, map: sparkleTexture(), transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pts.frustumCulled = false;
+  parent.add(pts);
+  const seeds = Array.from({ length: n }, (_, i) => ({ a: (i / n) * PI * 2, k: (i * 0.618) % 1, r: 0.8 + ((i * 0.37) % 0.4) }));
+  return (t) => {
+    for (let i = 0; i < n; i++) {
+      const s = seeds[i];
+      const a = s.a + t * 0.6;
+      const k = (s.k + t * 0.18) % 1;
+      pos[i * 3] = Math.cos(a) * rx * s.r;
+      pos[i * 3 + 1] = y0 + k * h;
+      pos[i * 3 + 2] = Math.sin(a) * rz * s.r;
+    }
+    geo.attributes.position.needsUpdate = true;
+    pts.material.opacity = 0.65 + Math.sin(t * 3) * 0.25;
+  };
+}
+// 兩點之間一條方塊（金線、骨架用）
+function bar(parent, a, b, w, color, extra) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  const m = box(parent, w, w, len + w * 0.6, color, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, 0.3, extra);
+  m.rotation.order = 'YXZ';
+  m.rotation.set(-Math.atan2(b[1] - a[1], Math.hypot(b[0] - a[0], b[2] - a[2])), Math.atan2(b[0] - a[0], b[2] - a[2]), 0);
+  return m;
+}
+// 水晶碎片（尖尖嘅八面體，拉長）
+const shardGeo = new THREE.OctahedronGeometry(1, 0);
+function shard(parent, x, y, z, w, len, mat, rx = 0, ry = 0, rz = 0) {
+  const m = new THREE.Mesh(shardGeo, mat);
+  m.scale.set(w, len, w * 0.7);
+  m.position.set(x, y, z);
+  m.rotation.set(rx, ry, rz);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+
 // ================= Royal Skywhale（ETERNAL，最勁嘅寵物） =================
-// 跟小朋友張圖：寶藍色鯨魚、淺色肚、金色月亮同星星花紋、發光青色眼；
-// 背脊上面有個浮島（草地、石、一棵大樹），用金啡色繩綁住；長長嘅胸鰭同大尾鰭；喺天上游
+// 跟小朋友張圖：寶藍色大鯨魚（淺紫肚、肚坑紋）、金色月亮／星星／彎線花紋、發光青色眼；
+// 背脊上面有個細細嘅浮島（草、石、紫花、一棵細細嘅扭紋樹），用金繩綁住；大胸鰭、大尾鰭（紫色邊）；喺天上游
 export function buildSkywhaleModel() {
-  const BODY = 0x3d35e0; // 寶藍（帶少少紫）
-  const BODY2 = 0x4c43f0;
-  const BELLY = 0x8c9eff; // 淺藍紫肚
+  const TOP = 0x2a36c9; // 背：深寶藍
+  const SIDE = 0x3d4ff0; // 側：亮寶藍
+  const BELLY = 0xc3c8ff; // 肚：淺紫藍
+  const GROOVE = 0x8f99ff;
   const CYAN = 0x18ffff;
-  const rand = seeded(77);
   const g = new THREE.Group();
-  const flyY = 1.8;
+  const flyY = 2.0;
   const root = pivot(g, 0, flyY, 0);
+  const rand = seeded(91);
 
-  // ---- 頭（前面 -z，圓圓扁扁）----
-  const head = pivot(root, 0, 0, -1.6);
-  box(head, 1.9, 1.35, 2.2, BODY, 0, 0, -0.2, 0.42);
-  box(head, 1.6, 1.0, 0.5, BODY2, 0, -0.05, -1.35, 0.45); // 鼻頭
-  box(head, 1.75, 0.45, 2.3, BELLY, 0, -0.55, -0.2, 0.42); // 下巴（淺色）
-  box(head, 1.82, 0.06, 2.0, 0x283593, 0, -0.3, -0.35, 0.3); // 口線
+  // ---- 頭（-z 前面）：大大個、圓角、鼻頭扁扁 ----
+  const head = pivot(root, 0, 0, -1.2);
+  box(head, 2.3, 1.75, 2.6, SIDE, 0, 0, -0.4, 0.45);
+  box(head, 2.1, 0.55, 2.4, TOP, 0, 0.62, -0.35, 0.45); // 頭頂深色
+  box(head, 2.05, 1.2, 0.5, SIDE, 0, -0.1, -1.75, 0.5); // 鼻頭
+  box(head, 2.15, 0.62, 2.7, BELLY, 0, -0.62, -0.4, 0.45); // 下巴
+  for (let i = 0; i < 5; i++) box(head, 2.18, 0.05, 0.1, GROOVE, 0, -0.85, -1.4 + i * 0.42, 0.3); // 下巴坑紋
+  box(head, 2.2, 0.06, 2.4, 0x1a237e, 0, -0.32, -0.55, 0.3); // 口線
   for (const s of [-1, 1]) {
-    // 發光青色眼（側面）
-    box(head, 0.08, 0.22, 0.34, CYAN, s * 0.95, 0.12, -0.75, 0.4, { emissive: CYAN, emissiveIntensity: 2.2 });
-    box(head, 0.09, 0.08, 0.12, 0xffffff, s * 0.97, 0.18, -0.8, 0.4, { emissive: 0xffffff, emissiveIntensity: 1 });
-    goldMoon(head, s * 0.96, 0.25, 0.1, 0.32, s * PI / 2, 0.4);
-    goldStar(head, s * 0.96, -0.05, 0.55, 0.16, s * PI / 2);
+    // 發光青色眼（金色眼框）
+    box(head, 0.08, 0.34, 0.5, 0xffca28, s * 1.15, 0.12, -1.0, 0.4, GOLD_X);
+    box(head, 0.1, 0.24, 0.38, CYAN, s * 1.16, 0.12, -1.0, 0.4, { emissive: CYAN, emissiveIntensity: 1.5 });
+    box(head, 0.11, 0.08, 0.12, 0xffffff, s * 1.17, 0.18, -1.06, 0.4, { emissive: 0xffffff, emissiveIntensity: 0.8 });
+    goldMoon(head, s * 1.16, 0.32, -0.15, 0.36, s * PI / 2, 0.5);
+    goldStar(head, s * 1.16, -0.05, 0.45, 0.2, s * PI / 2);
+    goldLine(head, [[s * 1.16, 0.55, -1.6], [s * 1.16, 0.62, -0.9], [s * 1.16, 0.5, -0.3]], 0.05);
   }
+  // 頭頂一個細金冠（Royal！）
+  const crown = pivot(head, 0, 0.92, -0.6);
+  box(crown, 0.9, 0.16, 0.7, 0xffc107, 0, 0, 0, 0.3, GOLD_X);
+  for (let i = 0; i < 5; i++) box(crown, 0.12, 0.3, 0.12, 0xffc107, -0.36 + i * 0.18, 0.2, -0.28, 0.3, GOLD_X);
+  box(crown, 0.16, 0.16, 0.06, 0xe040fb, 0, 0.05, -0.37, 0.3, { emissive: 0xd500f9, emissiveIntensity: 1.2 });
 
-  // ---- 身（中間大截，有浮島）----
-  const mid = pivot(root, 0, 0, -0.3);
-  box(mid, 2.0, 1.45, 2.8, BODY, 0, 0, 1.2, 0.4);
-  box(mid, 1.85, 0.5, 2.7, BELLY, 0, -0.62, 1.2, 0.42);
-  for (let i = 0; i < 6; i++) box(mid, 1.9, 0.05, 0.12, 0x7986cb, 0, -0.88, 0.1 + i * 0.42, 0.3); // 肚坑紋
+  // ---- 身（中間大截）----
+  const mid = pivot(root, 0, 0, 0);
+  box(mid, 2.45, 1.95, 2.6, SIDE, 0, 0, 1.0, 0.42);
+  box(mid, 2.25, 0.6, 2.5, TOP, 0, 0.72, 1.0, 0.45);
+  box(mid, 2.3, 0.62, 2.55, BELLY, 0, -0.72, 1.0, 0.45);
+  for (let i = 0; i < 5; i++) box(mid, 2.32, 0.05, 0.1, GROOVE, 0, -0.98, 0.0 + i * 0.5, 0.3);
   for (const s of [-1, 1]) {
-    // 兩邊金色花紋：月亮、星、菱形
-    goldMoon(mid, s * 1.01, 0.1, 0.6, 0.38, s * PI / 2, -0.5);
-    goldMoon(mid, s * 1.01, -0.05, 1.9, 0.3, s * PI / 2, 2.3);
-    goldStar(mid, s * 1.01, 0.42, 1.2, 0.2, s * PI / 2);
-    goldStar(mid, s * 1.01, -0.3, 1.25, 0.14, s * PI / 2);
-    const dia = pivot(mid, s * 1.02, 0.15, 2.45);
+    goldMoon(mid, s * 1.24, 0.2, 0.45, 0.42, s * PI / 2, -0.4);
+    goldStar(mid, s * 1.24, 0.45, 1.5, 0.24, s * PI / 2);
+    goldStar(mid, s * 1.24, -0.25, 1.3, 0.15, s * PI / 2);
+    goldLine(mid, [[s * 1.24, -0.4, -0.2], [s * 1.24, -0.2, 0.6], [s * 1.24, -0.3, 1.4], [s * 1.24, -0.5, 2.2]], 0.06);
+    const dia = pivot(mid, s * 1.25, 0.15, 2.0);
     dia.rotation.y = s * PI / 2;
-    box(dia, 0.34, 0.34, 0.04, 0xffca28, 0, 0, 0, 0.15, GOLD_X).rotation.z = PI / 4;
-    box(dia, 0.18, 0.18, 0.05, BODY, 0, 0, -0.01, 0.15).rotation.z = PI / 4;
-    box(dia, 0.08, 0.08, 0.06, 0xffca28, 0, 0, -0.02, 0.15, GOLD_X).rotation.z = PI / 4;
-    goldLine(mid, [[s * 1.02, -0.35, 0.0], [s * 1.02, -0.2, 0.5], [s * 1.02, -0.25, 1.0], [s * 1.02, -0.45, 1.6]]);
+    box(dia, 0.36, 0.36, 0.04, 0xffca28, 0, 0, 0, 0.15, GOLD_X).rotation.z = PI / 4;
+    box(dia, 0.18, 0.18, 0.05, CYAN, 0, 0, -0.01, 0.15, { emissive: CYAN, emissiveIntensity: 1.1 }).rotation.z = PI / 4;
   }
-  // ---- 背上嘅浮島 ----
-  const island = pivot(mid, 0, 0.72, 1.1);
-  island.scale.set(1.15, 1.25, 1.2); // 浮島大啲（似張圖）
-  box(island, 1.9, 0.35, 2.2, 0x5d4037, 0, 0.05, 0, 0.3); // 泥
-  box(island, 2.0, 0.22, 2.3, 0x4caf50, 0, 0.3, 0, 0.3); // 草
-  for (let i = 0; i < 6; i++) box(island, 0.45 + rand() * 0.3, 0.12, 0.45 + rand() * 0.3, i % 2 ? 0x66bb6a : 0x388e3c, (rand() - 0.5) * 1.6, 0.44, (rand() - 0.5) * 1.8, 0.3);
-  for (let i = 0; i < 3; i++) box(island, 0.3, 0.22, 0.28, 0x9e9e9e, (rand() - 0.5) * 1.6, 0.48, (rand() - 0.5) * 1.8, 0.4); // 石
-  // 浮島下面嘅青色發光（似魔法水）
-  const islandGlow = box(island, 1.95, 0.12, 2.25, CYAN, 0, -0.15, 0, 0.3, { emissive: CYAN, emissiveIntensity: 1.8, transparent: true, opacity: 0.8 });
-  // 大樹：扭紋樹幹 + 方塊樹冠
-  const tree = pivot(island, 0.1, 0.4, 0.1);
-  tree.scale.setScalar(1.6); // 大樹（張圖入面好大棵）
-  for (let i = 0; i < 5; i++) {
-    const seg = box(tree, 0.42 - i * 0.04, 0.5, 0.42 - i * 0.04, i % 2 ? 0x6d4c41 : 0x795548, Math.sin(i * 1.3) * 0.12, 0.25 + i * 0.45, Math.cos(i * 1.1) * 0.08, 0.35);
-    seg.rotation.y = i * 0.5;
-  }
-  for (const s of [-1, 1]) box(tree, 0.18, 0.8, 0.18, 0x6d4c41, s * 0.35, 2.0, 0, 0.35).rotation.z = s * -0.7;
-  const crown = pivot(tree, 0, 2.6, 0);
-  blockCanopy(crown, 0, 0, 0, 1.0, rand);
-  blockCanopy(crown, -0.8, -0.2, 0.2, 0.6, rand);
-  blockCanopy(crown, 0.8, -0.1, -0.2, 0.6, rand);
-  for (let i = 0; i < 4; i++) box(island, 0.12, 0.12, 0.12, 0xea80fc, (rand() - 0.5) * 1.5, 0.5, (rand() - 0.5) * 1.7, 0.4, { emissive: 0xd500f9, emissiveIntensity: 1 }); // 紫色細花
-  // 金啡色繩：一圈圈綁住浮島同個身
-  for (const dz of [-0.55, 0.65]) {
-    const rope = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.09, 6, 24), material(0x8d6e63, { roughness: 0.8 }));
-    rope.position.set(0, 0.25, 1.1 + dz);
-    rope.scale.set(1, 0.9, 1);
+  // ---- 背上嘅細浮島（大約身長 1/3）----
+  const island = pivot(mid, 0, 1.05, 0.9);
+  box(island, 1.5, 0.3, 1.7, 0x6d4c41, 0, 0, 0, 0.3); // 泥
+  box(island, 1.1, 0.25, 1.2, 0x5d4037, 0, -0.22, 0, 0.3);
+  box(island, 1.6, 0.16, 1.8, 0x4caf50, 0, 0.2, 0, 0.3); // 草
+  for (let i = 0; i < 5; i++) box(island, 0.32 + rand() * 0.2, 0.1, 0.32 + rand() * 0.2, i % 2 ? 0x81c784 : 0x388e3c, (rand() - 0.5) * 1.2, 0.3, (rand() - 0.5) * 1.3, 0.3);
+  for (let i = 0; i < 3; i++) box(island, 0.22, 0.16, 0.2, 0xb0bec5, (rand() - 0.5) * 1.2, 0.33, (rand() - 0.5) * 1.3, 0.4);
+  for (let i = 0; i < 5; i++) box(island, 0.1, 0.1, 0.1, i % 2 ? 0xea80fc : 0xfff176, (rand() - 0.5) * 1.3, 0.34, (rand() - 0.5) * 1.4, 0.4, { emissive: i % 2 ? 0xd500f9 : 0xffd600, emissiveIntensity: 0.8 });
+  // 細細棵扭紋樹
+  const tree = pivot(island, -0.15, 0.25, 0.1);
+  for (let i = 0; i < 3; i++) box(tree, 0.2 - i * 0.03, 0.32, 0.2 - i * 0.03, 0x6d4c41, Math.sin(i * 1.4) * 0.07, 0.16 + i * 0.28, 0, 0.35).rotation.y = i * 0.6;
+  const canopy = pivot(tree, 0, 1.0, 0);
+  blockCanopy(canopy, 0, 0, 0, 0.42, rand);
+  // 金繩綁住
+  for (const dz of [-0.55, 0.6]) {
+    const rope = new THREE.Mesh(new THREE.TorusGeometry(1.27, 0.07, 6, 28), material(0xffc107, GOLD_X));
+    rope.position.set(0, 0.15, 0.9 + dz);
+    rope.scale.set(1, 0.85, 1);
     mid.add(rope);
-    const rope2 = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.04, 6, 24), material(0xffc107, GOLD_X));
-    rope2.position.set(0, 0.25, 1.2 + dz);
-    rope2.scale.set(1, 0.9, 1);
-    mid.add(rope2);
   }
+  const islandGlow = box(island, 1.2, 0.08, 1.35, CYAN, 0, -0.38, 0, 0.3, { emissive: CYAN, emissiveIntensity: 1.2, transparent: true, opacity: 0.7 });
 
-  // ---- 長長嘅胸鰭（向後斜）----
+  // ---- 大胸鰭（似翼咁，喺天上撥）----
   const fins = [-1, 1].map((s) => {
-    const f = pivot(mid, s * 0.95, -0.35, 0.6);
-    f.scale.setScalar(1.45); // 長長嘅大鰭
-    box(f, 1.4, 0.12, 0.75, BODY2, s * 0.7, 0, 0.25, 0.4).rotation.y = s * -0.45;
-    box(f, 1.1, 0.1, 0.5, BODY, s * 1.7, -0.05, 0.75, 0.4).rotation.y = s * -0.6;
-    box(f, 0.9, 0.04, 0.06, 0xffca28, s * 1.2, 0.07, 0.48, 0.3, GOLD_X).rotation.y = s * -0.5;
-    goldStar(f, s * 1.75, 0.08, 0.72, 0.14);
+    const f = pivot(mid, s * 1.15, -0.45, 0.2);
+    const a = box(f, 1.7, 0.16, 0.95, TOP, s * 0.85, 0, 0.3, 0.4);
+    a.rotation.y = s * -0.35;
+    const b = box(f, 1.3, 0.13, 0.7, SIDE, s * 2.1, -0.05, 0.85, 0.4);
+    b.rotation.y = s * -0.55;
+    box(f, 0.9, 0.1, 0.4, 0x7c4dff, s * 2.75, -0.06, 1.25, 0.4, { emissive: 0x651fff, emissiveIntensity: 0.6 }).rotation.y = s * -0.6;
+    bar(f, [s * 0.4, 0.1, 0.15], [s * 2.6, 0.06, 1.1], 0.06, 0xffca28, GOLD_X);
+    goldStar(f, s * 1.6, 0.1, 0.55, 0.18);
     return { f, s };
   });
 
-  // ---- 後身 + 大尾鰭 ----
-  const rear = pivot(mid, 0, 0, 2.6);
-  box(rear, 1.5, 1.1, 1.8, BODY, 0, 0.05, 0.85, 0.4);
-  box(rear, 1.35, 0.35, 1.7, BELLY, 0, -0.42, 0.85, 0.42);
+  // ---- 後身、尾柄、大尾鰭 ----
+  const rear = pivot(mid, 0, 0, 2.3);
+  box(rear, 1.9, 1.5, 1.9, SIDE, 0, 0.05, 0.75, 0.42);
+  box(rear, 1.7, 0.45, 1.8, TOP, 0, 0.6, 0.75, 0.45);
+  box(rear, 1.7, 0.45, 1.8, BELLY, 0, -0.5, 0.75, 0.45);
   for (const s of [-1, 1]) {
-    goldLine(rear, [[s * 0.76, 0.3, 0.1], [s * 0.76, 0.1, 0.7], [s * 0.76, 0.25, 1.3], [s * 0.7, 0.0, 1.7]]);
-    goldStar(rear, s * 0.77, -0.1, 0.9, 0.14, s * PI / 2);
+    goldStar(rear, s * 0.96, 0.1, 0.8, 0.17, s * PI / 2);
+    goldLine(rear, [[s * 0.96, -0.3, 0.1], [s * 0.96, -0.15, 0.8], [s * 0.96, 0.1, 1.5]], 0.05);
   }
-  const tail = pivot(rear, 0, 0.05, 1.75);
-  box(tail, 0.9, 0.7, 1.2, BODY2, 0, 0, 0.5, 0.4);
-  const fluke = pivot(tail, 0, 0, 1.1);
+  const tail = pivot(rear, 0, 0.05, 1.6);
+  box(tail, 1.1, 0.85, 1.4, SIDE, 0, 0, 0.6, 0.42);
+  box(tail, 1.0, 0.3, 1.3, TOP, 0, 0.32, 0.6, 0.45);
+  const fluke = pivot(tail, 0, 0, 1.25);
   for (const s of [-1, 1]) {
-    box(fluke, 1.7, 0.14, 0.8, BODY, s * 0.85, 0, 0.45, 0.4).rotation.y = s * -0.5;
-    box(fluke, 1.2, 0.12, 0.35, 0x7c4dff, s * 1.35, 0, 0.85, 0.4, { emissive: 0x651fff, emissiveIntensity: 0.6 }).rotation.y = s * -0.5;
-    box(fluke, 1.2, 0.04, 0.06, 0xffca28, s * 0.9, 0.08, 0.45, 0.3, GOLD_X).rotation.y = s * -0.5;
-    goldStar(fluke, s * 1.2, 0.1, 0.55, 0.13);
+    box(fluke, 2.0, 0.16, 0.95, TOP, s * 1.0, 0, 0.45, 0.4).rotation.y = s * -0.45;
+    box(fluke, 1.5, 0.14, 0.45, 0x7c4dff, s * 1.6, 0, 0.95, 0.4, { emissive: 0x651fff, emissiveIntensity: 0.7 }).rotation.y = s * -0.45;
+    bar(fluke, [s * 0.2, 0.1, 0.25], [s * 1.9, 0.1, 0.9], 0.06, 0xffca28, GOLD_X);
   }
+  goldStar(fluke, 0, 0.12, 0.5, 0.2, 0);
 
-  // 淡淡嘅魔法光暈
-  const auraMat = new THREE.MeshBasicMaterial({ color: 0x8c9eff, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide });
+  // ---- 魔法：一圈閃粉（Eternal）+ 淡淡光暈 ----
+  const sparkle = sparkleAura(root, { n: 34, rx: 2.4, rz: 3.6, y0: -1.2, h: 3.4, color: 0xb9f6ff, size: 0.2 });
+  const auraMat = new THREE.MeshBasicMaterial({ color: 0x8c9eff, transparent: true, opacity: 0.1, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide });
   const aura = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), auraMat);
-  aura.scale.set(1.5, 1.2, 4.2);
-  aura.position.set(0, 0.2, 0.9);
+  aura.scale.set(1.9, 1.5, 4.3);
+  aura.position.set(0, 0.1, 1.0);
   root.add(aura);
 
-  // 閃粉尾巴
-  const SPARK = 30;
-  const pos = new Float32Array(SPARK * 3);
-  const sparkGeo = new THREE.BufferGeometry();
-  sparkGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: 0xfff59d, size: 0.2, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
-  sparks.frustumCulled = false;
-  g.add(sparks);
-
   g.userData.animate = (t, moving) => {
-    const sp = 1.6 + moving * 1.2;
-    head.rotation.x = Math.sin(t * sp + 0.9) * 0.04;
-    mid.rotation.x = Math.sin(t * sp) * 0.04;
+    const sp = 1.4 + moving * 1.0;
+    head.rotation.x = Math.sin(t * sp + 0.9) * 0.05;
+    mid.rotation.x = Math.sin(t * sp) * 0.035;
     rear.rotation.x = Math.sin(t * sp - 0.9) * 0.1;
-    tail.rotation.x = Math.sin(t * sp - 1.6) * 0.18;
-    fluke.rotation.x = Math.sin(t * sp - 2.2) * 0.32;
-    fins.forEach(({ f, s }) => (f.rotation.z = s * (0.1 + Math.sin(t * sp) * 0.35)));
-    crown.rotation.z = Math.sin(t * 1.3) * 0.05; // 樹喺風度擺
-    crown.rotation.x = Math.sin(t * 1.1 + 1) * 0.04;
-    root.position.y = flyY + Math.sin(t * 1.1) * 0.25;
-    islandGlow.material.emissiveIntensity = 1.4 + Math.sin(t * 2.5) * 0.6;
-    auraMat.opacity = 0.1 + Math.sin(t * 2) * 0.04;
-    for (let i = 0; i < SPARK; i++) {
-      const p = (t * 0.45 + i / SPARK) % 1;
-      pos[i * 3] = Math.sin(i * 2.4 + t) * (0.3 + p * 1.2);
-      pos[i * 3 + 1] = root.position.y + Math.cos(i * 1.7) * 0.3 + p * 0.9;
-      pos[i * 3 + 2] = 4.6 + p * 3.5;
-    }
-    sparkGeo.attributes.position.needsUpdate = true;
+    tail.rotation.x = Math.sin(t * sp - 1.6) * 0.2;
+    fluke.rotation.x = Math.sin(t * sp - 2.2) * 0.38;
+    fins.forEach(({ f, s }) => (f.rotation.z = s * (0.15 + Math.sin(t * sp) * 0.4)));
+    canopy.rotation.z = Math.sin(t * 1.3) * 0.08;
+    root.position.y = flyY + Math.sin(t * 1.1) * 0.3;
+    root.rotation.z = Math.sin(t * 0.7) * 0.05;
+    islandGlow.material.emissiveIntensity = 1.0 + Math.sin(t * 2.5) * 0.4;
+    auraMat.opacity = 0.08 + Math.sin(t * 2) * 0.03;
+    sparkle(t);
   };
   g.userData.move = 'fly';
   g.userData.flying = true;
-  g.userData.height = flyY + 2.6;
+  g.userData.height = flyY + 2.3;
   return g;
 }
 
 // ================= Enchanted Sunlion（MYTHIC） =================
-// 跟張圖：金色獅子身、好大嘅紫色水晶碎片鬃毛（有金星同金線）、張大口吼（有牙）、發光眼、尾巴尖有紫水晶、金色腳爪
+// 跟張圖：金色壯獅子（淺色口鼻胸口）、超大嘅紫水晶碎片鬃毛（三圈，有金星同金線）、
+// 張大口吼（白牙、粉紅脷）、發光橙眼、嬲嬲眉、額頭金帶 + 紫寶石、金腳爪、尾巴尖有紫水晶；身邊有金色閃粉
 export function buildSunlionModel() {
-  const FUR = 0xf2c680;
-  const FUR2 = 0xe0a85a;
-  const PURPLE = 0x6a1bdb;
-  const PURPLE2 = 0x9c4dff;
+  const FUR = 0xf5b83d;
+  const FUR2 = 0xe39a26;
+  const PALE = 0xffe2a8;
   const g = new THREE.Group();
   const root = pivot(g);
-  // ---- 四隻腳 + 金爪 ----
-  const legs = [];
-  for (const [x, z, ph] of [[-0.45, -0.75, 0], [0.45, -0.75, PI], [-0.45, 0.8, PI], [0.45, 0.8, 0]]) {
-    const hip = pivot(root, x, 1.15, z);
-    box(hip, 0.48, 0.8, 0.52, FUR, 0, -0.35, 0, 0.3);
-    box(hip, 0.42, 0.45, 0.46, FUR2, 0, -0.85, -0.02, 0.3);
-    box(hip, 0.56, 0.2, 0.62, 0xffd54f, 0, -1.07, -0.06, 0.35, GOLD_X); // 金色腳掌
-    for (const tx of [-1, 0, 1]) box(hip, 0.1, 0.1, 0.16, 0xfffde7, tx * 0.16, -1.1, -0.4, 0.4); // 爪
-    legs.push({ hip, ph });
-  }
+  const mane1 = glow(0x6d28d9, 0.55, { flatShading: true, roughness: 0.25, metalness: 0.2 });
+  const mane2 = glow(0xa855f7, 0.7, { flatShading: true, roughness: 0.25, metalness: 0.2 });
+  const mane3 = glow(0xd8b4fe, 0.6, { flatShading: true, roughness: 0.25 });
+  const maneMats = [mane1, mane2, mane3];
+  const BODY_Y = 1.45;
+
+  // ---- 四隻粗腳 + 金爪 ----
+  const legs = [[-0.55, -0.85], [0.55, -0.85], [-0.55, 0.95], [0.55, 0.95]].map(([x, z], i) => {
+    const hip = pivot(root, x, BODY_Y - 0.2, z);
+    box(hip, 0.55, 0.75, 0.6, i < 2 ? FUR : FUR2, 0, -0.3, 0, 0.35);
+    box(hip, 0.48, 0.5, 0.5, FUR, 0, -0.85, -0.02, 0.35);
+    box(hip, 0.6, 0.22, 0.68, 0xffc107, 0, -1.12, -0.06, 0.35, GOLD_X); // 金腳掌
+    for (let c = -1; c <= 1; c++) box(hip, 0.1, 0.1, 0.16, 0xfffde7, c * 0.17, -1.16, -0.42, 0.3);
+    return hip;
+  });
   // ---- 身 ----
-  box(root, 1.25, 1.0, 2.0, FUR, 0, 1.45, 0.1, 0.32);
-  box(root, 1.0, 0.3, 1.8, 0xf8dca8, 0, 1.0, 0.1, 0.35); // 淺肚
-  // 背脊上面嘅紫水晶 + 身兩邊嘅金星金線
-  for (let i = 0; i < 5; i++) {
-    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), crystal(i % 2 ? PURPLE2 : PURPLE, 0.7));
-    c.position.set(i % 2 ? 0.25 : -0.25, 2.0, 0.3 + i * 0.32);
-    c.scale.y = 1.8;
-    c.rotation.z = i % 2 ? -0.4 : 0.4;
-    root.add(c);
-  }
+  const body = pivot(root, 0, BODY_Y, 0);
+  box(body, 1.45, 1.15, 2.4, FUR, 0, 0.1, 0.1, 0.38);
+  box(body, 1.3, 0.5, 2.1, PALE, 0, -0.4, 0.05, 0.4); // 肚
+  box(body, 1.2, 0.4, 2.2, FUR2, 0, 0.62, 0.15, 0.4); // 背
+  // 背脊一行紫水晶（由鬃毛一路去到尾）
+  for (let i = 0; i < 6; i++) shard(body, 0, 0.85, -0.4 + i * 0.38, 0.14, 0.32 - i * 0.03, i % 2 ? mane1 : mane2, -0.5);
+  // 身上金線 + 金星
   for (const s of [-1, 1]) {
-    goldStar(root, s * 0.64, 1.5, 0.6, 0.22, s * PI / 2);
-    goldStar(root, s * 0.64, 1.25, 1.0, 0.14, s * PI / 2);
-    goldLine(root, [[s * 0.64, 1.75, -0.5], [s * 0.64, 1.55, 0.1], [s * 0.64, 1.7, 0.7], [s * 0.64, 1.45, 1.05]]);
+    goldLine(body, [[s * 0.73, 0.4, -0.7], [s * 0.73, 0.1, 0.0], [s * 0.73, 0.3, 0.7], [s * 0.73, 0.0, 1.2]], 0.05);
+    goldStar(body, s * 0.74, 0.0, 0.35, 0.2, s * PI / 2);
   }
-  // ---- 頭（有水晶鬃毛）----
-  const neck = pivot(root, 0, 1.95, -0.95);
-  const head = pivot(neck, 0, 0, -0.15);
-  // 鬃毛：三圈紫色水晶碎片向外射出去，夾住金星同金線
-  const mane = pivot(head, 0, 0.05, 0.25);
-  const shardMats = [];
-  for (let ring = 0; ring < 3; ring++) {
-    const n = 12 + ring * 4;
-    const rr = 0.75 + ring * 0.32;
-    const m = crystal(ring === 1 ? PURPLE2 : PURPLE, 0.55 + ring * 0.15);
-    shardMats.push(m);
+
+  // ---- 頭（大，張口吼）----
+  const head = pivot(root, 0, BODY_Y + 0.6, -1.3);
+  box(head, 1.25, 1.05, 1.0, FUR, 0, 0.05, 0, 0.3);
+  box(head, 1.05, 0.35, 0.9, FUR2, 0, 0.5, 0.05, 0.3); // 額頭
+  box(head, 0.95, 0.5, 0.62, PALE, 0, -0.16, -0.62, 0.3); // 闊闊嘅口鼻（獅子）
+  box(head, 0.5, 0.3, 0.5, FUR, 0, 0.18, -0.68, 0.3); // 鼻樑
+  box(head, 0.4, 0.2, 0.14, 0x4e342e, 0, 0.12, -0.96, 0.35); // 鼻
+  for (const s of [-1, 1]) box(head, 0.28, 0.3, 0.14, FUR2, s * 0.5, 0.62, 0.15, 0.35); // 耳仔
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 2; i++) box(head, 0.06, 0.2, 0.06, 0xffffff, s * (0.16 + i * 0.12), -0.34, -0.8, 0.3); // 上牙
+    box(head, 0.09, 0.28, 0.08, 0xffffff, s * 0.3, -0.38, -0.78, 0.3); // 犬齒
+    // 發光橙眼 + 嬲嬲眉
+    box(head, 0.24, 0.16, 0.05, 0xffd54f, s * 0.27, 0.2, -0.53, 0.35, { emissive: 0xff9100, emissiveIntensity: 1.4 });
+    box(head, 0.09, 0.12, 0.05, 0x3e2723, s * 0.24, 0.19, -0.56, 0.35);
+    const brow = box(head, 0.32, 0.08, 0.08, 0x8d5a1e, s * 0.27, 0.34, -0.55, 0.35);
+    brow.rotation.z = s * -0.35;
+  }
+  // 額頭金帶 + 紫寶石
+  box(head, 0.95, 0.12, 0.1, 0xffc107, 0, 0.46, -0.5, 0.3, GOLD_X);
+  shard(head, 0, 0.55, -0.56, 0.13, 0.22, mane2);
+  const jaw = pivot(head, 0, -0.38, -0.25);
+  box(jaw, 0.85, 0.24, 0.62, PALE, 0, -0.08, -0.32, 0.32);
+  box(jaw, 0.52, 0.08, 0.45, 0xe57373, 0, 0.04, -0.3, 0.3); // 脷
+  for (const s of [-1, 1]) box(jaw, 0.08, 0.2, 0.08, 0xffffff, s * 0.26, 0.1, -0.52, 0.3);
+  // 鬃毛：三圈紫水晶碎片圍住個頭，有金星
+  const mane = pivot(head, 0, 0.05, 0.2);
+  const maneShards = [];
+  [[1.0, 14, 0.5, 0.2], [1.3, 16, 0.65, 0.35], [1.55, 18, 0.55, 0.5]].forEach(([r, n, len, z], ring) => {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * PI * 2 + ring * 0.2;
-      const len = 0.55 + ((i * 7 + ring * 3) % 5) * 0.08;
-      const sh = new THREE.Mesh(new THREE.ConeGeometry(0.17 - ring * 0.02, len, 4), m);
-      sh.position.set(Math.cos(a) * rr, Math.sin(a) * rr, ring * 0.25);
-      sh.rotation.z = a - PI / 2;
-      sh.rotation.x = -0.35;
-      mane.add(sh);
-      if (i % 4 === 0 && ring < 2) goldStar(mane, Math.cos(a) * (rr + 0.25), Math.sin(a) * (rr + 0.25), -0.18 + ring * 0.25, 0.2);
+      const m = shard(mane, Math.cos(a) * r * 0.62, Math.sin(a) * r * 0.62, z, 0.2, len, maneMats[(i + ring) % 3], 0, 0, a - PI / 2);
+      maneShards.push(m);
     }
+  });
+  // 向後嘅鬃毛（側面都見到成個頸都係水晶）
+  for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * PI * 2 + ring * 0.26;
+    const r = 0.62 + ring * 0.15;
+    const m = shard(mane, Math.cos(a) * r, Math.sin(a) * r - 0.1, 0.55 + ring * 0.45, 0.2, 0.62, maneMats[(i + ring) % 3]);
+    m.rotation.set(PI / 2 - 0.35, 0, a - PI / 2); // 斜斜向後、向外
+    m.rotation.order = 'ZXY';
+    maneShards.push(m);
   }
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * PI * 2 + 0.2;
-    goldLine(mane, [[Math.cos(a) * 0.6, Math.sin(a) * 0.6, -0.15], [Math.cos(a) * 1.25, Math.sin(a) * 1.25, 0.05]], 0.05);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * PI * 2 + 0.3;
+    goldStar(mane, Math.cos(a) * 0.95, Math.sin(a) * 0.95, -0.12, 0.22, 0);
   }
-  // 額頭寶石 + 金帶（似皇冠）
-  const browGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), glow(0xd500f9, 1.6));
-  browGem.position.set(0, 0.42, -0.52);
-  browGem.scale.y = 1.5;
-  head.add(browGem);
-  box(head, 0.6, 0.1, 0.1, 0xffca28, 0, 0.3, -0.5, 0.3, GOLD_X);
-  // 面
-  box(head, 0.95, 0.8, 0.85, FUR, 0, 0.05, -0.15, 0.35);
-  box(head, 0.6, 0.35, 0.4, 0xf8dca8, 0, -0.1, -0.68, 0.35); // 口鼻
-  box(head, 0.24, 0.16, 0.1, 0x4e342e, 0, 0.06, -0.9, 0.4); // 鼻
-  for (const s of [-1, 1]) {
-    box(head, 0.2, 0.12, 0.05, 0xff6d00, s * 0.24, 0.2, -0.58, 0.4, { emissive: 0xffab00, emissiveIntensity: 2.2 }); // 發光眼
-    box(head, 0.06, 0.1, 0.03, 0x1a1a1a, s * 0.24, 0.2, -0.61, 0.4);
-    box(head, 0.26, 0.07, 0.06, 0x8d5a2b, s * 0.24, 0.32, -0.6, 0.3).rotation.z = s * 0.35; // 嬲嬲眉
-    box(head, 0.2, 0.2, 0.12, FUR2, s * 0.38, 0.5, 0.05, 0.4); // 耳
-  }
-  // 張大口：上排牙 + 會郁嘅下顎、紅色口、舌、下排牙
-  box(head, 0.5, 0.06, 0.3, 0xc62828, 0, -0.28, -0.7, 0.3);
-  for (const s of [-1, 1]) spike(head, 0.05, 0.18, 0xffffff, s * 0.17, -0.33, -0.8, PI, 0);
-  const jaw = pivot(head, 0, -0.3, -0.45);
-  box(jaw, 0.52, 0.15, 0.5, FUR, 0, -0.08, -0.25, 0.35);
-  box(jaw, 0.42, 0.04, 0.4, 0xb71c1c, 0, 0.01, -0.25, 0.3);
-  for (const s of [-1, 1]) spike(jaw, 0.045, 0.16, 0xffffff, s * 0.16, 0.08, -0.43, 0, 0);
-  // ---- 尾巴（尖有紫水晶 + 金帶）----
-  const tail = pivot(root, 0, 1.75, 1.1);
-  box(tail, 0.18, 0.18, 0.9, FUR, 0, 0.2, 0.4, 0.4).rotation.x = -0.5;
-  box(tail, 0.2, 0.08, 0.08, 0xffca28, 0, 0.42, 0.76, 0.3, GOLD_X);
-  const tip = pivot(tail, 0, 0.5, 0.95);
-  for (let i = 0; i < 5; i++) {
-    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), crystal(i % 2 ? PURPLE2 : PURPLE, 0.8));
-    c.position.set(Math.cos(i * 1.25) * 0.12, Math.sin(i * 1.25) * 0.12 + 0.1, 0.05);
-    c.scale.y = 1.7;
-    c.rotation.z = i * 1.25;
-    tip.add(c);
-  }
-  goldStar(tip, 0, 0.12, 0.2, 0.16);
+
+  // ---- 尾 + 紫水晶尾尖 ----
+  const tail = pivot(root, 0, BODY_Y + 0.4, 1.3);
+  box(tail, 0.18, 0.18, 0.9, FUR, 0, 0.2, 0.4, 0.3).rotation.x = -0.5;
+  const tip = pivot(tail, 0, 0.45, 0.85);
+  for (let i = 0; i < 5; i++) shard(tip, 0, 0, 0, 0.13, 0.32, maneMats[i % 3], (i / 5) * PI * 2, 0, 0.6);
+  shard(tip, 0, 0.2, 0, 0.15, 0.35, mane2);
+
+  const sparkle = sparkleAura(g, { n: 24, rx: 1.5, rz: 2.0, y0: 0.3, h: 3.0, color: 0xffe57f, size: 0.16 });
 
   g.userData.animate = (t, moving) => {
-    const sp = 9;
-    for (const l of legs) l.hip.rotation.x = Math.sin(t * sp + l.ph) * 0.55 * moving;
-    root.position.y = Math.abs(Math.sin(t * sp)) * 0.06 * moving;
-    neck.rotation.x = Math.sin(t * 2) * 0.05;
-    neck.rotation.y = Math.sin(t * 0.7) * 0.25 * (1 - moving);
-    const roar = Math.max(0, Math.sin(t * 0.9)) ** 3; // 隔一陣張大口吼
-    jaw.rotation.x = 0.25 + roar * 0.5;
-    mane.scale.setScalar(1 + roar * 0.08 + Math.sin(t * 4) * 0.02); // 鬃毛豎起
-    const k = 0.5 + Math.sin(t * 3) * 0.25 + roar * 0.4;
-    shardMats.forEach((m) => (m.emissiveIntensity = k));
-    browGem.rotation.y = t * 2;
-    tail.rotation.y = Math.sin(t * 5) * 0.35;
-    tip.rotation.z = t;
+    legs.forEach((l, i) => (l.rotation.x = Math.sin(t * 8 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * 0.55 * moving));
+    root.position.y = Math.abs(Math.sin(t * 8)) * 0.07 * moving;
+    head.rotation.y = Math.sin(t * 0.8) * 0.2 * (1 - moving);
+    // 間中吼一下：開口、鬃毛漲大
+    const roar = Math.max(0, Math.sin(t * 0.9)) ** 6;
+    jaw.rotation.x = 0.15 + roar * 0.6;
+    head.rotation.x = -roar * 0.18;
+    mane.scale.setScalar(1 + roar * 0.12 + Math.sin(t * 3) * 0.02);
+    mane1.emissiveIntensity = 0.5 + roar * 0.6 + Math.sin(t * 2) * 0.1;
+    mane2.emissiveIntensity = 0.65 + roar * 0.7;
+    tail.rotation.y = Math.sin(t * 2.2) * 0.4;
+    tail.rotation.x = Math.sin(t * 1.7) * 0.15;
+    sparkle(t);
   };
   g.userData.move = 'walk';
-  g.userData.height = 3.3;
+  g.userData.height = 3.4;
   return g;
 }
 
 // ================= Octophant（LEGENDARY） =================
-// 跟張圖：藍紫色大笨象（皮膚有啲小凸點）、大耳（內面粉紫）、白色象牙、
-// 冇象鼻：變咗粉紫色八爪魚觸手（有一粒粒吸盤），頭頂同面兩邊都有；橙色發光眼；淡紫色光暈
+// 跟張圖：藍紫色大笨象（皮有一粒粒）、超大耳（粉紅入面）、長長白色彎象牙、發光橙眼；
+// 冇象鼻，換咗做 5 條粉紫色八爪魚觸手（有吸盤，識郁），頭頂同身都有吸盤；淡淡粉紫光
 export function buildOctophantModel() {
-  const SKIN = 0x5b6ef0;
-  const SKIN2 = 0x7a6cf0;
-  const PINK = 0xd98cf0;
-  const SUCK = 0xf3b2ff;
+  const SKIN = 0x6f8dff;
+  const SKIN2 = 0x5672f0;
+  const DARK = 0x3f55c9;
+  const TENT = 0xd65db1;
+  const TENT2 = 0xf3a6e0;
   const g = new THREE.Group();
   const root = pivot(g);
-  const bumps = (parent, w, h, d, x, y, z, n, seed) => {
-    const r = seeded(seed);
-    for (let i = 0; i < n; i++) box(parent, 0.07, 0.07, 0.07, 0x4253d6, x + (r() - 0.5) * w, y + (r() - 0.5) * h, z + (r() - 0.5) * d, 0.2);
-  };
-  // 一粒吸盤：粉色六角圈 + 深紫色窿（向 -z）
-  const ringGeo = new THREE.CylinderGeometry(1, 1.05, 0.08, 6).rotateX(PI / 2);
-  const holeGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.09, 6).rotateX(PI / 2);
-  const sucker = (parent, x, y, z, r = 0.16) => {
-    const holder = pivot(parent, x, y, z);
-    const ring = new THREE.Mesh(ringGeo, material(SUCK));
-    ring.scale.setScalar(r);
-    holder.add(ring);
-    const hole = new THREE.Mesh(holeGeo, material(0x4a148c));
-    hole.scale.setScalar(r);
-    hole.position.z = -0.01;
-    holder.add(hole);
-    return holder;
-  };
-  // ---- 腳（粗、白色腳甲）----
-  const legs = [];
-  for (const [x, z, ph] of [[-0.62, -0.85, 0], [0.62, -0.85, PI], [-0.62, 0.95, PI], [0.62, 0.95, 0]]) {
-    const hip = pivot(root, x, 1.4, z);
-    box(hip, 0.72, 1.35, 0.72, SKIN, 0, -0.65, 0, 0.25);
-    for (const tx of [-1, 0, 1]) box(hip, 0.2, 0.16, 0.12, 0xeceff1, tx * 0.22, -1.32, -0.36, 0.4);
-    legs.push({ hip, ph });
+  const BODY_Y = 1.85;
+
+  // ---- 四隻粗腳 + 白腳甲 ----
+  const legs = [[-0.75, -0.95], [0.75, -0.95], [-0.75, 1.0], [0.75, 1.0]].map(([x, z]) => {
+    const hip = pivot(root, x, BODY_Y - 0.3, z);
+    box(hip, 0.75, 1.0, 0.75, SKIN2, 0, -0.45, 0, 0.3);
+    box(hip, 0.8, 0.55, 0.8, SKIN, 0, -1.05, 0, 0.3);
+    for (let c = -1; c <= 1; c++) box(hip, 0.16, 0.14, 0.08, 0xf5f5f5, c * 0.22, -1.25, -0.4, 0.3);
+    return hip;
+  });
+  // ---- 身（大大舊，皮有凸粒）----
+  const body = pivot(root, 0, BODY_Y, 0);
+  box(body, 2.2, 1.8, 2.9, SKIN, 0, 0.1, 0.1, 0.35);
+  box(body, 2.0, 0.5, 2.7, SKIN2, 0, 0.9, 0.1, 0.38);
+  box(body, 1.9, 0.4, 2.6, DARK, 0, -0.75, 0.1, 0.38);
+  const rand = seeded(17);
+  for (let i = 0; i < 22; i++) {
+    const side = rand() < 0.5 ? -1 : 1;
+    box(body, 0.06, 0.16, 0.16, SKIN2, side * 1.11, -0.5 + rand() * 1.3, -1.1 + rand() * 2.4, 0.4); // 皮凸粒
   }
-  // ---- 身 ----
-  box(root, 1.9, 1.6, 2.6, SKIN, 0, 2.0, 0.1, 0.3);
-  box(root, 1.7, 0.5, 2.3, SKIN2, 0, 2.75, 0.15, 0.35); // 背
-  bumps(root, 1.9, 1.4, 2.4, 0, 2.0, 0.1, 40, 5);
-  for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
-    const sk = sucker(root, s * 0.97, 2.1 - i * 0.3, -0.7 + i * 0.35, 0.16);
-    sk.rotation.y = s * PI / 2; // 身側嘅觸手吸盤
-  }
-  // ---- 頭 ----
-  const neck = pivot(root, 0, 2.3, -1.25);
-  const head = pivot(neck);
-  box(head, 1.5, 1.45, 1.1, SKIN2, 0, 0.15, -0.2, 0.3);
-  box(head, 0.55, 0.9, 0.3, 0x8f7cf5, 0, 0.0, -0.72, 0.35); // 額頭中間
-  bumps(head, 1.3, 1.2, 0.2, 0, 0.1, -0.71, 18, 9);
+  // 身上吸盤
+  const sucker = (parent, x, y, z, r, ry = 0, rx = 0) => {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.35, 6, 12), material(TENT2, { emissive: 0xd500f9, emissiveIntensity: 0.25 }));
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, 0);
+    parent.add(m);
+    return m;
+  };
   for (const s of [-1, 1]) {
-    box(head, 0.2, 0.13, 0.05, 0xffab00, s * 0.36, 0.2, -0.72, 0.4, { emissive: 0xff8f00, emissiveIntensity: 2 }); // 橙色發光眼
-    box(head, 0.05, 0.11, 0.03, 0x1a1a1a, s * 0.36, 0.2, -0.75, 0.4);
-    box(head, 0.26, 0.06, 0.06, 0x3949ab, s * 0.36, 0.33, -0.74, 0.3).rotation.z = s * 0.4; // 嬲嬲眉
-    // 大耳（外面藍、內面粉紫）
-    const ear = pivot(head, s * 0.65, 0.25, 0.0);
-    box(ear, 0.14, 1.85, 1.6, SKIN, s * 0.5, -0.15, 0.35, 0.3);
-    box(ear, 0.06, 1.5, 1.25, PINK, s * 0.42, -0.15, 0.3, 0.3);
-    for (let k = 0; k < 4; k++) box(ear, 0.16, 0.08, 0.08, 0x4253d6, s * 0.5, 0.5 - k * 0.35, -0.3, 0.3); // 耳邊紋
-    ear.rotation.y = s * -0.35;
-    // 白色象牙（向前彎）
-    const tusk = pivot(head, s * 0.42, -0.45, -0.55);
-    for (let i = 0; i < 6; i++) box(tusk, 0.2 - i * 0.025, 0.2 - i * 0.025, 0.32, 0xf5f5f5, s * i * 0.06, -0.12 - i * 0.12 + i * i * 0.035, -0.15 - i * 0.27, 0.4); // 長長嘅白象牙（落咗再向上彎）
+    sucker(body, s * 1.12, 0.2, 0.6, 0.14, s * PI / 2);
+    sucker(body, s * 1.12, -0.25, 1.05, 0.11, s * PI / 2);
   }
-  // 頭頂一圈吸盤（向上）
-  for (let i = 0; i < 5; i++) sucker(head, -0.4 + i * 0.2, 0.8, -0.25 + (i % 2) * 0.1, 0.12).rotation.x = PI / 2;
-  // ---- 觸手（中間一條代替象鼻 + 兩邊各一條），一節節由上面吊落嚟 ----
-  const tentacles = [];
-  const makeTentacle = (x, y, z, segs, r0, side) => {
-    let parent = pivot(head, x, y, z);
-    const joints = [];
-    for (let i = 0; i < segs; i++) {
-      const j = pivot(parent, 0, i === 0 ? 0 : -0.3, 0);
-      const r = r0 * (1 - i / (segs + 2));
-      box(j, r * 2, 0.32, r * 2, i % 2 ? PINK : 0xc77de8, 0, -0.16, 0, 0.4);
-      sucker(j, 0, -0.16, -r - 0.02, r * 0.95);
-      joints.push(j);
-      parent = j;
+  // 背上一條細觸手（似條尾）
+  const tail = pivot(root, 0, BODY_Y + 0.5, 1.6);
+  for (let i = 0; i < 4; i++) box(tail, 0.24 - i * 0.04, 0.24 - i * 0.04, 0.4, i % 2 ? TENT2 : TENT, 0, -i * 0.15, 0.2 + i * 0.35, 0.4);
+
+  // ---- 頭 ----
+  const head = pivot(root, 0, BODY_Y + 0.55, -1.45);
+  box(head, 1.6, 1.5, 1.3, SKIN, 0, 0, 0, 0.38);
+  box(head, 1.45, 0.4, 1.2, SKIN2, 0, 0.6, 0.05, 0.4);
+  for (let i = 0; i < 3; i++) sucker(head, -0.35 + i * 0.35, 0.78, 0.1, 0.12, 0, PI / 2); // 頭頂吸盤
+  for (const s of [-1, 1]) {
+    // 發光橙眼
+    box(head, 0.3, 0.24, 0.06, 0xffd180, s * 0.45, 0.18, -0.66, 0.35, { emissive: 0xff9100, emissiveIntensity: 1.3 });
+    box(head, 0.1, 0.18, 0.05, 0x1a1a1a, s * 0.42, 0.17, -0.7, 0.35);
+    box(head, 0.36, 0.08, 0.08, DARK, s * 0.45, 0.36, -0.67, 0.35).rotation.z = s * -0.25;
+  }
+  // 大耳（識撥）
+  const ears = [-1, 1].map((s) => {
+    const e = pivot(head, s * 0.72, 0.2, 0.25);
+    // 圓圓嘅大耳：大塊 + 下面細啲 + 粉紅入面（一層層砌到似圓形）
+    box(e, 0.16, 1.5, 1.7, SKIN, 0, 0.05, 0.8, 0.45);
+    box(e, 0.16, 1.1, 1.3, SKIN, 0, -0.75, 0.7, 0.45);
+    box(e, 0.16, 0.5, 0.8, SKIN, 0, -1.25, 0.55, 0.45);
+    box(e, 0.06, 1.2, 1.3, 0xf48fb1, -s * 0.07, -0.05, 0.75, 0.45);
+    box(e, 0.06, 0.7, 0.85, 0xf48fb1, -s * 0.07, -0.75, 0.65, 0.45);
+    box(e, 0.18, 0.1, 1.5, SKIN2, 0, 0.8, 0.8, 0.3); // 耳邊
+    return { e, s };
+  });
+  // 長長白色彎象牙
+  for (const s of [-1, 1]) {
+    const t = pivot(head, s * 0.42, -0.55, -0.45);
+    box(t, 0.18, 0.18, 0.6, 0xfafafa, 0, 0, -0.25, 0.4).rotation.x = 0.3;
+    box(t, 0.15, 0.15, 0.55, 0xfafafa, 0, 0.2, -0.75, 0.4).rotation.x = -0.4;
+    box(t, 0.11, 0.11, 0.35, 0xfafafa, 0, 0.45, -1.05, 0.4).rotation.x = -0.9;
+  }
+  // 5 條觸手（代替象鼻）：一節節收細，底面有吸盤
+  const tentacles = [[0, -0.2, 1.25], [-0.32, -0.35, 1.0], [0.32, -0.35, 1.0], [-0.6, -0.2, 0.75], [0.6, -0.2, 0.75]].map(([x, y, sc], k) => {
+    const base = pivot(head, x, y, -0.65);
+    const segs = [];
+    let parent = base;
+    for (let i = 0; i < 6; i++) {
+      const p = pivot(parent, 0, i === 0 ? 0 : -0.36 * sc, 0);
+      const w = (0.34 - i * 0.045) * sc;
+      box(p, w, 0.4 * sc, w, i % 2 ? TENT : 0xc2479e, 0, -0.18 * sc, 0, 0.45);
+      sucker(p, 0, -0.18 * sc, -w / 2 - 0.01, w * 0.32, 0, 0);
+      segs.push(p);
+      parent = p;
     }
-    tentacles.push({ joints, side, phase: side * 1.7 + 2 });
-  };
-  makeTentacle(0, -0.25, -0.7, 8, 0.24, 0);
-  makeTentacle(-0.62, -0.1, -0.55, 6, 0.17, -1);
-  makeTentacle(0.62, -0.1, -0.55, 6, 0.17, 1);
-  // 條尾都係細觸手
-  const tail = pivot(root, 0, 2.4, 1.4);
-  box(tail, 0.18, 0.7, 0.18, PINK, 0, -0.3, 0.1, 0.4);
-  // ---- 紫色光暈 ----
-  const auraMat = new THREE.MeshBasicMaterial({ color: 0xd500f9, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide });
-  const aura = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), auraMat);
-  aura.scale.set(1.6, 1.8, 2.3);
-  aura.position.set(0, 2.0, -0.1);
+    base.rotation.x = -0.25;
+    base.rotation.z = x * 0.6;
+    return { segs, k, x };
+  });
+
+  // 淡淡粉紫光暈
+  const auraMat = new THREE.MeshBasicMaterial({ color: 0xe040fb, transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide });
+  const aura = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), auraMat);
+  aura.scale.set(1.9, 1.9, 2.6);
+  aura.position.set(0, BODY_Y + 0.1, -0.1);
   root.add(aura);
 
   g.userData.animate = (t, moving) => {
-    const sp = 6;
-    for (const l of legs) l.hip.rotation.x = Math.sin(t * sp + l.ph) * 0.38 * moving;
-    root.position.y = Math.abs(Math.sin(t * sp)) * 0.05 * moving;
-    neck.rotation.x = Math.sin(t * 1.6) * 0.04;
-    neck.rotation.y = Math.sin(t * 0.6) * 0.2 * (1 - moving);
+    legs.forEach((l, i) => (l.rotation.x = Math.sin(t * 5 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * 0.35 * moving));
+    root.position.y = Math.abs(Math.sin(t * 5)) * 0.06 * moving;
+    head.rotation.x = Math.sin(t * 1.2) * 0.04;
+    ears.forEach(({ e, s }) => (e.rotation.y = s * (0.75 + Math.sin(t * 2.2) * 0.2))); // 大耳向兩邊打開撥下撥下
     for (const tn of tentacles) {
-      tn.joints.forEach((j, i) => {
-        j.rotation.x = Math.sin(t * 2.2 + tn.phase + i * 0.6) * 0.18 - (tn.side === 0 ? 0.04 : 0);
-        j.rotation.z = Math.sin(t * 1.7 + tn.phase + i * 0.5) * 0.12 + tn.side * 0.05;
+      tn.segs.forEach((p, i) => {
+        p.rotation.x = Math.sin(t * 2.2 - i * 0.6 + tn.k) * 0.22 - (i > 3 ? 0.25 : 0);
+        p.rotation.z = Math.sin(t * 1.7 - i * 0.5 + tn.k * 1.3) * 0.18 + tn.x * 0.1;
       });
     }
-    tail.rotation.z = Math.sin(t * 4) * 0.3;
-    auraMat.opacity = 0.04 + Math.sin(t * 2) * 0.02;
+    tail.rotation.y = Math.sin(t * 2) * 0.4;
+    auraMat.opacity = 0.06 + Math.sin(t * 2) * 0.02;
   };
   g.userData.move = 'walk';
-  g.userData.height = 3.4;
+  g.userData.height = 3.6;
   return g;
 }
 
