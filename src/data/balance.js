@@ -78,7 +78,7 @@ export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 400
 // 15 級，每級一個款：Basic → … → Mountain Magic（14）→ Astral（15，MAX）
 export const MAX_TRAINING_LEVEL = 16; // Lv16 Astral King's Kingdom（小朋友 2026-10-17）
 // 小朋友 2026-10-11 加強：Lv14 Mountain Magic ×1.5、Lv15 Astral ×2
-const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 3 }; // Lv16 Astral King's Kingdom: x3
+const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 6 }; // Lv16 Astral King's Kingdom: x6（小朋友 2026-10-17：再勁啲，本來 x3）
 export const trainingGain = (level, stat = 'iq') =>
   Math.round(5 * 2 ** (level - 1) * (stat === 'speed' ? 0.9 : 1) * (TOP_LEVEL_BUFF[level] ?? 1));
 // 升去 Lv2–13 貴 10%（小朋友 2026-10-11），升去 Lv14／15 價錢唔變
