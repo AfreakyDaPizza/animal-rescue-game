@@ -32,6 +32,7 @@ const DEFAULTS = {
   labLegendaryGiven: 0, // 交咗幾多隻 Legendary 俾傳送門
   labGivenSpecies: [], // 交咗邊幾種（結局動畫佢哋會返嚟）
   labVisited: false, // 行入過實驗室（之後唔再指路）
+  bigButton: false, // 撳咗橋下面個紅掣（開 Fuse Machine 同新生態區）
   kingdomSeen: false, // 睇咗 Biome 7 開門動畫
   collabSeen: false, // 睇咗秘密結局 THE COLLAB
   labBossDefeated: false, // 打贏咗 Mutated Scientist Poacher

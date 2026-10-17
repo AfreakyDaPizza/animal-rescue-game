@@ -34,6 +34,8 @@ export const RARITIES = [
   { name: 'Epic', chance: 13, money: 2.5, reproduce: 1.5, color: '#ce93d8' },
   { name: 'Legendary', chance: 15, money: 5, reproduce: 2, color: '#ffca28' },
   { name: 'Mythic', chance: 2, money: 15, reproduce: 3, color: '#ff4081' },
+  // Eternal（小朋友 Issue #5）：最高級，唔會隨機出，淨係 Royal Skywhale 有
+  { name: 'Eternal', chance: 0, money: 40, reproduce: 4, color: '#18ffff' },
 ];
 export const rarityInfo = (name) => RARITIES.find((r) => r.name === name) || RARITIES[0];
 export function randomRarity() {

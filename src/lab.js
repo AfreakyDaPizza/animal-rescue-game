@@ -918,8 +918,7 @@ function buildRedButton(live) {
   sign.position.y = 2.4;
   g.add(sign);
   live.add(g);
-  addCollider(RED_BUTTON.x, RED_BUTTON.z, 0.9);
-  lab.button = { g, cap, ring, press: 0 };
+  lab.button = { g, cap, ring, press: 0 }; // 冇撳嘢圈：條路好窄，唔好擋住
 }
 export function pressButton() {
   lab.button.press = 1;
@@ -1007,7 +1006,7 @@ function updateLockSign() {
   lab.lock.sign.draw(THEMES.dark, [
     { text: '🔒 LOCKED', size: 0.3, color: '#ffeb3b' },
     { text: 'Something is hiding behind this gate...', size: 0.15 },
-    { text: 'Find the secret RED BUTTON 🔴 to open it!', size: 0.16, color: '#ff8a80' },
+    { text: 'Find the secret RED BUTTON 🔴 (under a bridge...)', size: 0.15, color: '#ff8a80' },
   ]);
 }
 

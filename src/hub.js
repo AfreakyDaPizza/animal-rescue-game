@@ -1914,7 +1914,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   const fu = near(fuseMachine.spot.x, fuseMachine.spot.z);
   if (fu < INTERACT_DISTANCE + 1) {
     if (isFuseOpen()) options.push({ dist: fu, prompt: '<kbd>E</kbd> Open the Fuse Machine 🧪 (fuse 3 pets into 1)', action: actions.openFuse });
-    else options.push({ dist: fu, prompt: `🔒 The Fuse Machine opens on ${openDateText()} (in ${daysUntilOpen()} day${daysUntilOpen() === 1 ? '' : 's'})` });
+    else options.push({ dist: fu, prompt: `🔒 The Fuse Machine opens on ${openDateText()} (in ${daysUntilOpen()} day${daysUntilOpen() === 1 ? '' : 's'}) - or find the secret 🔴 button under a bridge!` });
   }
 
   // 賣寵物攤位

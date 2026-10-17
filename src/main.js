@@ -215,8 +215,10 @@ const rescue = createRescue(scene, camera);
 let introRunning = true; // 開場動畫播緊
 function spawnAll() {
   const cycle = dayCycle(dayNight);
-  const specials = BIOMES.map((_, b) => spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}` })).filter((e) => e?.special && (e.biome !== 6 || kingdom.open));
-  announceSpecials(specials);
+  const specials = BIOMES.map((_, b) => spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}` }));
+  // Biome 7：多 2 隻（同時有 3 隻）
+  for (const extra of ['x', 'y']) specials.push(spawnAnimal(rescue, 6, null, null, null, { seed: `day${cycle}-b6${extra}` }));
+  announceSpecials(specials.filter((e) => e?.special && (e.biome !== 6 || kingdom.open)));
 }
 function announceSpecials(specials) {
   if (introRunning) return; // 開場動畫完咗先講（見 intro.onDone）
@@ -634,11 +636,8 @@ const holdingHammer = () => selectedHotbarItem()?.kind === 'tool' && !selectedHo
 function labInteraction(pos) {
   // Biome 6 座山後面嘅鎚仔
   if (!state.hasHammer && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
-  // Magic Library 後面嘅紅色掣
-  if (near(pos, RED_BUTTON, 2.6)) {
-    if (state.labUnlocked) return { prompt: '<kbd>E</kbd> 🔴 Press the button (the gate is already open!)', action: () => { pressButton(); play('click'); popup('🔓 The gate is already open!'); } };
-    return { prompt: '<kbd>E</kbd> Press the big RED BUTTON 🔴', action: () => { pressButton(); play('click'); setTimeout(startUnlockScene, 400); } };
-  }
+  // Biome 6 條橋下面嘅紅色掣（小朋友 Issue #5）：開 Fuse Machine + 新生態區（+ 實驗室大閘）
+  if (near(pos, RED_BUTTON, 2.6)) return { prompt: '<kbd>E</kbd> Press the big RED BUTTON 🔴', action: pressBigButton };
   if (whereIs(pos.x, pos.z) !== 'Laboratory') return null;
   // 玻璃艙
   const pod = lab.pods.find((p) => !p.free && near(pos, p, 3.6));
@@ -906,6 +905,20 @@ function handleEvents() {
 let lastEventId = null;
 
 // ================= Issue #2：開門動畫 =================
+function pressBigButton() {
+  pressButton();
+  play('click');
+  const first = !state.bigButton;
+  state.bigButton = true;
+  save();
+  if (first) {
+    play('magic');
+    announce('🔴 CLICK! The FUSE MACHINE 🧪 and the ENCHANTED KINGDOM 👑 are unlocked!');
+    setTimeout(() => popup('👑 Climb the mountain and cross the bridge to the gate!'), 2500);
+  } else popup('🔴 Already pressed! Fuse Machine and Enchanted Kingdom are open.');
+  if (!state.labUnlocked) setTimeout(startUnlockScene, first ? 4500 : 400); // 實驗室大閘都開埋
+}
+
 function startUnlockScene() {
   player.controls.unlock();
   closePanel();
@@ -1006,8 +1019,8 @@ renderer.setAnimationLoop((timestamp) => {
   if (!frozen) updateLab(dt, time, pos);
   beach.open = !!state.labBossDefeated; // 小朋友：打完 Boss 先見到秘密沙灘
   // Biome 7：NEW_BIOME_DATE 到咗先開；第一次行到閘門前面就播開門動畫
-  kingdom.open = (isNewBiomeOpen() || kingdomDebug) && (state.kingdomSeen || movie.active);
-  if ((isNewBiomeOpen() || kingdomDebug) && !state.kingdomSeen && !movie.active && !intro.active && pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10) {
+  kingdom.open = (isNewBiomeOpen() || kingdomDebug || state.bigButton) && (state.kingdomSeen || movie.active);
+  if ((isNewBiomeOpen() || kingdomDebug || state.bigButton) && !state.kingdomSeen && !movie.active && !intro.active && pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10) {
     player.controls.unlock();
     closePanel();
     playKingdomReveal({

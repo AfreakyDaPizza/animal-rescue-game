@@ -54,8 +54,8 @@ export function clampArena(v, margin = 1) {
   }
   return v;
 }
-// Hub 入面嘅秘密紅色掣（Magic Library 後面）
-export const RED_BUTTON = { x: -34, z: 25 };
+// 小朋友 Issue #5：搬咗去 Biome 6 條橋下面（山後面條窄路，鎚仔隔籬）；撳咗就開 Fuse Machine 同新生態區（仲有實驗室大閘）
+export const RED_BUTTON = { x: -8, z: -370.25 };
 
 export const inRect = (r, x, z, m = 0) => x >= r.minX + m && x <= r.maxX - m && z >= r.minZ + m && z <= r.maxZ - m;
 export const inLab = (x, z) => inRect(LAB, x, z) && z > LAB_DOOR_Z + 0.5;

@@ -3,6 +3,7 @@
 
 import * as THREE from 'three';
 import { addPlatform, addCollider, kingdom } from './world.js';
+import { state } from './state.js';
 import { enchanted } from './enchanted.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
 import { dynamicSign, makeLabel, THEMES } from './signs.js';
@@ -949,7 +950,7 @@ function buildBridge(scene, live, rect) {
     swirl.material.opacity = 0.95 * (1 - k);
     swirl.visible = k < 0.98;
     lock.visible = k < 0.5;
-    if (Math.floor(t) !== lastCheck && kingdom.open) {
+    if (Math.floor(t) !== lastCheck && (kingdom.open || state.bigButton || isNewBiomeOpen())) {
       lastCheck = Math.floor(t);
       sign.draw(THEMES.purple, [
         { text: '👑 THE ENCHANTED KINGDOM 👑', size: 0.14, color: '#fff59d' },

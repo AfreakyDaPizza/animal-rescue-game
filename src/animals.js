@@ -41,8 +41,12 @@ function seededRandom(text) {
 
 // seed：呢隻動物嘅「身份」（例如「第 123 段白天 · Biome 2」）；救咗嘅就唔再出
 export function spawnAnimal(rescue, biome, animal = null, kg = null, rarity = null, { seed = null, sizeMul = null } = {}) {
+  // 每個生態區得 1 隻；Biome 7 魔法王國可以同時有 3 隻（小朋友：最少 2 隻）
+  const MAX = biome === 6 ? 3 : 1;
+  const same = rescue.wild.filter((w) => w.biome === biome);
+  const drop = same.slice(0, Math.max(0, same.length - (MAX - 1))); // 太多就拎走最舊嗰啲
   rescue.wild = rescue.wild.filter((w) => {
-    if (w.biome !== biome) return true;
+    if (!drop.includes(w)) return true;
     rescue.scene.remove(w.group);
     return false;
   });
@@ -60,14 +64,18 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
 
   if (!animal) {
     const pool = animalsInBiome(biome);
-    animal = pool[Math.floor(Math.random() * pool.length)];
+    // 有固定稀有度嘅（Biome 7 魔法動物）：越稀有越少出
+    const WEIGHT = { Common: 40, Rare: 25, Epic: 15, Legendary: 8, Mythic: 3, Eternal: 1 };
+    const total = pool.reduce((n, a) => n + (a.rarity ? WEIGHT[a.rarity] : 10), 0);
+    let roll = Math.random() * total;
+    animal = pool.find((a) => (roll -= a.rarity ? WEIGHT[a.rarity] : 10) < 0) || pool[0];
   }
   // Giant Pets 活動：變大 3 倍（重量都 ×3）
   sizeMul = sizeMul ?? (boost.size > 1 ? boost.size : null);
   kg = kg ?? (sizeMul ? Math.round(randomKg(animal) * sizeMul * 10) / 10 : randomKg(animal));
-  rarity = rarity ?? randomRarity();
+  rarity = animal.rarity || (rarity ?? randomRarity()); // 魔法動物：固定稀有度
   const info = rarityInfo(rarity);
-  const special = rarity === 'Legendary' || rarity === 'Mythic';
+  const special = rarity === 'Legendary' || rarity === 'Mythic' || rarity === 'Eternal';
   const rect = biomeRect(biome);
 
   const group = new THREE.Group();

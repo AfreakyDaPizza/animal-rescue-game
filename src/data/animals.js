@@ -127,9 +127,24 @@ export const ANIMALS = [
 // ---- Fuse Machine 先有嘅寵物（小朋友 2026-10-17 Issue #4）----
 // 唔會喺生態區出現、唔計入 Index 嘅 50 隻；每隻固定一個稀有度
 // ---- Biome 7：Enchanted Kingdom（小朋友 2026-10-17）：魔法動物（唔係真嘅！）其他動物小朋友遲啲講 ----
+// rarity：呢啲動物嘅稀有度係固定嘅（小朋友 Issue #5 定），唔係隨機
 export const ENCHANTED_ANIMALS = [
-  { name: 'Royal Skywhale', biome: 6, emoji: '🐋', kg: [8000, 15000], status: 'Magical (not a real animal!)', magical: true,
+  { name: 'Royal Skywhale', biome: 6, emoji: '🐋', kg: [8000, 15000], rarity: 'Eternal', status: 'Magical (not a real animal!)', magical: true,
     fact: 'The Royal Skywhale is a magical creature from the Enchanted Kingdom. It is not real, but real Blue Whales are Endangered: only about 10,000-25,000 are left!' },
+  { name: 'Enchanted Sunlion', biome: 6, emoji: '🦁', kg: [180, 260], rarity: 'Mythic', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'Magical! But real lions are Vulnerable: about 23,000 are left in the wild, and they have lost over 90% of the land they used to live on.' },
+  { name: 'Octophant', biome: 6, emoji: '🐘', kg: [3000, 5500], rarity: 'Legendary', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'Half elephant, half octopus, all magic! Real octopuses have three hearts and blue blood.' },
+  { name: 'Citadel Snail', biome: 6, emoji: '🐌', kg: [40, 90], rarity: 'Epic', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'It carries a whole castle on its back! Real snails are important: many island snail species are Critically Endangered.' },
+  { name: 'Uncoiled Armadillo', biome: 6, emoji: '🦔', kg: [60, 120], rarity: 'Epic', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'Its lantern tower lights the way! The real Giant Armadillo is Vulnerable and digs burrows that help many other animals.' },
+  { name: 'Kitsune Of Runes', biome: 6, emoji: '🦊', kg: [8, 15], rarity: 'Rare', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'A kitsune is a magical fox from Japanese stories. Real Island Foxes were saved from extinction by people working together!' },
+  { name: 'Gem Dragon', biome: 6, emoji: '🐉', kg: [200, 400], rarity: 'Rare', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'Dragons are magical, but the real Komodo Dragon is Endangered: rising seas are taking its island home.' },
+  { name: 'Dreadscale', biome: 6, emoji: '🦖', kg: [150, 300], rarity: 'Common', status: 'Magical (not a real animal!)', magical: true,
+    fact: 'Spiky but friendly! Real pangolins have scales too, and they are the most trafficked mammals in the world.' },
 ];
 ANIMALS.push(...ENCHANTED_ANIMALS);
 

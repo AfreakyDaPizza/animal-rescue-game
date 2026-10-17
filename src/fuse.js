@@ -7,7 +7,7 @@ import { FUSE_OPEN_DATE, FUSE_RARITY_SCORE, FUSE_CHANCES_LOW, FUSE_CHANCES_HIGH,
 
 // 今日（本地時間）係咪已經開咗
 const today = () => new Date().toLocaleDateString('en-CA'); // 例如 2026-10-17
-export const isFuseOpen = () => today() >= FUSE_OPEN_DATE;
+export const isFuseOpen = () => today() >= FUSE_OPEN_DATE || !!state.bigButton; // 橋下面個紅掣都開到（Issue #5）
 export function daysUntilOpen() {
   const [y, m, d] = FUSE_OPEN_DATE.split('-').map(Number);
   const open = new Date(y, m - 1, d);
