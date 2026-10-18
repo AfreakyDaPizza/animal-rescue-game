@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { createAmbience, updateAmbience, setAmbienceQuality } from './ambience.js'; // ✨ 粒子、雲、霧色、水光（2026-10-18 present 前靚啲）
+import { playFirstHatch } from './firstHatch.js'; // 🥚 第一隻寵物出世動畫（一次）
 import { buildStatueButton, pressStatueButton, updateStatueButton, nearStatueButton } from './statueButton.js'; // 🦏 犀牛像後面嘅掣
 import { createCrazyButton, crazyInteraction, updateCrazy, refillCrazy, pressCrazy } from './crazyButton.js'; // 🤪 秘密沙灘嘅瘋狂寵物掣
 import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea } from './world.js';
@@ -131,6 +132,8 @@ const hub = createHub(scene);
   });
   state.indexFound = state.indexFound.map((n) => (n === 'Enchanted Sunlion' ? 'Celestial Sunlion' : n));
 }
+// 舊存檔已經有寵物：唔使再睇第一隻寵物出世動畫
+if (!state.firstHatchSeen && state.pets.length > 0) state.firstHatchSeen = true;
 // Fuse nerf（2026-10-18）：舊 Fuse 寵物用新計法（3 隻平均 × 新倍數，以前係 3 隻加埋 × 舊倍數）
 if (!state.fuseNerfed) {
   const OLD = { Common: 1.3, Rare: 1.6, Epic: 2.2, Legendary: 3.5, Mythic: 6 };
@@ -575,17 +578,25 @@ const hubActions = {
   },
   collect(machine) {
     const pets = collectPet(machine);
-    const tokens = pets.reduce((n, p) => n + (PET_TOKENS[p.rarity || 'Common'] || 1), 0);
-    state.tokens += tokens; // 每隻新寵物都有 Skin Tokens（越稀有越多）
-    setTimeout(() => popup(`🎟️ +${tokens} Skin Tokens`), 1200);
-    quest('pets', pets.length);
-    const giant = pets.find((p) => p.sizeMul > 1);
-    const fire = pets.find((p) => hasMutation(p, 'fire'));
-    if (fire) announce(`🔥🔥 FIRE MUTATION! Your ${fire.name} is ON FIRE: x${FIRE_MONEY} money! 🐉`);
-    else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
-    play(giant || fire ? 'tierUp' : 'ding');
-    popup('Put it on your Plot to earn money!');
-    save();
+    // 🥚 第一隻寵物：播一次出世動畫（敲玻璃 → 爆 → 跳圈圈），播完先講收到咩
+    if (!state.firstHatchSeen && pets.length) {
+      state.firstHatchSeen = true;
+      save();
+      const back = { x: camera.position.x, z: camera.position.z, rot: camera.rotation.clone() };
+      player.controls.unlock();
+      closePanel();
+      playFirstHatch({
+        scene, camera, machine, pet: pets[0], from: back,
+        onDone() {
+          teleportPlayer(player, back.x, back.z);
+          camera.rotation.copy(back.rot);
+          afterCollect(pets);
+          resume();
+        },
+      });
+      return;
+    }
+    afterCollect(pets);
   },
   // Dragon's Lair：答啱問題，繁殖快啲
   async speedUpMachine(machine) {
@@ -1290,6 +1301,21 @@ let lastEventId = null;
 let revealWait = 0; // 開門動畫：等玩家入咗遊戲 1.5 秒先播
 
 // ================= Issue #2：開門動畫 =================
+// 收完寵物：Skin Tokens、任務、公告（第一隻寵物出世動畫播完先做）
+function afterCollect(pets) {
+  const tokens = pets.reduce((n, p) => n + (PET_TOKENS[p.rarity || 'Common'] || 1), 0);
+  state.tokens += tokens; // 每隻新寵物都有 Skin Tokens（越稀有越多）
+  setTimeout(() => popup(`🎟️ +${tokens} Skin Tokens`), 1200);
+  quest('pets', pets.length);
+  const giant = pets.find((p) => p.sizeMul > 1);
+  const fire = pets.find((p) => hasMutation(p, 'fire'));
+  if (fire) announce(`🔥🔥 FIRE MUTATION! Your ${fire.name} is ON FIRE: x${FIRE_MONEY} money! 🐉`);
+  else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
+  play(giant || fire ? 'tierUp' : 'ding');
+  popup('Put it on your Plot to earn money!');
+  save();
+}
+
 function startUnlockScene() {
   player.controls.unlock();
   closePanel();
@@ -1645,7 +1671,7 @@ renderer.setAnimationLoop((timestamp) => {
   renderPass.camera = viewCam;
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
-  if (heldModel) heldModel.visible = !petsHidden;
+  if (heldModel) heldModel.visible = !petsHidden && !inMovie; // 播片時唔好喺鏡頭前面見到手上隻寵物
   stars.material.opacity = dayNight.blend * (0.85 + Math.sin(time * 2.1) * 0.15);
   stars2.material.opacity = dayNight.blend * (0.55 + Math.sin(time * 3.3 + 1.7) * 0.4); // 一閃一閃
   updateAmbience(ambience, frozen ? 0 : dt, time, camera.position, whereIs(camera.position.x, camera.position.z), dayNight.blend, dayNight.dusk, sky);

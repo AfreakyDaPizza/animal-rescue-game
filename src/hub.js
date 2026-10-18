@@ -1298,7 +1298,7 @@ function buildMachine(scene, index, x, z) {
     heart.visible = false;
     hearts.push({ heart, phase: i / 4 });
   }
-  return { index, x, z, group: g, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, rune, orb, pink };
+  return { index, x, z, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, rune, orb, pink };
 }
 
 export function machineStatus(i) {
