@@ -185,3 +185,11 @@ export const GYM_BENCH_EVERY = 3;
 // Climbing Wall of Wisdom：每 2–4 秒加一次 IQ，每次 = 4 × 你 Hub 學生桌每秒加嘅
 export const GYM_WALL_MULTI = 4;
 export const GYM_WALL_EVERY = [2, 4];
+
+// ---- 🤪 CRAZY PET FRENZY (kid 2026-10-18): a VERY hidden button on the Secret Beach ----
+// Press it → for a while, every biome is full of crazy pets (only Legendary / Mythic, often GIANT, sometimes 🔥 Fire or 🌑 Eclipse)
+export const CRAZY_FRENZY_SECONDS = 60; // how long the frenzy lasts
+export const CRAZY_COOLDOWN_MINUTES = 15; // how long until you can press the button again
+export const CRAZY_MYTHIC_CHANCE = 40; // % chance a crazy pet is Mythic (the rest are Legendary)
+export const CRAZY_GIANT_CHANCE = 50; // % chance a crazy pet is GIANT (x3 size and kg)
+export const CRAZY_MUTATION_CHANCE = 35; // % chance a crazy pet has 🔥 Fire or 🌑 Eclipse

@@ -41,6 +41,7 @@ const DEFAULTS = {
   labRewardPaid: false, // Owner 俾咗 $1000 未
   labEndingSeen: false, // 睇咗結局動畫未（實驗室爆炸、見到 Gym）
   beachFinaleSeen: null, // 去過秘密沙灘睇 Owner 俾錢嗰段未（null = 舊存檔，跟 labEndingSeen）
+  crazyReadyAt: 0, // 🤪 秘密沙灘個瘋狂寵物掣幾時再撳得（毫秒）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
 };
 
