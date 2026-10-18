@@ -18,7 +18,6 @@ html, body {
   backdrop-filter: blur(4px);
 }
 
-#hud-stats { top: 12px; left: 12px; display: flex; gap: 18px; font-size: 18px; }
 #hud-timer { top: 12px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: bold; }
 #hud-timer.soon { background: rgba(200, 40, 40, 0.7); }
 #hud-timer.night { background: rgba(40, 50, 120, 0.8); }
@@ -148,8 +147,8 @@ kbd {
 .slot.rescued { background: rgba(255, 152, 0, 0.45); }
 .slot.pet { background: rgba(76, 175, 80, 0.5); }
 .slot.selected { border-color: #ffeb3b; transform: scale(1.12); box-shadow: 0 0 10px #ffeb3b; }
-#hud-location { bottom: 70px; }
-#hud-help { top: 60px; bottom: auto; left: 12px; right: auto; }
+#hud-location { bottom: calc(var(--stats-bottom) + 150px); left: 12px; }
+#hud-help { top: 12px; bottom: auto; left: 12px; right: auto; max-width: calc(50vw - 230px); }
 
 /* 闊身面板（Index） */
 .card.wide { width: min(760px, calc(100vw - 32px)); }
@@ -473,3 +472,89 @@ body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-t
 /* 🔐 Secret Ranger Control Panel */
 .admin-tabs { flex-wrap: wrap; }
 .admin-tabs button { padding: 6px 10px; font-size: 14px; }
+
+/* ===== 小朋友 2026-10-18 新 UI ===== */
+:root { --stats-bottom: 12px; }
+@media (max-width: 1320px) { :root { --stats-bottom: 92px; } } /* 窄畫面：喺快捷欄上面，唔好撞 */
+/* 左下角：Money / IQ / Speed（大、粗、易睇） */
+#hud-stats {
+  bottom: var(--stats-bottom); left: 12px; top: auto;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 16px; font-size: 22px; line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+#hud-stats .stat-line { white-space: nowrap; }
+#hud-stats .label { color: #e3f2fd; font-weight: 700; }
+#hud-stats .stat-line b { font-weight: 800; color: #fff59d; }
+#hud-stats .stat-line:nth-child(2) b { color: #f8bbd0; }
+#hud-stats .stat-line:nth-child(3) b { color: #80d8ff; }
+#hud-stats .stat-small { font-size: 14px; opacity: 0.85; margin-top: 2px; white-space: nowrap; }
+#hud-stats .stat-small b { color: #ffe082; }
+
+/* 右邊中間：兩粒四方掣 */
+#side-buttons {
+  position: fixed; right: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 10px; z-index: 5;
+}
+.side-btn {
+  position: relative; width: 58px; height: 58px; padding: 0; border-radius: 14px;
+  font-size: 30px; line-height: 1; cursor: pointer; color: #fff;
+  background: linear-gradient(180deg, rgba(40, 55, 85, 0.85), rgba(15, 20, 35, 0.85));
+  border: 3px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4), 0 6px 14px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s, border-color 0.1s;
+}
+.side-btn:hover { transform: translateY(-2px); border-color: #fff; }
+.side-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
+.side-btn.on { border-color: #ffd740; background: linear-gradient(180deg, #ffb300, #f57c00); }
+.side-btn kbd { position: absolute; right: 3px; bottom: 2px; font-size: 10px; padding: 0 3px; }
+body.intro #side-buttons, body.intro #side-box { display: none !important; }
+body.mobile .side-btn kbd { display: none; }
+
+/* 細盒：貼住掣嘅左邊 */
+#side-box {
+  right: 84px; top: 50%; transform: translateY(-50%);
+  width: 310px; max-height: 62vh; display: flex; flex-direction: column;
+  padding: 10px 12px; z-index: 5;
+}
+#side-box .side-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; font-size: 18px; }
+#side-box .side-total { color: #b9f6ca; font-size: 15px; white-space: nowrap; }
+#side-box .side-level { color: #f8bbd0; font-size: 13px; white-space: nowrap; }
+#side-box .side-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+#side-box .side-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
+}
+#side-box .side-row.ready { background: rgba(0, 230, 118, 0.18); border-color: rgba(0, 230, 118, 0.5); }
+#side-box .pet-pic { width: 52px; height: 44px; flex: none; border-radius: 8px; }
+#side-box .pet-pic .emoji { font-size: 24px; }
+#side-box .empty-machine { background: rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; }
+#side-box .side-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; line-height: 1.25; }
+#side-box .side-info b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#side-box .side-info small { font-size: 12px; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#side-box .money { color: #fff59d; font-weight: 700; }
+#side-box .side-time { font-size: 13px; color: #ffeb3b; font-variant-numeric: tabular-nums; }
+#side-box .side-time .ready { color: #69f0ae; font-weight: 700; }
+#side-box .side-time .dim { opacity: 0.5; }
+#side-box button[data-unequip] {
+  flex: none; padding: 5px 8px; border-radius: 8px; border: 0; cursor: pointer;
+  background: #78909c; color: #fff; font: inherit; font-size: 12px; font-weight: 700;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+#side-box button[data-unequip]:hover { background: #90a4ae; }
+#side-box button[data-unequip]:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); }
+#side-box .side-hint { margin: 8px 0 0; font-size: 13px; color: #c5e1a5; text-align: center; }
+#side-box .side-empty { margin: 6px 0; font-size: 14px; opacity: 0.8; text-align: center; }
+
+/* 手機：數值放返左上角（左下有搖桿同快捷欄）；位置牌喺佢下面；兩粒掣喺右上，避開跳／用掣 */
+body.mobile #hud-stats {
+  top: calc(8px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(10px + env(safe-area-inset-left, 0px));
+  font-size: 15px; padding: 6px 10px; gap: 0;
+}
+body.mobile #hud-stats .stat-small { font-size: 11px; }
+body.mobile #hud-location { top: calc(122px + env(safe-area-inset-top, 0px)); }
+/* 手機：兩粒掣打橫放喺右上（喺暫停掣下面、USE／JUMP 上面）；細盒喺 USE／JUMP 左邊、快捷欄上面 */
+body.mobile #side-buttons { top: calc(116px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); transform: none; flex-direction: row; gap: 8px; z-index: 21; }
+body.mobile .side-btn { width: 46px; height: 46px; font-size: 24px; border-radius: 12px; }
+body.mobile #side-box { right: calc(200px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: none; width: min(300px, calc(100vw - 390px)); min-width: 220px; max-height: calc(100vh - 100px); z-index: 21; }
+body:has(#panel:not([hidden])) #side-buttons, body:has(#panel:not([hidden])) #side-box { display: none; }

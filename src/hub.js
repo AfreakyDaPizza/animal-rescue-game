@@ -1300,7 +1300,7 @@ function buildMachine(scene, index, x, z) {
   return { index, x, z, group: g, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, rune, orb, pink };
 }
 
-function machineStatus(i) {
+export function machineStatus(i) {
   const m = state.machines[i];
   if (!m) return { kind: 'empty' };
   const left = (m.endsAt - Date.now()) / 1000;
@@ -1309,7 +1309,7 @@ function machineStatus(i) {
   return { kind: 'ready', name, first: m.name };
 }
 
-function formatLeft(s) {
+export function formatLeft(s) {
   s = Math.ceil(s);
   return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`;
 }
