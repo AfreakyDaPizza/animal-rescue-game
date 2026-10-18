@@ -8,7 +8,7 @@
 // 全部面向 -z（同其他動物、Boss 一樣）
 
 import * as THREE from 'three';
-import { box, pivot, cuteEyes, spike, material } from './modelKit.js';
+import { box, pivot, cuteEyes, spike, material, ball } from './modelKit.js';
 
 const PI = Math.PI;
 
@@ -486,15 +486,30 @@ export function buildOctophantModel() {
   for (let i = 0; i < 4; i++) box(tail, 0.24 - i * 0.04, 0.24 - i * 0.04, 0.4, i % 2 ? TENT2 : TENT, 0, -i * 0.15, 0.2 + i * 0.35, 0.4);
 
   // ---- 頭 ----
+  // 圓圓嘅大頭：圓頭殼 + 額頭兩嚿凸凸（似真大笨象）+ 面頰 + 前面一嚿口鼻（觸手由呢度出）
   const head = pivot(root, 0, BODY_Y + 0.55, -1.45);
-  box(head, 1.6, 1.5, 1.3, SKIN, 0, 0, 0, 0.38);
-  box(head, 1.45, 0.4, 1.2, SKIN2, 0, 0.6, 0.05, 0.4);
-  for (let i = 0; i < 3; i++) sucker(head, -0.35 + i * 0.35, 0.78, 0.1, 0.12, 0, PI / 2); // 頭頂吸盤
+  ball(head, 0.86, 0.8, 0.74, SKIN, 0, 0.05, 0.02);
   for (const s of [-1, 1]) {
-    // 發光橙眼
-    box(head, 0.3, 0.24, 0.06, 0xffd180, s * 0.45, 0.18, -0.66, 0.35, { emissive: 0xff9100, emissiveIntensity: 1.3 });
-    box(head, 0.1, 0.18, 0.05, 0x1a1a1a, s * 0.42, 0.17, -0.7, 0.35);
-    box(head, 0.36, 0.08, 0.08, DARK, s * 0.45, 0.36, -0.67, 0.35).rotation.z = s * -0.25;
+    ball(head, 0.44, 0.38, 0.42, SKIN, s * 0.3, 0.52, -0.14); // 額頭凸凸
+    ball(head, 0.34, 0.3, 0.32, SKIN, s * 0.52, -0.28, -0.36); // 面頰
+  }
+  ball(head, 0.36, 0.08, 0.3, SKIN2, 0, 0.8, 0.12); // 頭頂深色
+  ball(head, 0.74, 0.56, 0.5, SKIN, 0, 0.06, -0.34); // 塊面
+  ball(head, 0.56, 0.44, 0.42, SKIN2, 0, -0.42, -0.58); // 口鼻
+  for (let i = 0; i < 3; i++) sucker(head, -0.35 + i * 0.35, 0.8, 0.22, 0.11, 0, PI / 2); // 頭頂吸盤
+  // 又大又圓、發橙光嘅眼（眼白 + 橙色眼珠 + 黑瞳 + 兩點反光），眼眉微微向上 = 好友善
+  const irisM = material(0xffb300, { emissive: 0xff8f00, emissiveIntensity: 0.9 });
+  for (const s of [-1, 1]) {
+    const eye = pivot(head, s * 0.36, 0.14, -0.74);
+    eye.rotation.y = s * -0.4;
+    ball(eye, 0.21, 0.25, 0.1, 0xffffff);
+    ball(eye, 0.15, 0.18, 0.06, 0, 0, -0.02, -0.06, irisM);
+    ball(eye, 0.08, 0.1, 0.04, 0x1a1a1a, 0, -0.03, -0.1);
+    ball(eye, 0.045, 0.05, 0.02, 0xffffff, s * -0.05, 0.06, -0.12);
+    ball(eye, 0.022, 0.025, 0.015, 0xffffff, s * 0.04, -0.07, -0.12);
+    const brow = ball(eye, 0.18, 0.04, 0.06, DARK, 0, 0.32, -0.04);
+    brow.rotation.z = s * 0.25;
+    ball(head, 0.1, 0.07, 0.04, 0xf48fb1, s * 0.55, -0.12, -0.62); // 粉紅面珠
   }
   // 大耳（識撥）
   const ears = [-1, 1].map((s) => {
@@ -510,14 +525,14 @@ export function buildOctophantModel() {
   });
   // 長長白色彎象牙
   for (const s of [-1, 1]) {
-    const t = pivot(head, s * 0.42, -0.55, -0.45);
+    const t = pivot(head, s * 0.4, -0.52, -0.62);
     box(t, 0.18, 0.18, 0.6, 0xfafafa, 0, 0, -0.25, 0.4).rotation.x = 0.3;
     box(t, 0.15, 0.15, 0.55, 0xfafafa, 0, 0.2, -0.75, 0.4).rotation.x = -0.4;
     box(t, 0.11, 0.11, 0.35, 0xfafafa, 0, 0.45, -1.05, 0.4).rotation.x = -0.9;
   }
   // 5 條觸手（代替象鼻）：一節節收細，底面有吸盤
   const tentacles = [[0, -0.2, 1.25], [-0.32, -0.35, 1.0], [0.32, -0.35, 1.0], [-0.6, -0.2, 0.75], [0.6, -0.2, 0.75]].map(([x, y, sc], k) => {
-    const base = pivot(head, x, y, -0.65);
+    const base = pivot(head, x * 0.85, y - 0.18, -0.82);
     const segs = [];
     let parent = base;
     for (let i = 0; i < 6; i++) {

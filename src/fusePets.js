@@ -4,7 +4,7 @@
 // 發光位用 glowMat（每隻寵物自己一份，咁先可以一閃一閃，唔會影響其他寵物）
 
 import * as THREE from 'three';
-import { box, pivot, cuteEyes, spike, WHITE } from './modelKit.js';
+import { box, pivot, cuteEyes, spike, slab, WHITE } from './modelKit.js';
 import { beast, swimmer } from './animals20.js';
 
 const PI = Math.PI;
@@ -45,32 +45,56 @@ function rhinoblade() {
   const dark = 0x263238;
   const edge = glowMat(0x40c4ff, 1.4); // 刀鋒藍光
   const eye = glowMat(0xff1744, 1.4);
+  const face = 0xb4c2d4; // 光亮鋼面（唔好黑矇矇）
+  const steel = 0xdde4ec;
+  const STEEL = { metalness: 0.35, roughness: 0.3 }; // 冇環境反光，金屬感低啲先唔會變黑
   return beast({
     body: { w: 1.6, h: 1.25, d: 2.2, y: 1.4, color: skin },
-    head: { w: 0.92, h: 0.8, d: 1.15, y: 1.3, z: -1.55, color: skin },
+    head: { w: 0.92, h: 0.8, d: 1.15, y: 1.3, z: -1.55, color: face },
     legs: { w: 0.5, h: 0.88, x: 0.46, zf: -0.65, zb: 0.65, color: skin, paw: dark, toes: plate },
     tail: { w: 0.1, h: 0.1, d: 0.5, y: 1.65, color: skin, angle: 0.9, tip: dark },
     eyes: false,
     walkSpeed: 7,
     extras(p) {
       p.head.rotation.x = 0.18;
-      // 頭盔 + 鼻甲
-      box(p.head, 0.98, 0.22, 0.8, plate, 0, 0.42, 0.05, 0.25, METAL);
-      box(p.head, 0.7, 0.3, 0.5, plate, 0, 0.05, -0.5, 0.25, METAL);
-      // 大刀角：銀色刀身 + 藍光刀鋒（兩把：大嘅喺前，細嘅喺後）
-      const horn = pivot(p.head, 0, 0.25, -0.62);
-      horn.rotation.x = -0.55;
-      box(horn, 0.12, 1.25, 0.42, 0xeceff1, 0, 0.6, 0, 0.15, METAL);
-      glowBox(horn, 0.04, 1.2, 0.08, edge, 0, 0.6, -0.22, 0.2);
-      spike(horn, 0.13, 0.35, 0xeceff1, 0, 1.38, 0);
-      const horn2 = pivot(p.head, 0, 0.45, -0.1);
-      horn2.rotation.x = -0.3;
-      box(horn2, 0.1, 0.6, 0.3, 0xeceff1, 0, 0.3, 0, 0.15, METAL);
-      glowBox(horn2, 0.04, 0.55, 0.06, edge, 0, 0.3, -0.16, 0.2);
-      // 兇眼（紅光）+ 眉甲
+      // 光亮鋼面：頭盔 + 一層層鼻甲（越前越窄），面頰甲
+      box(p.head, 0.98, 0.22, 0.8, steel, 0, 0.42, 0.05, 0.3, STEEL);
+      box(p.head, 0.8, 0.36, 0.5, steel, 0, 0.08, -0.48, 0.3, STEEL);
+      box(p.head, 0.64, 0.3, 0.32, face, 0, -0.08, -0.74, 0.35, STEEL); // 口鼻
+      box(p.head, 0.5, 0.06, 0.06, dark, 0, -0.2, -0.9, 0.3); // 口
       for (const s of [-1, 1]) {
-        glowBox(p.head, 0.05, 0.12, 0.2, eye, s * 0.47, 0.1, -0.3, 0.3);
-        box(p.head, 0.08, 0.08, 0.32, plate, s * 0.47, 0.22, -0.3, 0.3, METAL).rotation.x = 0.2;
+        box(p.head, 0.08, 0.06, 0.07, dark, s * 0.17, 0.0, -0.9, 0.4); // 鼻窿
+        box(p.head, 0.1, 0.28, 0.55, steel, s * 0.46, -0.26, 0.0, 0.35, STEEL); // 面頰甲
+      }
+      // 刀角：彎彎嘅鋼刀（前面係發藍光嘅刀鋒），一把大嘅喺鼻，一把細嘅喺後
+      const t = (i) => i / 8;
+      const front = Array.from({ length: 9 }, (_, i) => [0.24 - 0.52 * t(i) ** 1.8, 1.6 * t(i)]);
+      const back = Array.from({ length: 9 }, (_, i) => [-0.2 - 0.14 * t(i) ** 1.5, 1.45 * t(i)]);
+      const blade = [...front, [-0.36, 1.7], ...back.reverse()];
+      const edgeLine = [...front.slice(1).map(([x, y]) => [x + 0.02, y]), [-0.35, 1.72], ...front.slice(1).reverse().map(([x, y]) => [x - 0.06, y - 0.02])];
+      const makeBlade = (parent, k) => {
+        const b = pivot(parent);
+        b.scale.setScalar(k);
+        slab(b, blade, 0.1, 0xe3e9ef, { plane: 'side', key: 'rb-blade', bevel: 0.03, smooth: false, extra: STEEL });
+        slab(b, edgeLine, 0.17, 0, { plane: 'side', key: 'rb-edge', bevel: 0.01, smooth: false, extra: edge });
+        return b;
+      };
+      const horn = pivot(p.head, 0, 0.18, -0.72);
+      horn.rotation.x = -0.15;
+      makeBlade(horn, 0.85);
+      const horn2 = pivot(p.head, 0, 0.5, -0.12);
+      horn2.rotation.x = -0.1;
+      makeBlade(horn2, 0.42);
+      // 大大對眼：眼白 + 紅光眼珠 + 黑瞳 + 反光，上面有斜斜嘅鋼眉（好有型）
+      for (const s of [-1, 1]) {
+        const e = pivot(p.head, s * 0.45, 0.17, -0.48);
+        e.rotation.y = -s * 0.8;
+        box(e, 0.32, 0.28, 0.04, 0xffffff, 0, 0, 0, 0.4);
+        glowBox(e, 0.2, 0.2, 0.04, eye, s * 0.03, -0.02, -0.02, 0.4);
+        box(e, 0.09, 0.12, 0.03, dark, s * 0.03, -0.02, -0.045, 0.4);
+        box(e, 0.05, 0.05, 0.02, 0xffffff, s * -0.04, 0.05, -0.06, 0.4);
+        const brow = box(e, 0.38, 0.09, 0.1, steel, 0, 0.18, -0.03, 0.3, STEEL);
+        brow.rotation.z = s * 0.3;
         const ear = pivot(p.head, s * 0.33, 0.48, 0.42);
         box(ear, 0.16, 0.32, 0.1, skin, 0, 0.13, 0, 0.45);
         p.ears.push(ear);
@@ -78,21 +102,21 @@ function rhinoblade() {
       // 背甲：一塊塊疊住，每塊有尖刺同藍光縫
       for (let i = 0; i < 5; i++) {
         const z = -0.85 + i * 0.42;
-        box(p.root, 1.4 - i * 0.06, 0.2, 0.4, plate, 0, 2.08, z, 0.25, METAL);
+        box(p.root, 1.4 - i * 0.06, 0.2, 0.4, plate, 0, 2.08, z, 0.25, STEEL);
         glowBox(p.root, 1.42 - i * 0.06, 0.04, 0.05, edge, 0, 2.08, z + 0.2, 0.2);
         spike(p.root, 0.12, 0.45, 0xeceff1, 0, 2.38, z);
       }
       // 膊頭大鐵甲 + 腳甲
       for (const s of [-1, 1]) {
-        box(p.root, 0.16, 0.85, 1.0, plate, s * 0.83, 1.55, -0.5, 0.25, METAL);
+        box(p.root, 0.16, 0.85, 1.0, plate, s * 0.83, 1.55, -0.5, 0.25, STEEL);
         spike(p.root, 0.1, 0.35, 0xeceff1, s * 0.95, 1.95, -0.5, 0, s * -1.2);
-        box(p.root, 0.16, 0.7, 0.8, plate, s * 0.83, 1.5, 0.6, 0.25, METAL);
+        box(p.root, 0.16, 0.7, 0.8, plate, s * 0.83, 1.5, 0.6, 0.25, STEEL);
       }
-      p.legs.forEach(({ hip }) => box(hip, 0.56, 0.22, 0.56, plate, 0, -0.35, 0, 0.3, METAL));
+      p.legs.forEach(({ hip }) => box(hip, 0.56, 0.22, 0.56, plate, 0, -0.35, 0, 0.3, STEEL));
       p.animate = (t, moving) => {
         edge.emissiveIntensity = 0.9 + Math.sin(t * 3) * 0.35;
         eye.emissiveIntensity = 1.2 + Math.max(0, Math.sin(t * 1.3)) * 0.6;
-        horn.rotation.x = -0.55 + Math.sin(t * 8) * 0.04 * moving; // 衝嗰陣個角郁吓
+        horn.rotation.x = -0.15 + Math.sin(t * 8) * 0.04 * moving; // 衝嗰陣個角郁吓
       };
     },
   });
