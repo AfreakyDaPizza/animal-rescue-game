@@ -340,6 +340,14 @@ try {
   if (sessionStorage.getItem('animal-rescue-skip-intro')) {
     sessionStorage.removeItem('animal-rescue-skip-intro');
     intro.skipHandler();
+    if (sessionStorage.getItem('animal-rescue-goto-gym')) {
+      sessionStorage.removeItem('animal-rescue-goto-gym');
+      setTimeout(() => {
+        teleportPlayer(player, GYM_FRONT.x, GYM_FRONT.z);
+        camera.rotation.set(0, Math.PI, 0, 'YXZ');
+        popup('💪 Welcome to the Ranger Gym!');
+      }, 300);
+    }
   }
 } catch {
   // 冇 sessionStorage 就照播
@@ -838,6 +846,25 @@ setAdminActions({
     play('magic');
     announce(first ? '🔓 The FUSE MACHINE 🧪 and the ENCHANTED KINGDOM 👑 are unlocked!' : '🔓 Already unlocked! Fuse Machine and Enchanted Kingdom are open.');
     if (!state.labUnlocked) setTimeout(startUnlockScene, first ? 2500 : 400); // 以前個紅掣都會開實驗室大閘
+  },
+  // 控制台：去 Gym（未打 Boss 就當打贏咗：實驗室冇咗、Gym 出現；重新載入再傳送）
+  gotoGym() {
+    state.gymEarly = true;
+    if (!gym.present) {
+      Object.assign(state, { labUnlocked: true, labVisited: true, labBossDefeated: true, labEndingSeen: true });
+      save();
+      try {
+        sessionStorage.setItem('animal-rescue-goto-gym', '1');
+      } catch {
+        // 冇 sessionStorage 就留喺原地
+      }
+      return reloadNoIntro();
+    }
+    save();
+    togglePanel('admin');
+    teleportPlayer(player, GYM_FRONT.x, GYM_FRONT.z);
+    camera.rotation.set(0, Math.PI, 0, 'YXZ');
+    popup('💪 Welcome to the Ranger Gym!');
   },
   gymEarly(on) {
     state.gymEarly = on;

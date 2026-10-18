@@ -54,8 +54,9 @@ function futureHtml() {
     <div class="pet-actions">
       <button data-admin="unlock" ${state.bigButton ? 'class="grey"' : ''}>${state.bigButton ? '✔ Fuse + Kingdom unlocked' : '🔓 Unlock Fuse Machine + Enchanted Kingdom'}</button>
       <button data-admin="gym" class="${state.gymEarly ? 'grey' : ''}">${state.gymEarly ? '✔ Gym open early (tap to close)' : '💪 Open the Gym early'}</button>
+      ${s.gymPresent ? '<button data-admin="gotoGym">🏃 Take me to the Gym</button>' : confirmButton('gotoGym', '🏃 Take me to the Gym (skips the Lab boss!)')}
     </div>
-    ${s.gymPresent ? '' : '<p class="hint">The Gym appears after you beat the Mutated Scientist Poacher.</p>'}`;
+    ${s.gymPresent ? '' : '<p class="hint">The Gym is where the Lab is. Going there now skips the Mutated Scientist Poacher fight, and the Lab will be gone.</p>'}`;
 }
 
 function petsHtml() {
@@ -125,6 +126,7 @@ $('panel-body').addEventListener('click', (e) => {
     case 'cancel': break;
     case 'unlock': actions.backup(); actions.unlockEarly(); return; // 會播開門動畫、收埋面板
     case 'gym': actions.backup(); actions.gymEarly(!state.gymEarly); break;
+    case 'gotoGym': actions.backup(); actions.gotoGym(); return; // 可能會重新載入
     case 'pick': pick.name = d.name; break;
     case 'set':
       if (d.k === 'giant') pick.giant = d.v === '1';
