@@ -1,7 +1,7 @@
 // Biome 7「Enchanted Kingdom」嘅 3D 模型（小朋友 2026-10-17）：方塊（Roblox）風格
 //   buildSkywhaleModel()     ：Royal Skywhale（ETERNAL，最勁嘅寵物）：寶藍鯨魚、金月亮星星花紋，背上有浮島同大樹（跟小朋友張圖）
 //   buildSunlionModel()      ：Enchanted Sunlion（MYTHIC）：金獅子 + 紫水晶鬃毛
-//   buildOctophantModel()    ：Octophant（LEGENDARY）：藍大笨象 + 八爪魚觸手
+//   buildOctophantModel()    ：Octophant（LEGENDARY）：八爪魚圓頭 + 大笨象面（v3），8 條觸手做腳
 //   buildGuardianRig()       ：Boss「Enchanted Royal Guardian」：白金色水晶騎士，皇冠頭盔、水晶大劍、皇家盾、披風
 //   buildCrystalButterfly(c) ：水晶蝴蝶（翼半透明發光），userData.flap(t) 拍翼
 //   buildRune(c)             ：地上嘅魔法符文圈（canvas 畫），userData.spin(t) 轉
@@ -451,138 +451,215 @@ export function buildSunlionModel() {
 }
 
 // ================= Octophant（LEGENDARY） =================
-// 跟張圖：藍紫色大笨象（皮有一粒粒）、超大耳（粉紅入面）、長長白色彎象牙、發光橙眼；
-// 冇象鼻，換咗做 5 條粉紫色八爪魚觸手（有吸盤，識郁），頭頂同身都有吸盤；淡淡粉紫光
+// v3（小朋友：「SOOO UGLY」→ 全部重做）：一半八爪魚、一半大笨象
+//   圓圓嘅八爪魚頭（深紫 → 藍綠漸變，有發光青色斑點）向後拱起，前面係肥嘟嘟大笨象面：
+//   大大發光眼、捲起嘅象鼻、兩隻細象牙、兩邊大耳（青色發光邊、粉紅入面）
+//   8 條八爪魚觸手做腳（一節節收細、尾尖捲起，底有粉紅吸盤，行路會波浪咁郁）；頭頂 3 粒魔法水晶
+const gradGeos = new Map();
+// 上下漸變色嘅圓波波（vertex colors），top/bottom 係顏色
+function gradBall(parent, sx, sy, sz, top, bottom, x = 0, y = 0, z = 0) {
+  const key = `${top}|${bottom}`;
+  if (!gradGeos.has(key)) {
+    const geo = new THREE.SphereGeometry(1, 32, 22);
+    const a = new THREE.Color(top);
+    const b = new THREE.Color(bottom);
+    const c = new THREE.Color();
+    const p = geo.attributes.position;
+    const col = new Float32Array(p.count * 3);
+    for (let i = 0; i < p.count; i++) {
+      const k = THREE.MathUtils.smoothstep(p.getY(i), -0.9, 0.9);
+      c.copy(b).lerp(a, k).toArray(col, i * 3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    gradGeos.set(key, geo);
+  }
+  const m = new THREE.Mesh(gradGeos.get(key), material(0xffffff, { vertexColors: true, roughness: 0.45 }));
+  m.scale.set(sx, sy, sz);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
 export function buildOctophantModel() {
-  const SKIN = 0x6f8dff;
-  const SKIN2 = 0x5672f0;
-  const DARK = 0x3f55c9;
-  const TENT = 0xd65db1;
-  const TENT2 = 0xf3a6e0;
+  const TOP = 0x5b3fc4; // 頭頂深紫
+  const MID = 0x3d7fd6; // 中間藍
+  const BOT = 0x2bb3b8; // 下面藍綠
+  const FACE = 0x4f8ee0;
+  const TIP = 0x8fe3e0; // 觸手尖淺藍綠
+  const PINK = 0xff8fd0;
+  const CYAN = 0x4dfcff;
   const g = new THREE.Group();
   const root = pivot(g);
-  const BODY_Y = 1.85;
+  const glowSpots = [];
 
-  // ---- 四隻粗腳 + 白腳甲 ----
-  const legs = [[-0.75, -0.95], [0.75, -0.95], [-0.75, 1.0], [0.75, 1.0]].map(([x, z]) => {
-    const hip = pivot(root, x, BODY_Y - 0.3, z);
-    box(hip, 0.75, 1.0, 0.75, SKIN2, 0, -0.45, 0, 0.3);
-    box(hip, 0.8, 0.55, 0.8, SKIN, 0, -1.05, 0, 0.3);
-    for (let c = -1; c <= 1; c++) box(hip, 0.16, 0.14, 0.08, 0xf5f5f5, c * 0.22, -1.25, -0.4, 0.3);
-    return hip;
-  });
-  // ---- 身（大大舊，皮有凸粒）----
-  const body = pivot(root, 0, BODY_Y, 0);
-  box(body, 2.2, 1.8, 2.9, SKIN, 0, 0.1, 0.1, 0.35);
-  box(body, 2.0, 0.5, 2.7, SKIN2, 0, 0.9, 0.1, 0.38);
-  box(body, 1.9, 0.4, 2.6, DARK, 0, -0.75, 0.1, 0.38);
-  const rand = seeded(17);
-  for (let i = 0; i < 22; i++) {
-    const side = rand() < 0.5 ? -1 : 1;
-    box(body, 0.06, 0.16, 0.16, SKIN2, side * 1.11, -0.5 + rand() * 1.3, -1.1 + rand() * 2.4, 0.4); // 皮凸粒
+  // ---- 八爪魚頭（大大個，向後拱起）----
+  const head = pivot(root, 0, 1.55, 0);
+  const mantle = pivot(head, 0, 0.75, 0.45); // 圓頂（八爪魚個「頭」，微微向後拱）
+  mantle.rotation.x = -0.32;
+  gradBall(mantle, 1.2, 1.42, 1.38, TOP, MID, 0, 0.05, 0);
+  gradBall(head, 1.18, 0.9, 1.15, MID, BOT, 0, 0.05, 0.05); // 下半（連住觸手）
+  // 發光青色斑點（左右對稱，一行行）
+  const spotM = glow(CYAN, 1.1);
+  const DOME = new THREE.Vector3(0, 0.05, 0);
+  const DOME_R = new THREE.Vector3(1.2, 1.42, 1.38);
+  for (const s of [-1, 1]) {
+    // [水平角（0 = 正前面）, 仰角, 大細]
+    for (const [az, el, r] of [[1.0, 0.25, 0.1], [1.35, 0.6, 0.085], [1.75, 0.2, 0.11], [2.1, 0.55, 0.08], [2.5, 0.25, 0.09], [1.3, -0.05, 0.07], [0.7, 0.75, 0.07], [1.85, 0.95, 0.06]]) {
+      const dir = new THREE.Vector3(s * Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
+      const m = ball(mantle, r, r, r * 0.35, 0, 0, 0, 0, spotM);
+      m.position.copy(dir).multiply(DOME_R).add(DOME);
+      m.lookAt(m.position.clone().add(dir));
+      glowSpots.push(m);
+    }
   }
-  // 身上吸盤
-  const sucker = (parent, x, y, z, r, ry = 0, rx = 0) => {
-    const m = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.35, 6, 12), material(TENT2, { emissive: 0xd500f9, emissiveIntensity: 0.25 }));
+  // 圓頂同下半中間一圈粉紅發光細點（似八爪魚嘅花紋帶）
+  const bandM = glow(PINK, 0.7);
+  for (let i = 0; i < 18; i++) {
+    const az = (i / 18) * PI * 2;
+    if (Math.abs(Math.sin(az / 2)) < 0.28) continue; // 前面俾塊面遮住，唔使
+    const m = ball(head, 0.09, 0.09, 0.035, 0, Math.sin(az) * 1.19, 0.12, -Math.cos(az) * 1.16 + 0.05, bandM);
+    m.lookAt(m.position.clone().multiplyScalar(2).setY(0.12));
+    glowSpots.push(m);
+  }
+  // 底下一圈裙邊（觸手由呢度出，駁得順啲）
+  for (let i = 0; i < 16; i++) {
+    const az = (i / 16) * PI * 2;
+    const m = gradBall(head, 0.34, 0.16, 0.26, MID, BOT, Math.sin(az) * 0.95, -0.55, -Math.cos(az) * 0.95 + 0.05);
+    m.rotation.y = -az;
+  }
+  // 頭頂 3 粒魔法水晶（中間大，粉紅 + 青色）
+  const crystals = pivot(mantle, 0, 1.42, 0);
+  [[0, 0.32, 0, PINK, 0.2], [-0.32, 0.12, 0.12, CYAN, 0.13], [0.32, 0.12, 0.12, CYAN, 0.13]].forEach(([x, y, z, c, r], i) => {
+    const m = new THREE.Mesh(new THREE.OctahedronGeometry(r), crystal(c, 1.3));
     m.position.set(x, y, z);
-    m.rotation.set(rx, ry, 0);
-    parent.add(m);
-    return m;
-  };
-  for (const s of [-1, 1]) {
-    sucker(body, s * 1.12, 0.2, 0.6, 0.14, s * PI / 2);
-    sucker(body, s * 1.12, -0.25, 1.05, 0.11, s * PI / 2);
-  }
-  // 背上一條細觸手（似條尾）
-  const tail = pivot(root, 0, BODY_Y + 0.5, 1.6);
-  for (let i = 0; i < 4; i++) box(tail, 0.24 - i * 0.04, 0.24 - i * 0.04, 0.4, i % 2 ? TENT2 : TENT, 0, -i * 0.15, 0.2 + i * 0.35, 0.4);
+    m.scale.y = 1.8;
+    m.rotation.z = x * -0.8;
+    crystals.add(m);
+    glowSpots.push(m);
+  });
+  // 頭頂一圈金色細符文環（似皇冠）
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 8, 28), gold());
+  ring.rotation.x = PI / 2;
+  ring.position.set(0, 1.4, 0);
+  mantle.add(ring);
 
-  // ---- 頭 ----
-  // 圓圓嘅大頭：圓頭殼 + 額頭兩嚿凸凸（似真大笨象）+ 面頰 + 前面一嚿口鼻（觸手由呢度出）
-  const head = pivot(root, 0, BODY_Y + 0.55, -1.45);
-  ball(head, 0.86, 0.8, 0.74, SKIN, 0, 0.05, 0.02);
+  // ---- 大笨象面（喺頭前面，肥嘟嘟）----
+  const face = pivot(head, 0, 0.42, -1.0);
+  face.scale.setScalar(1.18);
+  gradBall(face, 0.82, 0.72, 0.6, MID, BOT, 0, 0.05, 0);
+  for (const s of [-1, 1]) gradBall(face, 0.38, 0.32, 0.32, MID, BOT, s * 0.42, -0.25, -0.22); // 肥面頰
+  ball(face, 0.14, 0.09, 0.05, PINK, -0.55, -0.22, -0.42, { emissive: 0xff4fa8, emissiveIntensity: 0.35 }); // 粉紅面珠
+  ball(face, 0.14, 0.09, 0.05, PINK, 0.55, -0.22, -0.42, { emissive: 0xff4fa8, emissiveIntensity: 0.35 });
+  // 大大發光眼（眼白 + 青色發光眼珠 + 黑瞳 + 反光）
+  const irisM = glow(0x18e0ff, 0.9);
+  const eyes = [-1, 1].map((s) => {
+    const eye = pivot(face, s * 0.34, 0.2, -0.5);
+    eye.rotation.y = s * -0.35;
+    ball(eye, 0.24, 0.27, 0.12, 0xffffff);
+    ball(eye, 0.17, 0.2, 0.06, 0, 0, -0.03, -0.08, irisM);
+    ball(eye, 0.09, 0.11, 0.04, 0x0d1030, 0, -0.04, -0.12);
+    ball(eye, 0.05, 0.055, 0.02, 0xffffff, s * -0.06, 0.07, -0.14);
+    ball(eye, 0.025, 0.028, 0.015, 0xffffff, s * 0.05, -0.08, -0.14);
+    const brow = ball(eye, 0.15, 0.035, 0.05, TOP, s * 0.03, 0.36, -0.05);
+    brow.rotation.z = s * -0.28; // 外面低、入面高 = 友善
+    return eye;
+  });
+  // 細細微笑（彎彎一條）
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.022, 6, 16, PI), material(0x2a1b5e));
+  smile.rotation.z = PI;
+  smile.position.set(0, -0.36, -0.52);
+  face.add(smile);
+  // 兩隻細象牙（白色、微微向上彎）
   for (const s of [-1, 1]) {
-    ball(head, 0.44, 0.38, 0.42, SKIN, s * 0.3, 0.52, -0.14); // 額頭凸凸
-    ball(head, 0.34, 0.3, 0.32, SKIN, s * 0.52, -0.28, -0.36); // 面頰
+    const t = pivot(face, s * 0.27, -0.36, -0.45);
+    t.rotation.set(0, s * 0.35, 0);
+    const tm = material(0xfdfbf2, { roughness: 0.3 });
+    const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.55, 12), tm);
+    tusk.position.set(0, 0.04, -0.24);
+    tusk.rotation.x = -1.25; // 向前、微微向上
+    t.add(tusk);
   }
-  ball(head, 0.36, 0.08, 0.3, SKIN2, 0, 0.8, 0.12); // 頭頂深色
-  ball(head, 0.74, 0.56, 0.5, SKIN, 0, 0.06, -0.34); // 塊面
-  ball(head, 0.56, 0.44, 0.42, SKIN2, 0, -0.42, -0.58); // 口鼻
-  for (let i = 0; i < 3; i++) sucker(head, -0.35 + i * 0.35, 0.8, 0.22, 0.11, 0, PI / 2); // 頭頂吸盤
-  // 又大又圓、發橙光嘅眼（眼白 + 橙色眼珠 + 黑瞳 + 兩點反光），眼眉微微向上 = 好友善
-  const irisM = material(0xffb300, { emissive: 0xff8f00, emissiveIntensity: 0.9 });
-  for (const s of [-1, 1]) {
-    const eye = pivot(head, s * 0.36, 0.14, -0.74);
-    eye.rotation.y = s * -0.4;
-    ball(eye, 0.21, 0.25, 0.1, 0xffffff);
-    ball(eye, 0.15, 0.18, 0.06, 0, 0, -0.02, -0.06, irisM);
-    ball(eye, 0.08, 0.1, 0.04, 0x1a1a1a, 0, -0.03, -0.1);
-    ball(eye, 0.045, 0.05, 0.02, 0xffffff, s * -0.05, 0.06, -0.12);
-    ball(eye, 0.022, 0.025, 0.015, 0xffffff, s * 0.04, -0.07, -0.12);
-    const brow = ball(eye, 0.18, 0.04, 0.06, DARK, 0, 0.32, -0.04);
-    brow.rotation.z = s * 0.25;
-    ball(head, 0.1, 0.07, 0.04, 0xf48fb1, s * 0.55, -0.12, -0.62); // 粉紅面珠
+  // 捲起嘅象鼻：一節節收細，向下再向前捲（尖係粉紅）
+  const trunk = [];
+  let tp = pivot(face, 0, -0.08, -0.55);
+  for (let i = 0; i < 12; i++) {
+    const p = pivot(tp, 0, 0, i === 0 ? 0 : -0.12 + i * 0.004);
+    const r = 0.17 - i * 0.009;
+    gradBall(p, r, r, 0.12, i > 9 ? PINK : MID, i > 9 ? PINK : BOT, 0, 0, -0.06);
+    if (i > 2 && i % 2) ball(p, r * 1.02, 0.02, 0.06, 0x2f5fb8, 0, r * 0.2, -0.07); // 鼻紋
+    trunk.push(p);
+    tp = p;
   }
-  // 大耳（識撥）
+  // ---- 大耳（喺面兩邊，青色發光邊、粉紅入面，識撥）----
+  const earPts = [[0, 0.35], [0.45, 0.6], [0.95, 0.45], [1.15, -0.05], [0.95, -0.6], [0.55, -0.9], [0.2, -0.6], [0, -0.25]];
   const ears = [-1, 1].map((s) => {
-    const e = pivot(head, s * 0.72, 0.2, 0.25);
-    // 圓圓嘅大耳：大塊 + 下面細啲 + 粉紅入面（一層層砌到似圓形）
-    box(e, 0.16, 1.5, 1.7, SKIN, 0, 0.05, 0.8, 0.45);
-    box(e, 0.16, 1.1, 1.3, SKIN, 0, -0.75, 0.7, 0.45);
-    box(e, 0.16, 0.5, 0.8, SKIN, 0, -1.25, 0.55, 0.45);
-    box(e, 0.06, 1.2, 1.3, 0xf48fb1, -s * 0.07, -0.05, 0.75, 0.45);
-    box(e, 0.06, 0.7, 0.85, 0xf48fb1, -s * 0.07, -0.75, 0.65, 0.45);
-    box(e, 0.18, 0.1, 1.5, SKIN2, 0, 0.8, 0.8, 0.3); // 耳邊
+    const e = pivot(face, s * 0.62, 0.15, 0.05);
+    const inner = pivot(e);
+    inner.scale.x = s;
+    const bend = (x) => x * x * 0.18;
+    slab(inner, earPts, 0.08, 0, { key: 'octo-ear-rim', bend, extra: glow(CYAN, 0.4), bevel: 0.02 }).scale.set(1.08, 1.08, 1);
+    slab(inner, earPts, 0.1, 0, { key: 'octo-ear', bend, z: 0.012, extra: material(FACE, { roughness: 0.45 }) });
+    const pink = slab(inner, earPts, 0.04, 0, { key: 'octo-ear-in', bend, z: -0.06, extra: material(PINK, { emissive: 0xff4fa8, emissiveIntensity: 0.2 }) });
+    pink.scale.set(0.72, 0.72, 1);
+    pink.position.set(0.16, -0.05, -0.06);
+    e.rotation.y = s * -0.35;
     return { e, s };
   });
-  // 長長白色彎象牙
-  for (const s of [-1, 1]) {
-    const t = pivot(head, s * 0.4, -0.52, -0.62);
-    box(t, 0.18, 0.18, 0.6, 0xfafafa, 0, 0, -0.25, 0.4).rotation.x = 0.3;
-    box(t, 0.15, 0.15, 0.55, 0xfafafa, 0, 0.2, -0.75, 0.4).rotation.x = -0.4;
-    box(t, 0.11, 0.11, 0.35, 0xfafafa, 0, 0.45, -1.05, 0.4).rotation.x = -0.9;
-  }
-  // 5 條觸手（代替象鼻）：一節節收細，底面有吸盤
-  const tentacles = [[0, -0.2, 1.25], [-0.32, -0.35, 1.0], [0.32, -0.35, 1.0], [-0.6, -0.2, 0.75], [0.6, -0.2, 0.75]].map(([x, y, sc], k) => {
-    const base = pivot(head, x * 0.85, y - 0.18, -0.82);
+
+  // ---- 8 條觸手做腳 ----
+  // 由頭底一圈伸出去：先向外落地，再沿地面伸，尾尖捲起；底有粉紅吸盤
+  const suckerM = material(PINK, { emissive: 0xff4fa8, emissiveIntensity: 0.25, roughness: 0.4 });
+  const tentacles = [];
+  for (let k = 0; k < 8; k++) {
+    const a = ((k + 0.5) / 8) * PI * 2; // 0 = 向前
+    const base = pivot(root, Math.sin(a) * 0.7, 1.15, -Math.cos(a) * 0.7 + 0.05);
+    base.rotation.y = -a; // 本地 -z = 向外
     const segs = [];
     let parent = base;
-    for (let i = 0; i < 6; i++) {
-      const p = pivot(parent, 0, i === 0 ? 0 : -0.36 * sc, 0);
-      const w = (0.34 - i * 0.045) * sc;
-      box(p, w, 0.4 * sc, w, i % 2 ? TENT : 0xc2479e, 0, -0.18 * sc, 0, 0.45);
-      sucker(p, 0, -0.18 * sc, -w / 2 - 0.01, w * 0.32, 0, 0);
+    const N = 9;
+    for (let i = 0; i < N; i++) {
+      const p = pivot(parent, 0, 0, i === 0 ? 0 : -(0.3 - i * 0.012));
+      const r = 0.3 - i * 0.027;
+      gradBall(p, r, r * 0.85, 0.27, i > 5 ? TIP : BOT, MID, 0, 0, -0.12);
+      ball(p, r * 0.42, r * 0.42, r * 0.2, 0, 0, -r * 0.72, -0.12, suckerM).rotation.x = PI / 2; // 吸盤（底面）
       segs.push(p);
       parent = p;
     }
-    base.rotation.x = -0.25;
-    base.rotation.z = x * 0.6;
-    return { segs, k, x };
-  });
-
-  // 淡淡粉紫光暈
-  const auraMat = new THREE.MeshBasicMaterial({ color: 0xe040fb, transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide });
-  const aura = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), auraMat);
-  aura.scale.set(1.9, 1.9, 2.6);
-  aura.position.set(0, BODY_Y + 0.1, -0.1);
-  root.add(aura);
+    tentacles.push({ segs, k });
+  }
+  // 觸手彎度：頭幾節向下，之後打平，尾尖向上捲
+  const CURVE = [-1.15, 0.32, 0.34, 0.3, 0.18, 0.12, 0.2, 0.3, 0.4];
 
   g.userData.animate = (t, moving) => {
-    legs.forEach((l, i) => (l.rotation.x = Math.sin(t * 5 + (i % 2 ? PI : 0) + (i > 1 ? PI : 0)) * 0.35 * moving));
-    root.position.y = Math.abs(Math.sin(t * 5)) * 0.06 * moving;
-    head.rotation.x = Math.sin(t * 1.2) * 0.04;
-    ears.forEach(({ e, s }) => (e.rotation.y = s * (0.75 + Math.sin(t * 2.2) * 0.2))); // 大耳向兩邊打開撥下撥下
+    root.position.y = baseY + Math.sin(t * 2) * 0.04 + Math.abs(Math.sin(t * 4)) * 0.05 * moving;
+    head.rotation.x = Math.sin(t * 1.3) * 0.03;
+    head.rotation.z = Math.sin(t * 0.9) * 0.025;
     for (const tn of tentacles) {
+      const ph = tn.k * 0.9;
       tn.segs.forEach((p, i) => {
-        p.rotation.x = Math.sin(t * 2.2 - i * 0.6 + tn.k) * 0.22 - (i > 3 ? 0.25 : 0);
-        p.rotation.z = Math.sin(t * 1.7 - i * 0.5 + tn.k * 1.3) * 0.18 + tn.x * 0.1;
+        const wave = Math.sin(t * (2 + moving * 4) - i * 0.7 + ph);
+        p.rotation.x = CURVE[i] + (i > 0 ? wave * (0.06 + 0.06 * moving) : wave * 0.08 * moving);
+        p.rotation.y = i > 0 ? Math.sin(t * 1.4 - i * 0.5 + ph) * 0.06 : 0;
       });
     }
-    tail.rotation.y = Math.sin(t * 2) * 0.4;
-    auraMat.opacity = 0.06 + Math.sin(t * 2) * 0.02;
+    trunk.forEach((p, i) => {
+      // 向下垂，尾段向前向上捲
+      p.rotation.x = i === 0 ? -1.25 : (i < 5 ? 0.05 : 0.38 + (i - 5) * 0.04) + Math.sin(t * 1.8 - i * 0.5) * 0.05;
+    });
+    ears.forEach(({ e, s }) => (e.rotation.y = s * (-0.35 + Math.sin(t * 2.2) * 0.18)));
+    crystals.rotation.y = Math.sin(t * 0.8) * 0.3;
+    const k = 0.9 + Math.sin(t * 2.5) * 0.35;
+    spotM.emissiveIntensity = k;
   };
+  // 觸手要掂地：量下最低點，成隻升上去
+  let baseY = 0;
+  g.userData.animate(0, 0);
+  baseY = -new THREE.Box3().setFromObject(g).min.y;
+  g.userData.animate(0, 0);
   g.userData.move = 'walk';
-  g.userData.height = 3.6;
+  g.userData.height = 3.7;
   return g;
 }
 
