@@ -168,6 +168,17 @@ kbd {
 .card-animal .kg { display: block; font-size: 12px; color: #5d4037; }
 .card-animal p { margin: 4px 0 0; font-size: 12px; color: #555; }
 .card-animal.locked { background: #eeeeee; border-color: #bdbdbd; color: #999; }
+/* 動物相（src/animalPics.js）：底色跟稀有度 */
+.pet-pic {
+  position: relative; width: 100%; max-width: 160px; aspect-ratio: 160 / 130; margin: 0 auto 4px;
+  border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 45%, #ffffff 0%, color-mix(in srgb, var(--pic-bg, #cfd8dc) 45%, #ffffff) 70%, color-mix(in srgb, var(--pic-bg, #cfd8dc) 70%, #ffffff) 100%);
+}
+.pet-pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pet-pic .emoji { font-size: 34px; }
+.pet-pic.silhouette { background: radial-gradient(circle at 50% 45%, #f5f5f5, #d6d6d6); }
+.pet-pic .q { position: absolute; right: 6px; top: 2px; font: bold 22px/1 sans-serif; color: #546e7a; }
+.fuse-chance .pet-pic { width: 84px; }
 
 /* 問答 */
 .card.quiz { width: min(560px, calc(100vw - 32px)); }

@@ -11,6 +11,7 @@ import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
+import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -273,7 +274,7 @@ function petsHtml() {
   const card = (p, buttons = '') => {
     const r = rarityInfo(p.rarity);
     return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
-      <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
+      ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
       <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : p.mutation === 'eclipse' ? '<small class="fire-tag eclipse-tag">🌑 ECLIPSE x6</small>' : ''}
       <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.where || (p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack')}</p>${buttons}</div>`;
   };
@@ -306,7 +307,7 @@ function sellHtml() {
     <div class="cards">${pets.map(({ p, i }) => {
       const r = rarityInfo(p.rarity);
       return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
-        <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
+        ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
         <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : p.mutation === 'eclipse' ? '<small class="fire-tag eclipse-tag">🌑 ECLIPSE x6</small>' : ''}
         <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="sell" data-i="${i}" class="sell">${confirmSell === i ? 'Sure? Sell!' : `Sell $${fmt(sellPrice(p))}`}</button></div></div>`;
@@ -327,7 +328,7 @@ function fuseHtml() {
   return `<p class="index-summary">Pick <b>3 pets</b> (${picked.length}/3). They will be <b>gone</b> and turn into ONE fuse-only pet! Rarer pets in = better chance.</p>
     <div class="fuse-chances">${chances.map((c) => {
       const r = rarityInfo(c.rarity);
-      return `<div class="fuse-chance" style="border-color:${r.color}"><div class="emoji">${c.emoji}</div><b>${c.name}</b><small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}</small><span>${c.chance.toFixed(1)}%</span></div>`;
+      return `<div class="fuse-chance" style="border-color:${r.color}">${petPic(c.name, { rarity: c.rarity })}<b>${c.name}</b><small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}</small><span>${c.chance.toFixed(1)}%</span></div>`;
     }).join('')}</div>
     <div class="pet-actions">
       <button data-action="fuse-go" class="sell" ${ready ? '' : 'disabled'}>${!ready ? `Pick ${3 - picked.length} more` : confirmFuse ? 'Sure? FUSE them!' : `🧪 FUSE! (new pet earns $${fmt(total * Math.min(...Object.values(FUSE_MONEY_BONUS)))} to $${fmt(total * Math.max(...Object.values(FUSE_MONEY_BONUS)))}/s)`}</button>
@@ -337,7 +338,7 @@ function fuseHtml() {
       const r = rarityInfo(p.rarity);
       const on = fusePicked.has(p);
       return `<div class="card-animal ${on ? 'equipped' : ''}" style="border-color:${r.color}">
-        <div class="emoji">${findAnimal(p.name).emoji}</div><b>${p.name}</b>
+        ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
         <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : p.mutation === 'eclipse' ? '<small class="fire-tag eclipse-tag">🌑 ECLIPSE x6</small>' : ''}
         <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="fuse-pick" data-i="${i}" ${!on && picked.length >= 3 ? 'disabled' : ''}>${on ? '✔ Picked' : 'Pick'}</button></div></div>`;
@@ -481,8 +482,8 @@ function animalIndexHtml() {
       <div class="cards">`;
     for (const a of animals) {
       html += state.indexFound.includes(a.name)
-        ? `<div class="card-animal"><div class="emoji">${a.emoji}</div><b>${a.name}</b><small>${a.status}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
-        : '<div class="card-animal locked"><div class="emoji">❓</div><b>???</b><small>Not rescued yet</small></div>';
+        ? `<div class="card-animal">${petPic(a.name)}<b>${a.name}</b><small>${a.status}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not rescued yet</small></div>`;
     }
     html += '</div>';
   });
@@ -589,7 +590,7 @@ function portalHtml() {
       html += `<p>Pick ${need} (${portalPicked.length} picked):</p><div class="cards">${choices.map((c) => {
         const a = findAnimal(c.item.name);
         const on = portalPicked.includes(c.key);
-        return `<div class="card-animal ${on ? 'equipped' : ''}"><div class="emoji">${a.emoji}</div><b>${c.item.name}</b><small>★ Legendary · ${c.where}</small>
+        return `<div class="card-animal ${on ? 'equipped' : ''}">${petPic(c.item.name, { rarity: 'Legendary' })}<b>${c.item.name}</b><small>★ Legendary · ${c.where}</small>
           <button data-portal="pick" data-key="${c.key}" class="${on ? 'grey' : ''}">${on ? 'Unpick' : 'Pick'}</button></div>`;
       }).join('')}</div>`;
       if (portalPicked.length >= need) {
