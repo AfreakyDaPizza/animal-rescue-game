@@ -254,7 +254,7 @@ export function buildLab(scene) {
   // 舊存檔：大門一開始就打開；打爛咗嘅玻璃艙保持爛咗；執咗嘅鎚仔唔再出
   parkGate.open = !!state.labUnlocked;
   for (const i of state.labPodsSmashed) if (lab.pods[i]) breakPodNow(lab.pods[i]);
-  if (state.hasHammer) lab.hammer.g.visible = false;
+  if (state.hasHammer || state.labBossDefeated) lab.hammer.g.visible = false; // 打贏咗 Boss：鎚仔冇用
   if (parkGate.open) {
     setGateOpen(1);
     lab.lock.group.visible = false;

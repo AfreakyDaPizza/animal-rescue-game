@@ -3,7 +3,7 @@
 // 2. 結局動畫（見下面 playEnding）
 
 import * as THREE from 'three';
-import { short } from './format.js';
+import { short as shortNum } from './format.js'; // playEnding 有個參數都叫 short
 import { playMovie, once, shake } from './movie.js';
 import { lab, openParkGate } from './lab.js';
 import { setGateOpen, PARK_GATE, park, standUp, lieOnHammock } from './hubPark.js';
@@ -182,7 +182,7 @@ export function playEnding({ scene, camera, fight, onPaid, onDone, short = false
   // 一袋錢（Owner 交俾你）
   const cash = new THREE.Group();
   cash.add(new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), new THREE.MeshStandardMaterial({ color: 0x8d6e63 })));
-  const tag = makeLabel([{ text: `💰 $${short(LAB_REWARD)}`, color: '#ffeb3b' }], 0.9);
+  const tag = makeLabel([{ text: `💰 $${shortNum(LAB_REWARD)}`, color: '#ffeb3b' }], 0.9);
   tag.position.y = 0.8;
   cash.add(tag);
   cash.visible = false;
@@ -208,7 +208,7 @@ export function playEnding({ scene, camera, fight, onPaid, onDone, short = false
   };
   const finalLines = [
     'You saved the endangered animals!',
-    `You got paid $${short(LAB_REWARD)}...`,
+    `You got paid $${shortNum(LAB_REWARD)}...`,
     "but something's missing...",
     'the pets wanted you to stay here forever,',
     'so you decided to stay with them forever.',
@@ -238,7 +238,7 @@ export function playEnding({ scene, camera, fight, onPaid, onDone, short = false
     ],
     lines: [
       [22.3, 25, () => owner.head, 'You did it, Ranger! You saved them ALL! 🎉', 'owner'],
-      [25.2, 28.2, () => owner.head, `Here is $${short(LAB_REWARD)} for being the BEST ranger! 💰`, 'owner'],
+      [25.2, 28.2, () => owner.head, `Here is $${shortNum(LAB_REWARD)} for being the BEST ranger! 💰`, 'owner'],
       [28.4, 30.8, () => ranger.head, 'Thank you! 🐾', 'ranger'],
     ],
     update(t, dt) {

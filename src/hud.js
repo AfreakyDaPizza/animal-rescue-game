@@ -152,7 +152,7 @@ export const toolFlags = { bat: false };
 export function hotbarItems() {
   return [
     ...(toolFlags.bat ? [BAT_ITEM] : []),
-    ...(state.hasHammer ? [HAMMER_ITEM] : []),
+    ...(state.hasHammer && !state.labBossDefeated ? [HAMMER_ITEM] : []), // 實驗室冇咗：鎚仔冇用，唔再放快捷欄
     ...state.borrowed.map((item) => ({ kind: 'rescued', item })),
     ...state.pets.filter((p) => !p.onPlot).map((item) => ({ kind: 'pet', item })),
   ].slice(0, SLOTS);

@@ -770,7 +770,7 @@ const near = (pos, p, d) => Math.hypot(pos.x - p.x, pos.z - p.z) < d;
 const holdingHammer = () => selectedHotbarItem()?.kind === 'tool' && !selectedHotbarItem().item.bat;
 function labInteraction(pos) {
   // Biome 6 座山後面嘅鎚仔
-  if (!state.hasHammer && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
+  if (!state.hasHammer && !state.labBossDefeated && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
   // 公園大閘（去實驗室）：以前要撳橋下面個紅掣（小朋友 2026-10-18 刪咗），而家行到閘前面撳 E 就開
   if (!state.labUnlocked && pos.z < PARK_GATE.z && near(pos, PARK_GATE, 4)) return { prompt: '<kbd>E</kbd> Break the chains and open the gate 🔓', action: startUnlockScene };
   if (whereIs(pos.x, pos.z) !== 'Laboratory') return null;
