@@ -1590,7 +1590,9 @@ renderer.setAnimationLoop((timestamp) => {
     held: rescue.carrying?.model || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
     walking: player.walking, feetY: player.feetY,
-    station: trainingStationAt(hub, camera.position.x, camera.position.z) || (gymStationAt(camera.position.x, camera.position.z)?.kind === 'treadmill' ? { kind: 'treadmill' } : null),
+    station: trainingStationAt(hub, camera.position.x, camera.position.z),
+    gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
+    time,
   });
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
   if (!inMovie && viewCam !== camera && !labStatus.gone && inLab(camera.position.x, camera.position.z)) {

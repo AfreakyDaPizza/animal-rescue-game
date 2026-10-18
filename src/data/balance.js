@@ -196,6 +196,12 @@ export const GYM_BENCH_EVERY = 3;
 // Climbing Wall of Wisdom：每 2–4 秒加一次 IQ，每次 = 4 × 你 Hub 學生桌每秒加嘅
 export const GYM_WALL_MULTI = 4;
 export const GYM_WALL_EVERY = [2, 4];
+// 🥊 Punching Bag of Power: Speed every 1.5–2.5 sec, each = this x your Hub treadmill's per-second gain
+export const GYM_BAG_MULTI = 2.5;
+export const GYM_BAG_EVERY = [1.5, 2.5];
+// 🚣 Rowing Machine of Wisdom: Speed + IQ every 2.5 sec, each = this x your Hub treadmill / student table per-second gain
+export const GYM_ROW_MULTI = 1.5;
+export const GYM_ROW_EVERY = 2.5;
 
 // ---- 🤪 CRAZY PET FRENZY (kid 2026-10-18): a VERY hidden button on the Secret Beach ----
 // Press it → for a while, every biome is full of crazy pets (only Legendary / Mythic, often GIANT, sometimes 🔥 Fire or 🌑 Eclipse)

@@ -3,6 +3,7 @@
 // 移動同互動照用原本嘅「眼」鏡頭（camera），淨係畫畫面用另一個鏡頭（view）
 
 import * as THREE from 'three';
+import { poseGym, gymFirstPerson } from './gymPoses.js'; // 💪 Gym 動作
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { kgScale } from './data/animals.js';
 
@@ -215,6 +216,7 @@ export function applyRangerSkin(tp, skin) {
 export function createThirdPerson(scene, eye) {
   const avatar = buildAvatar();
   avatar.g.visible = false;
+  avatar.g.rotation.order = 'YXZ'; // 先傾（x）再轉向（y）：Gym 瞓低、空翻用
   scene.add(avatar.g);
   const view = new THREE.PerspectiveCamera(eye.fov, eye.aspect, eye.near, eye.far);
   scene.add(view);
@@ -255,14 +257,19 @@ function toHand(tp, held) {
 const fwd = new THREE.Vector3();
 
 // held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；回傳要用嚟畫畫面嘅鏡頭
-export function updateThirdPerson(tp, dt, { held, item, walking, feetY, station = null }) {
+export function updateThirdPerson(tp, dt, { held, item, walking, feetY, station = null, gymStation = null, time = 0 }) {
   const { eye, avatar, view } = tp;
   tp.smoothZoom += (tp.zoom - tp.smoothZoom) * Math.min(1, dt * 10);
   const third = tp.zoom > 0;
 
   // 寵物：第三身頂喺頭上（向前、真實大細）；第一身拎喺手
-  if (tp.held && tp.held !== held && tp.held.parent === tp.headSlot) tp.held.removeFromParent();
+  if (tp.held && tp.held !== held) {
+    tp.held.visible = true;
+    if (tp.held.parent === tp.headSlot) tp.held.removeFromParent();
+  }
   tp.held = held;
+  if (held) held.visible = !gymStation || gymStation.kind === 'treadmill'; // Gym 做動作（瞓低、爬牆…）嗰陣收埋手上嘅寵物
+  if (!gymStation) tp.tramp = null;
   let petSize = 0;
   if (held) {
     if (third) {
@@ -278,12 +285,14 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, station 
   }
 
   avatar.g.visible = third;
-  if (!third) return eye;
+  if (!third) return (gymStation && gymFirstPerson(tp, gymStation, { time })) || eye;
 
   // 公仔跟住玩家（腳嘅位置、面向）
   avatar.g.position.set(eye.position.x, feetY, eye.position.z);
-  avatar.g.rotation.y = eye.rotation.y;
-  avatar.g.rotation.x = 0;
+  avatar.g.rotation.set(0, eye.rotation.y, 0);
+  avatar.legs.forEach((l) => l.rotation.set(0, 0, 0));
+  avatar.arms.forEach((a) => a.rotation.set(0, 0, 0));
+  avatar.head.rotation.set(0, 0, 0);
   avatar.head.position.y = 2.15;
   const running = station?.kind === 'treadmill'; // 跑步機：自動跑
   const sitting = station?.kind === 'table'; // 學生桌：坐低寫字
@@ -295,7 +304,9 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, station 
     avatar.mats.shoes.color.setHSL((h + 0.66) % 1, 1, 0.5);
   }
   const swing = running ? Math.sin(tp.phase) * 1.1 : walking ? Math.sin(tp.phase) * 0.7 : 0;
-  if (sitting) {
+  if (gymStation && poseGym(tp, gymStation, { feetY, dt, time })) {
+    // 💪 Gym：gymPoses.js 已經擺好
+  } else if (sitting) {
     // 坐喺張櫈面上、面向書枱：大髀向前打橫，雙手向前放喺枱面，右手寫字，個頭望落本書
     tp.phase2 = (tp.phase2 || 0) + dt * 8;
     avatar.g.position.set(station.x, -0.08, station.z + 1.3); // 櫈面高 0.62，屁股啱啱坐喺上面
