@@ -1,6 +1,7 @@
 // 實驗室爆炸逃走動畫（小朋友 Issue #4）：打贏 Mutated Scientist Poacher 之後
-// 警報響、紅燈閃 → 你由實驗室後面跑出門口 → 成間實驗室喺你後面爆炸 → 你及時走出嚟，見到秘密沙灘
-// 之後先播原本嘅結局（動物返地塊、Owner 俾錢）
+// 警報響、紅燈閃 → 你由實驗室後面跑出門口 → 成間實驗室喺你後面爆炸 → 你及時走出嚟
+// 小朋友 2026-10-18：最後見到前院隔籬起緊一間 GYM（OPENING SOON）同門外去秘密沙灘嘅傳送門
+// （Owner 俾錢嗰段搬咗去：第一次行入傳送門去沙灘先播）
 
 import * as THREE from 'three';
 import { playMovie, once, shake } from './movie.js';
@@ -8,7 +9,7 @@ import { play } from './sound.js';
 import { state } from './state.js';
 import { buildAvatar, applyRangerSkin } from './thirdPerson.js';
 import { RANGER_SKINS } from './skins.js';
-import { LAB, LAB_DOOR_Z, BEACH } from './labShape.js';
+import { LAB, LAB_DOOR_Z, GYM, GYM_DOOR_Z, GYM_PORTAL } from './labShape.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const $ = (id) => document.getElementById(id);
@@ -35,7 +36,7 @@ export function playLabEscape({ scene, camera, onDone }) {
   applyRangerSkin({ avatar: me }, RANGER_SKINS.find((r) => r.id === state.rangerSkin) || RANGER_SKINS[0]);
   me.g.scale.setScalar(1.2);
   root.add(me.g);
-  const RUN = [V(0, 0, LAB.maxZ - 4), V(0, 0, LAB_DOOR_Z - 6), V(BEACH.minX + 8, 0, 82)]; // 實驗室後面 → 門口外面 → 沙灘
+  const RUN = [V(0, 0, LAB.maxZ - 4), V(0, 0, LAB_DOOR_Z - 6), V(GYM.maxX + 12, 0, GYM_DOOR_Z)]; // 實驗室後面 → 門口外面 → Gym 門口
   me.g.position.copy(RUN[0]);
   let phase = 0;
   // 實驗室入面嘅細爆炸（火花）同最後嘅大爆炸
@@ -58,18 +59,21 @@ export function playLabEscape({ scene, camera, onDone }) {
   });
 
   playMovie(camera, {
-    length: 16.5,
+    length: 19,
     shots: [
       [0, 3.2, { p: V(4, 3.4, LAB.maxZ - 13), l: V(0, 2, LAB.maxZ - 4) }, { p: V(3, 3, LAB.maxZ - 15), l: V(0, 2, LAB.maxZ - 8) }], // 警報！佢向鏡頭跑過嚟
       [3.2, 6.6, { p: V(-6, 2.6, LAB_DOOR_Z + 4), l: V(0, 2, LAB_DOOR_Z + 20) }, { p: V(-5, 2.4, LAB_DOOR_Z + 2), l: V(0, 2, LAB_DOOR_Z + 8) }], // 衝向門口
       [6.6, 12, { p: V(10, 5, LAB_DOOR_Z - 34), l: V(0, 6, LAB_DOOR_Z + 4) }, { p: V(12, 6, LAB_DOOR_Z - 38), l: V(0, 8, LAB_DOOR_Z + 6) }], // 前院：佢跑出嚟，實驗室喺後面爆炸
-      [12, 16.5, { p: V(BEACH.minX + 2, 3, 76), l: V(BEACH.maxX + 30, 4, 84) }, { p: V(BEACH.minX + 4, 2.8, 77), l: V(BEACH.maxX + 30, 6, 84) }], // 秘密沙灘
+      [12, 15.6, { p: V(-2, 3.2, 66), l: V(GYM.maxX, 6, GYM_DOOR_Z) }, { p: V(-6, 4.2, 70), l: V(GYM.maxX, 7.5, GYM_DOOR_Z) }], // 前院：見到新 Gym！
+      [15.6, 19, { p: V(GYM_PORTAL.x + 9, 3, GYM_PORTAL.z + 3), l: V(GYM_PORTAL.x, GYM_PORTAL.y, GYM_PORTAL.z) }, { p: V(GYM_PORTAL.x + 6.5, 2.8, GYM_PORTAL.z + 1.5), l: V(GYM_PORTAL.x, GYM_PORTAL.y, GYM_PORTAL.z) }], // 門外嘅傳送門
     ],
     captions: [
       [0.2, '⚠️ WARNING! The Laboratory is going to EXPLODE! RUN!'],
       [6.6, '...'],
       [8.8, '💥 KABOOM!!!'],
-      [12, 'You made it out just in time... and found a beautiful hidden beach! 🏖️'],
+      [12, 'You made it out just in time! But wait... what is THAT? 👀'],
+      [13.6, '💪 A brand new RANGER GYM! Opening soon!'],
+      [15.6, '🌀 And a glowing portal to a SECRET BEACH! 🏖️'],
     ],
     lines: [[1.2, 3, () => me.head, 'I have to get out of here!', 'ranger']],
     update(t, dt) {
@@ -91,7 +95,7 @@ export function playLabEscape({ scene, camera, onDone }) {
       }
       if (t > 12 && phase === 1) {
         phase = 2;
-        me.g.position.set(BEACH.minX + 6, 0, 80);
+        me.g.position.set(-9, 0, 77);
       }
       const goal = phase === 0 ? V(0, 0, LAB_DOOR_Z - 2) : phase === 1 ? RUN[1].clone().add(V(0, 0, -22)) : RUN[2];
       const d = goal.clone().sub(me.g.position);

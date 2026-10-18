@@ -154,3 +154,22 @@ export const LAB_SQUASH_WARNING = 0.6; // 紅框停低之後，再過幾多秒�
 export const LAB_TIRED_SECONDS = 30; // 佢攰咗幾多秒（呢段時間要帶佢隻手拍落 Solar Energy Capsule）
 export const LAB_CAPSULE_HITS = 4; // 要拍中幾多次 Capsule 先打得低佢
 export const LAB_REWARD = 1000; // 打贏 Owner 俾你幾多錢
+
+// ---- 💪 GYM（小朋友 2026-10-18）：實驗室爆炸之後喺前院隔籬出現，到呢日先開門 ----
+// 日子格式：'年-月-日'。想早啲試？改做今日嘅日子就得
+export const GYM_OPEN_DATE = '2026-10-31';
+// 4X Treadmill：每 2–4 秒加一次 Speed，每次 = 4 × 你 Hub 跑步機每秒加嘅
+export const GYM_TREADMILL_MULTI = 4;
+export const GYM_TREADMILL_EVERY = [2, 4]; // 最少幾秒、最多幾秒
+// Trampoline：企上去自動彈，每 5 秒 +1 Jump Power（冇升級）
+export const GYM_JUMP_GAIN = 1;
+export const GYM_JUMP_EVERY = 5;
+// Jump Power：每 1 點跳高多幾多米（普通跳大約 2 米高），最多計幾多點
+export const JUMP_POWER_HEIGHT = 0.02;
+export const JUMP_POWER_MAX = 300; // 300 點 = 跳高多 6 米
+// Brain Bench：每 3 秒同時加 Speed 同 IQ，每次 = 2 × Hub 跑步機／學生桌每秒加嘅
+export const GYM_BENCH_MULTI = 2;
+export const GYM_BENCH_EVERY = 3;
+// Climbing Wall of Wisdom：每 2–4 秒加一次 IQ，每次 = 4 × 你 Hub 學生桌每秒加嘅
+export const GYM_WALL_MULTI = 4;
+export const GYM_WALL_EVERY = [2, 4];

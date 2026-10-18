@@ -38,7 +38,9 @@ const DEFAULTS = {
   collabSeen: false, // 睇咗秘密結局 THE COLLAB
   labBossDefeated: false, // 打贏咗 Mutated Scientist Poacher
   labRewardPaid: false, // Owner 俾咗 $1000 未
-  labEndingSeen: false, // 睇咗結局動畫未
+  labEndingSeen: false, // 睇咗結局動畫未（實驗室爆炸、見到 Gym）
+  beachFinaleSeen: null, // 去過秘密沙灘睇 Owner 俾錢嗰段未（null = 舊存檔，跟 labEndingSeen）
+  jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
 };
 
 export const state = load();
@@ -46,7 +48,9 @@ export const state = load();
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
-    return { ...DEFAULTS, ...saved };
+    const s = { ...DEFAULTS, ...saved };
+    if (s.beachFinaleSeen === null) s.beachFinaleSeen = !!s.labEndingSeen; // 舊存檔：以前睇完結局就已經去咗沙灘
+    return s;
   } catch {
     return { ...DEFAULTS };
   }
