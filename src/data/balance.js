@@ -96,6 +96,9 @@ export const trainingGainLabel = (level, stat, fmt) => (trainingRange(level) ? t
 export const upgradeCost = (level) =>
   level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1));
 
+// ---- 📚 Word Power: chance (0 to 1) that a quiz question is a school vocabulary question instead of an animal fact ----
+export const VOCAB_CHANCE = 0.4;
+
 // ---- 障礙物：每個生態區幾多個、郁得幾快 ----
 // Kid 2026-10-18: "make obstacles harder to dodge" → +2 each, about 40% faster, sudden dashes, harder to jump over
 export const HAZARD_COUNT = [6, 7, 8, 9, 10, 11, 12];

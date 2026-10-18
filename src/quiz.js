@@ -2,6 +2,8 @@
 // IQ 夠高會幫你刪走錯嘅答案
 
 import { QUESTIONS } from './data/questions.js';
+import { VOCAB } from './data/vocab.js'; // 📚 學校生字題
+import { VOCAB_CHANCE } from './data/balance.js';
 import { short } from './format.js';
 import { BOSSES } from './data/balance.js';
 import { state } from './state.js';
@@ -17,11 +19,12 @@ export const isQuizOpen = () => current !== null;
 
 function pickQuestion(biome, hard) {
   let pool = QUESTIONS.filter((q) => q.biome === biome && !!q.hard === hard);
+  if (Math.random() < VOCAB_CHANCE) pool = VOCAB.filter((q) => !!q.hard === hard).map((q) => ({ ...q, vocab: true, key: q.q })); // 有時問學校生字題
   if (!pool.length) pool = QUESTIONS.filter((q) => !!q.hard === hard); // 新生態區（例如 Biome 7）未有題目：用全部
-  const fresh = pool.filter((q) => !recent.includes(q));
+  const fresh = pool.filter((q) => !recent.includes(q.key ?? q));
   if (fresh.length) pool = fresh;
   const q = pool[Math.floor(Math.random() * pool.length)];
-  recent.push(q);
+  recent.push(q.key ?? q);
   if (recent.length > 12) recent.shift();
   return q;
 }
@@ -44,7 +47,7 @@ export function askQuestion({ title, biome, hard = false }) {
   const wrong = shuffle(q.answers.slice(1)).slice(removeCount);
   const choices = shuffle([correct, ...wrong]);
 
-  $('quiz-title').textContent = title;
+  $('quiz-title').textContent = q.vocab ? `📚 Word Power! ${title}` : title;
   $('quiz-question').textContent = q.q;
   $('quiz-iq').textContent = removeCount
     ? `🧠 Your IQ (${short(Math.floor(state.iq))}) removed ${removeCount} wrong answer${removeCount > 1 ? 's' : ''}!`
