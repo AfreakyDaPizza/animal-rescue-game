@@ -197,6 +197,7 @@ src/data/questions.js ← 野生動物問題
 5. `state.jumpPower`：每點跳高 `JUMP_POWER_HEIGHT`（0.02 米），最多計 `JUMP_POWER_MAX`（300 點 = 多 6 米）。HUD 有 🦘（有 Jump Power 先顯示），My Stats 有一行。
 6. 小朋友老師話跑跑下跳會慢好多 → 取消咗半空限速（`player.js`），半空保持跑步速度。
 7. 測試：`game.openGym()`（唔理日子即刻開）、`game.lab.ending()`（再睇爆炸 → Gym）。
+8. 2026-10-18 小朋友：Gym 加動畫（`src/gymPoses.js`，`thirdPerson.js` 經 `gymStation` 叫 `poseGym`／第一身 `gymFirstPerson`）：⚡ 衝刺高抬腿、🦘 彈床花式（舉手／抱膝／星形跳／前空翻）、🧠 臥推（瞓喺櫈、槓鈴跟住對手 `benchBarY`）、🧗 攀石（手腳交替，到頂揮拳再滑落 `st.mode`）。新機：🥊 Punching Bag of Power（沙包每拳盪開，`GYM_BAG_*`）、🚣 Rowing Machine of Wisdom（櫈仔前後滑、拉繩、飛輪轉，`GYM_ROW_*`）。做動作時收埋手上寵物（跑步機除外）。
 
 ## Hub 重新排位（2026-10-18，小朋友：rearrange everything in the hub，揀咗「You decide」）
 由上面望（-z 係生態區）：
