@@ -7,6 +7,7 @@ import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.j
 import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall } from './hubBuildings.js';
 import { addFireAura } from './fireAura.js';
+import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
 import { fuseMachine } from './hubPark.js';
 import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { boost } from './events.js';
@@ -99,18 +100,22 @@ function applyTier(station, level = state[station.levelKey]) {
   station.ring.visible = index >= 4; // Neon 起：地上有圈光
   station.sparkles.visible = index >= 3; // Golden Steel 起：有閃粉
   for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra || (tier.extra === 'kingdom' && name === 'astral'); // 皇國：連埋 Astral 嘅宇宙特效
-  // Astral：機身變星空
+  // Astral：機身變星空；Inferno：機身變火山石 + 發光熔岩裂紋，金屬邊發橙光
   const starry = tier.extra === 'astral' || tier.extra === 'kingdom' ? starTexture() : null;
-  if (station.baseMat.map !== starry) {
-    station.baseMat.map = starry;
-    station.baseMat.emissiveMap = starry;
+  const fiery = tier.extra === 'inferno' ? infernoTexture() : null;
+  const skin = starry || fiery;
+  if (station.baseMat.map !== skin) {
+    station.baseMat.map = skin;
+    station.baseMat.emissiveMap = skin;
     station.baseMat.needsUpdate = true;
   }
-  if (starry) {
+  if (skin) {
     station.baseMat.color.setHex(0xffffff);
     station.baseMat.emissive.setHex(0xffffff);
-    station.baseMat.emissiveIntensity = 0.6;
+    station.baseMat.emissiveIntensity = fiery ? 0.9 : 0.6;
   } else station.baseMat.emissiveIntensity = 1;
+  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : 0x000000);
+  station.trimMat.emissiveIntensity = fiery ? 0.7 : 1;
   station.stageGlow.color.setHex(tier.glow || 0x90a4ae);
   station.stageGlow.emissive.setHex(tier.glow || 0x000000);
   station.tierLabel.userData.setLines([{ text: `★ ${tier.name} ★`, color: `#${new THREE.Color(tier.glow || 0xffffff).getHexString()}` }]);
@@ -452,56 +457,8 @@ function addFancyBits(station, group, y) {
     kingdom.userData = { crown, stars, flags, ores };
   }
 
-  // ---- Inferno Sanctuary（Lv17）：黑曜石柱 + 熔岩裂紋、四條火柱、熔岩圈、圍住轉嘅火球、升起嘅火花、頭頂火焰皇冠 ----
-  const inferno = make('inferno');
-  {
-    const obsidian = M(0x120808, { metalness: 0.6, roughness: 0.25, flatShading: true });
-    const lava = glowMat(0xff6d00, 2.4);
-    const flames = [];
-    for (const [x, z] of corners) {
-      add(inferno, new THREE.CylinderGeometry(0.3, 0.45, 2.4, 6), obsidian, x * 1.12, 1.2, z * 1.08);
-      for (let k = 0; k < 3; k++) add(inferno, new THREE.BoxGeometry(0.06, 0.5, 0.06), lava, x * 1.12 + Math.cos(k * 2.1) * 0.36, 0.6 + k * 0.6, z * 1.08 + Math.sin(k * 2.1) * 0.36); // 熔岩裂紋
-      add(inferno, new THREE.CylinderGeometry(0.5, 0.4, 0.25, 6), lava, x * 1.12, 2.5, z * 1.08); // 火盆
-      const fl = new THREE.Group();
-      [[0xffeb3b, 0.22, 0.9], [0xff9100, 0.34, 1.4], [0xff3d00, 0.46, 1.9]].forEach(([c, r, h]) => {
-        const f = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), additive(c, 0.75));
-        f.position.y = h / 2;
-        fl.add(f);
-      });
-      fl.position.set(x * 1.12, 2.6, z * 1.08);
-      inferno.add(fl);
-      flames.push(fl);
-    }
-    const ring = add(inferno, new THREE.RingGeometry(2.6, 3.0, 40), additive(0xff6d00, 0.85), 0, 0.1, 0); // 熔岩圈
-    ring.rotation.x = -Math.PI / 2;
-    const orbs = [];
-    for (let k = 0; k < 6; k++) {
-      const o = add(inferno, new THREE.SphereGeometry(0.22, 12, 8), glowMat(k % 2 ? 0xffab00 : 0xff3d00, 3), 0, 0, 0);
-      o.castShadow = false;
-      orbs.push(o);
-    }
-    // 火焰皇冠（浮喺頭頂）
-    const crown = new THREE.Group();
-    for (let k = 0; k < 7; k++) {
-      const a = (k / 7) * Math.PI * 2;
-      const f = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.7, 6), additive(k % 2 ? 0xff9100 : 0xffeb3b, 0.9));
-      f.position.set(Math.cos(a) * 0.7, 0.35, Math.sin(a) * 0.7);
-      crown.add(f);
-    }
-    add(crown, new THREE.TorusGeometry(0.7, 0.09, 8, 28), lava, 0, 0, 0).rotation.x = Math.PI / 2;
-    crown.position.set(0, 6.2, 0);
-    inferno.add(crown);
-    // 火花：一粒粒向上飄
-    const EMB = 80;
-    const emb = new Float32Array(EMB * 3);
-    const embSeed = Array.from({ length: EMB }, () => [(Math.random() * 2 - 1) * 3, Math.random() * 6, (Math.random() * 2 - 1) * 3.4, 0.6 + Math.random()]);
-    const embGeo = new THREE.BufferGeometry();
-    embGeo.setAttribute('position', new THREE.BufferAttribute(emb, 3));
-    const embers = new THREE.Points(embGeo, new THREE.PointsMaterial({ color: 0xffab40, size: 0.14, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    embers.frustumCulled = false;
-    inferno.add(embers);
-    inferno.userData = { flames, ring, orbs, crown, emb, embSeed, embGeo };
-  }
+  // ---- Inferno Sanctuary（Lv17）：見 inferno.js（火山石門、熔岩瀑布、火龍捲、火焰圈、BB 火龍……）----
+  buildInferno(make('inferno'));
 
   // ---- Mountain Magic：細雪山、魔法水晶、紫色魔法陣 ----
   const mountain = make('mountain');
@@ -791,26 +748,7 @@ function animateExtras(station, time) {
     orb.position.set(Math.cos(a) * 2.6, 1.2 + Math.sin(time * 2 + i) * 0.8, Math.sin(a) * 3);
   });
   if (e.mountain.visible) e.mountain.userData.rune.rotation.z = time * 0.5;
-  if (e.inferno?.visible) {
-    const u = e.inferno.userData;
-    u.flames.forEach((f, i) => {
-      f.scale.set(1 + Math.sin(time * 13 + i) * 0.08, 1 + Math.sin(time * 9 + i * 2) * 0.18, 1 + Math.cos(time * 11 + i) * 0.08);
-      f.rotation.y = time * 2 + i;
-    });
-    u.ring.material.opacity = 0.6 + Math.sin(time * 3) * 0.25;
-    u.orbs.forEach((o, i) => {
-      const a = time * 1.4 + (i / u.orbs.length) * Math.PI * 2;
-      o.position.set(Math.cos(a) * 3, 2 + Math.sin(time * 2.5 + i) * 0.7, Math.sin(a) * 3.4);
-    });
-    u.crown.rotation.y = time * 0.8;
-    u.crown.position.y = 6.2 + Math.sin(time * 1.7) * 0.2;
-    u.embSeed.forEach(([x, y0, z, sp], i) => {
-      u.emb[i * 3] = x + Math.sin(time + i) * 0.2;
-      u.emb[i * 3 + 1] = (y0 + time * sp) % 6.5;
-      u.emb[i * 3 + 2] = z;
-    });
-    u.embGeo.attributes.position.needsUpdate = true;
-  }
+  if (e.inferno?.visible) animateInferno(e.inferno, station, time);
   if (e.kingdom.visible) {
     const u = e.kingdom.userData;
     u.crown.rotation.y = time * 0.6;
@@ -1730,6 +1668,7 @@ export function updateHub(hub, dt, time, px, pz) {
     const amount = trainingGain(state[station.levelKey], station.statKey) * boost.train; // Training No Mercy ×100
     state[station.statKey] += amount;
     result.trained = { station, amount };
+    station.infernoBurstAt = time; // Inferno：練到嘢就爆一圈火
   }
 
   // 地塊賺錢：每秒一次
@@ -1748,6 +1687,7 @@ export function updateHub(hub, dt, time, px, pz) {
     s.ringMat.opacity = 0.3 + Math.sin(time * 2) * 0.15; // 光圈慢慢呼吸
     s.sparkles.rotation.y = time * 0.3;
     s.sparkles.position.y = Math.sin(time) * 0.2;
+    s.playerLocal = { x: px - s.x, z: pz - s.z, on: s.inZone(px, pz) }; // Inferno BB 火龍要知你喺邊
     animateExtras(s, time);
     drawUpgradeSign(s);
   }
