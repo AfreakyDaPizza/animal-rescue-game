@@ -480,7 +480,7 @@ body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-t
 
 /* ===== 小朋友 2026-10-18 新 UI ===== */
 :root { --stats-bottom: 12px; }
-@media (max-width: 1320px) { :root { --stats-bottom: 92px; } } /* 窄畫面：喺快捷欄上面，唔好撞 */
+@media (max-width: 1100px) { :root { --stats-bottom: 92px; } } /* 真係窄到會撞快捷欄先升高（以前 1320px，細手提電腦會無端端升咗上去） */
 /* 左下角：Money / IQ / Speed（大、粗、易睇） */
 #hud-stats {
   bottom: var(--stats-bottom); left: 12px; top: auto;

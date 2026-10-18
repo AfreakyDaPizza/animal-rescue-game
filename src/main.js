@@ -431,10 +431,14 @@ function toggleShiftLock() {
   }
 }
 
+let quietUnlock = false; // 問問題／開面板時放開滑鼠：唔好彈「Start your game」
 function resume() {
   player.controls.freeMode = false;
-  startScreen.hidden = false; // 如果鎖唔到滑鼠，就俾佢撳「Click to Play」
   player.controls.lock();
+  // 鎖唔到滑鼠先俾佢撳「Click to Play」（以前一開始就彈，答完題目會閃一閃開始畫面）
+  setTimeout(() => {
+    if (!player.controls.isLocked && !player.controls.freeMode && !isPanelOpen() && !isQuizOpen() && !intro.active && !movie.active) startScreen.hidden = false;
+  }, 450);
 }
 
 document.getElementById('start-button').addEventListener('click', () => {
@@ -457,6 +461,7 @@ player.controls.addEventListener('lock', () => {
 });
 player.controls.addEventListener('unlock', () => {
   if (player.controls.freeMode) return; // Shift 放開滑鼠：唔暫停
+  if (quietUnlock) return (quietUnlock = false);
   if (!isPanelOpen() && !isQuizOpen()) startScreen.hidden = false; // 撳 Esc 就暫停
   save();
 });
@@ -504,6 +509,7 @@ document.getElementById('panel-close').addEventListener('click', () => togglePan
 
 // 問答：遊戲停住，放個滑鼠出嚟俾你揀答案
 async function quiz(options) {
+  if (player.controls.isLocked) quietUnlock = true;
   player.controls.unlock();
   const right = await askQuestion(options);
   resume();
