@@ -8,7 +8,7 @@
 // 全部面向 -z（同其他動物、Boss 一樣）
 
 import * as THREE from 'three';
-import { box, pivot, cuteEyes, spike, material, ball } from './modelKit.js';
+import { box, pivot, cuteEyes, spike, material, ball, slab } from './modelKit.js';
 
 const PI = Math.PI;
 
@@ -286,11 +286,8 @@ export function buildSunlionModel() {
   const root = pivot(g);
   const S = 1.4; // 小朋友：大隻啲
   root.scale.setScalar(S);
-  const c1 = glow(0x4c1d95, 0.35, { flatShading: true, roughness: 0.2, metalness: 0.35 }); // 深紫
   const c2 = glow(0x7c3aed, 0.45, { flatShading: true, roughness: 0.2, metalness: 0.3 }); // 紫
   const c3 = glow(0xa78bfa, 0.22, { flatShading: true, roughness: 0.2, metalness: 0.25 }); // 淺紫（反光）
-  const cs = [c1, c2, c3];
-  const rand = seeded(7);
   const BODY_Y = 1.92;
 
   // ---- 身：前胸低、後腰高（撲） ----
@@ -301,15 +298,20 @@ export function buildSunlionModel() {
   box(body, 1.35, 0.5, 2.6, PALE, 0, -0.55, 0, 0.4); // 肚
   // 紫水晶盔甲：背同兩邊一塊塊（似張圖），每塊有金邊
   const armor = pivot(body, 0, 0, 0);
-  const plates = [];
-  for (let row = 0; row < 3; row++) for (let i = 0; i < 5; i++) {
+  // 背：整齊嘅紫水晶鞍（2026-10-18 小朋友話舊款一堆尖刺好亂）：圓角水晶板 + 金邊 + 一行細細整齊嘅水晶
+  const saddle = glow(0x6d28d9, 0.4, { roughness: 0.2, metalness: 0.3 });
+  const saddleTop = glow(0x8b5cf6, 0.5, { roughness: 0.15, metalness: 0.3 });
+  box(armor, 1.25, 0.2, 2.3, 0xffffff, 0, 0.72, 0, 0.45).material = saddle;
+  box(armor, 0.9, 0.12, 1.9, 0xffffff, 0, 0.84, 0, 0.45).material = saddleTop;
+  for (const s of [-1, 1]) box(armor, 0.08, 0.08, 2.3, 0xffca28, s * 0.62, 0.74, 0, 0.3, GOLD_X); // 金邊
+  for (let i = 0; i < 5; i++) {
+    const z = -0.9 + i * 0.45;
+    shardOut(armor, [0, 0.86, z], [0, 1, 0.35], 0.13, 0.26 - Math.abs(i - 2) * 0.03, c3); // 背脊一行細水晶
+    goldStar(armor, 0, 0.91, z + 0.22, 0.12, 0).rotation.x = -PI / 2;
+  }
+  for (let row = 1; row < 3; row++) for (let i = 0; i < 5; i++) {
     const z = -1.2 + i * 0.55;
-    if (row === 0) {
-      // 背脊：一排向上向後嘅尖水晶
-      plates.push(shardOut(armor, [0, 0.72, z], [0, 1, 0.45], 0.26, 0.5 - i * 0.04, cs[i % 3]));
-      shardOut(armor, [0.35, 0.68, z + 0.15], [0.5, 1, 0.4], 0.2, 0.38, cs[(i + 1) % 3]);
-      shardOut(armor, [-0.35, 0.68, z + 0.15], [-0.5, 1, 0.4], 0.2, 0.38, cs[(i + 2) % 3]);
-    } else {
+    {
       for (const s of [-1, 1]) {
         const y = row === 1 ? 0.35 : -0.05;
         const plate = box(armor, 0.14, 0.42, 0.5, row === 1 ? 0x6d28d9 : 0x5b21b6, s * (row === 1 ? 0.82 : 0.85), y, z, 0.25, { emissive: 0x4c1d95, emissiveIntensity: 0.3, metalness: 0.3, roughness: 0.25, flatShading: true });
@@ -372,31 +374,37 @@ export function buildSunlionModel() {
   for (const s of [-1, 1]) box(jaw, 0.08, 0.24, 0.08, 0xffffff, s * 0.3, 0.12, -0.6, 0.3);
   box(head, 0.8, 0.3, 0.06, 0x8e1b1b, 0, -0.45, -0.7, 0.3); // 口入面
 
-  // ---- 鬃毛：一圈圈厚身嘅水晶圍住塊面（向外為主，外圈先向後少少） ----
+  // ---- 鬃毛（2026-10-18 重做）：三層整齊嘅水晶花瓣，好似太陽咁圍住塊面；外層深紫、入面淺紫 ----
+  // 後面再有一圈金色太陽光芒 + 淡淡金光環（Celestial「Sun」lion）
   const mane = pivot(head, 0, 0.1, 0.2);
-  for (let ring = 0; ring < 3; ring++) {
-    const n = 11 + ring * 3;
-    const R = 0.72 + ring * 0.26;
+  const PETAL = [[0, 0], [0.24, 0.2], [0.22, 0.55], [0, 0.9], [-0.22, 0.55], [-0.24, 0.2]];
+  const petalMats = [glow(0xc4b5fd, 0.35, { roughness: 0.2, metalness: 0.2 }), glow(0x8b5cf6, 0.45, { roughness: 0.2, metalness: 0.25 }), glow(0x5b21b6, 0.5, { roughness: 0.2, metalness: 0.3 })];
+  const goldRay = material(0xffca28, GOLD_X);
+  for (let ring = 2; ring >= 0; ring--) {
+    const n = 12 + ring * 2;
+    const R = 0.55 + ring * 0.22;
+    const k = 0.72 + ring * 0.16;
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * PI * 2 + ring * 0.35;
-      if (Math.sin(a) < -0.8 && ring === 0) continue; // 下巴底留位俾口
-      const x = Math.cos(a) * R;
-      const y = Math.sin(a) * R * 0.92;
-      const len = 0.38 + rand() * 0.22 + ring * 0.06;
-      shardOut(mane, [x * 0.75, y * 0.75, ring * 0.22], [Math.cos(a), Math.sin(a) * 0.92, 0.12 + ring * 0.22], 0.3 + rand() * 0.08, len, cs[(i + ring) % 3]);
+      const a = (i / n) * PI * 2 + (ring % 2) * (PI / n);
+      const spoke = pivot(mane, 0, 0, 0.12 + ring * 0.16);
+      spoke.rotation.z = a - PI / 2;
+      const q = pivot(spoke, 0, R, 0);
+      q.rotation.x = 0.3 + ring * 0.28; // 外層向後瞓
+      slab(q, PETAL.map(([x, y]) => [x * k, y * k]), 0.1, 0, { key: `sunlion-petal${ring}`, bevel: 0.04, extra: petalMats[ring] });
     }
   }
-  // 頸後面嘅水晶（側面睇到成條頸都係）
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * PI * 2;
-    shardOut(mane, [Math.cos(a) * 0.5, Math.sin(a) * 0.45, 0.85], [Math.cos(a), Math.sin(a) + 0.2, 0.6], 0.28, 0.42, cs[i % 3]);
+  // 金色太陽光芒（尖尖三角，喺鬃毛後面）
+  for (let i = 0; i < 18; i++) {
+    const spoke = pivot(mane, 0, 0, 0.62);
+    spoke.rotation.z = (i / 18) * PI * 2;
+    const q = pivot(spoke, 0, 1.38, 0);
+    q.rotation.x = 0.5;
+    const len = i % 2 ? 0.42 : 0.62;
+    slab(q, [[0.1, 0], [0, len], [-0.1, 0]], 0.05, 0, { key: `sunlion-ray${len}`, bevel: 0.015, smooth: false, extra: goldRay });
   }
-  // 鬃毛前面嘅金星（向住前面，見得到）
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * PI * 2 + 0.5;
-    const st = goldStar(mane, Math.cos(a) * 1.02, Math.sin(a) * 0.95, -0.22, 0.32, 0);
-    st.rotation.z = a;
-  }
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(1.62, 0.05, 8, 48), glow(0xffd54f, 1.1));
+  halo.position.z = 0.75;
+  mane.add(halo);
   head.scale.setScalar(1.15);
 
   // ---- 尾：S 形向上，尾尖紫水晶 + 金星 ----
@@ -411,12 +419,16 @@ export function buildSunlionModel() {
     tsegs.push(seg);
     tp = seg;
   }
+  // 尾尖：一撮整齊嘅紫水晶毛（細版鬃毛）+ 發光金星
   const tip = pivot(tp, 0, 0.05, 0.42);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * PI * 2;
-    shardOut(tip, [0, 0, 0], [Math.cos(a), Math.sin(a), 0.8], 0.16, 0.36, cs[i % 3]);
+  for (let i = 0; i < 7; i++) {
+    const spoke = pivot(tip, 0, 0, 0.05);
+    spoke.rotation.z = (i / 7) * PI * 2;
+    const q = pivot(spoke, 0, 0.08, 0);
+    q.rotation.x = 1.0;
+    slab(q, PETAL.map(([x, y]) => [x * 0.55, y * 0.55]), 0.06, 0, { key: 'sunlion-tailpetal', bevel: 0.02, extra: petalMats[1] });
   }
-  goldStar(tip, 0, 0.0, 0.3, 0.22, 0);
+  goldStar(tip, 0, 0.0, 0.42, 0.24, 0).children.forEach((m) => (m.material = glow(0xffd54f, 1.2)));
 
   g.userData.animate = (t, moving) => {
     const w = Math.sin(t * 7) * 0.5 * moving;

@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { box, pivot, cuteEyes, spike, slab, material, BLACK, WHITE } from './modelKit.js';
+import { box, pivot, cuteEyes, spike, slab, ball, material, BLACK, WHITE } from './modelKit.js';
 
 const PI = Math.PI;
 
@@ -793,25 +793,45 @@ function blueWhale() {
   });
 }
 
+// 小頭鼠海豚（2026-10-18 重做，用順滑身）：細細隻、灰背白肚、招牌黑眼圈 + 黑嘴唇（似笑緊）、高三角背鰭
 function vaquita() {
-  return swimmer2({
-    skin: 0x8f989f, belly: 0xe2e6e9, len: 1.7, w: 0.5, h: 0.48, dorsal: 0.6, eyeSize: 0.075, eyeZ: 0.6,
-    extras({ head }) {
-      for (const s of [-1, 1]) box(head, 0.02, 0.17, 0.2, 0x1d1d1d, s * 0.252, 0.04, 0.27, 0.4); // 招牌黑眼圈
-      box(head, 0.32, 0.05, 0.05, 0x1d1d1d, 0, -0.09, 0.0, 0.3); // 黑嘴唇
-      box(head, 0.2, 0.05, 0.04, 0xff8a80, 0, -0.14, 0.01, 0.3); // 笑口
+  const skin = 0x7f8a93;
+  return sleek({
+    skin, belly: 0xe9ecee, len: 1.7, w: 0.52, h: 0.5, n: 2.2, belt: -0.15,
+    prof: (u) => [noseIn(u, 0.22) * tailOut(u, 0.5, 0.12), noseIn(u, 0.26) * tailOut(u, 0.45, 0.18), -0.05 * (1 - smooth01(0, 0.3, u))],
+    extras({ dot, fin, tail }) {
+      for (const a of [-0.05, PI + 0.05]) dot(0.17, a, 0.11, 0.02, 0.12, 0x1d1d1d, -0.005); // 黑眼圈
+      sleekEyes(dot, 0.17, -0.05, 0.075);
+      for (const side of [0, 1]) for (let k = 0; k < 8; k++) {
+        const a = -0.95 + k * 0.08; // 黑嘴唇，嘴角向上（笑）
+        dot(0.015 + k * 0.014, side ? PI - a : a, 0.028, 0.02, 0.045, 0x1d1d1d, 0.004);
+      }
+      dot(0.01, -PI / 2, 0.05, 0.03, 0.04, 0x1d1d1d, 0.004); // 下巴黑點
+      fin(0.45, PI / 2, [[0.22, 0], [0.05, 0.2], [-0.04, 0.34], [-0.1, 0.3], [-0.12, 0.08], [-0.18, 0]], { key: 'vq-dorsal', depth: 0.05 });
+      slab(tail, [[0, 0.06], [0.2, 0], [0.34, -0.14], [0.24, -0.18], [0.06, -0.14], [0, -0.1], [-0.06, -0.14], [-0.24, -0.18], [-0.34, -0.14], [-0.2, 0]], 0.04, skin, { plane: 'flat', key: 'vq-fluke', bevel: 0.02 });
+      return fin(0.3, -0.55, [[0, 0.06], [0.18, 0.02], [0.3, -0.1], [0.2, -0.12], [0, -0.06]], { plane: 'flat', key: 'vq-pec', mirror: true, rot: [0, -0.3, -0.5], depth: 0.04, color: 0x2a2f33 });
     },
   });
 }
 
+// 儒艮（2026-10-18 重做）：胖胖順滑身、向下彎嘅大鼻（有鬚）、細眼、海豚咁嘅尾（中間有凹）、細鰭
 function dugong() {
-  return swimmer2({
-    skin: 0x9b958e, belly: 0xc2bbb2, len: 2.6, w: 0.9, h: 0.78, eyeSize: 0.075, eyeZ: 0.5,
-    extras({ head }) {
-      const snout = pivot(head, 0, -0.16, -0.02);
-      box(snout, 0.62, 0.42, 0.34, 0xb3aca2, 0, -0.1, -0.06, 0.48); // 向下彎嘅大鼻
-      box(snout, 0.5, 0.12, 0.08, 0x8a837b, 0, -0.26, -0.22, 0.4);
-      for (let i = 0; i < 6; i++) box(snout, 0.04, 0.04, 0.02, 0x5d5853, ((i % 3) - 1) * 0.14, -0.1 - Math.floor(i / 3) * 0.09, -0.24, 0.4); // 鬚
+  const skin = 0x9a9188;
+  return sleek({
+    skin, belly: 0xcdc5bb, len: 2.6, w: 0.95, h: 0.8, n: 2.3, belt: -0.25,
+    prof: (u) => [noseIn(u, 0.05) * (0.62 + 0.38 * noseIn(u, 0.3)) * tailOut(u, 0.48, 0.12), noseIn(u, 0.05) * (0.6 + 0.4 * noseIn(u, 0.3)) * tailOut(u, 0.42, 0.14), -0.15 * (1 - smooth01(0, 0.25, u))],
+    extras({ head, dot, blob, fin, tail, h }) {
+      // 大鼻：向下彎嘅大圓盤，前面平平有鬚
+      const snout = pivot(head, 0, -h * 0.18, 0.02);
+      snout.rotation.x = 0.55;
+      ball(snout, 0.34, 0.26, 0.22, 0xb2a99f, 0, -0.06, -0.08);
+      ball(snout, 0.29, 0.21, 0.06, 0x8f867c, 0, -0.08, -0.26);
+      for (let i = 0; i < 10; i++) box(snout, 0.025, 0.025, 0.05, 0x5d5853, ((i % 5) - 2) * 0.1, -0.0 - Math.floor(i / 5) * 0.1, -0.31, 0.4); // 鬚
+      for (const s of [-1, 1]) ball(snout, 0.04, 0.03, 0.025, 0x4e4842, s * 0.09, 0.14, -0.24); // 鼻孔（頂）
+      sleekEyes(dot, 0.17, 0.1, 0.06);
+      fin(0.3, -0.6, [[0, 0.08], [0.25, 0.04], [0.42, -0.12], [0.3, -0.18], [0, -0.08]], { plane: 'flat', key: 'dg-pec', mirror: true, rot: [0, -0.2, -0.5], depth: 0.05 });
+      slab(tail, [[0, 0.08], [0.3, 0.02], [0.56, -0.2], [0.44, -0.28], [0.16, -0.22], [0, -0.14], [-0.16, -0.22], [-0.44, -0.28], [-0.56, -0.2], [-0.3, 0.02]], 0.06, skin, { plane: 'flat', key: 'dg-fluke', bevel: 0.03 });
+      return [];
     },
   });
 }
@@ -879,39 +899,50 @@ function whaleShark() {
 }
 
 function manta() {
-  const top = 0x22272d;
+  // 2026-10-18 重做：闊闊嘅三角翼（深色背、白肚）、頭前面兩塊捲捲嘅頭鰭、闊口、背上白色「V」斑、幼長尾
+  const top = 0x262c33;
+  const belly = 0xf2f4f5;
   const g = new THREE.Group();
   const root = pivot(g, 0, 0.95, 0);
-  box(root, 1.0, 0.36, 1.2, top, 0, 0, 0, 0.45);
-  box(root, 0.9, 0.1, 1.05, WHITE, 0, -0.17, 0, 0.42);
-  for (const s of [-1, 1]) box(root, 0.36, 0.03, 0.4, 0xd6dbe0, s * 0.3, 0.18, -0.1, 0.4); // 背上白色膊頭斑
+  ball(root, 0.36, 0.14, 0.62, top, 0, 0, 0.02); // 身中間（微微凸起）
+  ball(root, 0.32, 0.08, 0.55, belly, 0, -0.06, 0.02);
+  // 翼：入面一塊 + 翼尖一塊（識拍），每塊有白肚
+  const INNER = [[0, 0.52], [0.45, 0.38], [0.95, 0.12], [0.95, -0.28], [0.45, -0.4], [0, -0.48]];
+  const OUTER = [[0, 0.12], [0.42, -0.06], [0.88, -0.4], [0.6, -0.4], [0.25, -0.33], [0, -0.28]];
   const wings = [-1, 1].map((s) => {
-    const p = pivot(root, s * 0.48, 0, 0);
-    box(p, 1.05, 0.22, 1.0, top, s * 0.5, 0, 0.05, 0.45);
-    box(p, 0.95, 0.06, 0.85, WHITE, s * 0.5, -0.12, 0.05, 0.42);
-    const tip = pivot(p, s * 1.0, 0, 0.1);
-    box(tip, 0.75, 0.14, 0.6, top, s * 0.35, 0, 0.12, 0.45);
-    box(tip, 0.45, 0.08, 0.3, top, s * 0.85, 0, 0.3, 0.45); // 翼尖向後
+    const p = pivot(root, s * 0.22, 0, 0);
+    p.scale.x = s;
+    slab(p, INNER, 0.1, top, { plane: 'flat', key: 'manta-in', bevel: 0.04 });
+    slab(p, INNER.map(([x, y]) => [x * 0.96, y * 0.9]), 0.04, belly, { plane: 'flat', key: 'manta-in-b', bevel: 0.02, y: -0.06 });
+    box(p, 0.42, 0.03, 0.24, 0xdfe4e8, 0.28, 0.1, 0.1, 0.4).rotation.y = -0.35; // 背上白斑（V 字一邊）
+    const tip = pivot(p, 0.93, 0, 0);
+    slab(tip, OUTER, 0.08, top, { plane: 'flat', key: 'manta-out', bevel: 0.03 });
+    slab(tip, OUTER.map(([x, y]) => [x * 0.94, y * 0.88]), 0.03, belly, { plane: 'flat', key: 'manta-out-b', bevel: 0.015, y: -0.05 });
     return { p, tip, s };
   });
-  for (const s of [-1, 1]) {
-    const horn = pivot(root, s * 0.34, 0, -0.62);
-    horn.rotation.y = s * -0.15;
-    box(horn, 0.16, 0.14, 0.42, top, 0, 0, -0.2, 0.45);
-    box(horn, 0.14, 0.24, 0.1, top, 0, -0.08, -0.4, 0.45); // 頭鰭捲落
-  }
-  sideEyes(root, 0.5, 0.06, -0.45, 0.1);
-  box(root, 0.55, 0.06, 0.05, 0x111111, 0, -0.06, -0.61, 0.3);
-  for (let i = 0; i < 6; i++) box(root, 0.08, 0.02, 0.08, 0x37474f, ((i % 3) - 1) * 0.25, -0.225, -0.2 + Math.floor(i / 3) * 0.3, 0.4);
-  const tail = pivot(root, 0, 0, 0.6);
-  box(tail, 0.06, 0.06, 1.5, top, 0, 0, 0.75, 0.3);
-  g.userData.animate = (t) => {
+  // 頭鰭：兩塊向前、向下捲嘅「角」
+  const lobes = [-1, 1].map((s) => {
+    const p = pivot(root, s * 0.27, -0.02, -0.55);
+    slab(p, [[0, 0.06], [0.2, 0.05], [0.38, -0.02], [0.42, -0.14], [0.32, -0.16], [0.18, -0.08], [0, -0.06]], 0.07, top, { plane: 'side', key: 'manta-lobe', bevel: 0.025 });
+    box(p, 0.05, 0.06, 0.2, belly, 0, -0.08, -0.12, 0.4);
+    return p;
+  });
+  box(root, 0.5, 0.05, 0.06, 0x111111, 0, -0.06, -0.58, 0.3); // 闊口
+  box(root, 0.46, 0.03, 0.05, 0x8a96a0, 0, -0.1, -0.56, 0.3);
+  sideEyes(root, 0.36, 0.04, -0.46, 0.1);
+  for (let i = 0; i < 5; i++) box(root, 0.36, 0.015, 0.03, 0xc5ccd2, 0, -0.165, -0.32 + i * 0.07, 0.3); // 肚底嘅鰓縫
+  const tail = pivot(root, 0, 0, 0.58);
+  box(tail, 0.07, 0.07, 1.4, top, 0, 0, 0.7, 0.3);
+  g.userData.animate = (t, moving) => {
+    const sp = 2.2 + moving * 1.2;
     wings.forEach(({ p, tip, s }) => {
-      p.rotation.z = s * Math.sin(t * 2.4) * 0.38;
-      tip.rotation.z = s * Math.sin(t * 2.4 - 0.7) * 0.35;
+      p.rotation.z = s * Math.sin(t * sp) * 0.32;
+      tip.rotation.z = Math.sin(t * sp - 0.8) * 0.42;
     });
+    lobes.forEach((l, i) => (l.rotation.x = Math.sin(t * 3 + i) * 0.15));
     tail.rotation.y = Math.sin(t * 2) * 0.15;
-    root.position.y = 0.95 + Math.sin(t * 2.4 - 1) * 0.12;
+    root.rotation.x = Math.sin(t * sp - 1.4) * 0.06;
+    root.position.y = 0.95 + Math.sin(t * sp - 1) * 0.12;
   };
   g.userData.height = 1.3;
   g.userData.move = 'swim';
