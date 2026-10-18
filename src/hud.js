@@ -12,6 +12,7 @@ import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
 import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
+import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -209,16 +210,19 @@ export function openPanel(kind) {
     quests: ['📜 Daily Quests', questsHtml, 'Q'],
     shop: ['🛍️ Skin Shop', shopHtml, 'E'],
     portal: ['🌀 The Portal', portalHtml, 'E'],
+    admin: ['🔐 SECRET RANGER CONTROL PANEL', adminHtml, 'E'],
   };
   const [title, html, key] = panels[kind];
   $('panel-title').textContent = title;
   $('panel-body').innerHTML = html();
   $('panel-close-key').textContent = key;
+  $('panel').dataset.kind = kind;
   $('panel').hidden = false;
 }
 
 export function closePanel() {
   openPanelKind = null;
+  delete $('panel').dataset.kind;
   $('panel').hidden = true;
 }
 

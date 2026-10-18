@@ -14,7 +14,7 @@ import { buildAnimalModel } from './animalModels.js';
 import { ANIMALS } from './data/animals.js';
 import { LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY, LAB_LEGENDARY_NEEDED } from './data/balance.js';
 import { state } from './state.js';
-import { LAB, LAB_DOOR_Z, CAPSULES, PODS, PORTAL, ARENA, BOSS_PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT, labStatus } from './labShape.js';
+import { LAB, LAB_DOOR_Z, CAPSULES, PODS, PORTAL, ARENA, BOSS_PORTAL, EXIT_PORTAL, HAMMER_SPOT, labStatus } from './labShape.js';
 
 const LAB_MID = { x: 0, z: 124 }; // 實驗室中間（地上燈帶、頂上光環）
 
@@ -246,7 +246,6 @@ export function buildLab(scene) {
   const exitSign = holoPanel([{ text: '⬅ EXIT', size: 70, color: '#b9f6ca' }, { text: 'back to the Lab', size: 40 }], 4, 1.8, '#00e676');
   exitSign.position.set(EXIT_PORTAL.x, EXIT_PORTAL.y + 4, EXIT_PORTAL.z);
   live.add(exitSign);
-  buildRedButton(live);
   buildHammer(live);
   buildGateLock(live);
   buildGuide(live);
@@ -286,9 +285,6 @@ export function buildLab(scene) {
     // 實驗室傳送門：開咗先有旋渦（打贏咗就閂）
     lab.labPortal.target = portalReady() || state.labBossDefeated ? 1 : 0; // 打贏咗：傳送門去秘密沙灘
     // 紅色掣：撳落去再彈返上嚟
-    lab.button.press = Math.max(0, lab.button.press - dt * 2);
-    lab.button.cap.position.y = 0.8 - Math.sin(Math.min(1, lab.button.press) * Math.PI) * 0.08;
-    lab.button.ring.material.emissiveIntensity = 0.2 + Math.max(0, Math.sin(time * 0.7)) * 0.25; // 好暗，間中微微一閃
     // 鎚仔：浮下浮下、轉
     if (lab.hammer.g.visible) {
       lab.hammer.tool.position.y = 1.4 + Math.sin(time * 2) * 0.15;
@@ -916,25 +912,7 @@ function buildArena(root, live, updates) {
   });
 }
 
-// ---------- Hub 入面嘅秘密紅色掣（Magic Library 後面） ----------
-function buildRedButton(live) {
-  const g = new THREE.Group();
-  g.position.set(RED_BUTTON.x, 0, RED_BUTTON.z);
-  // 小朋友：要扮成石頭（camo），好難搵：一嚿同座山一樣色嘅石，上面得一粒好暗嘅紅色細掣，冇牌
-  const rock = mat(0x7a6f63, { flatShading: true });
-  add(g, new THREE.DodecahedronGeometry(0.8, 0), rock, 0, 0.35, 0).scale.set(1.2, 0.6, 1);
-  add(g, new THREE.DodecahedronGeometry(0.45, 0), mat(0x8c8072, { flatShading: true }), 0.7, 0.2, 0.3);
-  add(g, new THREE.DodecahedronGeometry(0.35, 0), rock, -0.7, 0.15, -0.2);
-  const ring = add(g, new THREE.TorusGeometry(0.22, 0.03, 6, 16), mat(0x5d4037, { emissive: 0x3e0000, emissiveIntensity: 0.2 }).clone(), 0, 0.82, 0, false);
-  ring.rotation.x = Math.PI / 2;
-  const cap = add(g, new THREE.SphereGeometry(0.18, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x7f2a1e, { emissive: 0x5d0000, emissiveIntensity: 0.25 }), 0, 0.8, 0);
-  cap.scale.y = 0.6;
-  live.add(g);
-  lab.button = { g, cap, ring, press: 0 }; // 冇撳嘢圈：條路好窄，唔好擋住
-}
-export function pressButton() {
-  lab.button.press = 1;
-}
+// （以前 Biome 6 橋下面嘅秘密紅色掣：小朋友 2026-10-18 叫刪走，同秘密沙灘個掣合埋，見 adminPanel.js）
 
 // ---------- 球棒（Issue #4：Boss 戰 Phase 1、2 用） ----------
 export function batModel() {
@@ -1018,7 +996,7 @@ function updateLockSign() {
   lab.lock.sign.draw(THEMES.dark, [
     { text: '🔒 LOCKED', size: 0.3, color: '#ffeb3b' },
     { text: 'Something is hiding behind this gate...', size: 0.15 },
-    { text: 'Find the secret RED BUTTON 🔴 (under a bridge...)', size: 0.15, color: '#ff8a80' },
+    { text: 'Press E to break the chains 🔓', size: 0.15, color: '#ff8a80' },
   ]);
 }
 

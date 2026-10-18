@@ -118,9 +118,17 @@ function applyShared(cb, data, mine) {
 }
 
 // E 掣：要好近先見到
-export function crazyInteraction(cb, pos, rescue) {
+// 小朋友 2026-10-18：呢粒同以前橋下面個紅掣合埋做一粒 → 撳落去打開 🔐 Secret Ranger Control Panel（openPanel 由 main.js 俾）
+export function crazyInteraction(cb, pos, openPanel) {
   if (Math.hypot(pos.x - CRAZY_BUTTON.x, pos.z - CRAZY_BUTTON.z) > 1.6) return null;
-  return { prompt: '<kbd>E</kbd> Press the strange little button... 🤔', action: () => pressCrazy(cb, rescue) };
+  return {
+    prompt: '<kbd>E</kbd> Press the strange little button... 🤔',
+    action: () => {
+      cb.press = 1;
+      play('click');
+      openPanel();
+    },
+  };
 }
 
 export function pressCrazy(cb, rescue) {

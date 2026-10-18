@@ -55,7 +55,6 @@ export function clampArena(v, margin = 1) {
   return v;
 }
 // 小朋友 Issue #5：搬咗去 Biome 6 條橋下面（山後面條窄路，鎚仔隔籬）；撳咗就開 Fuse Machine 同新生態區（仲有實驗室大閘）
-export const RED_BUTTON = { x: 3.0, z: -370.7 }; // 喺條橋正下面（陰影入面），鎚仔隔籬
 
 export const inRect = (r, x, z, m = 0) => x >= r.minX + m && x <= r.maxX - m && z >= r.minZ + m && z <= r.maxZ - m;
 export const inLab = (x, z) => inRect(LAB, x, z) && z > LAB_DOOR_Z + 0.5;

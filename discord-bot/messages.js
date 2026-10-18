@@ -14,7 +14,7 @@ export function kingdomOpen(now = new Date()) {
   const [y, m, d] = NEW_BIOME_DATE.split('-').map(Number);
   return now >= new Date(y, m - 1, d);
 }
-const kingdomNote = () => (kingdomOpen() ? '' : ` *(opens ${NEW_BIOME_DATE}, or after you find the secret red button)*`);
+const kingdomNote = () => (kingdomOpen() ? '' : ` *(opens ${NEW_BIOME_DATE}, or early with the secret button on the Secret Beach)*`);
 
 const line = (a) => {
   const giant = a.sizeMul ? ` · 🔥 GIANT x${a.sizeMul}` : '';

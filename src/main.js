@@ -15,7 +15,8 @@ import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
   selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
 } from './hud.js';
-import { state, save } from './state.js';
+import { state, save, SAVE_KEY } from './state.js';
+import { setAdminActions } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import {
   createRescue, spawnAnimal, nearestAnimal, borrow, deliver, loseAnimal, setHolding, updateRescue,
 } from './animals.js';
@@ -36,9 +37,9 @@ import { updateEvents, forceEvent, boost } from './events.js';
 import { createEclipse, updateEclipse, applyEclipseSky, playEclipseIntro, STRIKE_RADIUS } from './eclipse.js';
 import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS, MAX_TRAINING_LEVEL, MACHINE_LEVELS, PLOT_MAX_UPGRADES } from './data/balance.js';
 import { animateFireAuras } from './fireAura.js';
-import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
+import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
 import { buildSecretBeach, beach, applyBeachSky, playCollab, playBeachFinale } from './secretBeach.js';
 import { playKingdomReveal, KINGDOM_STAIRS } from './enchanted.js';
@@ -47,13 +48,13 @@ import { playLabEscape } from './labEscape.js';
 import { ENDING_ANIMALS } from './labScenes.js';
 import { park, standUp as ownerStandUp, lieOnHammock } from './hubPark.js';
 import { buildAnimalModel } from './animalModels.js';
-import { findAnimal } from './data/animals.js';
+import { findAnimal, randomKg, animalsInBiome } from './data/animals.js';
 import { BENCH, STRANGER, BEACH_PORTAL, BEACH_ARRIVE } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
 import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss, hasBat, batHit, batInRange } from './labBoss.js';
-import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
-import { setGateOpen, fuseMachine } from './hubPark.js';
-import { fusePets } from './fuse.js';
+import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, HAMMER_SPOT } from './labShape.js';
+import { setGateOpen, fuseMachine, PARK_GATE } from './hubPark.js';
+import { fusePets, isFuseOpen } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
 import { inDiscord, startDiscord } from './discordActivity.js';
@@ -355,7 +356,7 @@ function enableMobile() {
     controls: player.controls,
     isPaused,
     onUse: () => {
-      if (['shop', 'pets', 'sell', 'portal', 'fuse'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
+      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
       if (!isPaused()) interact();
     },
     onPause: () => {
@@ -476,7 +477,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ') togglePanel('quests');
   if (e.code === 'KeyH') toggleHidePets();
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
@@ -687,7 +688,7 @@ function currentInteraction() {
     if (Math.hypot(pos.x - BEACH_PORTAL.x, pos.z - BEACH_PORTAL.z) < 2.6) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Park', action: () => travel(0, 14, 0, '🏡 Back to the Animal Rescue Park!') };
     if (whereIs(pos.x, pos.z) === 'Laboratory' && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
     if (gym.present && Math.hypot(pos.x - GYM_PORTAL.x, pos.z - GYM_PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
-    const cb = crazyInteraction(crazy, pos, rescue);
+    const cb = crazyInteraction(crazy, pos, () => togglePanel('admin')); // 🔐 秘密掣：打開 Secret Ranger Control Panel
     if (cb) return cb;
     if (sitting) return { prompt: '🌠 Watching the meteors... <kbd>E</kbd> Stand up', action: standUp };
     if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
@@ -719,8 +720,8 @@ const holdingHammer = () => selectedHotbarItem()?.kind === 'tool' && !selectedHo
 function labInteraction(pos) {
   // Biome 6 座山後面嘅鎚仔
   if (!state.hasHammer && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
-  // Biome 6 條橋下面嘅紅色掣（小朋友 Issue #5）：開 Fuse Machine + 新生態區（+ 實驗室大閘）
-  if (near(pos, RED_BUTTON, 2.6)) return { prompt: '<kbd>E</kbd> Press the big RED BUTTON 🔴', action: pressBigButton };
+  // 公園大閘（去實驗室）：以前要撳橋下面個紅掣（小朋友 2026-10-18 刪咗），而家行到閘前面撳 E 就開
+  if (!state.labUnlocked && pos.z < PARK_GATE.z && near(pos, PARK_GATE, 4)) return { prompt: '<kbd>E</kbd> Break the chains and open the gate 🔓', action: startUnlockScene };
   if (whereIs(pos.x, pos.z) !== 'Laboratory') return null;
   // 玻璃艙
   const pod = lab.pods.find((p) => !p.free && near(pos, p, 3.6));
@@ -785,6 +786,118 @@ setPortalActions({
     save();
   },
 });
+// ================= 🔐 Secret Ranger Control Panel（秘密沙灘個掣，小朋友 2026-10-18） =================
+const BACKUP_KEY = `${SAVE_KEY}-backup`;
+const hasBackup = () => {
+  try {
+    return !!localStorage.getItem(BACKUP_KEY);
+  } catch {
+    return false;
+  }
+};
+const reloadNoIntro = () => {
+  save();
+  try {
+    sessionStorage.setItem('animal-rescue-skip-intro', '1');
+  } catch {
+    // 照載入
+  }
+  location.reload();
+};
+setAdminActions({
+  status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present }),
+  hasBackup,
+  // 第一次改嘢之前：備份真存檔
+  backup() {
+    if (hasBackup()) return;
+    save();
+    try {
+      localStorage.setItem(BACKUP_KEY, localStorage.getItem(SAVE_KEY) || JSON.stringify(state));
+    } catch {
+      // 存唔到就算
+    }
+  },
+  restore() {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(BACKUP_KEY));
+      localStorage.removeItem(BACKUP_KEY);
+    } catch {
+      saved = null;
+    }
+    if (!saved) return popup('💾 No backup found.');
+    for (const k of Object.keys(state)) delete state[k];
+    Object.assign(state, saved);
+    reloadNoIntro();
+  },
+  unlockEarly() {
+    togglePanel('admin');
+    const first = !state.bigButton;
+    state.bigButton = true;
+    save();
+    play('magic');
+    announce(first ? '🔓 The FUSE MACHINE 🧪 and the ENCHANTED KINGDOM 👑 are unlocked!' : '🔓 Already unlocked! Fuse Machine and Enchanted Kingdom are open.');
+    if (!state.labUnlocked) setTimeout(startUnlockScene, first ? 2500 : 400); // 以前個紅掣都會開實驗室大閘
+  },
+  gymEarly(on) {
+    state.gymEarly = on;
+    save();
+    popup(on ? '💪 The Ranger Gym is open early!' : '💪 The Gym is back to its opening date.');
+  },
+  givePet({ name, rarity, sizeMul, mutation }) {
+    const a = findAnimal(name);
+    const kg = Math.round(randomKg(a) * (sizeMul || 1) * 10) / 10;
+    const pet = { name: a.name, biome: a.biome, kg, rarity: a.rarity || rarity, onPlot: false, ...(sizeMul ? { sizeMul } : {}), ...(mutation ? { mutation } : {}), ...(a.fuse ? { fuse: true } : {}) };
+    state.pets.push(pet);
+    if (!a.fuse && !state.indexFound.includes(a.name)) state.indexFound.push(a.name);
+    save();
+    play('rescue');
+    popup(`🎁 ${sizeMul ? 'GIANT ' : ''}${pet.rarity} ${a.name} is in your backpack! (${formatKg(kg)})`);
+  },
+  allIndex() {
+    for (const a of ANIMALS) if (!state.indexFound.includes(a.name)) state.indexFound.push(a.name);
+    save();
+    play('magic');
+    popup('📖 Your Index is complete!');
+  },
+  maxStuff() {
+    state.treadmillLevel = MAX_TRAINING_LEVEL;
+    state.tableLevel = MAX_TRAINING_LEVEL;
+    state.machineLevel = MACHINE_LEVELS.length;
+    state.plotLevel = PLOT_MAX_UPGRADES;
+    reloadNoIntro(); // 重新載入：所有機同地塊換晒新樣
+  },
+  rich() {
+    state.money = Math.max(state.money, 1e12);
+    state.speed = Math.max(state.speed, 1e12);
+    state.iq = Math.max(state.iq, 1e12);
+    state.jumpPower = Math.max(state.jumpPower || 0, 300);
+    save();
+    play('coin');
+    popup('💰 You are SUPER rich, fast, smart and bouncy!');
+  },
+  event(id) {
+    togglePanel('admin');
+    forceEvent(id);
+  },
+  crazy() {
+    togglePanel('admin');
+    pressCrazy(crazy, rescue);
+  },
+  spawn(biome, rarity) {
+    if (biome === 6 && !kingdom.open) return popup('👑 Unlock the Enchanted Kingdom first (Future tab)!');
+    const pool = animalsInBiome(biome);
+    const fixed = pool.filter((a) => a.rarity);
+    const animal = fixed.length ? fixed.find((a) => a.rarity === rarity) : null;
+    if (fixed.length && !animal) return popup(`No ${rarity} animal lives in ${BIOMES[biome].name}.`);
+    if (!fixed.length && rarity === 'Eternal') return popup('Eternal animals only live in the Enchanted Kingdom.');
+    const w = spawnAnimal(rescue, biome, animal, null, rarity);
+    togglePanel('admin');
+    if (w) announceSpecials([w]);
+    popup(w ? `✨ A ${w.rarity} ${w.animal.name} appeared in ${BIOMES[biome].name}!` : 'Could not spawn it, try again.');
+  },
+});
+
 // 球棒：揮一下（打中就計一下）
 let batSwing = 0;
 function swingBat() {
@@ -1065,22 +1178,9 @@ function handleEvents() {
   if (tick) respawnWild(false, `${tag}-t${tickNo}`); // Giant Pets：每 30 秒換一批
 }
 let lastEventId = null;
+let revealWait = 0; // 開門動畫：等玩家入咗遊戲 1.5 秒先播
 
 // ================= Issue #2：開門動畫 =================
-function pressBigButton() {
-  pressButton();
-  play('click');
-  const first = !state.bigButton;
-  state.bigButton = true;
-  save();
-  if (first) {
-    play('magic');
-    announce('🔴 CLICK! The FUSE MACHINE 🧪 and the ENCHANTED KINGDOM 👑 are unlocked!');
-    setTimeout(() => popup('👑 Climb the mountain and cross the bridge to the gate!'), 2500);
-  } else popup('🔴 Already pressed! Fuse Machine and Enchanted Kingdom are open.');
-  if (!state.labUnlocked) setTimeout(startUnlockScene, first ? 4500 : 400); // 實驗室大閘都開埋
-}
-
 function startUnlockScene() {
   player.controls.unlock();
   closePanel();
@@ -1211,8 +1311,17 @@ renderer.setAnimationLoop((timestamp) => {
   gymArea.open = gym.present && isGymOpen();
   if (!frozen) updateGym(dt, time, pos);
   // Biome 7：NEW_BIOME_DATE 到咗先開；第一次行到閘門前面就播開門動畫
-  kingdom.open = (isNewBiomeOpen() || kingdomDebug || state.bigButton) && (state.kingdomSeen || movie.active);
-  if ((isNewBiomeOpen() || kingdomDebug || state.bigButton) && !state.kingdomSeen && !movie.active && !intro.active && pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10) {
+  // 小朋友 2026-10-18：倒數到 0（或者提早開咗）→ 未睇過開門動畫嘅玩家一入遊戲就會播（喺邊度都得）；行到閘門前面都即刻播
+  const kingdomReady = isNewBiomeOpen() || kingdomDebug || state.bigButton;
+  kingdom.open = kingdomReady && (state.kingdomSeen || movie.active);
+  const atKingdomGate = pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10;
+  const revealOk = kingdomReady && !state.kingdomSeen && !movie.active && !intro.active && startScreen.hidden && !isPanelOpen() && !isQuizOpen()
+    && !document.getElementById('device-chooser') && !rescue.carrying && !endingRunning && whereIs(pos.x, pos.z) !== 'Boss Arena'
+    && (state.tutorialDone || atKingdomGate);
+  revealWait = revealOk ? revealWait + dt : 0;
+  if (revealOk && (atKingdomGate || revealWait > 1.5)) {
+    revealWait = 0;
+    const back = { x: pos.x, z: pos.z, feetY: player.feetY, rotY: camera.rotation.y };
     player.controls.unlock();
     closePanel();
     playKingdomReveal({
@@ -1220,10 +1329,18 @@ renderer.setAnimationLoop((timestamp) => {
       onDone() {
         state.kingdomSeen = true;
         save();
-        teleportPlayer(player, 0, KINGDOM_STAIRS.z + 3);
-        player.feetY = KINGDOM_STAIRS.top;
-        camera.rotation.set(0, 0, 0, 'YXZ');
-        announce('👑 The ENCHANTED KINGDOM is open! Go down the royal stairs!');
+        if (atKingdomGate) {
+          teleportPlayer(player, 0, KINGDOM_STAIRS.z + 3);
+          player.feetY = KINGDOM_STAIRS.top;
+          camera.rotation.set(0, 0, 0, 'YXZ');
+          announce('👑 The ENCHANTED KINGDOM is open! Go down the royal stairs!');
+        } else {
+          // 喺第二度播：返返去原本個位
+          teleportPlayer(player, back.x, back.z);
+          player.feetY = back.feetY;
+          camera.rotation.set(0, back.rotY, 0, 'YXZ');
+          announce('👑 The ENCHANTED KINGDOM is open! Climb the Mining Mountain and cross the bridge to the gate!');
+        }
         resume();
       },
     });
