@@ -452,6 +452,7 @@ export function buildSkywhaleModel() {
   halo.scale.set(LEN * 1.6, H * 3, 1);
   halo.position.y = H / 2 + 0.35;
   flyer.add(halo);
+  g.userData.halo = halo; // enchanted.js 天上嗰隻大鯨會收埋（太大會令畫面白濛濛）
   // ---- 閃粉 ----
   const sparkles = sparkleAura(flyer, { n: 60, rx: W * 1.3, rz: LEN * 0.65, y0: -0.5, h: H * 2.2, color: 0xfff59d, size: 0.16 });
   // ---- 符文：兩大圈（一圈打橫圍住身、一圈斜斜圍住頭）----

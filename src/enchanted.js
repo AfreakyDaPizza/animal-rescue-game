@@ -290,6 +290,8 @@ export function enchanted(staticRoot, rect, rand, live) {
   const wsize = new THREE.Box3().setFromObject(whale).getSize(new THREE.Vector3());
   whale.scale.multiplyScalar(26 / Math.max(wsize.x, wsize.y, wsize.z));
   if (whale.userData) whale.userData.flying = true;
+  // 放大咗 2.7 倍：個光暈 sprite 會變成 40 米闊、疊加發光，飛過鏡頭前面成個畫面白晒（bloom 再放大）→ 收埋佢
+  if (whale.userData?.halo) whale.userData.halo.visible = false;
   const whaleG = new THREE.Group();
   whaleG.add(whale);
   view.add(whaleG);
@@ -346,7 +348,9 @@ export function enchanted(staticRoot, rect, rand, live) {
   let fogK = 1;
 
   return (dt, t) => {
-    fogK = Math.max(0, Math.min(1, fogK + (kingdom.open || kingdomView.reveal ? -dt / 3 : dt / 3))); // 開門時慢慢散
+    // 開門動畫時先慢慢散；其他時候即刻跟住開唔開（以前一入遊戲都要 3 秒先散，成個王國白濛濛）
+    if (kingdomView.reveal) fogK = Math.max(0, fogK - dt / 3);
+    else fogK = kingdom.open ? 0 : 1;
     fog.visible = fogK > 0;
     if (fog.visible) {
       fogMat.forEach((m) => (m.opacity = 0.95 * fogK));
