@@ -114,7 +114,7 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
 
   // 放喺生態區上半部（近 Boss），要走得快先救到；會喺附近行嚟行去
   const half = (rect.maxX - rect.minX) / 2 - 3;
-  let home = new THREE.Vector3((Math.random() * 2 - 1) * half, biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 26 : 9) + Math.random() * (biome === 6 ? 40 : 16));
+  let home = new THREE.Vector3((Math.random() * 2 - 1) * half, biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 70 : 14) + Math.random() * (biome === 6 ? 80 : 16)); // 離 Boss 遠啲（佢喺 minZ + 4／王國 minZ + 42）
   let wander = 3;
   if (biome === 5) {
     // Mining Mountain：動物企喺山頂，要跳上去先救到

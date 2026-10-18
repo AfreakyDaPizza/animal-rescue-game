@@ -35,7 +35,7 @@ import { updateEvents, forceEvent, boost } from './events.js';
 import { createEclipse, updateEclipse, applyEclipseSky, playEclipseIntro, STRIKE_RADIUS } from './eclipse.js';
 import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN } from './data/balance.js';
 import { animateFireAuras } from './fireAura.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
@@ -861,6 +861,12 @@ function interact() {
 function borrowAnimal(w) {
   borrow(rescue, w);
   play('borrow');
+  // 小朋友 2026-10-18：借咗即刻俾 Boss 捉到（佢企得好近）→ 俾你 3 秒先走
+  const boss = bosses[w.biome];
+  if (boss) {
+    boss.grace = BORROW_HEAD_START;
+    setTimeout(() => popup(`⚠️ ${boss.info.name} noticed! You have a ${BORROW_HEAD_START}-second head start - RUN!`), 900);
+  }
   setCarrying(`${w.animal.name} (${formatKg(w.kg)})`);
   announce(`You borrowed a ${formatKg(w.kg)} ${w.animal.name}!`);
   popup('Run back to the Hub! 🏃');

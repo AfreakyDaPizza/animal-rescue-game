@@ -140,7 +140,10 @@ export const LAB_P2_SPAWN_EVERY = 9; // Phase 2：每幾秒叫 1–2 個 Boss／
 export const LAB_P2_MINION_SECONDS = 15; // Phase 2 叫出嚟嘅嘢追你幾耐
 export const LAB_BAT_RANGE = 6.5; // 球棒：離佢幾近先打得中
 export const LAB_BAT_COOLDOWN = 0.35; // 球棒：打完隔幾耐先打得再
-export const LAB_LIVES = 5; // 你有幾多個心（俾打中就扣 1 個；扣晒就返實驗室，可以再挑戰）
+export const LAB_LIVES = 5;
+
+// 借動物之後 Boss 等幾多秒先追你（頭先佢企得太近，一借就捉到你）
+export const BORROW_HEAD_START = 3; // 你有幾多個心（俾打中就扣 1 個；扣晒就返實驗室，可以再挑戰）
 export const LAB_DRONES = 3; // 每輪幾多部炸彈無人機（之後每輪多 1 部）
 export const LAB_CORRUPTED_ANIMALS = 2; // 每輪叫幾多隻腐化動物（小朋友 2026-10-17：唔好咁多，本來 4）
 export const LAB_CORRUPTED_SECONDS = 30; // 腐化動物追你幾多秒，之後變灰燼
