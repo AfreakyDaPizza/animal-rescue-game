@@ -15,6 +15,7 @@ import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
   selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
 } from './hud.js';
+import { initSideBoxes, toggleSideBox, updateSideBoxes } from './sideBoxes.js'; // 右邊中間：🐾 地塊寵物、⏱️ 繁殖機時間（小朋友 2026-10-18）
 import { state, save, SAVE_KEY } from './state.js';
 import { setAdminActions } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import {
@@ -476,6 +477,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyI') togglePanel('index');
   if (e.code === 'KeyQ') togglePanel('quests');
   if (e.code === 'KeyH') toggleHidePets();
+  if (e.code === 'KeyB' && !isPanelOpen()) toggleSideBox('pets'); // 🐾 地塊寵物
+  if (e.code === 'KeyT' && !isPanelOpen()) toggleSideBox('timers'); // ⏱️ 繁殖機時間
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
   if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
@@ -625,6 +628,32 @@ setShopActions({
       popup(`🐾 Pet skin: ${skin.name}!`);
     }
     save();
+  },
+});
+
+// 右邊中間兩粒掣：開盒嗰陣放開滑鼠（似 Shift Lock OFF，遊戲照玩），等你撳得到 Unequip；收盒就鎖返
+let sideFreed = false;
+initSideBoxes({
+  machineCount: hub.machines.length,
+  unequip(pet) {
+    unequipPet(hub, pet);
+    play('click');
+    save();
+  },
+  onToggle(open) {
+    play('click');
+    const c = player.controls;
+    if (open && c.isLocked && !c.virtual && !c.dragLook) {
+      c.freeMode = true;
+      sideFreed = true;
+      c.unlock();
+    } else if (!open && sideFreed) {
+      sideFreed = false;
+      if (c.freeMode && !isPaused()) {
+        c.freeMode = false;
+        c.lock();
+      }
+    }
   },
 });
 
@@ -1472,6 +1501,7 @@ renderer.setAnimationLoop((timestamp) => {
     applyBeachSky(scene, sky.uniforms, hemi, sun); // 秘密沙灘：星空
     applyEclipseSky(eclipse, scene, sky.uniforms, hemi, sun); // Eclipse：成個地圖變日蝕色
     updateHud(dayNight, location);
+    updateSideBoxes(dt);
   }
   // 電影入面（例如沙灘結局）：天空照樣跟沙灘變星空
   if (movie.active) {

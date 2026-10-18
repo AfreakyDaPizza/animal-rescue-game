@@ -16,14 +16,7 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <!-- 上面：數值 + 夜晚倒數 + 面板掣 -->
-    <div id="hud-stats" class="hud-box">
-      <span>💰 <b id="hud-money">0</b></span>
-      <span>⚡ <b id="hud-speed">100</b></span>
-      <span>🧠 <b id="hud-iq">100</b></span>
-      <span id="hud-jump-box" hidden>🦘 <b id="hud-jump">0</b></span>
-      <span>🎟️ <b id="hud-tokens">0</b></span>
-    </div>
+    <!-- 上面：夜晚倒數 + 面板掣（數值搬咗去左下角，小朋友 2026-10-18） -->
     <div id="hud-timer" class="hud-box">☀️ Night in 5:00</div>
     <div id="event-banner" class="hud-box"></div>
     <div id="hud-buttons">
@@ -34,13 +27,26 @@
       <button id="stats-button" class="hud-box">📋 My Stats <kbd>P</kbd></button>
     </div>
 
-    <!-- 下面：位置 + 快捷欄 + 操作提示 -->
+    <!-- 右邊中間：兩粒四方掣（🐾 地塊寵物、⏱️ 繁殖機時間）+ 細盒 -->
+    <div id="side-buttons">
+      <button id="side-pets-btn" class="side-btn" title="My Plot Pets (B)">🐾<kbd>B</kbd></button>
+      <button id="side-timers-btn" class="side-btn" title="Machine Timers (T)">⏱️<kbd>T</kbd></button>
+    </div>
+    <div id="side-box" class="hud-box" hidden></div>
+
+    <!-- 下面：數值（左下角）+ 位置 + 快捷欄 + 操作提示 -->
+    <div id="hud-stats" class="hud-box">
+      <div class="stat-line">💰 <span class="label">Money :</span> <b id="hud-money">0</b></div>
+      <div class="stat-line">🧠 <span class="label">IQ :</span> <b id="hud-iq">100</b></div>
+      <div class="stat-line">⚡ <span class="label">Speed :</span> <b id="hud-speed">100</b></div>
+      <div class="stat-small"><span>🎟️ <b id="hud-tokens">0</b> Skin Tokens</span><span id="hud-jump-box" hidden> · 🦘 <b id="hud-jump">0</b> Jump</span></div>
+    </div>
     <div id="hud-location" class="hud-box">Hub</div>
     <div id="hotbar-wrap">
       <div id="hotbar-label"></div>
       <div id="hotbar"></div>
     </div>
-    <div id="hud-help" class="hud-box">WASD move · Space jump · Mouse look · E use · 1-0 hotbar · scroll zoom · Shift lock · H hide pets · M sound · G graphics · Esc pause</div>
+    <div id="hud-help" class="hud-box">WASD move · Space jump · Mouse look · E use · 1-0 hotbar · scroll zoom · Shift lock · B plot pets · T machine timers · H hide pets · M sound · G graphics · Esc pause</div>
 
     <div id="hud-carry" class="hud-box" hidden></div>
     <div id="hud-prompt" class="hud-box" hidden></div>
