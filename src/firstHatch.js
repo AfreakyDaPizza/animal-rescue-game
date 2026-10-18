@@ -212,7 +212,7 @@ export function playFirstHatch({ scene, camera, machine, pet, from, onDone }) {
         faceTo(me.g, -u.x, -u.z);
         // 右手舉起，敲三下（每下快快向前撞一撞）
         const knock = KNOCKS.reduce((k, kt) => (t >= kt - 0.25 && t < kt + 0.25 ? 1 - Math.abs(t - kt) / 0.25 : k), 0);
-        swing(me.arms[1], -1.5 - knock * 0.6);
+        swing(me.arms[1], 1.45 + knock * 0.3); // 正數 = 向前（以前係負數，隻手向後敲）
         me.arms[1].rotation.z = 0.15;
         me.head.rotation.x = 0.12;
       }
@@ -223,8 +223,8 @@ export function playFirstHatch({ scene, camera, machine, pet, from, onDone }) {
       if (t >= SHATTER && t < LAND) {
         // 嚇一跳：雙手舉高、身向後
         const k = Math.min(1, (t - SHATTER) / 0.3);
-        swing(me.arms[0], -2.6 * k);
-        swing(me.arms[1], -2.6 * k);
+        swing(me.arms[0], 2.9 * k); // 嚇一跳：雙手打直舉高（向前少少）
+        swing(me.arms[1], 2.9 * k);
         me.g.rotation.x = 0;
       }
 
@@ -319,8 +319,8 @@ export function playFirstHatch({ scene, camera, machine, pet, from, onDone }) {
           // 你轉身跟住佢，偶然舉手歡呼
           faceTo(me.g, p.x - K.x, p.z - K.z);
           const cheer = Math.max(0, Math.sin((t - LAND) * 3));
-          swing(me.arms[0], -2.4 * cheer);
-          swing(me.arms[1], -2.4 * cheer);
+          swing(me.arms[0], 2.9 * cheer); // 歡呼：雙手舉高
+          swing(me.arms[1], 2.9 * cheer);
           me.g.position.y = Math.abs(Math.sin((t - LAND) * 3)) * 0.15;
         } else {
           // 停喺你前面（鏡頭嗰邊），開心咁細細跳
@@ -332,8 +332,8 @@ export function playFirstHatch({ scene, camera, machine, pet, from, onDone }) {
           g.rotation.y = Math.atan2(-look.x, -look.z) + Math.PI; // 面向你（同埋鏡頭嗰邊少少）
           faceTo(me.g, u.x, u.z); // 你轉返出嚟望住佢
           me.g.position.y = 0;
-          swing(me.arms[0], -0.4);
-          swing(me.arms[1], -0.4);
+          swing(me.arms[0], 0.15);
+          swing(me.arms[1], 0.15);
           moving = 0.4;
         }
         real.model.userData.animate?.(t, moving);

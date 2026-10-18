@@ -71,9 +71,10 @@ export function poseGym(tp, st, { feetY, dt, time }) {
     avatar.g.rotation.set(0, eye.rotation.y, 0, 'YXZ');
     const raise = Math.min(1, T.k * 2); // 0 → 1 舉手
     const spread = Math.max(0, 1 - Math.abs(T.k - 0.5) * 2); // 跌落嚟張開
-    AL.rotation.x = AR.rotation.x = Math.PI * raise * (1 - spread * 0.5);
-    AL.rotation.z = -0.1 - spread * 1.1;
-    AR.rotation.z = 0.1 + spread * 1.1;
+    // 雙手喺身兩邊打圈（由後面望最清楚）：升 = 打直舉高、跌 = 打側張開、落地 = 垂低
+    const armA = 0.1 + raise * ((1 - spread) * (Math.PI - 0.1) + spread * 1.25);
+    AL.rotation.z = -armA;
+    AR.rotation.z = armA;
     L.rotation.z = -0.04;
     R.rotation.z = 0.04;
     avatar.head.rotation.x = up && inAir ? -0.15 : 0.05;
@@ -97,16 +98,16 @@ export function poseGym(tp, st, { feetY, dt, time }) {
   if (st.kind === 'wall') {
     // 🧗 攀石：面向牆，手腳交替爬；爬到頂揮拳慶祝，跟住滑返落嚟
     const lz = THREE.MathUtils.clamp(me.z, st.z - st.halfLen + 0.8, st.z + st.halfLen - 0.8);
-    place(avatar, st.faceX + 0.5, st.climb, lz, Math.PI / 2);
+    place(avatar, st.faceX + 0.78, st.climb, lz, Math.PI / 2); // 離牆遠少少：手同身唔好插入牆／攀石點
     avatar.g.rotation.x = -0.08;
     avatar.head.rotation.x = -0.35; // 望上
     if (st.mode === 'top') {
       const k = Math.min(1, st.modeT / 0.25);
       AR.rotation.x = Math.PI;
       AR.rotation.z = Math.sin(st.modeT * 14) * 0.25 * k; // 揮拳
-      AL.rotation.x = Math.PI * 0.82;
-      L.rotation.x = 0.4;
-      R.rotation.x = 0.1;
+      AL.rotation.x = Math.PI * 0.86;
+      L.rotation.x = 0.25;
+      R.rotation.x = 0.05;
       avatar.head.rotation.x = -0.5;
     } else if (st.mode === 'slide') {
       AL.rotation.x = AR.rotation.x = Math.PI * 0.88;
@@ -116,12 +117,12 @@ export function poseGym(tp, st, { feetY, dt, time }) {
     } else {
       const ph = st.climb * 5 + time * 0.6;
       const s = Math.sin(ph);
-      AL.rotation.x = Math.PI * 0.82 + s * 0.32;
-      AR.rotation.x = Math.PI * 0.82 - s * 0.32;
+      AL.rotation.x = Math.PI * 0.86 + s * 0.22; // Minecraft 款：硬直手一上一落
+      AR.rotation.x = Math.PI * 0.86 - s * 0.22;
       AL.rotation.z = -0.15;
       AR.rotation.z = 0.15;
-      L.rotation.x = 0.45 - s * 0.45; // 左手高嗰陣右腳踩高
-      R.rotation.x = 0.45 + s * 0.45;
+      L.rotation.x = 0.3 - s * 0.3; // 左手高嗰陣右腳踩高（硬直腳：唔好踢入牆）
+      R.rotation.x = 0.3 + s * 0.3;
       L.rotation.z = -0.15;
       R.rotation.z = 0.15;
       avatar.g.position.y += Math.abs(Math.cos(ph)) * 0.05;

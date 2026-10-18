@@ -31,11 +31,11 @@ export function buildAvatar() {
   const legs = [-1, 1].map((s) => {
     const hip = new THREE.Group();
     hip.position.set(s * 0.22, 0.9, 0);
-    box(hip, 0.38, 0.44, 0.38, mats.pants, 0, -0.22, 0);
-    const knee = new THREE.Group();
+    // Minecraft 款：成條腳一嚿實心方塊（以前分大髀／小腿兩嚿，中間見到條縫，小朋友話醜）
+    box(hip, 0.38, 0.8, 0.38, mats.pants, 0, -0.4, 0);
+    const knee = new THREE.Group(); // 保留（舊 code 會 reset 佢），永遠 0
     knee.position.y = -0.42;
-    box(knee, 0.37, 0.4, 0.37, mats.pants, 0, -0.18, 0);
-    box(knee, 0.4, 0.16, 0.48, mats.shoes, 0, -0.42, -0.04);
+    box(knee, 0.4, 0.16, 0.44, mats.shoes, 0, -0.42, -0.02);
     hip.add(knee);
     hip.userData.knee = knee;
     knees.push(knee);
@@ -56,11 +56,11 @@ export function buildAvatar() {
   const arms = [-1, 1].map((s) => {
     const sh = new THREE.Group();
     sh.position.set(s * 0.62, 1.75, 0);
-    box(sh, 0.34, 0.46, 0.34, mats.shirt, 0, -0.18, 0);
-    const elbow = new THREE.Group();
+    // Minecraft 款：成隻手一嚿實心方塊（衫袖）+ 手掌，冇手踭縫
+    box(sh, 0.34, 0.74, 0.34, mats.shirt, 0, -0.32, 0);
+    const elbow = new THREE.Group(); // 保留（舊 code 會 reset 佢），永遠 0
     elbow.position.y = -0.4;
-    box(elbow, 0.33, 0.36, 0.33, mats.shirt, 0, -0.14, 0);
-    box(elbow, 0.32, 0.2, 0.32, mats.skin, 0, -0.42, 0);
+    box(elbow, 0.34, 0.22, 0.34, mats.skin, 0, -0.41, 0);
     sh.add(elbow);
     sh.userData.elbow = elbow;
     elbows.push(elbow);
