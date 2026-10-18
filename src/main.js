@@ -1619,7 +1619,7 @@ renderer.setAnimationLoop((timestamp) => {
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
-    walking: player.walking, feetY: player.feetY,
+    walking: player.walking, feetY: player.feetY, grounded: player.grounded, vy: player.vy,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
     time,

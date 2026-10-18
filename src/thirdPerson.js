@@ -26,26 +26,45 @@ export function buildAvatar() {
   const M = () => new THREE.MeshStandardMaterial({ roughness: 0.55 });
   const mats = { shirt: M(), pants: M(), skin: M(), hat: M(), shoes: M() };
   const g = new THREE.Group();
+  // 膝頭（knee）：條腳分大髀同小腿，跑步、跳起嗰陣屈得到；預設 0 = 同以前一樣直
+  const knees = [];
   const legs = [-1, 1].map((s) => {
     const hip = new THREE.Group();
     hip.position.set(s * 0.22, 0.9, 0);
-    box(hip, 0.38, 0.8, 0.38, mats.pants, 0, -0.4, 0);
-    box(hip, 0.4, 0.16, 0.48, mats.shoes, 0, -0.84, -0.04);
+    box(hip, 0.38, 0.44, 0.38, mats.pants, 0, -0.22, 0);
+    const knee = new THREE.Group();
+    knee.position.y = -0.42;
+    box(knee, 0.37, 0.4, 0.37, mats.pants, 0, -0.18, 0);
+    box(knee, 0.4, 0.16, 0.48, mats.shoes, 0, -0.42, -0.04);
+    hip.add(knee);
+    hip.userData.knee = knee;
+    knees.push(knee);
     g.add(hip);
     return hip;
   });
-  box(g, 0.85, 0.9, 0.45, mats.shirt, 0, 1.35, 0);
-  const badge = box(g, 0.2, 0.35, 0.05, 0xffd600, 0.22, 1.55, -0.24); // 徽章
-  box(g, 0.87, 0.14, 0.47, mats.shoes, 0, 0.95, 0); // 皮帶（跟鞋顏色）
-  box(g, 0.16, 0.12, 0.04, 0xffd54f, 0, 0.95, -0.24); // 皮帶扣
-  box(g, 0.24, 0.2, 0.04, mats.pants, -0.22, 1.5, -0.235); // 心口袋
-  for (const s of [-1, 1]) box(g, 0.3, 0.1, 0.12, mats.shirt, s * 0.17, 1.82, -0.2).rotation.z = s * -0.3; // 衫領
+  // 上身（torso）：心口、手、頭都喺入面，原點同 g 一樣（腳底），咁 head.position.y = 2.15 照用得；轉腰、呼吸用
+  const torso = new THREE.Group();
+  g.add(torso);
+  box(torso, 0.85, 0.9, 0.45, mats.shirt, 0, 1.35, 0);
+  const badge = box(torso, 0.2, 0.35, 0.05, 0xffd600, 0.22, 1.55, -0.24); // 徽章
+  box(torso, 0.87, 0.14, 0.47, mats.shoes, 0, 0.95, 0); // 皮帶（跟鞋顏色）
+  box(torso, 0.16, 0.12, 0.04, 0xffd54f, 0, 0.95, -0.24); // 皮帶扣
+  box(torso, 0.24, 0.2, 0.04, mats.pants, -0.22, 1.5, -0.235); // 心口袋
+  for (const s of [-1, 1]) box(torso, 0.3, 0.1, 0.12, mats.shirt, s * 0.17, 1.82, -0.2).rotation.z = s * -0.3; // 衫領
+  // 手踭（elbow）：上臂 + 前臂，跑步嗰陣屈起
+  const elbows = [];
   const arms = [-1, 1].map((s) => {
     const sh = new THREE.Group();
     sh.position.set(s * 0.62, 1.75, 0);
-    box(sh, 0.34, 0.8, 0.34, mats.shirt, 0, -0.35, 0);
-    box(sh, 0.32, 0.2, 0.32, mats.skin, 0, -0.82, 0);
-    g.add(sh);
+    box(sh, 0.34, 0.46, 0.34, mats.shirt, 0, -0.18, 0);
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.4;
+    box(elbow, 0.33, 0.36, 0.33, mats.shirt, 0, -0.14, 0);
+    box(elbow, 0.32, 0.2, 0.32, mats.skin, 0, -0.42, 0);
+    sh.add(elbow);
+    sh.userData.elbow = elbow;
+    elbows.push(elbow);
+    torso.add(sh);
     return sh;
   });
   const head = new THREE.Group();
@@ -64,7 +83,7 @@ export function buildAvatar() {
   }
   box(head, 0.2, 0.05, 0.04, 0x8d4a3a, 0, -0.16, -0.34); // 笑口
   box(hat, 0.74, 0.07, 0.74, mats.shoes, 0, 0.3, 0); // 帽帶
-  g.add(head);
+  torso.add(head);
 
   // ---- 每款皮膚嘅配件 ----
   const extras = {};
@@ -87,7 +106,7 @@ export function buildAvatar() {
   const astronaut = make('astronaut', head);
   const visor = box(astronaut, 0.86, 0.86, 0.86, new THREE.MeshStandardMaterial({ color: 0x80d8ff, transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.5 }), 0, 0.02, 0);
   visor.castShadow = false;
-  const pack = make('pack', g);
+  const pack = make('pack', torso);
   box(pack, 0.6, 0.7, 0.3, 0xcfd8dc, 0, 1.4, 0.38); // 背囊
   const knight = make('knight', head);
   box(knight, 0.5, 0.06, 0.04, 0x111111, 0, 0.04, -0.345); // 頭盔隙
@@ -96,7 +115,7 @@ export function buildAvatar() {
   const gold = new THREE.MeshStandardMaterial({ color: 0xffd600, metalness: 0.9, roughness: 0.2, emissive: 0x6d4c00 });
   box(crown, 0.7, 0.15, 0.7, gold, 0, 0.42, 0);
   for (const [x, z] of [[-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28], [0.28, 0.28]]) box(crown, 0.12, 0.2, 0.12, gold, x, 0.58, z);
-  const wings = make('wings', g);
+  const wings = make('wings', torso);
   for (const s of [-1, 1]) {
     const w = box(wings, 0.08, 1.0, 0.6, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 }), s * 0.6, 1.7, 0.4);
     w.rotation.z = s * -0.5;
@@ -111,7 +130,7 @@ export function buildAvatar() {
   box(pirate, 0.97, 0.04, 0.82, SM(0xffd54f, { metalness: 0.8 }), 0, 0.45, 0);
   box(pirate, 0.18, 0.16, 0.04, 0x111111, 0.15, 0.05, -0.36); // 眼罩
   box(pirate, 0.7, 0.03, 0.03, 0x111111, 0, 0.12, -0.35).rotation.z = -0.3;
-  const pirateBody = make('pirateBody', g);
+  const pirateBody = make('pirateBody', torso);
   box(pirateBody, 0.88, 0.16, 0.48, 0xc62828, 0, 0.95, 0);
   box(pirateBody, 0.18, 0.18, 0.05, SM(0xffd54f, { metalness: 0.8 }), 0, 0.95, -0.25);
   // 魔法師：好高嘅紫色星星帽 + 白鬍子 + 披風
@@ -125,14 +144,14 @@ export function buildAvatar() {
   for (const [x, y, z] of [[0.15, 0.7, -0.3], [-0.12, 0.95, -0.22], [0.05, 1.2, -0.12]]) box(wizard, 0.09, 0.09, 0.03, SG(0xffeb3b, 1.4), x, y, z);
   box(wizard, 0.5, 0.45, 0.12, 0xf5f5f5, 0, -0.32, -0.32); // 鬍子
   box(wizard, 0.2, 0.2, 0.1, 0xf5f5f5, 0, -0.6, -0.32);
-  const wizardBody = make('wizardBody', g);
+  const wizardBody = make('wizardBody', torso);
   box(wizardBody, 0.95, 1.3, 0.08, 0x311b92, 0, 1.2, 0.3); // 披風
   // 電子忍者：發光藍色護目鏡 + 身上霓虹線
   const cyber = make('cyber', head);
   box(cyber, 0.7, 0.16, 0.06, SG(0x00e5ff, 1.6), 0, 0.06, -0.35);
   box(cyber, 0.72, 0.12, 0.72, 0x263238, 0, 0.3, 0);
   box(cyber, 0.06, 0.4, 0.06, SG(0xff4081, 1.4), 0.3, 0.45, 0.2); // 天線
-  const cyberBody = make('cyberBody', g);
+  const cyberBody = make('cyberBody', torso);
   for (const s of [-1, 1]) box(cyberBody, 0.05, 0.85, 0.05, SG(0x00e5ff, 1.4), s * 0.36, 1.35, -0.24);
   box(cyberBody, 0.6, 0.05, 0.05, SG(0xff4081, 1.4), 0, 1.6, -0.24);
   // 龍騎士：紅色龍頭盔（角）+ 紅色龍翼
@@ -146,7 +165,7 @@ export function buildAvatar() {
     dragon.add(horn);
     box(dragon, 0.06, 0.06, 0.02, SG(0xffab00, 1.6), s * 0.14, 0.2, -0.53); // 頭盔眼
   }
-  const dragonBody = make('dragonBody', g);
+  const dragonBody = make('dragonBody', torso);
   for (const s of [-1, 1]) {
     const w = box(dragonBody, 0.06, 0.9, 0.9, SM(0xd32f2f, { transparent: true, opacity: 0.9 }), s * 0.75, 1.75, 0.45);
     w.rotation.z = s * -0.6;
@@ -161,7 +180,7 @@ export function buildAvatar() {
     box(king, 0.14, 0.24, 0.14, kg, Math.cos(a) * 0.32, 0.64, Math.sin(a) * 0.32);
   }
   for (const [c, x] of [[0xd50000, 0], [0x2962ff, -0.2], [0x00c853, 0.2]]) box(king, 0.1, 0.1, 0.04, SG(c, 0.8), x, 0.45, -0.4);
-  const kingBody = make('kingBody', g);
+  const kingBody = make('kingBody', torso);
   box(kingBody, 1.0, 1.45, 0.08, 0xb71c1c, 0, 1.15, 0.3);
   box(kingBody, 1.05, 0.16, 0.5, 0xfafafa, 0, 1.85, 0.08); // 白毛領
   // 冰之守護者：水晶頭盔 + 冰水晶膊頭
@@ -173,7 +192,7 @@ export function buildAvatar() {
     c.scale.y = h / 0.2;
     ice.add(c);
   }
-  const iceBody = make('iceBody', g);
+  const iceBody = make('iceBody', torso);
   for (const s of [-1, 1]) {
     const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), SG(0x80d8ff, 0.8));
     c.position.set(s * 0.62, 1.95, 0);
@@ -185,7 +204,7 @@ export function buildAvatar() {
   box(lava, 0.74, 0.74, 0.74, 0x212121, 0, 0.02, 0);
   box(lava, 0.5, 0.06, 0.04, SG(0xff6d00, 1.8), 0, 0.04, -0.375); // 眼縫
   box(lava, 0.08, 0.4, 0.42, SG(0xff3d00, 1.4), 0, 0.5, 0.05); // 火焰冠
-  const lavaBody = make('lavaBody', g);
+  const lavaBody = make('lavaBody', torso);
   box(lavaBody, 0.1, 1.3, 0.05, SG(0xff6d00, 1.5), 0.2, 1.55, 0.3).rotation.z = 0.4; // 背後劍
   box(lavaBody, 0.4, 0.08, 0.08, 0x424242, 0.06, 1.0, 0.3).rotation.z = 0.4;
   // 銀河探險家：透明星空頭盔 + 星星背包
@@ -193,10 +212,10 @@ export function buildAvatar() {
   const dome = box(galaxy, 0.86, 0.86, 0.86, SM(0x7c4dff, { transparent: true, opacity: 0.35, roughness: 0.05, emissive: 0x311b92, emissiveIntensity: 0.6 }), 0, 0.02, 0);
   dome.castShadow = false;
   for (const [x, y, z] of [[0.3, 0.3, -0.3], [-0.32, 0.2, 0.2], [0.1, 0.42, 0.3]]) box(galaxy, 0.05, 0.05, 0.05, SG(0xffffff, 2), x, y, z);
-  const galaxyBody = make('galaxyBody', g);
+  const galaxyBody = make('galaxyBody', torso);
   box(galaxyBody, 0.6, 0.7, 0.3, 0x1a237e, 0, 1.4, 0.38);
   box(galaxyBody, 0.15, 0.15, 0.05, SG(0xffeb3b, 1.6), 0, 1.5, 0.55);
-  return { g, legs, arms, head, mats, extras, hat, badge };
+  return { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge };
 }
 
 // 換護林員皮膚
@@ -254,10 +273,246 @@ function toHand(tp, held) {
   held.userData.inner.rotation.y = Math.PI * 0.8;
 }
 
+// ================= 企定／行路／跑步／跳嘅動畫（小朋友 2026-10-18：要型啲）=================
+// 用真實移動速度決定行定跑；所有比重（move／run／air）慢慢過渡（約 0.15 秒），唔會一下跳轉
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const mix = (a, b, k) => a + (b - a) * k;
+const IDLE_VARIANTS = ['stretch', 'watch', 'hop', 'wave'];
+const VARIANT_TIME = { stretch: 2.4, watch: 2.6, hop: 1.4, wave: 2.2 };
+
+function trackMotion(tp, dt, { walking, running, grounded, vy }) {
+  const a = (tp.anim ??= { v: 0, move: 0, run: 0, air: 0, phase: 0, still: 0, nextIdle: 8, variant: null, varT: 0, look: 0, lookTo: 0, lookT: 2, land: 0, launch: 0, jumpRun: 0, wasAir: false, vy: 0 });
+  const { x, z } = tp.eye.position;
+  if (tp.lastX !== undefined && dt > 0) {
+    const d = Math.hypot(x - tp.lastX, z - tp.lastZ);
+    const v = d < 8 ? d / dt : 0; // 傳送就唔計
+    a.v += (Math.min(v, 45) - a.v) * clamp01(dt * 8);
+  }
+  tp.lastX = x;
+  tp.lastZ = z;
+  const k = 1 - Math.exp(-dt / 0.15); // 約 0.15 秒過渡
+  const kFast = 1 - Math.exp(-dt / 0.07);
+  const moving = walking && (running || a.v > 0.6);
+  a.move += ((moving ? 1 : 0) - a.move) * k;
+  const runTarget = running ? 1 : clamp01((a.v - 7) / 11); // 7 m/s 以下行路，18 m/s 以上全速跑
+  a.run += (runTarget - a.run) * k;
+  const air = !grounded && !running;
+  a.air += ((air ? 1 : 0) - a.air) * kFast;
+  a.vy = vy;
+  // 起跳／落地
+  if (air && !a.wasAir) {
+    a.launch = 1;
+    a.jumpRun = a.run * a.move;
+  }
+  if (!air && a.wasAir) a.land = 1;
+  a.wasAir = air;
+  a.launch = Math.max(0, a.launch - dt * 3.5);
+  a.land = Math.max(0, a.land - dt * 3.6);
+  // 步伐：行慢啲、跑快啲；喺半空唔郁
+  if (!air) a.phase += dt * mix(8.5, 15, a.run) * a.move * (running ? 1.1 : 1);
+  // 企定：計時，夠 8 秒先玩特別動作
+  if (moving || air) {
+    a.still = 0;
+    a.variant = null;
+    a.nextIdle = 8;
+  } else a.still += dt;
+  if (!a.variant && a.still > a.nextIdle) {
+    a.variant = IDLE_VARIANTS[Math.floor(Math.random() * IDLE_VARIANTS.length)];
+    a.varT = 0;
+  }
+  if (a.variant) {
+    a.varT += dt;
+    if (a.varT > VARIANT_TIME[a.variant]) {
+      a.variant = null;
+      a.nextIdle = a.still + 5 + Math.random() * 6;
+    }
+  }
+  // 四圍望：每幾秒轉一轉頭
+  a.lookT -= dt;
+  if (a.lookT <= 0) {
+    a.lookTo = Math.random() < 0.4 ? 0 : (Math.random() * 2 - 1) * 0.55;
+    a.lookT = 2 + Math.random() * 3;
+  }
+  a.look += (a.lookTo - a.look) * clamp01(dt * 3);
+  return a;
+}
+
+// 一段動作嘅「力度」：0 → 1 → 0（頭尾慢慢郁）
+const envelope = (t, total, edge = 0.35) => clamp01(Math.min(t / edge, (total - t) / edge));
+
+function applyLocomotion(avatar, a, { feetY, held, t }) {
+  const [L, R] = avatar.legs;
+  const [KL, KR] = avatar.knees;
+  const [AL, AR] = avatar.arms;
+  const [EL, ER] = avatar.elbows;
+  const { torso, head, g } = avatar;
+  const m = a.move;
+  const r = a.run;
+  const idle = 1 - m;
+  const ph = a.phase;
+  const sin = Math.sin(ph);
+  const cos = Math.cos(ph);
+
+  // ---- 地面：企定（呼吸、擺手、重心）+ 行／跑 ----
+  const breath = Math.sin(t * 2.3);
+  const shift = Math.sin(t * 0.45) * 0.035 * idle; // 重心左右移
+  const legAmp = mix(0.55, 1.05, r) * m;
+  const kneeAmp = mix(0.55, 1.5, r) * m;
+  const armAmp = mix(0.5, 1.15, r) * m;
+  let lx = sin * legAmp;
+  let rx = -sin * legAmp;
+  let lk = -Math.max(0, cos) * kneeAmp - 0.04 * idle - Math.max(0, shift) * 3;
+  let rk = -Math.max(0, -cos) * kneeAmp - 0.04 * idle - Math.max(0, -shift) * 3;
+  let alx = -sin * armAmp + Math.sin(t * 1.1) * 0.04 * idle;
+  let arx = sin * armAmp - Math.sin(t * 1.1) * 0.04 * idle;
+  let alz = -(0.06 + breath * 0.02) * idle - 0.08 * r * m;
+  let arz = (0.06 + breath * 0.02) * idle + 0.08 * r * m;
+  let el = mix(0.12, 0.2, m) + mix(0, 1.35, r) * m;
+  let er = el;
+  let elz = 0;
+  let erz = 0;
+  let twist = sin * mix(0.08, 0.2, r) * m;
+  let lean = -mix(0.04, 0.24, r) * m;
+  let bounce = Math.abs(sin) * mix(0.04, 0.17, r) * m;
+  let tiltZ = shift;
+  let hx = 0.02 * idle;
+  let hy = a.look * idle - twist * 0.7;
+  let chest = breath * 0.015 * idle;
+
+  // ---- 企耐咗：特別動作 ----
+  if (a.variant && idle > 0.5) {
+    const v = a.variant;
+    const T = VARIANT_TIME[v];
+    const e = envelope(a.varT, T);
+    if (v === 'stretch' && !held) {
+      alx = mix(alx, Math.PI * 0.95, e);
+      arx = mix(arx, Math.PI * 0.95, e);
+      alz = mix(alz, 0.25, e);
+      arz = mix(arz, -0.25, e);
+      el = er = mix(el, 0, e);
+      lean += 0.1 * e; // 向後拗
+      hx = mix(hx, -0.35, e);
+      bounce += 0.06 * e; // 踮腳
+      hy *= 1 - e;
+    } else if (v === 'watch' && !held) {
+      alx = mix(alx, 1.25, e);
+      alz = mix(alz, 0.55, e);
+      el = mix(el, 1.5, e);
+      elz = 0;
+      hx = mix(hx, 0.4, e);
+      hy = mix(hy, 0.35, e);
+      rk += -Math.max(0, Math.sin(a.varT * 10)) * 0.25 * e; // 腳踢踢
+      rx += Math.max(0, Math.sin(a.varT * 10)) * 0.15 * e;
+    } else if (v === 'hop') {
+      const p = a.varT / T;
+      const hop = Math.max(0, Math.sin(p * Math.PI * 2)); // 兩下細跳
+      bounce += hop * 0.32;
+      lk -= hop * 0.7;
+      rk -= hop * 0.7;
+      lx += hop * 0.35;
+      rx += hop * 0.35;
+      if (!held) {
+        alx = mix(alx, 0.9, hop);
+        arx = mix(arx, 0.9, hop);
+      }
+      hx = mix(hx, -0.15, hop);
+    } else if (v === 'wave' && !held) {
+      arx = mix(arx, 0.3, e);
+      arz = mix(arz, 2.5, e);
+      er = mix(er, 0.25, e);
+      erz = Math.sin(a.varT * 13) * 0.55 * e; // 搖手
+      hy = mix(hy, -0.2, e);
+      tiltZ -= 0.05 * e;
+    }
+  }
+
+  // ---- 半空：起跳伸直、半空縮腳、跑跳係跨步 ----
+  const air = a.air;
+  if (air > 0.001) {
+    const jr = a.jumpRun;
+    const apex = clamp01(1 - Math.abs(a.vy) / 7); // 去到最高點縮得最緊
+    const falling = a.vy < 0 ? clamp01(-a.vy / 9) : 0; // 跌落嚟：腳伸返直準備落地
+    const tuck = (0.55 + 0.45 * apex) * (1 - falling * 0.6);
+    // 企定跳：雙腳縮埋、雙手舉高
+    const sLx = 0.95 * tuck;
+    const sLk = -1.7 * tuck;
+    const sAx = 2.7;
+    const sAz = 0.3;
+    // 跑跳：一腳向前、一腳向後；一手前一手後
+    const rLx = 1.05 * tuck + 0.15;
+    const rLk = -0.45 * tuck;
+    const rRx = -0.55;
+    const rRk = -1.35 * tuck;
+    lx = mix(lx, mix(sLx, rLx, jr), air);
+    rx = mix(rx, mix(sLx, rRx, jr), air);
+    lk = mix(lk, mix(sLk, rLk, jr), air);
+    rk = mix(rk, mix(sLk, rRk, jr), air);
+    if (!held) {
+      alx = mix(alx, mix(sAx, -0.9, jr), air);
+      arx = mix(arx, mix(sAx, 2.2, jr), air);
+      alz = mix(alz, mix(-sAz, -0.25, jr), air);
+      arz = mix(arz, mix(sAz, 0.2, jr), air);
+      el = mix(el, mix(0.15, 0.6, jr), air);
+      er = mix(er, mix(0.15, 0.9, jr), air);
+    }
+    lean = mix(lean, mix(0.05, -0.2, jr), air);
+    twist = mix(twist, -0.12 * jr, air);
+    bounce *= 1 - air;
+    hx = mix(hx, mix(-0.2, 0, jr), air);
+    hy *= 1 - air;
+    tiltZ *= 1 - air;
+  }
+
+  // 抱住寵物：雙手一直舉高托住
+  if (held) {
+    alx = arx = Math.PI;
+    alz = -0.08;
+    arz = 0.08;
+    el = er = 0.05;
+    elz = erz = 0;
+  }
+
+  L.rotation.x = lx;
+  R.rotation.x = rx;
+  KL.rotation.x = lk;
+  KR.rotation.x = rk;
+  AL.rotation.set(alx, 0, alz);
+  AR.rotation.set(arx, 0, arz);
+  EL.rotation.set(el, 0, elz);
+  ER.rotation.set(er, 0, erz);
+  torso.rotation.y = twist;
+  torso.position.y = chest;
+  head.rotation.set(hx, hy, 0);
+  g.rotation.x = lean;
+  g.rotation.z = tiltZ;
+  g.position.y = feetY + bounce;
+
+  // 起跳先壓低（0.06 秒）再拉長；落地壓扁再彈返
+  const l = a.land;
+  const sinceLaunch = 1 - a.launch; // 0 → 1（約 0.29 秒）
+  let sy = 1;
+  if (a.launch > 0) sy = sinceLaunch < 0.2 ? 1 - 0.14 * (sinceLaunch / 0.2) : 1 + 0.1 * a.launch;
+  if (l > 0) {
+    const sq = Math.sin(l * Math.PI) * 0.75 + l * 0.25;
+    sy = Math.min(sy, 1 - 0.2 * sq);
+    KL.rotation.x -= 0.9 * sq;
+    KR.rotation.x -= 0.9 * sq;
+    L.rotation.x += 0.45 * sq;
+    R.rotation.x += 0.45 * sq;
+    if (!held) {
+      AL.rotation.x = mix(AL.rotation.x, 0.6, sq);
+      AR.rotation.x = mix(AR.rotation.x, 0.6, sq);
+    }
+    g.rotation.x -= 0.08 * sq;
+  }
+  const sxz = 1 + (1 - sy) * 0.6;
+  g.scale.set(sxz, sy, sxz);
+}
+
 const fwd = new THREE.Vector3();
 
 // held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；回傳要用嚟畫畫面嘅鏡頭
-export function updateThirdPerson(tp, dt, { held, item, walking, feetY, station = null, gymStation = null, time = 0 }) {
+export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0 }) {
   const { eye, avatar, view } = tp;
   tp.smoothZoom += (tp.zoom - tp.smoothZoom) * Math.min(1, dt * 10);
   const third = tp.zoom > 0;
@@ -292,46 +547,43 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, station 
   avatar.g.rotation.set(0, eye.rotation.y, 0);
   avatar.legs.forEach((l) => l.rotation.set(0, 0, 0));
   avatar.arms.forEach((a) => a.rotation.set(0, 0, 0));
+  avatar.knees.forEach((k) => k.rotation.set(0, 0, 0));
+  avatar.elbows.forEach((e) => e.rotation.set(0, 0, 0));
+  avatar.torso.rotation.set(0, 0, 0);
+  avatar.torso.position.set(0, 0, 0);
+  avatar.g.scale.setScalar(1);
   avatar.head.rotation.set(0, 0, 0);
   avatar.head.position.y = 2.15;
   const running = station?.kind === 'treadmill'; // 跑步機：自動跑
   const sitting = station?.kind === 'table'; // 學生桌：坐低寫字
-  tp.phase += dt * (running ? 16 : walking ? 10 : 0);
   if (tp.rainbow) {
     const h = (performance.now() / 4000) % 1;
     avatar.mats.shirt.color.setHSL(h, 1, 0.5);
     avatar.mats.pants.color.setHSL((h + 0.33) % 1, 1, 0.5);
     avatar.mats.shoes.color.setHSL((h + 0.66) % 1, 1, 0.5);
   }
-  const swing = running ? Math.sin(tp.phase) * 1.1 : walking ? Math.sin(tp.phase) * 0.7 : 0;
+  const t = performance.now() / 1000;
+  const anim = trackMotion(tp, dt, { walking: walking || running, running, grounded, vy });
   if (gymStation && poseGym(tp, gymStation, { feetY, dt, time })) {
     // 💪 Gym：gymPoses.js 已經擺好
+    anim.still = 0;
   } else if (sitting) {
     // 坐喺張櫈面上、面向書枱：大髀向前打橫，雙手向前放喺枱面，右手寫字，個頭望落本書
     tp.phase2 = (tp.phase2 || 0) + dt * 8;
     avatar.g.position.set(station.x, -0.08, station.z + 1.3); // 櫈面高 0.62，屁股啱啱坐喺上面
     avatar.g.rotation.y = 0;
     avatar.legs.forEach((l) => (l.rotation.x = Math.PI / 2)); // 正數 = 向前
+    avatar.knees.forEach((k) => (k.rotation.x = -Math.PI / 2)); // 小腿垂直落地
     avatar.arms[0].rotation.x = 1.15; // 左手撳住本書
     avatar.arms[0].rotation.z = 0;
     avatar.arms[1].rotation.x = 1.15 + Math.sin(tp.phase2) * 0.08; // 右手寫字
     avatar.arms[1].rotation.z = Math.sin(tp.phase2 * 1.7) * 0.1;
     avatar.head.rotation.x = 0.25 + Math.sin(tp.phase2 * 0.3) * 0.05; // 望落枱面
+    anim.still = 0;
   } else {
-    if (running) {
-      avatar.g.rotation.y = 0; // 向住跑步機前面
-      avatar.g.rotation.x = -0.12; // 跑步向前傾
-      avatar.g.position.y = feetY + Math.abs(Math.sin(tp.phase)) * 0.12;
-    }
-    avatar.head.rotation.x = 0;
-    avatar.arms.forEach((a) => (a.rotation.z = 0));
-    avatar.legs[0].rotation.x = swing;
-    avatar.legs[1].rotation.x = -swing;
-    if (held) avatar.arms.forEach((a) => (a.rotation.x = Math.PI)); // 雙手舉高托住寵物
-    else {
-      avatar.arms[0].rotation.x = -swing;
-      avatar.arms[1].rotation.x = swing;
-    }
+    if (running) avatar.g.rotation.y = 0; // 向住跑步機前面
+    applyLocomotion(avatar, anim, { feetY, held: !!held, t });
+    tp.phase = anim.phase; // 頭頂寵物跟住步伐輕輕彈
   }
 
   // 鏡頭：喺公仔後面；寵物越大，退得越後，等你睇得晒
