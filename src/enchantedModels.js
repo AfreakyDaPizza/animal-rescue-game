@@ -1,5 +1,5 @@
 // Biome 7「Enchanted Kingdom」嘅 3D 模型（小朋友 2026-10-17）：方塊（Roblox）風格
-//   buildSkywhaleModel()     ：Royal Skywhale（ETERNAL，最勁嘅寵物）：順滑卡通寶藍鯨魚、大眼、細金皇冠、金花紋、背上草地同圓樹、閃粉同符文
+//   buildSkywhaleModel()     ：Royal Skywhale（ETERNAL，最勁嘅寵物）：EXTREME 天空巨獸：深藍黑身 + 發光符文紋、兇眼、金戰冠、巨翼鰭、背上浮空森林遺跡 + 瀑布、符文環
 //   buildSunlionModel()      ：Enchanted Sunlion（MYTHIC）：金獅子 + 紫水晶鬃毛
 //   buildOctophantModel()    ：Octophant（LEGENDARY）：威武大笨象 + 八爪魚觸手（象鼻尾、下巴、肚底）（v4）
 //   buildGuardianRig()       ：Boss「Enchanted Royal Guardian」：白金色水晶騎士，皇冠頭盔、水晶大劍、皇家盾、披風
@@ -128,109 +128,248 @@ function shard(parent, x, y, z, w, len, mat, rx = 0, ry = 0, rz = 0) {
 }
 
 // ================= Royal Skywhale（ETERNAL，最勁嘅寵物） =================
-// 小朋友 2026-10-18：唔要方塊 → 順滑圓潤卡通鯨魚（用 animals20.js 嘅 sleek 順滑身）：
-// 寶藍色背、淺紫藍肚、大大粒閃亮眼、細細金皇冠、金色花紋線、好似翼咁嘅軟胸鰭；
-// 背上有細細嘅大自然（草、花、圓樹），柔和光暈 + 閃粉 + 圍住轉嘅符文；唔要身邊嗰圈火（noFireAura）
-// 行（飛）嘅動畫：滑翔，隔一陣向下俯衝再向上升（頭跟住向下／向上），條尾跟住拍
+// 小朋友 2026-10-18：唔要方塊、唔要可愛 → 要「EXTREME」：天空巨獸（sky leviathan），順滑身（animals20.js 嘅 sleek）：
+// 長長大隻身、好大個頭 + 粗眉骨、窄窄發光青眼（兇）、微微張開嘅口 + 鯨鬚（唔係牙）、
+// 深海軍藍／黑藍身 + 發光青色符文紋路、金色戰冠（尖刺）+ 額頭金甲、翼咁大嘅尖鰭（金邊）、背脊一排尖刺；
+// 背上一個史詩級浮空森林遺跡：大樹、水晶神殿 + 爛石柱、細瀑布由邊流落去；光暈 + 閃粉 + 兩圈大符文環；唔要身邊嗰圈火（noFireAura）
+// 行（飛）嘅動畫：滑翔，隔一陣向下大俯衝再衝返上去（頭跟住向下／向上），條尾大力拍
 export function buildSkywhaleModel() {
-  const SKIN = 0x2f45d6; // 寶藍
-  const BELLY = 0xdfe3ff; // 淺紫藍肚
-  const GOLDC = 0xf6c445;
-  const S = 1.4;
-  const LEN = 7.4;
-  const W = 3.0;
-  const H = 2.7;
+  const SKIN = 0x0e1638; // 深海軍藍（近黑）
+  const BELLY = 0x4a5f9e; // 鋼藍肚
+  const VEIN = 0x18ffff; // 發光符文紋（青）
+  const EYE = 0x5cf6ff; // 發光眼（青）
+  const GOLDC = 0xf2b632;
+  const DARK = 0x070b1f;
+  const BALEEN = 0xd9cfb4;
+  const S = 1.45;
+  const LEN = 9.6;
+  const W = 3.2;
+  const H = 3.0;
+  const goldM = material(GOLDC, { metalness: 0.75, roughness: 0.28, emissive: 0x3d2500, emissiveIntensity: 0.35 });
+  const darkSpikeM = material(0x1a2350, { metalness: 0.4, roughness: 0.35 });
+  const crystalM = material(0x7ff6ff, { emissive: 0x18c8ff, emissiveIntensity: 1.6, roughness: 0.15, transparent: true, opacity: 0.9 });
+  const cone = (parent, r, h, m, x, y, z, rx = 0, rz = 0, seg = 6) => {
+    const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), m);
+    c.position.set(x, y, z);
+    c.rotation.set(rx, 0, rz);
+    c.castShadow = true;
+    parent.add(c);
+    return c;
+  };
+  let tailRef = null;
+  let fallRef = null;
   const inner = sleek({
-    skin: SKIN, belly: BELLY, len: LEN, w: W, h: H, n: 2.1, belt: -0.25, rings: 40, around: 28,
-    // 大圓頭、胖胖身、尾柄幼（卡通比例）
+    skin: SKIN, belly: BELLY, len: LEN, w: W, h: H, n: 2.2, belt: -0.35, rings: 46, around: 30,
+    glow: { [VEIN]: 2.2, [EYE]: 3.2 },
+    // 好大個頭（前面高啲、鈍）、身長而有力、尾柄幼
     prof: (u) => [
-      noseIn(u, 0.3) * tailOut(u, 0.45, 0.14),
-      noseIn(u, 0.34) * tailOut(u, 0.4, 0.16) * (0.94 + 0.06 * smooth01(0, 0.4, u)),
-      -0.04 * (1 - smooth01(0, 0.4, u)),
+      noseIn(u, 0.2) * tailOut(u, 0.5, 0.12) * (1 - 0.1 * smooth01(0.22, 0.5, u)),
+      noseIn(u, 0.24) * tailOut(u, 0.46, 0.14) * (1.06 - 0.14 * smooth01(0.18, 0.5, u)),
+      -0.02 + 0.04 * (1 - smooth01(0, 0.3, u)),
     ],
-    extras({ head, dot, fin, tail, segs }) {
-      // ---- 大大粒閃亮眼（眼白 + 深藍眼珠 + 兩粒反光）----
-      for (const sx of [-1, 1]) {
-        const e = pivot(head, sx * 1.02, 0.3, 0.78);
-        e.rotation.y = -sx * 0.62; // 望向前面同出面
-        ball(e, 0.46, 0.52, 0.3, 0xffffff, 0, 0, 0);
-        ball(e, 0.32, 0.38, 0.14, 0x1a1f4d, 0, -0.04, -0.2);
-        ball(e, 0.11, 0.12, 0.05, 0xffffff, sx * 0.1, 0.12, -0.32);
-        ball(e, 0.055, 0.055, 0.03, 0xffffff, -sx * 0.1, -0.13, -0.32);
-        ball(head, 0.24, 0.13, 0.1, 0xffa6c9, sx * 1.2, -0.3, 1.05).rotation.y = -sx * 0.7; // 粉紅面珠
-      }
-      // ---- 笑口（一串小點，嘴角向上）----
-      for (const side of [0, 1]) for (let k = 0; k < 9; k++) {
-        const a = -0.52 + k * 0.035 - (k > 6 ? (k - 6) * 0.05 : 0);
-        dot(0.03 + k * 0.016, side ? PI - a : a, 0.05, 0.03, 0.07, 0x1a237e, 0.008);
-      }
-      // ---- 金色花紋線：兩邊各一條沿住身嘅彎線 + 背脊中線 ----
-      for (const side of [0, 1]) for (let k = 0; k < 70; k++) {
-        const u = 0.26 + k * 0.0075;
-        const a = 0.18 + Math.sin(k * 0.17) * 0.12;
-        dot(u, side ? PI - a : a, 0.06, 0.025, 0.09, GOLDC, 0.004);
-      }
-      for (let k = 0; k < 60; k++) dot(0.3 + k * 0.0085, PI / 2, 0.055, 0.025, 0.09, GOLDC, 0.004);
-      // 肚坑紋（淺色）
-      for (let i = -3; i <= 3; i++) for (let k = 0; k < 8; k++) dot(0.12 + k * 0.05, -PI / 2 + i * 0.16, 0.035, 0.015, 0.09, 0xc4caf5, 0.004);
-      // ---- 細細金皇冠（頭頂）----
-      const goldM = material(GOLDC, { metalness: 0.35, roughness: 0.35 });
-      const crown = pivot(head, 0, H * 0.5 - 0.02, 1.35);
-      crown.rotation.x = -0.12;
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.22, 20, 1, true), goldM);
-      band.material.side = THREE.DoubleSide;
-      crown.add(band);
-      for (let k = 0; k < 5; k++) {
-        const ang = (k / 5) * PI * 2;
-        const sp = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 8), goldM);
-        sp.position.set(Math.cos(ang) * 0.42, 0.22, Math.sin(ang) * 0.42);
-        crown.add(sp);
-        ball(crown, 0.055, 0.055, 0.055, GOLDC, Math.cos(ang) * 0.42, 0.38, Math.sin(ang) * 0.42, { metalness: 0.35, roughness: 0.35 });
-        ball(crown, 0.06, 0.06, 0.03, [0xe53935, 0x1e88e5, 0x8e24aa][k % 3], Math.cos(ang) * 0.45, 0.0, Math.sin(ang) * 0.45, { roughness: 0.2, metalness: 0.2 });
-      }
-      // ---- 背上嘅細小大自然：圓圓草地島、石仔、花、一棵圓樹（小朋友：要有 nature）----
-      const [mid, mz] = segs ? [segs[2], 0] : [head, 0];
-      const isle = pivot(mid, 0, H * 0.47, mz - 0.35);
-      ball(isle, 1.05, 0.32, 0.95, 0x8d6e63, 0, 0, 0); // 泥
-      ball(isle, 1.1, 0.26, 1.0, 0x66bb6a, 0, 0.14, 0); // 草
-      for (let i = 0; i < 7; i++) {
-        const a = (i / 7) * PI * 2;
-        ball(isle, 0.28, 0.16, 0.28, i % 2 ? 0x81c784 : 0x4caf50, Math.cos(a) * 0.62, 0.3, Math.sin(a) * 0.55); // 草叢
-      }
-      ball(isle, 0.2, 0.15, 0.18, 0xb0bec5, 0.55, 0.32, 0.35);
-      ball(isle, 0.14, 0.11, 0.13, 0x90a4ae, -0.6, 0.3, -0.3);
-      [[0.35, -0.45, 0xf48fb1], [-0.42, 0.42, 0xfff176], [0.62, 0.05, 0xce93d8], [-0.15, 0.62, 0xf48fb1], [-0.68, 0.1, 0xffffff]].forEach(([x, z, c]) => {
-        ball(isle, 0.02, 0.12, 0.02, 0x388e3c, x, 0.36, z);
-        ball(isle, 0.07, 0.05, 0.07, c, x, 0.46, z); // 花
-      });
-      const trunkM = material(0x795548);
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 0.75, 10), trunkM);
-      trunk.position.set(-0.12, 0.62, 0.05);
-      trunk.rotation.z = 0.12;
-      isle.add(trunk);
-      [[0, 1.12, 0, 0.42], [0.28, 1.0, 0.1, 0.3], [-0.3, 1.02, -0.05, 0.3], [0.05, 1.32, -0.05, 0.28], [0, 1.0, 0.3, 0.27]].forEach(([x, y, z, r], i) =>
-        ball(isle, r, r * 0.9, r, [0x43a047, 0x66bb6a, 0x388e3c][i % 3], x - 0.17, y, z)); // 圓樹冠
-      // ---- 身上淡淡嘅符文花紋（淺青色）----
+    extras(parts) {
+      const { dot, fin, tail, seg, surf } = parts;
+      tailRef = tail;
+      // 身上 (u, ang) 嗰點：回傳要掛喺邊個轉軸 + 位置
+      const at = (u, ang, lift = 0) => {
+        const [pv, lz] = seg(u);
+        const { p, n } = surf(u, ang, lift);
+        return { pv, x: p.x, y: p.y, z: lz, n };
+      };
+      // 貼住身表面嘅一塊（按表面方向擺），用嚟做金甲、眉骨
+      const plate = (u, ang, sx, sy, sz, mat, lift = 0, tilt = 0) => {
+        const { pv, x, y, z, n } = at(u, ang, lift);
+        const m = ball(pv, sx, sy, sz, 0, x, y, z, mat);
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+        if (tilt) m.rotateY(tilt);
+        return m;
+      };
+      // ---- 兇兇嘅眼：深色眼窩 + 窄窄發光眼（斜斜）+ 好粗嘅眉骨（凸出嚟遮住眼）+ 金眉甲 ----
+      const browM = material(0x16204d, { roughness: 0.5 });
       for (const side of [0, 1]) {
-        const cu = 0.5;
-        const ca = -0.05;
-        for (let k = 0; k < 18; k++) {
-          const t = (k / 18) * PI * 2; // 一個圈
-          dot(cu + Math.cos(t) * 0.035, (side ? PI - ca : ca) + Math.sin(t) * 0.16, 0.035, 0.02, 0.05, 0x9ff8ff, 0.004);
-        }
-        for (let k = -2; k <= 2; k++) dot(cu + k * 0.012, side ? PI - ca : ca, 0.03, 0.02, 0.05, 0x9ff8ff, 0.005); // 中間一劃
-        for (let k = -2; k <= 2; k++) dot(cu, (side ? PI - ca : ca) + k * 0.05, 0.03, 0.02, 0.05, 0x9ff8ff, 0.005); // 打橫一劃
+        const A = (a) => (side ? PI - a : a);
+        const sl = side ? -0.45 : 0.45;
+        dot(0.165, A(0.36), 0.42, 0.14, 0.62, DARK, -0.03, sl); // 眼窩
+        dot(0.165, A(0.37), 0.26, 0.14, 0.62, EYE, 0.05, sl); // 發光窄眼
+        dot(0.162, A(0.37), 0.08, 0.1, 0.22, 0xe0ffff, 0.08, sl); // 眼中間最光
+        plate(0.155, A(0.55), 0.32, 0.22, 0.75, browM, -0.02, side ? 0.4 : -0.4); // 粗眉骨
+        plate(0.158, A(0.6), 0.2, 0.1, 0.62, goldM, 0.14, side ? 0.4 : -0.4); // 金眉甲
       }
-      // ---- 細背鰭 ----
-      fin(0.62, PI / 2, [[0.4, 0], [0.12, 0.16], [-0.12, 0.34], [-0.3, 0.3], [-0.26, 0.08], [-0.34, 0]], { key: 'sw-dorsal', depth: 0.12 });
-      // ---- 尾鰭（闊、軟）+ 金邊 ----
-      const fluke = [[0, 0.22], [0.5, 0.1], [1.05, -0.2], [1.5, -0.62], [1.25, -0.66], [0.65, -0.48], [0.2, -0.56], [0, -0.42], [-0.2, -0.56], [-0.65, -0.48], [-1.25, -0.66], [-1.5, -0.62], [-1.05, -0.2], [-0.5, 0.1]];
-      slab(tail, fluke, 0.12, SKIN, { plane: 'flat', key: 'sw-fluke', bevel: 0.06, z: -0.1 });
-      slab(tail, fluke.map(([x, y]) => [x * 1.05, y * 1.06 + 0.01]), 0.05, GOLDC, { plane: 'flat', key: 'sw-fluke-gold', bevel: 0.02, z: -0.1 }); // 金邊（大少少，喺藍色後面露出嚟）
-      // ---- 好似翼咁嘅大胸鰭（軟軟彎彎、金邊）----
-      const wing = [[0, 0.32], [0.5, 0.3], [1.1, 0.12], [1.75, -0.22], [2.05, -0.5], [1.8, -0.62], [1.2, -0.52], [0.6, -0.42], [0, -0.28]];
-      const pecs = fin(0.33, -0.25, wing, { plane: 'flat', key: 'sw-wing', mirror: true, rot: [0, -0.4, -0.25], depth: 0.1 });
-      for (const { fp } of pecs) slab(fp, wing.map(([x, y]) => [x * 1.05 - 0.03, y * 1.08]), 0.045, GOLDC, { plane: 'flat', key: 'sw-wing-gold', bevel: 0.015 }); // 金邊
+      // ---- 微微張開嘅口：深色口線 + 下面一排鯨鬚（唔係牙）----
+      for (const side of [0, 1]) {
+        const A = (a) => (side ? PI - a : a);
+        for (let k = 0; k < 30; k++) {
+          const u = 0.01 + k * 0.0105;
+          const a = -0.08 - (k / 29) ** 2 * 0.42; // 口角向下（兇啲）
+          dot(u, A(a), 0.11, 0.05, 0.08, DARK, 0.004);
+          if (k > 1 && k < 27) dot(u, A(a - 0.13), 0.022, 0.03, 0.06, BALEEN, 0.002, 0); // 鯨鬚（微微張口見到）
+        }
+      }
+      for (let i = -4; i <= 4; i++) for (let k = 0; k < 10; k++) dot(0.06 + k * 0.045, -PI / 2 + i * 0.13, 0.03, 0.015, 0.1, 0x6d80bd, 0.004); // 喉嚨坑紋
+      // ---- 發光符文紋路：兩邊沿住身一條條波浪線 + 分叉 + 符文圈 ----
+      for (const side of [0, 1]) {
+        const A = (a) => (side ? PI - a : a);
+        for (let k = 0; k < 110; k++) {
+          const u = 0.2 + k * 0.0068;
+          dot(u, A(0.08 + Math.sin(k * 0.15) * 0.16), 0.03, 0.02, 0.05, VEIN, 0.006);
+          if (k % 14 === 7) for (let j = 1; j < 7; j++) dot(u + j * 0.006, A(0.08 + Math.sin(k * 0.15) * 0.16 + j * 0.06), 0.025, 0.02, 0.04, VEIN, 0.006); // 分叉向上
+          if (k % 14 === 0 && k) for (let j = 1; j < 6; j++) dot(u + j * 0.005, A(0.08 + Math.sin(k * 0.15) * 0.16 - j * 0.06), 0.025, 0.02, 0.04, VEIN, 0.006); // 分叉向下
+        }
+        // 符文圈（每邊兩個）
+        for (const [cu, ca] of [[0.36, 0.42], [0.62, 0.32]]) {
+          for (let k = 0; k < 22; k++) {
+            const t = (k / 22) * PI * 2;
+            dot(cu + Math.cos(t) * 0.035, A(ca + Math.sin(t) * 0.17), 0.035, 0.02, 0.05, VEIN, 0.006);
+          }
+          for (let k = -3; k <= 3; k++) dot(cu + k * 0.009, A(ca + k * 0.035), 0.03, 0.02, 0.04, VEIN, 0.007); // 斜一劃
+          for (let k = -3; k <= 3; k++) dot(cu - k * 0.009, A(ca + k * 0.035), 0.03, 0.02, 0.04, VEIN, 0.007); // 交叉一劃
+        }
+      }
+      for (let k = 0; k < 60; k++) dot(0.28 + k * 0.009, PI / 2, 0.04, 0.02, 0.07, VEIN, 0.006); // 背脊中線
+      // ---- 金色戰冠：額頭幾塊金甲 + 頭頂一排大尖刺（中間最高）+ 青寶石 ----
+      // 額頭金頭盔：幾塊大大塊、貼住頭嘅金甲（重疊）
+      plate(0.06, PI / 2, 0.95, 0.09, 0.55, goldM, 0.02);
+      plate(0.11, PI / 2, 0.85, 0.09, 0.5, goldM, 0.05);
+      for (const side of [0, 1]) plate(0.08, side ? PI - 0.95 : 0.95, 0.5, 0.08, 0.45, goldM, 0.02);
+      {
+        const { pv, x, y, z } = at(0.03, PI / 2.3, 0.02);
+        ball(pv, 0.16, 0.16, 0.12, VEIN, x, y + 0.08, z, crystalM); // 額頭青寶石
+        ball(pv, 0.16, 0.16, 0.12, VEIN, -x, y + 0.08, z, crystalM);
+      }
+      // 頭頂一圈大戰冠：9 枝高矮唔同、向後彎嘅尖刺 + 寶石
+      {
+        const { pv, y, z } = at(0.2, PI / 2, -0.12);
+        const crown = pivot(pv, 0, y, z);
+        crown.rotation.x = -0.28; // 向後斜
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.3, 0.32, 24, 1, true), goldM);
+        band.material.side = THREE.DoubleSide;
+        band.scale.set(1, 1, 0.8);
+        crown.add(band);
+        for (let k = 0; k < 9; k++) {
+          const a = PI + (k / 8) * PI; // 前面半圈（向住頭前面）
+          const x = Math.cos(a) * 1.2;
+          const zz = Math.sin(a) * 0.96 * 0.8;
+          const h = [0.9, 1.2, 1.6, 1.9, 2.3, 1.9, 1.6, 1.2, 0.9][k];
+          const sp = cone(crown, 0.18, h, goldM, x, h / 2 + 0.1, zz, 0.22, -x * 0.22);
+          sp.position.z += 0.0;
+          ball(crown, 0.13, 0.13, 0.1, 0, x * 1.03, 0.05, zz * 1.05, k === 4 ? crystalM : material(k % 2 ? 0xea80fc : 0x18ffff, { emissive: k % 2 ? 0xd500f9 : 0x00b8d4, emissiveIntensity: 1.5 }));
+        }
+        for (let k = 0; k < 5; k++) { // 後面半圈細啲
+          const a = (k / 4) * PI;
+          cone(crown, 0.13, 0.6, goldM, Math.cos(a) * 1.2, 0.4, Math.sin(a) * 0.77, -0.3, -Math.cos(a) * 0.3);
+        }
+      }
+      // 兩隻由眉骨向後掃嘅大金角
+      for (const side of [0, 1]) {
+        const { pv, x, y, z } = at(0.15, side ? PI - 0.75 : 0.75, 0);
+        const horn = pivot(pv, x, y, z);
+        horn.rotation.set(1.05, 0, (side ? 1 : -1) * 0.55);
+        for (let k = 0; k < 4; k++) {
+          const c = cone(horn, 0.22 - k * 0.045, 0.55, goldM, 0, 0.25 + k * 0.42, -k * k * 0.03, -k * 0.12, 0, 8);
+          c.castShadow = true;
+        }
+      }
+      // 頭兩邊向後嘅金甲刺（好似頭盔）
+      for (const side of [0, 1]) {
+        const A = (a) => (side ? PI - a : a);
+        for (let k = 0; k < 3; k++) {
+          const { pv, x, y, z } = at(0.15 + k * 0.05, A(0.85), 0);
+          cone(pv, 0.12, 0.8 - k * 0.15, goldM, x, y, z, 1.25, (side ? 1 : -1) * 0.5);
+        }
+      }
+      // ---- 背脊一排尖刺（深色 + 金尖），越後越細 ----
+      for (let k = 0; k < 13; k++) {
+        const u = 0.3 + k * 0.045;
+        if (u > 0.4 && u < 0.62) continue; // 背上個浮島嗰度唔放
+        const { pv, y, z } = at(u, PI / 2, -0.05);
+        const hgt = 0.9 * (1 - k / 16);
+        cone(pv, 0.18 * (1 - k / 20), hgt, darkSpikeM, 0, y + hgt / 2 - 0.05, z, 0.45);
+        cone(pv, 0.07, hgt * 0.35, goldM, 0, y + hgt * 0.95, z + hgt * 0.2, 0.45);
+      }
+      // ---- 背上：史詩級浮空森林遺跡（大樹、水晶神殿、爛石柱、細瀑布）----
+      {
+        const { pv, y, z } = at(0.5, PI / 2, -0.15);
+        const isle = pivot(pv, 0, y + 0.05, z);
+        ball(isle, 1.55, 0.42, 1.35, 0x5d4037, 0, -0.1, 0); // 泥／石底
+        ball(isle, 1.15, 0.5, 1.0, 0x4e342e, 0, -0.42, 0); // 吊落嚟嘅石（好似浮島底）
+        ball(isle, 0.55, 0.45, 0.5, 0x3e2723, 0.3, -0.72, 0.2);
+        ball(isle, 1.6, 0.25, 1.4, 0x388e3c, 0, 0.16, 0); // 草
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * PI * 2;
+          ball(isle, 0.32, 0.2, 0.32, i % 2 ? 0x2e7d32 : 0x43a047, Math.cos(a) * 1.15, 0.3, Math.sin(a) * 1.0); // 草叢
+        }
+        // 爛石柱（一高一斷一倒）
+        const stone = material(0xb0bec5, { roughness: 0.8 });
+        const pillar = (x, zz, h, tilt = 0) => {
+          const c = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, h, 8), stone);
+          c.position.set(x, 0.3 + h / 2, zz);
+          c.rotation.z = tilt;
+          c.castShadow = true;
+          isle.add(c);
+          box(isle, 0.36, 0.1, 0.36, 0x90a4ae, x + Math.sin(-tilt) * h, 0.32 + h * Math.cos(tilt), zz, 0.3);
+        };
+        pillar(0.9, 0.45, 1.3);
+        pillar(0.95, -0.35, 0.7);
+        pillar(-1.0, 0.65, 0.5);
+        const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 8), stone);
+        fallen.position.set(-0.9, 0.38, -0.5);
+        fallen.rotation.set(0, 0.5, PI / 2);
+        isle.add(fallen);
+        // 水晶神殿：石台 + 發光大水晶 + 細水晶
+        box(isle, 0.7, 0.18, 0.7, 0x78909c, 0.85, 0.36, 0.05, 0.25);
+        const big = cone(isle, 0.2, 0.9, crystalM, 0.85, 0.9, 0.05, 0, 0, 5);
+        big.scale.set(1, 1, 1);
+        cone(isle, 0.1, 0.45, crystalM, 0.62, 0.66, 0.2, 0, 0.35, 5);
+        cone(isle, 0.1, 0.5, crystalM, 1.06, 0.68, -0.12, 0, -0.35, 5);
+        // 大樹（粗樹幹 + 幾層樹冠）
+        const trunkM = material(0x5d4037);
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.26, 1.6, 10), trunkM);
+        trunk.position.set(-0.35, 1.05, 0.0);
+        trunk.castShadow = true;
+        isle.add(trunk);
+        for (const [dx, dz, r] of [[0.25, 0.1, 0.12], [-0.2, -0.2, 0.1]]) {
+          const br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.6, 6), trunkM);
+          br.position.set(-0.35 + dx, 1.55, dz);
+          br.rotation.z = -dx * 2.2;
+          isle.add(br);
+        }
+        [[0, 2.15, 0, 0.75, 0x2e7d32], [0.45, 1.9, 0.15, 0.5, 0x388e3c], [-0.45, 1.95, -0.1, 0.52, 0x1b5e20], [0.05, 2.6, -0.05, 0.5, 0x43a047], [-0.1, 1.85, 0.45, 0.45, 0x2e7d32], [0.1, 1.85, -0.45, 0.45, 0x388e3c]].forEach(([x, yy, zz, r, c]) =>
+          ball(isle, r, r * 0.85, r, c, x - 0.35, yy, zz));
+        // 樹上幾粒發光果（青）
+        for (const [x, yy, zz] of [[0.2, 2.3, 0.45], [-0.75, 2.05, 0.2], [-0.2, 2.75, -0.4]]) ball(isle, 0.08, 0.08, 0.08, VEIN, x - 0.35, yy, zz, crystalM);
+        // 細瀑布：由浮島右邊流落去（一串半透明藍色水，會郁）
+        const waterM = new THREE.MeshStandardMaterial({ color: 0x81d4fa, emissive: 0x29b6f6, emissiveIntensity: 0.5, transparent: true, opacity: 0.75, roughness: 0.1 });
+        const fall = pivot(isle, 2.15, 0.12, -0.5);
+        const drops = [];
+        for (let i = 0; i < 14; i++) {
+          const d = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), waterM);
+          d.scale.set(0.13, 0.22, 0.09);
+          fall.add(d);
+          drops.push(d);
+        }
+        ball(isle, 0.45, 0.08, 0.32, 0x4fc3f7, 1.25, 0.3, -0.5, waterM); // 水池
+        box(isle, 0.75, 0.08, 0.28, 0x4fc3f7, 1.8, 0.2, -0.5, 0.3, { emissive: 0x29b6f6, emissiveIntensity: 0.4 }); // 流出去嘅水
+        box(isle, 0.5, 0.25, 0.4, 0x6d4c41, 1.85, 0.05, -0.5, 0.3); // 伸出去嘅石（水由呢度流落去）
+        const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.5), new THREE.MeshBasicMaterial({ color: 0xb3e5fc, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }));
+        sheet.position.set(2.2, -0.6, -0.5);
+        sheet.rotation.y = PI / 2;
+        isle.add(sheet); // 一塊薄薄嘅水簾
+        fallRef = drops;
+      }
+      // ---- 細背鰭（尖）----
+      fin(0.66, PI / 2, [[0.5, 0], [0.1, 0.2], [-0.25, 0.62], [-0.32, 0.55], [-0.28, 0.12], [-0.4, 0]], { key: 'swx-dorsal', depth: 0.12 });
+      // ---- 尾鰭：大大塊尖尖嘅新月形 + 金邊 ----
+      const fluke = [[0, 0.3], [0.55, 0.12], [1.2, -0.25], [1.95, -0.95], [1.5, -0.8], [0.8, -0.6], [0.25, -0.68], [0, -0.5], [-0.25, -0.68], [-0.8, -0.6], [-1.5, -0.8], [-1.95, -0.95], [-1.2, -0.25], [-0.55, 0.12]];
+      slab(tail, fluke, 0.13, SKIN, { plane: 'flat', key: 'swx-fluke', bevel: 0.05, z: -0.1 });
+      slab(tail, fluke.map(([x, y]) => [x * 1.06, y * 1.07 + 0.01]), 0.05, GOLDC, { plane: 'flat', key: 'swx-fluke-gold', bevel: 0.02, z: -0.1, extra: { metalness: 0.75, roughness: 0.28 } });
+      // ---- 好似巨翼咁嘅胸鰭：三個尖角（好似龍翼）+ 金邊 + 青紋 ----
+      const wing = [[0, 0.38], [0.7, 0.42], [1.5, 0.3], [2.4, 0.05], [3.3, -0.3], [2.75, -0.42], [2.95, -0.75], [2.25, -0.68], [2.25, -1.05], [1.55, -0.85], [1.2, -1.05], [0.75, -0.62], [0, -0.32]];
+      const pecs = fin(0.3, -0.28, wing, { plane: 'flat', key: 'swx-wing', mirror: true, rot: [0, -0.35, -0.2], depth: 0.12 });
+      for (const { fp } of pecs) {
+        slab(fp, wing.map(([x, y]) => [x * 1.05 - 0.03, y * 1.08]), 0.05, GOLDC, { plane: 'flat', key: 'swx-wing-gold', bevel: 0.015, extra: { metalness: 0.75, roughness: 0.28 } });
+        // 翼骨青紋（三條）
+        for (const [ex, ey] of [[3.1, -0.32], [2.8, -0.72], [2.1, -1.0]]) bar(fp, [0.2, 0.09, 0], [ex * 0.88, 0.09, -ey * 0.88], 0.05, VEIN, { emissive: VEIN, emissiveIntensity: 2 });
+      }
       return pecs;
     },
   });
@@ -239,12 +378,12 @@ export function buildSkywhaleModel() {
   const flyer = pivot(g, 0, 0, 0);
   flyer.add(inner);
   flyer.scale.setScalar(S);
-  const baseY = 2.4; // 平時離地幾高
-  const DIP = 1.5; // 俯衝落幾多
+  const baseY = 4.7; // 平時離地幾高（大俯衝都唔會撞落地）
+  const DIP = 2.2; // 俯衝落幾多（大俯衝）
   const innerAnim = inner.userData.animate;
   let swoopT = 0;
   let lastT = null;
-  // ---- 柔和光暈（一塊淡淡嘅光，喺身後面）----
+  // ---- 光暈（青藍色，喺身後面）----
   const haloTex = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
@@ -257,51 +396,74 @@ export function buildSkywhaleModel() {
     x.fillRect(0, 0, 64, 64);
     return new THREE.CanvasTexture(c);
   })();
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: 0x8fb8ff, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending }));
-  halo.scale.set(LEN * 1.5, H * 2.6, 1);
-  halo.position.y = (H / 2 + 0.35);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: 0x4dd0ff, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.set(LEN * 1.6, H * 3, 1);
+  halo.position.y = H / 2 + 0.35;
   flyer.add(halo);
-  // ---- 閃粉（圍住隻鯨慢慢轉、升）----
-  const sparkles = sparkleAura(flyer, { n: 40, rx: W * 1.1, rz: LEN * 0.6, y0: 0, h: H * 1.8, color: 0xfff59d, size: 0.14 });
-  // ---- 符文：幾個發光符文圈圍住隻鯨慢慢轉（小朋友：加 rune effects）----
-  const runes = [0x18ffff, 0xea80fc, 0xffd740, 0x18ffff].map((c, i) => {
+  // ---- 閃粉 ----
+  const sparkles = sparkleAura(flyer, { n: 60, rx: W * 1.3, rz: LEN * 0.65, y0: -0.5, h: H * 2.2, color: 0xfff59d, size: 0.16 });
+  // ---- 符文：兩大圈（一圈打橫圍住身、一圈斜斜圍住頭）----
+  const ring1 = [0x18ffff, 0xea80fc, 0xffd740, 0x18ffff, 0xea80fc, 0xffd740].map((c, i) => {
     const r = buildRune(c);
-    r.scale.setScalar(0.55);
+    r.scale.setScalar(0.85);
     flyer.add(r);
-    return { r, a: (i / 4) * PI * 2, y: (H / 2 + 0.35) + (i % 2 ? 0.7 : -0.3) };
+    return { r, a: (i / 6) * PI * 2 };
   });
+  const ring2 = [0xffd740, 0x18ffff, 0xffd740, 0x18ffff].map((c, i) => {
+    const r = buildRune(c);
+    r.scale.setScalar(0.6);
+    flyer.add(r);
+    return { r, a: (i / 4) * PI * 2 };
+  });
+  const cy = H / 2 + 0.35;
+  const headZ = -LEN * 0.32;
   g.userData.animate = (t, moving) => {
     innerAnim(t, moving);
     sparkles(t);
-    halo.material.opacity = 0.2 + Math.sin(t * 1.6) * 0.05;
-    for (const q of runes) {
-      const a = q.a + t * 0.45;
-      q.r.position.set(Math.cos(a) * W * 1.05, q.y + Math.sin(t * 1.3 + q.a) * 0.25, Math.sin(a) * LEN * 0.55);
+    halo.material.opacity = 0.22 + Math.sin(t * 1.6) * 0.06;
+    for (const q of ring1) {
+      const a = q.a + t * 0.35;
+      q.r.position.set(Math.cos(a) * W * 1.55, cy + Math.sin(t * 1.1 + q.a) * 0.35, Math.sin(a) * LEN * 0.7);
       q.r.rotation.set(PI / 2 * 0.85, PI / 2 - a, 0, 'YXZ'); // 企直、面向出面
       q.r.userData.spin(t + q.a);
     }
+    for (const q of ring2) {
+      const a = q.a - t * 0.6;
+      // 斜斜嘅直圈圍住個頭
+      q.r.position.set(Math.cos(a) * W * 1.05, cy + 0.6 + Math.sin(a) * H * 0.95, headZ + Math.sin(a) * 0.6);
+      q.r.rotation.set(0, PI / 2, a);
+      q.r.userData.spin(t * 1.5 + q.a);
+    }
+    if (fallRef) fallRef.forEach((d, i) => {
+      const k = (t * 0.9 + i / fallRef.length) % 1;
+      d.position.set(Math.sin(k * 6 + i) * 0.03 + k * 0.35, -k * 1.6, 0);
+      d.scale.set(0.13 * (1 - k * 0.4), 0.22, 0.09);
+    });
     const dt = lastT === null ? 0 : Math.min(0.1, Math.max(0, t - lastT));
     lastT = t;
     if (moving) {
-      // 每 4.5 秒一個循環：滑翔一陣 → 俯衝落 → 升返上去（順滑，冇突然跳）
+      // 每 4 秒一個循環：滑翔 → 大俯衝落 → 衝返上去（順滑），條尾跟住大力拍
       swoopT += dt;
-      const P = 4.5;
-      const k = (swoopT % P) / P; // 0..1
-      const w = k < 0.25 ? 0 : (k - 0.25) / 0.75; // 頭 25% 平飛
+      const P = 4;
+      const k = (swoopT % P) / P;
+      const w = k < 0.2 ? 0 : (k - 0.2) / 0.8;
       const y = -DIP * (1 - Math.cos(w * PI * 2)) / 2;
-      const dy = (DIP * PI * Math.sin(w * PI * 2)) / (0.75 * P); // dy/dt（正數 = 落緊）
+      const dy = (DIP * PI * Math.sin(w * PI * 2)) / (0.8 * P); // dy/dt（正數 = 落緊）
       flyer.position.y = baseY + y + Math.sin(t * 1.1) * 0.1;
-      flyer.rotation.x += (Math.atan(-dy / 4) * 1.3 - flyer.rotation.x) * Math.min(1, dt * 6 || 1); // 落：頭向下；升：頭向上
+      const want = Math.max(-0.3, Math.min(0.3, Math.atan(-dy / 3.5) * 1.4)); // 落：頭向下；升：頭向上
+      flyer.rotation.x += (want - flyer.rotation.x) * Math.min(1, dt * 6 || 1);
+      if (tailRef) tailRef.rotation.x -= Math.sin(t * 5.5) * (0.25 + 0.35 * Math.abs(Math.sin(w * PI))); // 衝嗰陣尾拍得最大力
     } else {
-      flyer.position.y = baseY + Math.sin(t * 1.1) * 0.25; // 浮下浮下
+      flyer.position.y = baseY + Math.sin(t * 1.1) * 0.3; // 浮下浮下
       flyer.rotation.x *= 0.92;
+      if (tailRef) tailRef.rotation.x -= Math.sin(t * 2) * 0.12;
     }
-    flyer.rotation.z = Math.sin(t * 0.7) * 0.04;
+    flyer.rotation.z = Math.sin(t * 0.7) * 0.05;
   };
   g.userData.move = 'fly';
   g.userData.flying = true;
   g.userData.noFireAura = true; // 唔要身邊嗰圈火（Fire 變異嘅錢照計）
-  g.userData.height = baseY + (H + 0.35 + 1.4) * S;
+  g.userData.height = baseY + (H + 0.35 + 2.6) * S;
   return g;
 }
 

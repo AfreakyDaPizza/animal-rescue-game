@@ -591,7 +591,7 @@ const sleekMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness:
 const dotGeo = new THREE.SphereGeometry(1, 8, 5);
 const BEND_N = 64; // 每格畫面計 65 個彎位，之後每粒點查表
 
-function sleek({ skin, belly, len, w, h, kind = 'whale', prof, n = 2.4, belt = -0.2, extras, rings = 34, around = 24 }) {
+function sleek({ skin, belly, len, w, h, kind = 'whale', prof, n = 2.4, belt = -0.2, extras, rings = 34, around = 24, glow = null }) {
   const g = new THREE.Group();
   const swimY = h / 2 + 0.35;
   const root = pivot(g, 0, swimY, 0);
@@ -694,7 +694,7 @@ function sleek({ skin, belly, len, w, h, kind = 'whale', prof, n = 2.4, belt = -
   const fins = extras?.(parts) || []; // extras 回傳胸鰭，游水時撥下撥下
   const flex = [body];
   for (const [color, list] of decals) {
-    const m = new THREE.Mesh(mergeGeometries(list), material(color));
+    const m = new THREE.Mesh(mergeGeometries(list), glow?.[color] ? material(color, { emissive: color, emissiveIntensity: glow[color] }) : material(color)); // glow：呢隻色嘅花紋會發光
     m.castShadow = true;
     root.add(m);
     flex.push(m);
