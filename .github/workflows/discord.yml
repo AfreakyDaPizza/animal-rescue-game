@@ -1,0 +1,38 @@
+# Discord 簡單版：每 5 分鐘睇下有冇稀有動物，每日 post 一個笑話
+# 要先喺 GitHub repo → Settings → Secrets and variables → Actions 加 DISCORD_WEBHOOK_URL（同埋可以加 RARE_ROLE_ID）
+name: Discord pings
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # 稀有動物
+    - cron: '0 8 * * *'     # 每日笑話（香港時間下晝 4 點）
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'rare, joke or guide'
+        default: guide
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if no webhook yet
+        id: check
+        env:
+          HOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: if [ -n "$HOOK" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "No DISCORD_WEBHOOK_URL secret yet - skipping."; fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ok
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ok
+        with:
+          node-version: 20
+      - name: Post to Discord
+        if: steps.check.outputs.ok
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RARE_ROLE_ID: ${{ secrets.RARE_ROLE_ID }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "0 8 * * *" ]; then MODE=joke; else MODE=rare; fi
+          fi
+          node discord-bot/webhook.js "$MODE"

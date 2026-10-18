@@ -12,6 +12,22 @@ The game picks wild animals with "fixed random" (the same time gives the same an
 
 > ⚠️ **Discord is for people 13 and older.** The bot app and the server belong to **Dad's** Discord account. Keep the bot token secret: it goes in `.env`, which is never put on GitHub.
 
+## ⭐ Easiest way: no bot, no computer running (about 2 minutes)
+
+This gives you **rare-animal pings**, a **daily joke**, and a **how-to-play** post. It doesn't give you the `/` commands or playing inside Discord.
+GitHub runs it for free every 5 minutes (it can sometimes be a few minutes late).
+
+1. In Discord: **Server Settings → Integrations → Webhooks → New Webhook**. Pick the channel, then click **Copy Webhook URL**.
+   (This needs someone who can manage the server. Remember, Discord is for people 13 and older.)
+2. On GitHub, the repo owner goes to **Settings → Secrets and variables → Actions → New repository secret**:
+   - Name: `DISCORD_WEBHOOK_URL`, Secret: paste the URL. ⚠️ Keep it secret: anyone with it can post in your channel.
+   - (Optional) To ping a role: in Discord, turn on Developer Mode, right-click the role and choose **Copy Role ID**. Add it as the secret `RARE_ROLE_ID`.
+3. On GitHub, go to **Actions → Discord pings → Run workflow** and keep `guide`. The how-to-play message appears in Discord. Pin it!
+
+That's it. Rare animals get posted on their own from now on.
+
+---
+
 ## Setup (about 15 minutes, for Dad)
 
 You need **Node.js 20.6 or newer** (`node -v`).
