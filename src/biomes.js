@@ -8,6 +8,7 @@ import { enchanted } from './enchanted.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
 import { dynamicSign, makeLabel, THEMES } from './signs.js';
 import { NEW_BIOME_DATE } from './data/balance.js';
+import { shimmerTexture } from './ambience.js';
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
 // 固定嘅「隨機」：每次開遊戲裝飾都喺同一個位，唔會成日變
@@ -135,7 +136,8 @@ function ocean(scene, rect, rand, live) {
   // 海面：有浪（頂點上下郁）
   const waterGeo = new THREE.PlaneGeometry(seaW, d, Math.round(seaW), Math.round(d / 1.5));
   waterGeo.rotateX(-Math.PI / 2);
-  const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({ color: 0x29b6f6, transparent: true, opacity: 0.7, roughness: 0.15, metalness: 0.1 }));
+  const shimmer = shimmerTexture(seaW / 6, d / 6); // 水面閃光（ambience.js 會郁）
+  const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({ color: 0x29b6f6, map: shimmer, emissive: 0x4fc3f7, emissiveMap: shimmer, emissiveIntensity: 0.18, transparent: true, opacity: 0.72, roughness: 0.12, metalness: 0.1 }));
   water.position.set(seaX, 0.3, cz);
   live.add(water);
   const base = waterGeo.attributes.position.array.slice();

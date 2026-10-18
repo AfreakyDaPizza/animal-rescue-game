@@ -152,7 +152,7 @@ export function buildWorld(scene) {
     addWall(scene, x1, z1, x2, z2, wallMaterial, 0.15);
   }
 
-  addClouds(staticRoot);
+  // 雲：而家喺 ambience.js（會飄、跟天空變色）
   bakeStatic(staticRoot, scene);
   addSky(scene);
   addGate(scene);
@@ -328,10 +328,16 @@ export function makeTextPlane(text, width, height, theme = THEMES.dark) {
 }
 
 // 天空：上面深藍、地平線淺色嘅漸變（日夜會轉色）
+// 2026-10-18 靚啲：有太陽（光暈）、黃昏喺生態區方向落山、夜晚有月光；daynight.js 每格更新
 export const sky = {
   uniforms: {
     top: { value: new THREE.Color(0x3d8fe0) },
     bottom: { value: new THREE.Color(0xcfeaff) },
+    sunDir: { value: new THREE.Vector3(0.3, 0.6, -0.7).normalize() },
+    sunColor: { value: new THREE.Color(0xfff1d6) },
+    sunAmt: { value: 1 },
+    moonDir: { value: new THREE.Vector3(-0.45, 0.5, -0.75).normalize() },
+    moonAmt: { value: 0 },
   },
 };
 function addSky(scene) {
@@ -343,8 +349,26 @@ function addSky(scene) {
       depthWrite: false,
       fog: false,
       vertexShader: `varying vec3 vPos; void main() { vPos = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying vec3 vPos;
-        void main() { float h = clamp(vPos.y * 1.6, 0.0, 1.0); gl_FragColor = vec4(mix(bottom, top, pow(h, 0.7)), 1.0); }`,
+      fragmentShader: `uniform vec3 top; uniform vec3 bottom; uniform vec3 sunDir; uniform vec3 sunColor; uniform float sunAmt;
+        uniform vec3 moonDir; uniform float moonAmt; varying vec3 vPos;
+        void main() {
+          vec3 d = normalize(vPos);
+          float h = clamp(d.y * 1.6, 0.0, 1.0);
+          vec3 col = mix(bottom, top, pow(h, 0.7));
+          // 地平線一條光帶
+          col += bottom * 0.12 * (1.0 - smoothstep(0.0, 0.18, abs(d.y)));
+          // 太陽：光暈 + 圓碟
+          float s = max(dot(d, normalize(sunDir)), 0.0);
+          col += sunColor * sunAmt * (pow(s, 10.0) * 0.16 + pow(s, 90.0) * 0.45);
+          float m = max(dot(d, normalize(moonDir)), 0.0);
+          col += vec3(0.55, 0.65, 0.95) * moonAmt * pow(m, 24.0) * 0.4;
+          // 天空本身唔好光過發光門檻（唔係成個畫面會朦晒），淨係太陽／月亮個碟會發光
+          col = min(col, vec3(0.93));
+          col += sunColor * sunAmt * smoothstep(0.9993, 0.9997, s) * 1.6;
+          // 月亮：細細嘅白碟 + 淡藍光暈
+          col += vec3(1.0, 1.0, 0.96) * moonAmt * smoothstep(0.9986, 0.9991, m) * 1.5;
+          gl_FragColor = vec4(col, 1.0);
+        }`,
     }),
   );
   dome.renderOrder = -1;
@@ -398,20 +422,3 @@ function stoneTexture() {
   return texture;
 }
 
-// 天上嘅雲
-function addClouds(scene) {
-  // 雲自己識發光少少，由下面望上去都係白色
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaaa, transparent: true, opacity: 0.9 });
-  const geometry = new THREE.SphereGeometry(1, 12, 8);
-  for (let i = 0; i < 40; i++) {
-    const cloud = new THREE.Group();
-    for (let j = 0; j < 4; j++) {
-      const puff = new THREE.Mesh(geometry, material);
-      puff.scale.set(3 + Math.random() * 3, 1.5 + Math.random(), 2.5 + Math.random() * 2);
-      puff.position.set(j * 3 - 4.5, Math.random(), Math.random() * 2);
-      cloud.add(puff);
-    }
-    cloud.position.set((Math.random() - 0.5) * 220, 35 + Math.random() * 20, 50 - Math.random() * 380);
-    scene.add(cloud);
-  }
-}
