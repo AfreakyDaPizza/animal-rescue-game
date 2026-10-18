@@ -219,3 +219,9 @@ src/data/questions.js ← 野生動物問題
 - 地塊（`PLOT` 而家喺 `src/hubShape.js`）搬去噴水池右邊，閘口面向噴水池條路；MY PETS 牌喺地塊下面、面向繁殖機條路（拎完寵物行過去就見到）。
 - Skin Shop、Sell Stall 搬去右上 Shop Street，面向噴水池；Fuse Machine（`FUSE_MACHINE`）搬去繁殖機右邊。
 - Training Zone、Magic Library、繁殖機、Owner's Garden、Playground、大門唔郁（開場動畫同教學照用）。
+
+## 🔐 Secret Ranger Control Panel（小朋友 2026-10-18）
+- 刪咗 Biome 6 橋下面嘅紅色掣；秘密沙灘個掣（圓石後面，`CRAZY_BUTTON`）變做唯一一粒秘密掣，撳 E 打開控制台（`src/adminPanel.js`，動作喺 `main.js` 嘅 `setAdminActions`）。
+- 分頁：🔮 Future（提早開 Fuse + 王國 = `state.bigButton`；提早開 Gym = `state.gymEarly`）、🐾 Pets（揀任何寵物 + 稀有度 + 巨型 + Fire/Eclipse）、📖 Index（全開）、⚡ Max（跑步機／學生桌／繁殖機／地塊 MAX，之後重新載入；錢 Speed IQ Jump Power 變超多）、🎉 Events（任何活動 + Crazy Pet Frenzy + 喺指定生態區出指定稀有度）、💾 Safety（第一次改嘢之前備份真存檔 `animal-rescue-save-v1-backup`，一撳還原）。
+- 公園大閘（去實驗室）以前要撳紅掣先開；而家行到閘前面撳 E「Break the chains」就開（唔係咁就打唔到 Boss、去唔到沙灘）。
+- 王國開門動畫：日期到咗（或者提早開咗）而未睇過嘅玩家，一入遊戲（開場、選裝置、教學之後）1.5 秒就自動播一次，播完返返原位；行到閘門前面就照舊即刻播 + 傳送去樓梯。

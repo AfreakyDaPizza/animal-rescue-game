@@ -62,7 +62,7 @@ const openDate = () => {
   const [y, m, d] = GYM_OPEN_DATE.split('-').map(Number);
   return new Date(y, m - 1, d);
 };
-export const isGymOpen = (now = new Date()) => gym.debug || now >= openDate();
+export const isGymOpen = (now = new Date()) => gym.debug || !!state.gymEarly || now >= openDate(); // gymEarly：秘密控制台提早開
 export const gymOpenDateText = () => openDate().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 export function gymCountdown(now = new Date()) {
   const ms = Math.max(0, openDate() - now);

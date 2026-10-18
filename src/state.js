@@ -1,6 +1,6 @@
 // 玩家嘅數值（Speed、IQ、錢、寵物…），自動存喺瀏覽器，關咗再開都記得
 
-const SAVE_KEY = 'animal-rescue-save-v1';
+export const SAVE_KEY = 'animal-rescue-save-v1';
 
 const DEFAULTS = {
   device: null, // 'mobile' 或者 'pc'：開場動畫之後揀一次（小朋友 2026-10-17）
@@ -42,6 +42,8 @@ const DEFAULTS = {
   labEndingSeen: false, // 睇咗結局動畫未（實驗室爆炸、見到 Gym）
   beachFinaleSeen: null, // 去過秘密沙灘睇 Owner 俾錢嗰段未（null = 舊存檔，跟 labEndingSeen）
   crazyReadyAt: 0, // 🤪 秘密沙灘個瘋狂寵物掣幾時再撳得（毫秒）
+  gymEarly: false, // 🔐 秘密控制台：提早開 Gym
+  adminUsed: false, // 🔐 用過秘密控制台改嘢（已經備份咗真存檔）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
 };
 

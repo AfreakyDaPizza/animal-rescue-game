@@ -61,7 +61,7 @@ export function playUnlockScene({ scene, camera, onDone }) {
       [9.5, 15.5, { p: V(0, 3, G.z - 6), l: V(0, 3, G.z + 30) }, { p: V(0, 15, G.z + 12), l: V(0, 3, 112) }], // 飛過大門，望到實驗室
     ],
     captions: [
-      [0.3, 'You pressed the secret RED BUTTON! 🔴'],
+      [0.3, 'CRACK! The chains are breaking! 🔓'],
       [3, 'The Animal Rescue gate is shaking!'],
       [6.5, 'The ANIMAL RESCUE gate is UNLOCKED! 🔓'],
       [9.5, 'But something creepy is waiting outside... the LABORATORY! 🔬'],
