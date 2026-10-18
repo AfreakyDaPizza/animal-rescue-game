@@ -1,5 +1,5 @@
 // Biome 7「Enchanted Kingdom」嘅 3D 模型（小朋友 2026-10-17）：方塊（Roblox）風格
-//   buildSkywhaleModel()     ：Royal Skywhale（ETERNAL，最勁嘅寵物）：寶藍鯨魚、金月亮星星花紋，背上有浮島同大樹（跟小朋友張圖）
+//   buildSkywhaleModel()     ：Royal Skywhale（ETERNAL，最勁嘅寵物）：順滑卡通寶藍鯨魚、大眼、細金皇冠、金花紋、背上草地同圓樹、閃粉同符文
 //   buildSunlionModel()      ：Enchanted Sunlion（MYTHIC）：金獅子 + 紫水晶鬃毛
 //   buildOctophantModel()    ：Octophant（LEGENDARY）：威武大笨象 + 八爪魚觸手（象鼻尾、下巴、肚底）（v4）
 //   buildGuardianRig()       ：Boss「Enchanted Royal Guardian」：白金色水晶騎士，皇冠頭盔、水晶大劍、皇家盾、披風
@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import { box, pivot, cuteEyes, spike, material, ball, slab } from './modelKit.js';
-import { elephant } from './animals20.js';
+import { elephant, sleek, noseIn, tailOut, smooth01 } from './animals20.js';
 
 const PI = Math.PI;
 
@@ -128,137 +128,180 @@ function shard(parent, x, y, z, w, len, mat, rx = 0, ry = 0, rz = 0) {
 }
 
 // ================= Royal Skywhale（ETERNAL，最勁嘅寵物） =================
-// 跟小朋友張圖：寶藍色大鯨魚（淺紫肚、肚坑紋）、金色月亮／星星／彎線花紋、發光青色眼；
-// 背脊上面有個細細嘅浮島（草、石、紫花、一棵細細嘅扭紋樹），用金繩綁住；大胸鰭、大尾鰭（紫色邊）；喺天上游
+// 小朋友 2026-10-18：唔要方塊 → 順滑圓潤卡通鯨魚（用 animals20.js 嘅 sleek 順滑身）：
+// 寶藍色背、淺紫藍肚、大大粒閃亮眼、細細金皇冠、金色花紋線、好似翼咁嘅軟胸鰭；
+// 背上有細細嘅大自然（草、花、圓樹），柔和光暈 + 閃粉 + 圍住轉嘅符文；唔要身邊嗰圈火（noFireAura）
+// 行（飛）嘅動畫：滑翔，隔一陣向下俯衝再向上升（頭跟住向下／向上），條尾跟住拍
 export function buildSkywhaleModel() {
-  const TOP = 0x2433b8; // 背：深寶藍
-  const SIDE = 0x3b4cf2; // 側：亮寶藍
-  const BELLY = 0xc6cbff; // 肚：淺紫藍
-  const GROOVE = 0x8e98ff;
-  const CYAN = 0x18ffff;
-  const g = new THREE.Group();
-  const S = 1.4; // 小朋友：大隻啲
-  const flyY = 2.0 * S;
-  const root = pivot(g, 0, flyY, 0);
-  root.scale.setScalar(S);
-  const rand = seeded(91);
-
-  // 一節身：深色背 + 亮藍側 + 淺色肚（有坑紋）；w/h 由頭到尾慢慢收細
-  const section = (parent, w, h, d, z, grooves = true) => {
-    box(parent, w, h * 0.62, d, SIDE, 0, h * 0.05, z, 0.3);
-    box(parent, w * 0.9, h * 0.32, d * 0.99, TOP, 0, h * 0.33, z, 0.35);
-    box(parent, w * 0.94, h * 0.34, d * 0.99, BELLY, 0, -h * 0.3, z, 0.35);
-    if (grooves) for (let i = 0; i < 3; i++) box(parent, w * 0.6, 0.05, d * 0.9, GROOVE, (i - 1) * w * 0.25, -h * 0.47, z, 0.3);
-  };
-
-  // ---- 頭（-z）：圓圓大頭、長長口線、發光青色眼 ----
-  const head = pivot(root, 0, 0, -0.9);
-  section(head, 2.4, 2.05, 1.6, -0.95);
-  section(head, 2.15, 1.8, 1.0, -2.0);
-  box(head, 1.7, 1.2, 0.5, SIDE, 0, -0.05, -2.45, 0.5); // 鼻頭
-  box(head, 1.6, 0.5, 0.5, BELLY, 0, -0.55, -2.4, 0.45);
-  for (const s of [-1, 1]) {
-    bar(head, [s * 0.9, -0.25, -2.55], [s * 1.18, -0.3, -0.3], 0.07, 0x1a237e); // 長口線
-    box(head, 0.08, 0.36, 0.52, 0xffca28, s * 1.21, 0.18, -1.35, 0.4, GOLD_X); // 金眼框
-    box(head, 0.1, 0.26, 0.4, CYAN, s * 1.22, 0.18, -1.35, 0.4, { emissive: CYAN, emissiveIntensity: 0.8 });
-    box(head, 0.11, 0.08, 0.12, 0xffffff, s * 1.23, 0.26, -1.42, 0.4, { emissive: 0xffffff, emissiveIntensity: 0.6 });
-    goldLine(head, [[s * 1.16, 0.62, -2.1], [s * 1.17, 0.7, -1.3], [s * 1.16, 0.5, -0.5]], 0.06);
-    goldMoon(head, s * 1.17, 0.2, -0.55, 0.32, s * PI / 2, 0.6);
-  }
-  // 細金冠
-  const crown = pivot(head, 0, 1.02, -1.15);
-  box(crown, 0.8, 0.14, 0.6, 0xffc107, 0, 0, 0, 0.3, GOLD_X);
-  for (let i = 0; i < 5; i++) box(crown, 0.11, 0.26, 0.11, 0xffc107, -0.32 + i * 0.16, 0.18, -0.24, 0.3, GOLD_X);
-  box(crown, 0.15, 0.15, 0.06, 0xe040fb, 0, 0.04, -0.33, 0.3, { emissive: 0xd500f9, emissiveIntensity: 0.9 });
-
-  // ---- 身：最粗嗰截（浮島喺度）----
-  const mid = pivot(root, 0, 0, 0);
-  section(mid, 2.55, 2.15, 1.9, -0.05);
-  section(mid, 2.45, 2.05, 1.7, 1.4);
-  for (const s of [-1, 1]) {
-    goldMoon(mid, s * 1.29, 0.25, -0.3, 0.45, s * PI / 2, -0.4);
-    goldStar(mid, s * 1.29, 0.55, 0.7, 0.28, s * PI / 2);
-    goldStar(mid, s * 1.28, -0.2, 0.45, 0.16, s * PI / 2);
-    goldLine(mid, [[s * 1.28, -0.45, -0.9], [s * 1.29, -0.2, 0.0], [s * 1.28, -0.35, 1.0], [s * 1.25, -0.55, 2.0]], 0.07);
-    const dia = pivot(mid, s * 1.3, 0.2, 1.7);
-    dia.rotation.y = s * PI / 2;
-    box(dia, 0.4, 0.4, 0.04, 0xffca28, 0, 0, 0, 0.15, GOLD_X).rotation.z = PI / 4;
-    box(dia, 0.2, 0.2, 0.05, CYAN, 0, 0, -0.01, 0.15, { emissive: CYAN, emissiveIntensity: 0.9 }).rotation.z = PI / 4;
-  }
-  // 背上細浮島（大約身長 1/4）：泥 + 草 + 石 + 花 + 一棵細樹，下面一圈青色水晶光
-  const island = pivot(mid, 0, 1.12, 0.2);
-  island.scale.setScalar(1.2);
-  box(island, 1.3, 0.28, 1.4, 0x6d4c41, 0, 0, 0, 0.3);
-  box(island, 0.9, 0.24, 1.0, 0x5d4037, 0, -0.2, 0, 0.3);
-  box(island, 1.4, 0.14, 1.5, 0x4caf50, 0, 0.18, 0, 0.3);
-  for (let i = 0; i < 4; i++) box(island, 0.28 + rand() * 0.18, 0.09, 0.28 + rand() * 0.18, i % 2 ? 0x81c784 : 0x388e3c, (rand() - 0.5) * 1.0, 0.27, (rand() - 0.5) * 1.1, 0.3);
-  for (let i = 0; i < 3; i++) box(island, 0.2, 0.15, 0.18, 0xb0bec5, (rand() - 0.5) * 1.0, 0.3, (rand() - 0.5) * 1.1, 0.4);
-  for (let i = 0; i < 4; i++) box(island, 0.09, 0.09, 0.09, i % 2 ? 0xea80fc : 0xfff176, (rand() - 0.5) * 1.1, 0.31, (rand() - 0.5) * 1.2, 0.4);
-  const islandGlow = box(island, 1.05, 0.08, 1.15, CYAN, 0, -0.36, 0, 0.3, { emissive: CYAN, emissiveIntensity: 0.9, transparent: true, opacity: 0.7 });
-  const tree = pivot(island, -0.15, 0.22, 0.1);
-  for (let i = 0; i < 3; i++) box(tree, 0.17 - i * 0.03, 0.28, 0.17 - i * 0.03, 0x6d4c41, Math.sin(i * 1.4) * 0.06, 0.14 + i * 0.24, 0, 0.35).rotation.y = i * 0.6;
-  const canopy = pivot(tree, 0, 0.85, 0);
-  blockCanopy(canopy, 0, 0, 0, 0.34, rand);
-  // 啡色繩 + 金扣斜斜綁住浮島
-  for (const dz of [-0.55, 0.55]) {
-    const rope = new THREE.Mesh(new THREE.TorusGeometry(1.32, 0.08, 6, 28), material(0x8d6e63));
-    rope.position.set(0, 0.1, 0.2 + dz);
-    rope.rotation.y = 0.18;
-    rope.scale.set(1, 0.88, 1);
-    mid.add(rope);
-    box(mid, 0.2, 0.22, 0.2, 0xffc107, 1.3, 0.1, 0.2 + dz, 0.3, GOLD_X);
-  }
-
-  // ---- 好長嘅胸鰭（向後掃，似翼）----
-  const fins = [-1, 1].map((s) => {
-    const f = pivot(mid, s * 1.2, -0.5, -0.2);
-    const a = box(f, 1.8, 0.16, 1.0, TOP, s * 0.85, 0, 0.35, 0.45);
-    a.rotation.y = s * -0.5;
-    const b = box(f, 1.7, 0.13, 0.75, SIDE, s * 2.25, -0.06, 1.15, 0.45);
-    b.rotation.y = s * -0.65;
-    const c = box(f, 1.1, 0.1, 0.45, 0x6a3df5, s * 3.1, -0.1, 1.85, 0.45, { emissive: 0x4a1fd1, emissiveIntensity: 0.35 });
-    c.rotation.y = s * -0.75;
-    bar(f, [s * 0.4, 0.1, 0.15], [s * 3.0, 0.02, 1.75], 0.06, 0xffca28, GOLD_X);
-    goldStar(f, s * 1.7, 0.1, 0.75, 0.2);
-    return { f, s };
+  const SKIN = 0x2f45d6; // 寶藍
+  const BELLY = 0xdfe3ff; // 淺紫藍肚
+  const GOLDC = 0xf6c445;
+  const S = 1.4;
+  const LEN = 7.4;
+  const W = 3.0;
+  const H = 2.7;
+  const inner = sleek({
+    skin: SKIN, belly: BELLY, len: LEN, w: W, h: H, n: 2.1, belt: -0.25, rings: 40, around: 28,
+    // 大圓頭、胖胖身、尾柄幼（卡通比例）
+    prof: (u) => [
+      noseIn(u, 0.3) * tailOut(u, 0.45, 0.14),
+      noseIn(u, 0.34) * tailOut(u, 0.4, 0.16) * (0.94 + 0.06 * smooth01(0, 0.4, u)),
+      -0.04 * (1 - smooth01(0, 0.4, u)),
+    ],
+    extras({ head, dot, fin, tail, segs }) {
+      // ---- 大大粒閃亮眼（眼白 + 深藍眼珠 + 兩粒反光）----
+      for (const sx of [-1, 1]) {
+        const e = pivot(head, sx * 1.02, 0.3, 0.78);
+        e.rotation.y = -sx * 0.62; // 望向前面同出面
+        ball(e, 0.46, 0.52, 0.3, 0xffffff, 0, 0, 0);
+        ball(e, 0.32, 0.38, 0.14, 0x1a1f4d, 0, -0.04, -0.2);
+        ball(e, 0.11, 0.12, 0.05, 0xffffff, sx * 0.1, 0.12, -0.32);
+        ball(e, 0.055, 0.055, 0.03, 0xffffff, -sx * 0.1, -0.13, -0.32);
+        ball(head, 0.24, 0.13, 0.1, 0xffa6c9, sx * 1.2, -0.3, 1.05).rotation.y = -sx * 0.7; // 粉紅面珠
+      }
+      // ---- 笑口（一串小點，嘴角向上）----
+      for (const side of [0, 1]) for (let k = 0; k < 9; k++) {
+        const a = -0.52 + k * 0.035 - (k > 6 ? (k - 6) * 0.05 : 0);
+        dot(0.03 + k * 0.016, side ? PI - a : a, 0.05, 0.03, 0.07, 0x1a237e, 0.008);
+      }
+      // ---- 金色花紋線：兩邊各一條沿住身嘅彎線 + 背脊中線 ----
+      for (const side of [0, 1]) for (let k = 0; k < 70; k++) {
+        const u = 0.26 + k * 0.0075;
+        const a = 0.18 + Math.sin(k * 0.17) * 0.12;
+        dot(u, side ? PI - a : a, 0.06, 0.025, 0.09, GOLDC, 0.004);
+      }
+      for (let k = 0; k < 60; k++) dot(0.3 + k * 0.0085, PI / 2, 0.055, 0.025, 0.09, GOLDC, 0.004);
+      // 肚坑紋（淺色）
+      for (let i = -3; i <= 3; i++) for (let k = 0; k < 8; k++) dot(0.12 + k * 0.05, -PI / 2 + i * 0.16, 0.035, 0.015, 0.09, 0xc4caf5, 0.004);
+      // ---- 細細金皇冠（頭頂）----
+      const goldM = material(GOLDC, { metalness: 0.35, roughness: 0.35 });
+      const crown = pivot(head, 0, H * 0.5 - 0.02, 1.35);
+      crown.rotation.x = -0.12;
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.22, 20, 1, true), goldM);
+      band.material.side = THREE.DoubleSide;
+      crown.add(band);
+      for (let k = 0; k < 5; k++) {
+        const ang = (k / 5) * PI * 2;
+        const sp = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.28, 8), goldM);
+        sp.position.set(Math.cos(ang) * 0.42, 0.22, Math.sin(ang) * 0.42);
+        crown.add(sp);
+        ball(crown, 0.055, 0.055, 0.055, GOLDC, Math.cos(ang) * 0.42, 0.38, Math.sin(ang) * 0.42, { metalness: 0.35, roughness: 0.35 });
+        ball(crown, 0.06, 0.06, 0.03, [0xe53935, 0x1e88e5, 0x8e24aa][k % 3], Math.cos(ang) * 0.45, 0.0, Math.sin(ang) * 0.45, { roughness: 0.2, metalness: 0.2 });
+      }
+      // ---- 背上嘅細小大自然：圓圓草地島、石仔、花、一棵圓樹（小朋友：要有 nature）----
+      const [mid, mz] = segs ? [segs[2], 0] : [head, 0];
+      const isle = pivot(mid, 0, H * 0.47, mz - 0.35);
+      ball(isle, 1.05, 0.32, 0.95, 0x8d6e63, 0, 0, 0); // 泥
+      ball(isle, 1.1, 0.26, 1.0, 0x66bb6a, 0, 0.14, 0); // 草
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * PI * 2;
+        ball(isle, 0.28, 0.16, 0.28, i % 2 ? 0x81c784 : 0x4caf50, Math.cos(a) * 0.62, 0.3, Math.sin(a) * 0.55); // 草叢
+      }
+      ball(isle, 0.2, 0.15, 0.18, 0xb0bec5, 0.55, 0.32, 0.35);
+      ball(isle, 0.14, 0.11, 0.13, 0x90a4ae, -0.6, 0.3, -0.3);
+      [[0.35, -0.45, 0xf48fb1], [-0.42, 0.42, 0xfff176], [0.62, 0.05, 0xce93d8], [-0.15, 0.62, 0xf48fb1], [-0.68, 0.1, 0xffffff]].forEach(([x, z, c]) => {
+        ball(isle, 0.02, 0.12, 0.02, 0x388e3c, x, 0.36, z);
+        ball(isle, 0.07, 0.05, 0.07, c, x, 0.46, z); // 花
+      });
+      const trunkM = material(0x795548);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 0.75, 10), trunkM);
+      trunk.position.set(-0.12, 0.62, 0.05);
+      trunk.rotation.z = 0.12;
+      isle.add(trunk);
+      [[0, 1.12, 0, 0.42], [0.28, 1.0, 0.1, 0.3], [-0.3, 1.02, -0.05, 0.3], [0.05, 1.32, -0.05, 0.28], [0, 1.0, 0.3, 0.27]].forEach(([x, y, z, r], i) =>
+        ball(isle, r, r * 0.9, r, [0x43a047, 0x66bb6a, 0x388e3c][i % 3], x - 0.17, y, z)); // 圓樹冠
+      // ---- 身上淡淡嘅符文花紋（淺青色）----
+      for (const side of [0, 1]) {
+        const cu = 0.5;
+        const ca = -0.05;
+        for (let k = 0; k < 18; k++) {
+          const t = (k / 18) * PI * 2; // 一個圈
+          dot(cu + Math.cos(t) * 0.035, (side ? PI - ca : ca) + Math.sin(t) * 0.16, 0.035, 0.02, 0.05, 0x9ff8ff, 0.004);
+        }
+        for (let k = -2; k <= 2; k++) dot(cu + k * 0.012, side ? PI - ca : ca, 0.03, 0.02, 0.05, 0x9ff8ff, 0.005); // 中間一劃
+        for (let k = -2; k <= 2; k++) dot(cu, (side ? PI - ca : ca) + k * 0.05, 0.03, 0.02, 0.05, 0x9ff8ff, 0.005); // 打橫一劃
+      }
+      // ---- 細背鰭 ----
+      fin(0.62, PI / 2, [[0.4, 0], [0.12, 0.16], [-0.12, 0.34], [-0.3, 0.3], [-0.26, 0.08], [-0.34, 0]], { key: 'sw-dorsal', depth: 0.12 });
+      // ---- 尾鰭（闊、軟）+ 金邊 ----
+      const fluke = [[0, 0.22], [0.5, 0.1], [1.05, -0.2], [1.5, -0.62], [1.25, -0.66], [0.65, -0.48], [0.2, -0.56], [0, -0.42], [-0.2, -0.56], [-0.65, -0.48], [-1.25, -0.66], [-1.5, -0.62], [-1.05, -0.2], [-0.5, 0.1]];
+      slab(tail, fluke, 0.12, SKIN, { plane: 'flat', key: 'sw-fluke', bevel: 0.06, z: -0.1 });
+      slab(tail, fluke.map(([x, y]) => [x * 1.05, y * 1.06 + 0.01]), 0.05, GOLDC, { plane: 'flat', key: 'sw-fluke-gold', bevel: 0.02, z: -0.1 }); // 金邊（大少少，喺藍色後面露出嚟）
+      // ---- 好似翼咁嘅大胸鰭（軟軟彎彎、金邊）----
+      const wing = [[0, 0.32], [0.5, 0.3], [1.1, 0.12], [1.75, -0.22], [2.05, -0.5], [1.8, -0.62], [1.2, -0.52], [0.6, -0.42], [0, -0.28]];
+      const pecs = fin(0.33, -0.25, wing, { plane: 'flat', key: 'sw-wing', mirror: true, rot: [0, -0.4, -0.25], depth: 0.1 });
+      for (const { fp } of pecs) slab(fp, wing.map(([x, y]) => [x * 1.05 - 0.03, y * 1.08]), 0.045, GOLDC, { plane: 'flat', key: 'sw-wing-gold', bevel: 0.015 }); // 金邊
+      return pecs;
+    },
   });
-
-  // ---- 後身 → 尾柄 → 闊尾鰭（越嚟越幼）----
-  const rear = pivot(mid, 0, 0.05, 2.15);
-  section(rear, 2.0, 1.65, 1.4, 0.6);
-  for (const s of [-1, 1]) {
-    goldStar(rear, s * 1.02, 0.25, 0.6, 0.2, s * PI / 2);
-    goldMoon(rear, s * 1.02, -0.1, 0.9, 0.25, s * PI / 2, 1.2);
-  }
-  const tail = pivot(rear, 0, 0.05, 1.3);
-  section(tail, 1.35, 1.1, 1.2, 0.5, false);
-  const tail2 = pivot(tail, 0, 0, 1.05);
-  section(tail2, 0.85, 0.7, 1.0, 0.4, false);
-  const fluke = pivot(tail2, 0, 0, 0.85);
-  for (const s of [-1, 1]) {
-    box(fluke, 2.2, 0.16, 1.0, TOP, s * 1.05, 0, 0.45, 0.45).rotation.y = s * -0.5;
-    box(fluke, 1.6, 0.13, 0.5, 0x6a3df5, s * 1.75, 0, 1.0, 0.45, { emissive: 0x4a1fd1, emissiveIntensity: 0.35 }).rotation.y = s * -0.5;
-    bar(fluke, [s * 0.2, 0.1, 0.25], [s * 2.05, 0.1, 0.95], 0.06, 0xffca28, GOLD_X);
-  }
-  goldStar(fluke, 0, 0.12, 0.45, 0.2, 0);
-
+  // 外層：俯衝（上下）同頭向上／向下
+  const g = new THREE.Group();
+  const flyer = pivot(g, 0, 0, 0);
+  flyer.add(inner);
+  flyer.scale.setScalar(S);
+  const baseY = 2.4; // 平時離地幾高
+  const DIP = 1.5; // 俯衝落幾多
+  const innerAnim = inner.userData.animate;
+  let swoopT = 0;
+  let lastT = null;
+  // ---- 柔和光暈（一塊淡淡嘅光，喺身後面）----
+  const haloTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,0.9)');
+    gr.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr;
+    x.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })();
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: 0x8fb8ff, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending }));
+  halo.scale.set(LEN * 1.5, H * 2.6, 1);
+  halo.position.y = (H / 2 + 0.35);
+  flyer.add(halo);
+  // ---- 閃粉（圍住隻鯨慢慢轉、升）----
+  const sparkles = sparkleAura(flyer, { n: 40, rx: W * 1.1, rz: LEN * 0.6, y0: 0, h: H * 1.8, color: 0xfff59d, size: 0.14 });
+  // ---- 符文：幾個發光符文圈圍住隻鯨慢慢轉（小朋友：加 rune effects）----
+  const runes = [0x18ffff, 0xea80fc, 0xffd740, 0x18ffff].map((c, i) => {
+    const r = buildRune(c);
+    r.scale.setScalar(0.55);
+    flyer.add(r);
+    return { r, a: (i / 4) * PI * 2, y: (H / 2 + 0.35) + (i % 2 ? 0.7 : -0.3) };
+  });
   g.userData.animate = (t, moving) => {
-    const sp = 1.3 + moving * 1.0;
-    head.rotation.x = Math.sin(t * sp + 0.9) * 0.04;
-    mid.rotation.x = Math.sin(t * sp) * 0.03;
-    rear.rotation.x = Math.sin(t * sp - 0.9) * 0.08;
-    tail.rotation.x = Math.sin(t * sp - 1.6) * 0.16;
-    tail2.rotation.x = Math.sin(t * sp - 2.1) * 0.22;
-    fluke.rotation.x = Math.sin(t * sp - 2.6) * 0.32;
-    fins.forEach(({ f, s }) => (f.rotation.z = s * (0.12 + Math.sin(t * sp) * 0.32)));
-    canopy.rotation.z = Math.sin(t * 1.3) * 0.06;
-    root.position.y = flyY + Math.sin(t * 1.1) * 0.3;
-    root.rotation.z = Math.sin(t * 0.7) * 0.04;
-    islandGlow.material.emissiveIntensity = 0.8 + Math.sin(t * 2.5) * 0.3;
+    innerAnim(t, moving);
+    sparkles(t);
+    halo.material.opacity = 0.2 + Math.sin(t * 1.6) * 0.05;
+    for (const q of runes) {
+      const a = q.a + t * 0.45;
+      q.r.position.set(Math.cos(a) * W * 1.05, q.y + Math.sin(t * 1.3 + q.a) * 0.25, Math.sin(a) * LEN * 0.55);
+      q.r.rotation.set(PI / 2 * 0.85, PI / 2 - a, 0, 'YXZ'); // 企直、面向出面
+      q.r.userData.spin(t + q.a);
+    }
+    const dt = lastT === null ? 0 : Math.min(0.1, Math.max(0, t - lastT));
+    lastT = t;
+    if (moving) {
+      // 每 4.5 秒一個循環：滑翔一陣 → 俯衝落 → 升返上去（順滑，冇突然跳）
+      swoopT += dt;
+      const P = 4.5;
+      const k = (swoopT % P) / P; // 0..1
+      const w = k < 0.25 ? 0 : (k - 0.25) / 0.75; // 頭 25% 平飛
+      const y = -DIP * (1 - Math.cos(w * PI * 2)) / 2;
+      const dy = (DIP * PI * Math.sin(w * PI * 2)) / (0.75 * P); // dy/dt（正數 = 落緊）
+      flyer.position.y = baseY + y + Math.sin(t * 1.1) * 0.1;
+      flyer.rotation.x += (Math.atan(-dy / 4) * 1.3 - flyer.rotation.x) * Math.min(1, dt * 6 || 1); // 落：頭向下；升：頭向上
+    } else {
+      flyer.position.y = baseY + Math.sin(t * 1.1) * 0.25; // 浮下浮下
+      flyer.rotation.x *= 0.92;
+    }
+    flyer.rotation.z = Math.sin(t * 0.7) * 0.04;
   };
   g.userData.move = 'fly';
   g.userData.flying = true;
-  g.userData.height = flyY + 2.4 * S;
+  g.userData.noFireAura = true; // 唔要身邊嗰圈火（Fire 變異嘅錢照計）
+  g.userData.height = baseY + (H + 0.35 + 1.4) * S;
   return g;
 }
 

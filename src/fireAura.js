@@ -13,6 +13,7 @@ const auras = new Set();
 
 export function addFireAura(model, kind = 'fire') {
   if (model.userData.fireAura) return;
+  if (model.userData.noFireAura || model.userData.inner?.userData.noFireAura) return; // Royal Skywhale：小朋友唔要佢身邊有圈火
   const eclipse = kind === 'eclipse';
   model.updateMatrixWorld(true);
   const world = new THREE.Box3().setFromObject(model);
