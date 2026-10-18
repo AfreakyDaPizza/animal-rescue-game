@@ -182,7 +182,7 @@ export function loseAnimal(rescue) {
 
 // 返到 Hub：救援成功！回傳 { animal, kg, reward, biomeBonus }
 export function deliver(rescue) {
-  const { animal, kg, rarity, seed, sizeMul, model } = rescue.carrying;
+  const { animal, kg, rarity, seed, sizeMul, mutation, model } = rescue.carrying;
   model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.carrying = null;
   if (seed) state.takenSpawns = [...state.takenSpawns, seed].slice(-60); // F5 都唔會再出
