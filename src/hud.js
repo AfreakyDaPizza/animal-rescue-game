@@ -7,7 +7,7 @@ import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal } from './data/animals.js';
-import { BOSSES, rarityInfo, trainingGain, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS } from './data/balance.js';
+import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
@@ -237,8 +237,8 @@ function statsHtml() {
       <tr><td>⚡ Speed</td><td>${fmt(state.speed)}</td></tr>
       <tr><td>🏃 Walk speed</td><td>${walkSpeed(state.speed).toFixed(1)} steps/sec</td></tr>
       <tr><td>🧠 IQ</td><td>${fmt(state.iq)}</td></tr>
-      <tr><td>🏋️ Treadmill</td><td>${level('treadmillLevel')} (+${fmt(trainingGain(state.treadmillLevel, 'speed'))}/sec)</td></tr>
-      <tr><td>📚 Student Table</td><td>${level('tableLevel')} (+${fmt(trainingGain(state.tableLevel))}/sec)</td></tr>
+      <tr><td>🏋️ Treadmill</td><td>${level('treadmillLevel')} (+${trainingGainLabel(state.treadmillLevel, 'speed', fmt)}/sec)</td></tr>
+      <tr><td>📚 Student Table</td><td>${level('tableLevel')} (+${trainingGainLabel(state.tableLevel, 'iq', fmt)}/sec)</td></tr>
     </table>
     <h3>Pets (${state.pets.length})</h3>
     <ul>${list(state.pets, 'No pets yet - rescue an animal from a biome!', (p) =>
@@ -457,7 +457,7 @@ function tierIndexHtml(kind) {
         <img src="${pics[i]}" alt="${t.name}">
         <b>${got ? t.name : '???'}</b>
         <small>${got ? `Level ${t.minLevel}+` : `🔒 Unlock at Level ${t.minLevel}`}</small>
-        <span class="kg">+${fmt(trainingGain(t.minLevel, stat))} ${stat === 'speed' ? 'Speed' : 'IQ'}/sec at Lv ${t.minLevel}</span>
+        <span class="kg">+${trainingGainLabel(t.minLevel, stat, fmt)} ${stat === 'speed' ? 'Speed' : 'IQ'}/sec at Lv ${t.minLevel}</span>
         ${current ? '<p class="you">⭐ You have this one!</p>' : ''}
       </div>`;
     }).join('')}</div>`;

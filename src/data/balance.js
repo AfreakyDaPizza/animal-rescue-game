@@ -77,13 +77,24 @@ export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 400
 // 例：Lv1→2 $50、Lv5→6 $1,659、Lv10→11 $132,000、Lv13→14 $1,826,000
 // 跑步機再慢 10%（小朋友要求）：stat = 'speed' 就 × 0.9
 // 15 級，每級一個款：Basic → … → Mountain Magic（14）→ Astral（15，MAX）
-export const MAX_TRAINING_LEVEL = 16; // Lv16 Astral King's Kingdom（小朋友 2026-10-17）
+export const MAX_TRAINING_LEVEL = 17; // Lv17 Inferno Sanctuary（小朋友 2026-10-18）
 // 小朋友 2026-10-11 加強：Lv14 Mountain Magic ×1.5、Lv15 Astral ×2
 const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 6 }; // Lv16 Astral King's Kingdom: x6（小朋友 2026-10-17：再勁啲，本來 x3）
-export const trainingGain = (level, stat = 'iq') =>
-  Math.round(5 * 2 ** (level - 1) * (stat === 'speed' ? 0.9 : 1) * (TOP_LEVEL_BUFF[level] ?? 1));
+// Lv17 Inferno Sanctuary (kid 2026-10-18): gives a random amount between these 2 numbers every second
+export const INFERNO_GAIN = [1000000, 1500000];
+export const trainingRange = (level) => (level >= 17 ? INFERNO_GAIN : null);
+export const trainingGain = (level, stat = 'iq', roll = Math.random()) =>
+  trainingRange(level)
+    ? Math.round(INFERNO_GAIN[0] + (INFERNO_GAIN[1] - INFERNO_GAIN[0]) * roll)
+    : Math.round(5 * 2 ** (level - 1) * (stat === 'speed' ? 0.9 : 1) * (TOP_LEVEL_BUFF[level] ?? 1));
 // 升去 Lv2–13 貴 10%（小朋友 2026-10-11），升去 Lv14／15 價錢唔變
-export const upgradeCost = (level) => Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1));
+// Lv13–16 cost 30% more (kid 2026-10-18). Lv17 Inferno Sanctuary costs INFERNO_COST.
+export const LATE_LEVEL_EXTRA = 1.3;
+export const INFERNO_COST = 1000000000;
+// 顯示用：Lv17 係一個範圍（例如 "1M–1.5M"）
+export const trainingGainLabel = (level, stat, fmt) => (trainingRange(level) ? trainingRange(level).map(fmt).join('–') : fmt(trainingGain(level, stat)));
+export const upgradeCost = (level) =>
+  level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1));
 
 // ---- 障礙物：每個生態區幾多個、郁得幾快 ----
 export const HAZARD_COUNT = [4, 5, 6, 7, 8, 9, 10];
