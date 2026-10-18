@@ -183,29 +183,37 @@ export function buildGemDragonModel() {
   const crystal = glowMat(0x9fe3ff, 0.55, { transparent: true, opacity: 0.85, flatShading: true, metalness: 0.2 });
   const membrane = new THREE.MeshStandardMaterial({ color: 0xb3e5fc, emissive: 0x4fc3f7, emissiveIntensity: 0.45, transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 0.15 });
   const body = pivot(root, 0, 0, 0);
-  // 身（打橫）：白色身 + 冰藍鱗片 + 深藍胸甲 + 藍色發光 V
-  box(body, 1.05, 0.95, 1.6, WHITE, 0, 0, 0, 0.35);
-  box(body, 0.95, 0.3, 1.5, ICE, 0, 0.45, 0.05, 0.35);
-  box(body, 0.8, 0.5, 1.2, NAVY, 0, -0.32, -0.15, 0.35); // 胸甲
-  for (const s of [-1, 1]) glowBox(body, 0.1, 0.06, 0.6, blue, s * 0.2, -0.45, -0.45, 0.3).rotation.y = s * 0.5; // V
+  // 身（打橫）：前面一個又大又厚嘅胸（似獅子咁威），後面收窄到盤骨
+  box(body, 1.2, 1.05, 1.7, WHITE, 0, 0, 0.05, 0.38);
+  box(body, 1.45, 1.3, 1.0, WHITE, 0, 0.08, -0.5, 0.42); // 大胸
+  box(body, 1.1, 0.3, 1.6, ICE, 0, 0.55, 0.0, 0.38);
   for (const s of [-1, 1]) {
-    glowBox(body, 0.04, 0.08, 0.7, blue, s * 0.53, 0.05, 0.1, 0.3); // 身側藍線
-    box(body, 0.04, 0.3, 0.3, ICE, s * 0.53, -0.1, 0.5, 0.3);
+    box(body, 0.42, 0.75, 0.8, WHITE, s * 0.62, 0.2, -0.55, 0.42); // 膊頭肌肉
+    box(body, 0.36, 0.62, 0.7, WHITE, s * 0.52, -0.05, 0.55, 0.42); // 大髀
+  }
+  // 深藍胸甲：一層層由頸到肚，似龍鱗
+  [[1.0, 0.36, 0.5, -0.3, -0.95], [1.05, 0.34, 0.55, -0.5, -0.6], [0.9, 0.3, 0.55, -0.55, -0.15], [0.78, 0.26, 0.5, -0.52, 0.3]].forEach(([w, h, d, y, z]) => box(body, w, h, d, NAVY, 0, y, z, 0.4));
+  for (const s of [-1, 1]) glowBox(body, 0.1, 0.06, 0.6, blue, s * 0.22, -0.5, -0.75, 0.3).rotation.y = s * 0.5; // V
+  for (const s of [-1, 1]) {
+    glowBox(body, 0.04, 0.08, 0.8, blue, s * 0.61, 0.05, 0.15, 0.3); // 身側藍線
+    box(body, 0.04, 0.3, 0.3, ICE, s * 0.6, -0.1, 0.6, 0.3);
   }
   // 背脊水晶刺
-  for (let i = 0; i < 5; i++) shard(body, 0, 0.62, -0.6 + i * 0.32, 0.1, 0.24 - i * 0.02, crystal, -0.45);
-  // 頸（三節，向前向上）+ 頭
-  const neck = pivot(body, 0, 0.25, -0.8);
+  for (let i = 0; i < 5; i++) shard(body, 0, 0.74, -0.6 + i * 0.32, 0.11, 0.26 - i * 0.02, crystal, -0.45);
+  // 頸（四節，又粗又壯，一節疊一節，下面有冰藍喉甲）+ 頭
+  const neck = pivot(body, 0, 0.35, -0.95);
   let np = neck;
   const necks = [];
-  for (let i = 0; i < 3; i++) {
-    const p = pivot(np, 0, i === 0 ? 0 : 0.18, i === 0 ? 0 : -0.3);
-    box(p, 0.5 - i * 0.04, 0.48 - i * 0.04, 0.42, i % 2 ? ICE : WHITE, 0, 0.05, -0.15, 0.35);
-    shard(p, 0, 0.32, -0.12, 0.07, 0.15, crystal, -0.5);
+  [0.82, 0.72, 0.64, 0.58].forEach((w, i) => {
+    const p = pivot(np, 0, i === 0 ? 0 : 0.16, i === 0 ? 0 : -0.28);
+    box(p, w, w * 0.95, 0.56, i % 2 ? ICE : WHITE, 0, 0.05, -0.15, 0.28);
+    box(p, w * 0.62, 0.14, 0.46, NAVY, 0, 0.05 - w * 0.45, -0.17, 0.4); // 喉甲
+    shard(p, 0, w * 0.5 + 0.1, -0.12, 0.08, 0.17, crystal, -0.5);
     necks.push(p);
     np = p;
-  }
+  });
   const head = pivot(np, 0, 0.2, -0.45);
+  head.scale.setScalar(1.12);
   box(head, 0.6, 0.48, 0.62, WHITE, 0, 0, 0, 0.35);
   box(head, 0.46, 0.28, 0.5, WHITE, 0, -0.06, -0.48, 0.35); // 嘴
   box(head, 0.4, 0.1, 0.45, NAVY, 0, -0.2, -0.45, 0.3); // 口
@@ -219,29 +227,31 @@ export function buildGemDragonModel() {
   const jaw = pivot(head, 0, -0.18, -0.15);
   box(jaw, 0.4, 0.12, 0.5, WHITE, 0, -0.06, -0.3, 0.3);
   // 尾（六節）+ 水晶刺 + 尾尖水晶刀
-  const tailBase = pivot(body, 0, 0.1, 0.8);
+  // 尾：七節，頭粗（同盤骨一樣闊）慢慢收幼，一節疊一節冇罅
+  const tailBase = pivot(body, 0, 0.12, 0.85);
   const tail = [];
   let tp = tailBase;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const p = pivot(tp, 0, 0, i === 0 ? 0 : 0.36);
-    const w = 0.42 - i * 0.055;
-    box(p, w, w, 0.4, i % 2 ? ICE : WHITE, 0, 0, 0.18, 0.35);
-    shard(p, 0, w / 2 + 0.06, 0.18, 0.06, 0.14, crystal, 0.5);
+    const w = 0.78 - i * 0.09;
+    box(p, w, w * 0.88, 0.56, i % 2 ? ICE : WHITE, 0, 0, 0.18, 0.26);
+    box(p, w * 0.6, 0.1, 0.42, NAVY, 0, -w * 0.42, 0.18, 0.4); // 尾底鱗
+    shard(p, 0, w * 0.44 + 0.07, 0.18, 0.07, 0.16, crystal, 0.5);
     tail.push(p);
     tp = p;
   }
-  shard(tp, 0, 0, 0.62, 0.18, 0.42, crystal, PI / 2);
+  shard(tp, 0, 0, 0.62, 0.2, 0.46, crystal, PI / 2);
   // 四隻腳（飛嗰陣收埋）
-  const legs = [[-0.35, -0.45], [0.35, -0.45], [-0.35, 0.5], [0.35, 0.5]].map(([x, z]) => {
+  const legs = [[-0.45, -0.5], [0.45, -0.5], [-0.42, 0.55], [0.42, 0.55]].map(([x, z]) => {
     const hip = pivot(body, x, -0.35, z);
-    box(hip, 0.26, 0.5, 0.28, WHITE, 0, -0.22, 0, 0.3);
-    box(hip, 0.24, 0.12, 0.34, NAVY, 0, -0.5, -0.04, 0.3);
-    for (let c = -1; c <= 1; c++) shard(hip, c * 0.08, -0.55, -0.24, 0.035, 0.07, crystal, -PI / 2);
+    box(hip, 0.36, 0.55, 0.38, WHITE, 0, -0.22, 0, 0.35);
+    box(hip, 0.34, 0.12, 0.44, NAVY, 0, -0.5, -0.05, 0.3);
+    for (let c = -1; c <= 1; c++) shard(hip, c * 0.1, -0.55, -0.28, 0.035, 0.07, crystal, -PI / 2);
     return hip;
   });
   // 一對大水晶翼：骨（白）+ 半透明冰藍膜 + 翼邊水晶
   const wings = [-1, 1].map((s) => {
-    const w = pivot(body, s * 0.45, 0.4, -0.25);
+    const w = pivot(body, s * 0.6, 0.55, -0.35);
     bar(w, [0, 0, 0], [s * 1.2, 0.45, 0.2], 0.12, WHITE);
     bar(w, [s * 1.2, 0.45, 0.2], [s * 2.6, 0.2, 0.55], 0.09, WHITE);
     const tips = [[s * 2.6, 0.2, 0.55], [s * 2.2, -0.05, 1.15], [s * 1.5, -0.1, 1.45], [s * 0.7, -0.05, 1.2]];
@@ -281,7 +291,7 @@ export function buildGemDragonModel() {
   };
   g.userData.move = 'fly';
   g.userData.flying = true;
-  g.userData.height = FLY_Y + 1.6;
+  g.userData.height = FLY_Y + 1.75;
   return g;
 }
 

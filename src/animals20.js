@@ -3,7 +3,8 @@
 // 全部面向 -z。每個回傳 Group：userData.animate(time, moving)、userData.height、userData.move
 
 import * as THREE from 'three';
-import { box, pivot, cuteEyes, spike, BLACK, WHITE } from './modelKit.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { box, pivot, cuteEyes, spike, slab, material, BLACK, WHITE } from './modelKit.js';
 
 const PI = Math.PI;
 
@@ -358,14 +359,29 @@ function elephant(forest) {
     extras(p) {
       box(p.head, 1.1, 0.4, 0.8, skin, 0, 0.62, 0.08, 0.5); // 額頭（兩嚿）
       for (const y of [1.7, 2.05, 2.4]) box(p.root, 2.04, 0.04, 1.6, dark, 0, y, 0.1, 0.3); // 皮膚皺紋
-      // 大耳仔：三塊疊住，形狀似非洲地圖（森林象細啲、圓啲）
-      const earH = forest ? 0.95 : 1.5;
-      const earD = forest ? 0.85 : 1.25;
+      // 大耳仔：彎彎有形嘅一大塊（草原象似非洲地圖、下面有尖耳垂；森林象細啲、圓啲）
+      // 一層層：皮 → 粉紅色耳窩（向外、向前，有幾條血管紋）→ 上邊摺返過嚟嘅耳邊
+      const outline = forest
+        ? [[0.05, 0.12], [-0.35, 0.34], [-0.75, 0.32], [-1.0, 0.02], [-1.02, -0.42], [-0.82, -0.8], [-0.48, -0.96], [-0.22, -0.78], [-0.06, -0.42]]
+        : [[0.05, 0.16], [-0.35, 0.44], [-0.9, 0.48], [-1.3, 0.22], [-1.44, -0.3], [-1.26, -0.8], [-0.96, -1.12], [-0.62, -1.52], [-0.38, -1.46], [-0.3, -1.0], [-0.12, -0.56], [0.05, -0.26]];
+      const L = forest ? 1.0 : 1.44;
+      // 向後越嚟越向外翻，上下兩邊微微向外彎（粉紅嗰面似個淺碟）
+      const bend = (x, y) => 0.2 * Math.max(0, -x / L) ** 1.6 * L + 0.1 * ((y + L * 0.3) / L) ** 2;
+      const shrink = (k, cx, cy) => outline.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]);
+      const cx = -L * 0.5;
+      const cy = -L * 0.3;
+      const kk = forest ? 'ef' : 'es';
+      const rim = [...outline.slice(0, 5).map(([x, y]) => [x, y]), ...outline.slice(0, 5).reverse().map(([x, y]) => [x * 0.9 + cx * 0.1, y - 0.16])];
       const ears = [-1, 1].map((s) => {
-        const ear = pivot(p.head, s * 0.66, 0.2, 0.12);
-        box(ear, 0.1, earH, earD, skin, s * 0.05, -earH * 0.15, earD * 0.42, 0.42);
-        box(ear, 0.1, earH * 0.55, earD * 0.55, skin, s * 0.05, -earH * 0.62, earD * 0.3, 0.45); // 耳垂
-        box(ear, 0.04, earH * 0.7, earD * 0.72, pinkIn, s * -0.02, -earH * 0.15, earD * 0.42, 0.42);
+        const ear = pivot(p.head, s * 0.62, 0.32, 0.05);
+        ear.scale.x = s;
+        slab(ear, outline, 0.07, skin, { plane: 'side', key: `${kk}-ear`, bevel: 0.035, bend });
+        slab(ear, shrink(0.78, cx, cy), 0.03, pinkIn, { plane: 'side', key: `${kk}-ear-in`, bevel: 0.02, bend, x: 0.085 });
+        slab(ear, rim, 0.05, dark, { plane: 'side', key: `${kk}-ear-rim`, bevel: 0.025, bend: (x, y) => bend(x, y) + 0.02, x: 0.09 }); // 向前摺嘅耳邊
+        for (const [x1, y1, rot, len] of [[-0.3, -0.25, -0.5, 0.55], [-0.45, -0.5, -0.9, 0.5], [-0.35, 0.05, -0.15, 0.6]]) {
+          const vein = box(ear, 0.03, 0.035, len * L * 0.7, skin, bend(x1 * L, y1 * L) + 0.12, y1 * L, -x1 * L, 0.4); // 血管紋
+          vein.rotation.x = rot;
+        }
         return { ear, s };
       });
       // 象鼻：五節，越落越幼，向前彎
@@ -390,7 +406,7 @@ function elephant(forest) {
       }
       p.animate = (t) => {
         trunk.forEach((seg, i) => (seg.rotation.x = Math.sin(t * 1.4 + i * 0.6) * 0.14 - (i ? 0.16 : -0.05)));
-        ears.forEach(({ ear, s }) => (ear.rotation.y = s * (0.25 + Math.sin(t * 2) * 0.2)));
+        ears.forEach(({ ear, s }) => (ear.rotation.y = s * (0.5 + Math.sin(t * 2) * 0.2))); // 耳向外打開，撥下撥下
       };
     },
   });
@@ -555,14 +571,224 @@ function swimmer2({ skin, belly, len, w, h, kind = 'whale', dorsal = 0, eyeSize,
   return g;
 }
 
+// ================= 順滑游水身（藍鯨、鯨鯊、錘頭鯊）=================
+// 成條身係一整舊連住嘅形狀（由鼻尖到尾柄一圈圈連埋，冇一節節嘅接口），游水時成條身好似波浪咁彎
+// prof(u) → [闊, 高, 上下位]（u：0 = 鼻尖，1 = 尾柄）；身上嘅花紋（點、坑紋、鰓）都會跟住身一齊彎
+const smooth01 = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const noseIn = (u, a) => Math.sqrt(Math.max(0, 1 - (1 - Math.min(u / a, 1)) ** 2)); // 頭：圓圓咁由 0 去到 1
+const tailOut = (u, b, tip) => (u < b ? 1 : tip + (1 - tip) * (0.5 + 0.5 * Math.cos((PI * (u - b)) / (1 - b)))); // 尾：順滑收窄
+const sePow = (v, n) => Math.sign(v) * Math.abs(v) ** (2 / n);
+const sleekMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });
+const dotGeo = new THREE.SphereGeometry(1, 8, 5);
+const BEND_N = 64; // 每格畫面計 65 個彎位，之後每粒點查表
+
+function sleek({ skin, belly, len, w, h, kind = 'whale', prof, n = 2.4, belt = -0.2, extras, rings = 34, around = 24 }) {
+  const g = new THREE.Group();
+  const swimY = h / 2 + 0.35;
+  const root = pivot(g, 0, swimY, 0);
+  const whale = kind === 'whale';
+  const z0 = -len / 2;
+  const zAt = (u) => z0 + u * len;
+  // 身表面一點（ang：π/2 = 背脊，-π/2 = 肚，0 = 右邊）；lift = 浮出表面幾多；n = 嗰度向外嘅方向
+  const surf = (u, ang, lift = 0) => {
+    const [ws, hs, yo] = prof(u);
+    const rw = (w / 2) * ws + lift;
+    const rh = (h / 2) * hs + lift;
+    const c = Math.cos(ang);
+    const s = Math.sin(ang);
+    const k = (2 * (n - 1)) / n;
+    const nrm = new THREE.Vector3((Math.sign(c) * Math.abs(c) ** k) / Math.max(rw, 1e-3), (Math.sign(s) * Math.abs(s) ** k) / Math.max(rh, 1e-3), 0).normalize();
+    return { p: new THREE.Vector3(sePow(c, n) * rw, sePow(s, n) * rh + (yo * h) / 2, zAt(u)), n: nrm };
+  };
+  // ---- 身：一圈圈連住（頭尾密啲），背深色、肚淺色，中間慢慢轉色 ----
+  const pos = [];
+  const col = [];
+  const idx = [];
+  const cS = new THREE.Color(skin);
+  const cB = new THREE.Color(belly);
+  const c = new THREE.Color();
+  for (let i = 0; i <= rings; i++) {
+    const u = (1 - Math.cos((PI * i) / rings)) / 2;
+    for (let j = 0; j < around; j++) {
+      const ang = (j / around) * PI * 2;
+      const { p } = surf(u, ang);
+      pos.push(p.x, p.y, p.z);
+      c.copy(cB).lerp(cS, smooth01(belt - 0.12, belt + 0.12, Math.sin(ang)));
+      col.push(c.r, c.g, c.b);
+    }
+  }
+  const yEnd = (prof(1)[2] * h) / 2;
+  const end = pos.length / 3;
+  pos.push(0, yEnd, z0 + len);
+  col.push(cS.r, cS.g, cS.b);
+  for (let i = 0; i < rings; i++) {
+    for (let j = 0; j < around; j++) {
+      const a = i * around + j;
+      const b = i * around + ((j + 1) % around);
+      idx.push(a, b, a + around, b, b + around, a + around);
+    }
+  }
+  for (let j = 0; j < around; j++) idx.push(rings * around + j, rings * around + ((j + 1) % around), end);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const body = new THREE.Mesh(geo, sleekMat);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  root.add(body);
+
+  // ---- 貼喺身上嘅花紋：一粒粒拉扁嘅波波（同色嘅會焊埋一舊）----
+  const decals = new Map();
+  const addDecal = (color, m) => {
+    if (!decals.has(color)) decals.set(color, []);
+    decals.get(color).push(dotGeo.clone().applyMatrix4(m));
+  };
+  const M = new THREE.Matrix4();
+  // sx = 沿住身嘅圈、sy = 厚度、sz = 沿住身長；rot = 喺表面上轉幾多
+  const dot = (u, ang, sx, sy, sz, color, lift = 0, rot = 0) => {
+    const { p, n: N } = surf(u, ang, lift);
+    const B = new THREE.Vector3().crossVectors(N, new THREE.Vector3(0, 0, 1)).normalize();
+    const T = new THREE.Vector3().crossVectors(B, N).normalize();
+    if (rot) {
+      B.applyAxisAngle(N, rot);
+      T.applyAxisAngle(N, rot);
+    }
+    addDecal(color, M.makeBasis(B.multiplyScalar(sx), N.clone().multiplyScalar(sy), T.multiplyScalar(sz)).setPosition(p));
+  };
+  const blob = (x, y, z, sx, sy, sz, color) => addDecal(color, M.makeScale(sx, sy, sz).setPosition(x, y, z));
+
+  // ---- 轉軸：鰭、錘頭等硬嘢跟住呢幾點郁 ----
+  const segU = [0, 0.25, 0.5, 0.72, 0.88];
+  const segs = segU.map((u) => pivot(root, 0, 0, zAt(u)));
+  const head = segs[0];
+  const tail = pivot(root, 0, yEnd, z0 + len);
+  const seg = (u) => {
+    let k = 0;
+    segU.forEach((su, i) => u >= su && (k = i));
+    return [segs[k], zAt(u) - zAt(segU[k])];
+  };
+  // 鰭：喺身表面 (u, ang) 插一塊有形狀嘅鰭；mirror = 左右各一塊
+  const fin = (u, ang, pts, { plane = 'side', depth = 0.06, key, mirror = false, rot = [0, 0, 0], color = skin, inset = 0.03 } = {}) => {
+    const [p, lz] = seg(u);
+    return (mirror ? [-1, 1] : [1]).map((s) => {
+      const { p: q } = surf(u, s < 0 ? PI - ang : ang, -inset);
+      const fp = pivot(p, q.x, q.y, lz);
+      fp.rotation.set(rot[0], s * rot[1], s * rot[2]);
+      fp.scale.x = s;
+      slab(fp, pts, depth, color, { plane, key, bevel: depth * 0.4 });
+      return { fp, s };
+    });
+  };
+  const parts = { g, root, segs, head, tail, surf, dot, blob, seg, fin, len, w, h };
+  const fins = extras?.(parts) || []; // extras 回傳胸鰭，游水時撥下撥下
+  const flex = [body];
+  for (const [color, list] of decals) {
+    const m = new THREE.Mesh(mergeGeometries(list), material(color));
+    m.castShadow = true;
+    root.add(m);
+    flex.push(m);
+  }
+  // 每粒點喺身邊個位（查表用）
+  const bases = flex.map((m) => {
+    const attr = m.geometry.attributes.position;
+    const base = Float32Array.from(attr.array);
+    const at = new Float32Array(attr.count);
+    for (let i = 0; i < attr.count; i++) at[i] = Math.min(BEND_N, Math.max(0, ((base[i * 3 + 2] - z0) / len) * BEND_N));
+    m.geometry.computeBoundingSphere();
+    m.geometry.boundingSphere.radius *= 1.2;
+    return { attr, base, at };
+  });
+
+  const ax = whale ? 1 : 0; // 鯨上下擺、鯊左右擺
+  const amp = len * (whale ? 0.03 : 0.045);
+  const table = new Float32Array(BEND_N + 2);
+  let ph = 0;
+  const bendAt = (u) => amp * (smooth01(0.12, 1, u) ** 1.3 * Math.sin(ph - u * 3.2) - 0.12 * (1 - u) * Math.sin(ph + 0.6));
+  const place = (p, u, y0) => {
+    const off = bendAt(u);
+    const sl = Math.atan((bendAt(u + 0.01) - off) / (0.01 * len));
+    if (whale) {
+      p.position.y = y0 + off;
+      p.rotation.x = -sl;
+    } else {
+      p.position.x = off;
+      p.rotation.y = sl;
+    }
+    return sl;
+  };
+  g.userData.animate = (t, moving) => {
+    ph = t * (2.4 + moving * 2);
+    for (let i = 0; i <= BEND_N + 1; i++) table[i] = bendAt(i / BEND_N);
+    for (const { attr, base, at } of bases) {
+      const a = attr.array;
+      for (let i = 0; i < at.length; i++) {
+        const f = at[i];
+        const k = f | 0;
+        a[i * 3 + ax] = base[i * 3 + ax] + table[k] + (table[k + 1] - table[k]) * (f - k);
+      }
+      attr.needsUpdate = true;
+    }
+    segU.forEach((u, i) => place(segs[i], u, 0));
+    place(tail, 1, yEnd);
+    const wag = Math.sin(ph - 3.6) * 0.22;
+    if (whale) tail.rotation.x -= wag;
+    else tail.rotation.y += wag;
+    fins.forEach(({ fp, s }) => (fp.rotation.x = Math.sin(t * 2 + s) * 0.18));
+    root.position.y = swimY + Math.sin(t * 1.5) * 0.12;
+    parts.animate?.(t, moving);
+  };
+  g.userData.height = swimY + h;
+  g.userData.move = 'swim';
+  return g;
+}
+
+// 細細嘅隨機數（每隻都一樣，花紋唔會每次變）
+function seeded(seed) {
+  let s = seed;
+  return () => ((s = (s * 16807) % 2147483647) / 2147483647);
+}
+
+// 側面嘅圓眼（眼白 + 眼珠 + 反光），貼喺順滑身上
+function sleekEyes(dot, u, ang, size) {
+  for (const a of [ang, PI - ang]) {
+    dot(u, a, size, size * 0.3, size * 1.2, 0xffffff, -size * 0.12);
+    dot(u - size * 0.01, a, size * 0.62, size * 0.3, size * 0.72, BLACK, size * 0.05);
+    dot(u - size * 0.03, a + (a < PI / 2 ? 1 : -1) * size * 0.4, size * 0.2, size * 0.2, size * 0.24, 0xffffff, size * 0.15);
+  }
+}
+
 function blueWhale() {
-  return swimmer2({
-    skin: 0x4c7396, belly: 0xb9c9d8, len: 5.8, w: 1.2, h: 1.0, dorsal: 0.22, pec: 0.85, eyeZ: 0.85,
-    extras({ head, segs }) {
-      for (let i = 0; i < 6; i++) box(head, 0.06, 0.03, 1.4, 0x93a9bd, -0.4 + i * 0.16, -0.48, 0.8, 0.3); // 喉嚨坑紋
-      box(head, 1.1, 0.05, 0.05, 0x2f4a62, 0, -0.12, 0.02, 0.3); // 口
-      for (const s of [-1, 1]) box(head, 0.14, 0.05, 0.1, 0x2f4a62, s * 0.14, 0.5, 0.45, 0.4); // 噴氣孔
-      segs.forEach((sg, k) => { for (let i = 0; i < 3; i++) box(sg, 0.18, 0.02, 0.22, 0x6f8fab, ((i * 7 + k) % 5 - 2) * 0.17, 0.48 - k * 0.04, 0.2 + i * 0.25, 0.4); }); // 背上斑點
+  return sleek({
+    skin: 0x4c7396, belly: 0xb9c9d8, len: 5.8, w: 1.2, h: 1.0, n: 2.4, belt: -0.3,
+    // 頭闊闊扁扁（U 字形）、身長長、尾柄幼
+    prof: (u) => [noseIn(u, 0.2) * tailOut(u, 0.42, 0.09), noseIn(u, 0.3) * tailOut(u, 0.36, 0.16) * (0.82 + 0.18 * smooth01(0, 0.4, u)), -0.12 * (1 - smooth01(0, 0.35, u))],
+    extras({ dot, fin, tail }) {
+      const rand = seeded(7);
+      sleekEyes(dot, 0.21, -0.18, 0.1);
+      for (const side of [0, 1]) {
+        for (let k = 0; k < 10; k++) {
+          const a = -0.62 + k * 0.045; // 口：由鼻尖向後慢慢升到隻眼下面
+          dot(0.02 + k * 0.018, side ? PI - a : a, 0.03, 0.02, 0.06, 0x2f4a62, 0.005);
+        }
+      }
+      for (let i = -4; i <= 4; i++) for (let k = 0; k < 7; k++) dot(0.05 + k * 0.05, -PI / 2 + i * 0.14, 0.022, 0.012, 0.05, 0x8ea4b8, 0.003); // 喉嚨坑紋
+      dot(0.15, PI / 2, 0.16, 0.06, 0.12, 0x4c7396); // 噴氣孔前面嘅凸位
+      for (const s of [-1, 1]) dot(0.17, PI / 2 + s * 0.1, 0.035, 0.02, 0.07, 0x2f4a62, 0.03); // 噴氣孔
+      for (let i = 0; i < 26; i++) {
+        const sz = 0.05 + rand() * 0.07;
+        dot(0.22 + rand() * 0.62, PI / 2 + (rand() - 0.5) * 2.4, sz, 0.008, sz * 1.5, 0x6587a6, -0.002); // 背上淺色斑
+      }
+      // 細細嘅背鰭（喺好後面）、長長嘅胸鰭、闊闊嘅尾鰭
+      fin(0.74, PI / 2, [[0.28, 0], [0.08, 0.1], [-0.1, 0.22], [-0.2, 0.2], [-0.16, 0.06], [-0.22, 0]], { key: 'bw-dorsal', depth: 0.07 });
+      const pecs = fin(0.27, -0.5, [[0, 0.14], [0.35, 0.1], [0.75, -0.04], [1.0, -0.2], [0.9, -0.25], [0.45, -0.14], [0, -0.1]], { plane: 'flat', key: 'bw-pec', mirror: true, rot: [0, -0.35, -0.45], depth: 0.05 });
+      const fluke = [[0, 0.1], [0.3, 0.04], [0.62, -0.12], [0.88, -0.36], [0.72, -0.34], [0.38, -0.28], [0.1, -0.33], [0, -0.24], [-0.1, -0.33], [-0.38, -0.28], [-0.72, -0.34], [-0.88, -0.36], [-0.62, -0.12], [-0.3, 0.04]];
+      slab(tail, fluke, 0.06, 0x4c7396, { plane: 'flat', key: 'bw-fluke', bevel: 0.03, z: -0.06 });
+      return pecs;
     },
   });
 }
@@ -590,31 +816,64 @@ function dugong() {
   });
 }
 
+// 鯊魚尾鰭（直企，上面嗰塊長啲）
+const SHARK_TAIL = [[0.08, 0], [0, 0.3], [-0.2, 0.65], [-0.46, 0.98], [-0.52, 0.92], [-0.38, 0.5], [-0.3, 0.08], [-0.36, -0.3], [-0.44, -0.52], [-0.34, -0.5], [-0.1, -0.24], [0.07, -0.1]];
+// 鯊魚背鰭（彎彎向後，似鐮刀）
+const SHARK_DORSAL = [[0.3, 0], [0.18, 0.3], [0.02, 0.62], [-0.08, 0.86], [-0.18, 0.82], [-0.14, 0.4], [-0.24, 0.06], [-0.3, 0]];
+const SHARK_PEC = [[0, 0.16], [0.3, 0.1], [0.6, -0.08], [0.8, -0.3], [0.68, -0.3], [0.32, -0.16], [0, -0.12]];
+
 function hammerhead() {
-  return swimmer2({
-    skin: 0x7a8794, belly: 0xedf0f2, len: 2.8, w: 0.58, h: 0.58, kind: 'shark', dorsal: 1.1, eyeSize: 0.001, pec: 0.7,
-    extras({ head }) {
-      // 錘頭：兩邊伸出去，尾端有眼
-      const hammer = pivot(head, 0, 0.04, 0.12);
-      box(hammer, 1.55, 0.18, 0.42, 0x7a8794, 0, 0, 0, 0.42);
-      box(hammer, 1.4, 0.08, 0.36, 0xedf0f2, 0, -0.08, 0.02, 0.42);
-      sideEyes(hammer, 0.78, 0.02, 0, 0.11);
-      for (const s of [-1, 1]) for (let i = 0; i < 4; i++) box(head, 0.02, 0.22, 0.03, 0x5f6a74, s * 0.295, 0, 0.45 + i * 0.07, 0.3); // 鰓
-      box(head, 0.3, 0.03, 0.03, 0x3d454d, 0, -0.18, 0.3, 0.3); // 口
+  const skin = 0x7a8794;
+  return sleek({
+    skin, belly: 0xedf0f2, len: 2.8, w: 0.58, h: 0.58, kind: 'shark', n: 2.3, belt: -0.15,
+    prof: (u) => [noseIn(u, 0.15) * tailOut(u, 0.32, 0.13), noseIn(u, 0.2) * tailOut(u, 0.3, 0.17), 0.08 * (1 - smooth01(0, 0.3, u))],
+    extras({ head, dot, fin, tail }) {
+      // 錘頭：打橫一大塊，前面有波浪邊，兩頭有眼
+      const hammer = pivot(head, 0, 0.06, 0.2);
+      const half = [[0, 0.17], [0.16, 0.13], [0.32, 0.16], [0.48, 0.11], [0.64, 0.11], [0.78, 0.05], [0.83, -0.05], [0.77, -0.13], [0.56, -0.11], [0.3, -0.15], [0.12, -0.28]];
+      const outline = [...half, [0, -0.33], ...half.slice(1).reverse().map(([x, y]) => [-x, y])];
+      slab(hammer, outline, 0.09, skin, { plane: 'flat', key: 'hh-hammer', bevel: 0.035 });
+      slab(hammer, outline.map(([x, y]) => [x * 0.94, y * 0.85]), 0.04, 0xedf0f2, { plane: 'flat', key: 'hh-hammer-belly', bevel: 0.02, y: -0.045 });
+      for (const s of [-1, 1]) {
+        box(hammer, 0.03, 0.12, 0.13, 0xffffff, s * 0.85, 0.01, 0, 0.45); // 眼白（向外）
+        box(hammer, 0.03, 0.08, 0.08, BLACK, s * 0.865, 0.0, -0.01, 0.45);
+        box(hammer, 0.02, 0.03, 0.03, 0xffffff, s * 0.88, 0.03, -0.03, 0.45);
+      }
+      for (const a of [-0.05, PI + 0.05]) for (let i = 0; i < 5; i++) dot(0.2 + i * 0.025, a, 0.11, 0.01, 0.012, 0x5f6a74, 0, 0); // 鰓
+      for (let k = -3; k <= 3; k++) dot(0.11 + Math.abs(k) * 0.012, -PI / 2 + k * 0.17, 0.035, 0.012, 0.02, 0x3d454d, 0.003); // 彎彎個口
+      fin(0.36, PI / 2, SHARK_DORSAL.map(([x, y]) => [x * 0.9, y * 0.75]), { key: 'hh-dorsal', depth: 0.05 });
+      fin(0.72, PI / 2, SHARK_DORSAL.map(([x, y]) => [x * 0.3, y * 0.2]), { key: 'hh-dorsal2', depth: 0.04 });
+      fin(0.74, -PI / 2, SHARK_DORSAL.map(([x, y]) => [x * 0.3, -y * 0.2]), { key: 'hh-anal', depth: 0.04 });
+      slab(tail, SHARK_TAIL.map(([x, y]) => [x * 0.75, y * 0.75]), 0.045, skin, { plane: 'side', key: 'hh-tail', bevel: 0.02, z: -0.04 });
+      return fin(0.28, -0.55, SHARK_PEC.map(([x, y]) => [x * 0.75, y * 0.75]), { plane: 'flat', key: 'hh-pec', mirror: true, rot: [0, -0.3, -0.5], depth: 0.04 });
     },
   });
 }
 
 function whaleShark() {
-  return swimmer2({
-    skin: 0x3d5a73, belly: 0xe6eaed, len: 4.4, w: 1.2, h: 0.8, kind: 'shark', dorsal: 0.8, eyeSize: 0.08, eyeZ: 0.5, pec: 0.8,
-    extras({ head, segs }) {
-      box(head, 1.25, 0.32, 0.36, 0x3d5a73, 0, -0.12, 0.05, 0.4); // 又闊又扁嘅頭
-      box(head, 1.05, 0.05, 0.05, 0x22313f, 0, -0.22, -0.11, 0.3); // 大大個口
-      segs.slice(0, 4).forEach((sg, k) => {
-        for (let i = 0; i < 6; i++) box(sg, 0.12, 0.02, 0.12, WHITE, ((i % 3) - 1) * 0.28 + (k % 2) * 0.12, 0.4 - k * 0.04, 0.15 + Math.floor(i / 3) * 0.32, 0.4); // 白點
-        for (const s of [-1, 1]) box(sg, 0.04, 0.03, 0.8, 0x56738c, s * 0.32, 0.39 - k * 0.04, 0.3, 0.3); // 背脊
-      });
+  const skin = 0x3d5a73;
+  return sleek({
+    skin, belly: 0xe6eaed, len: 4.4, w: 1.2, h: 0.8, kind: 'shark', n: 2.8, belt: -0.4,
+    // 頭又闊又扁（前面平平），身越後越高，尾柄幼
+    prof: (u) => [noseIn(u, 0.06) * tailOut(u, 0.4, 0.1), noseIn(u, 0.14) * tailOut(u, 0.38, 0.15) * (0.66 + 0.34 * smooth01(0, 0.35, u)), 0],
+    extras({ dot, fin, tail }) {
+      const rand = seeded(11);
+      for (let k = 0; k <= 14; k++) dot(0.012, -0.35 - k * ((PI - 0.7) / 14), 0.07, 0.03, 0.04, 0x22313f, 0.004); // 闊口（喺正前面）
+      sleekEyes(dot, 0.09, -0.02, 0.07);
+      for (const a of [-0.12, PI + 0.12]) for (let i = 0; i < 5; i++) dot(0.19 + i * 0.022, a, 0.15, 0.012, 0.014, 0x2b4256, 0); // 鰓
+      // 背脊：每邊三條凸起嘅線
+      for (const r of [0.38, 0.8, 1.2]) for (const a of [r, PI - r]) for (let k = 0; k < 16; k++) dot(0.22 + k * 0.04, a, 0.028, 0.025, 0.06, 0x56738c, 0);
+      // 白點（一行行交錯）+ 淺色直紋
+      for (let row = 0; row < 15; row++) {
+        const u = 0.12 + row * 0.052;
+        const size = 0.06 * (1 - u * 0.45);
+        for (let a = 0.12 + (row % 2) * 0.13; a < PI - 0.1; a += 0.26) dot(u + (rand() - 0.5) * 0.012, a, size, 0.012, size, WHITE, 0.004);
+        if (row % 2) for (const a of [0.1, PI - 0.1]) dot(u + 0.026, a, 0.012, 0.01, 0.012, WHITE, 0.004);
+      }
+      fin(0.5, PI / 2, SHARK_DORSAL.map(([x, y]) => [x * 1.3, y * 0.8]), { key: 'ws-dorsal', depth: 0.08 });
+      fin(0.8, PI / 2, SHARK_DORSAL.map(([x, y]) => [x * 0.45, y * 0.3]), { key: 'ws-dorsal2', depth: 0.05 });
+      slab(tail, SHARK_TAIL.map(([x, y]) => [x * 1.25, y * 1.15]), 0.07, skin, { plane: 'side', key: 'ws-tail', bevel: 0.03, z: -0.06 });
+      return fin(0.25, -0.75, SHARK_PEC.map(([x, y]) => [x * 1.35, y * 1.2]), { plane: 'flat', key: 'ws-pec', mirror: true, rot: [0, -0.3, -0.35], depth: 0.06 });
     },
   });
 }
