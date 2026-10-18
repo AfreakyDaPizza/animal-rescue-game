@@ -197,3 +197,25 @@ src/data/questions.js ← 野生動物問題
 5. `state.jumpPower`：每點跳高 `JUMP_POWER_HEIGHT`（0.02 米），最多計 `JUMP_POWER_MAX`（300 點 = 多 6 米）。HUD 有 🦘（有 Jump Power 先顯示），My Stats 有一行。
 6. 小朋友老師話跑跑下跳會慢好多 → 取消咗半空限速（`player.js`），半空保持跑步速度。
 7. 測試：`game.openGym()`（唔理日子即刻開）、`game.lab.ending()`（再睇爆炸 → Gym）。
+
+## Hub 重新排位（2026-10-18，小朋友：rearrange everything in the hub，揀咗「You decide」）
+由上面望（-z 係生態區）：
+
+```
+                 ======= Biome 1 入口 =======
+  ┌─🏃 TRAINING ZONE─┐  [入口廣場]  ┌──🛍️ SHOP STREET──┐
+  │ Treadmill  Table │   出世點    │ Skin Shop  Sell   │
+  └──────────────────┘   (0,14)    └───────────────────┘
+  ════════════════ 路 (z=10.5) ═══════════════════════════
+                                   升級牌  ┌─────────┐
+   ✨ MAGIC     ══╗  ⛲ 噴水池  ╔══ 閘口 ▸ │ 🐾 PLOT │ 🐾 PETS ZONE 牌
+   LIBRARY       ╚═══════════╝             └─────────┘
+                 熊貓像      大象像           MY PETS 牌
+  ═════════════════════ 路 (z=36) ═════════════════════════
+   升級牌 [💗 BREEDING LAB：5 部繁殖機]          🧪 FUSE
+   🌴 Owner's Garden（吊床）    │路│     🛝 Playground
+                         ANIMAL RESCUE PARK 大門
+```
+- 地塊（`PLOT` 而家喺 `src/hubShape.js`）搬去噴水池右邊，閘口面向噴水池條路；MY PETS 牌喺地塊下面、面向繁殖機條路（拎完寵物行過去就見到）。
+- Skin Shop、Sell Stall 搬去右上 Shop Street，面向噴水池；Fuse Machine（`FUSE_MACHINE`）搬去繁殖機右邊。
+- Training Zone、Magic Library、繁殖機、Owner's Garden、Playground、大門唔郁（開場動畫同教學照用）。

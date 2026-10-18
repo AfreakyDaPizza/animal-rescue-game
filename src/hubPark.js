@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { HUB } from './hubShape.js';
+import { HUB, PLOT } from './hubShape.js';
 import { GYM_PORTAL } from './labShape.js';
 import { addCollider } from './world.js';
 import { buildAnimalModel } from './animalModels.js';
@@ -163,8 +163,8 @@ function buildStatues(root) {
   const plinth = mat(0x9e9e9e);
   const plinthTop = mat(0xbdbdbd);
   const list = [
-    ['Giant Panda', 'golden', -11, 31, 2.4],
-    ['African Savanna Elephant', 'marble', 11, 31, -2.4],
+    ['Giant Panda', 'golden', -9.5, 32.8, 2.4],
+    ['African Savanna Elephant', 'marble', 9.5, 32.8, -2.4],
     ['Black Rhinoceros', 'golden', -6, 56, Math.PI],
     ['Sumatran Tiger', 'marble', 6, 56, Math.PI],
   ];
@@ -259,8 +259,9 @@ export function standUp(owner, x, z, faceAngle) {
 
 // ---------- Fuse Machine（Issue #4）：未開（FUSE_OPEN_DATE 之前）用帆布冚住 + 倒數；開咗就係發光嘅溶合機 ----
 // 3 個入料艙（後面）+ 1 個出貨艙（前面，面向噴水池）；fuseMachine.showResult(名) 播溶合動畫
-export const FUSE_MACHINE = { x: 25, z: 25 };
-export const fuseMachine = { spot: { x: 25 - 3.6, z: 25 }, showResult: null };
+// 2026-10-18 Hub 重新排位：搬咗去 Breeding Lab 右邊（同繁殖機一齊做 Machine 區），前面面向繁殖機（-x）
+export const FUSE_MACHINE = { x: 26, z: 40 };
+export const fuseMachine = { spot: { x: FUSE_MACHINE.x - 3.6, z: FUSE_MACHINE.z }, showResult: null };
 function buildComingSoon(rootScene, liveScene) {
   // 喺噴水池右邊，面向噴水池（本地 -z → 世界 -x）
   const x = 0;
@@ -546,12 +547,11 @@ function hedgeArc(root, cx, cz, r, a1, a2) {
 }
 
 // ================= 起晒成個 Hub =================
-// 排位（由上面望，-z 係生態區）：
-//   入口：左 Sell Stall、右 Skin Shop
-//   左上 Training Zone、右上 My Plot
-//   左 Magic Library ── 中間噴水池 ── 右 Coming Soon
-//   下面 Breeding Lab（5 部繁殖機）
-//   左下 Owner's Garden（吊床）、右下 Playground、最底大門
+// 排位（2026-10-18 小朋友叫成個 Hub 重新排；由上面望，-z 係生態區）：
+//   最上：左 🏃 Training Zone ── 入口（出世點）── 右 🛍️ Shop Street（Skin Shop + Sell Stall）
+//   中間：左 ✨ Magic Library ── 噴水池 ── 右 🐾 Pets Zone（地塊 + MY PETS + 地塊升級）
+//   下面：💗 Breeding Lab（5 部繁殖機 + 升級牌）+ 右邊 🧪 Fuse Machine
+//   最底：左 Owner's Garden（吊床）、右 Playground、大門
 export function buildHubPark(root, live) {
   const { cx, cz, r } = HUB;
   const updates = [];
@@ -560,20 +560,23 @@ export function buildHubPark(root, live) {
   pathStrip(root, 0, 0, 0, cz - 7, 5);
   pathRing(root, cx, cz, 6.2, 9);
   pathStrip(root, 0, cz + 7, 0, cz + r, 5);
-  pathStrip(root, -29, 10.5, 12, 10.5, 3);
-  pathStrip(root, -20, cz, -7, cz, 3.5);
-  pathStrip(root, 7, cz, 20, cz, 3.5);
-  pathStrip(root, -24, 36, 24, 36, 3);
+  pathStrip(root, -29, 10.5, 27, 10.5, 3); // 上面一條：Training Zone ── 入口 ── Shop Street
+  pathStrip(root, -20, cz, -7, cz, 3.5); // 去 Magic Library
+  pathStrip(root, 7, cz, PLOT.minX, cz, 3.5); // 去地塊閘口
+  pathStrip(root, -27, 36, 27, 36, 3); // 繁殖機 + Fuse Machine 前面
 
   // 區域地磚
   tilePad(root, -19.5, 7.5, 20, 12, 0xffe0b2, 0xffb74d); // Training Zone
-  tilePad(root, 0, 4.2, 18, 7.4, 0xeeeeee, 0xbdbdbd); // 入口廣場（兩個攤位）
+  tilePad(root, 0, 4.2, 10, 7.4, 0xeeeeee, 0xbdbdbd); // 入口廣場
+  tilePad(root, 17.3, 5.2, 18, 7.6, 0xe1f5fe, 0x4fc3f7); // Shop Street
   roundPad(root, -25, 25, 6.6, 0xd1c4e9, 0x9575cd); // Magic Library
-  roundPad(root, 25, 25, 5, 0xcfd8dc, 0x90a4ae); // Coming Soon
   tilePad(root, 0, 40, 40, 6, 0xf8bbd0, 0xf06292); // Breeding Lab
+  roundPad(root, FUSE_MACHINE.x, FUSE_MACHINE.z, 4.2, 0xcfd8dc, 0x90a4ae); // Fuse Machine
 
   // 區域牌
   zoneSign(live, -19.5, 14.6, '🏃 TRAINING ZONE', THEMES.orange);
+  zoneSign(live, 17.3, 13.2, '🛍️ SHOP STREET', THEMES.blue, 17.3, 40);
+  zoneSign(live, PLOT.maxX + 1.6, PLOT.gateZ, '🐾 PETS ZONE', THEMES.green); // 地塊後面，由噴水池望過去見到
   zoneSign(live, -20, 33, '🌴 OWNER\'S GARDEN', THEMES.green, -20, 0);
   zoneSign(live, 14, 44.8, '🛝 PLAYGROUND', THEMES.blue, 14, 0);
 

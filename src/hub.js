@@ -2,6 +2,7 @@
 // 5 部繁殖機、有圍欄嘅地塊（Plot）、動物圖鑑檯
 
 import * as THREE from 'three';
+import { PLOT } from './hubShape.js';
 import { addCollider, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
@@ -1315,7 +1316,8 @@ function formatLeft(s) {
 
 // ================= 地塊（有圍欄） =================
 
-export const PLOT = { minX: 12, maxX: 28, minZ: 3, maxZ: 18, gateZ: 10.5, gateWidth: 3 };
+// 地塊位置喺 hubShape.js（hubPark.js 都要用）
+export { PLOT };
 
 function buildPlot(realScene) {
   const scene = new THREE.Group(); // 圍欄同草地先放埋一齊，最後焊埋做幾件（畫得快啲）
@@ -1612,7 +1614,12 @@ export function createHub(scene) {
   const kiosk = library.spot;
   applyPlotSkin({ plot });
 
-  // 地塊升級牌（閘口隔籬）
+  // ---- 2026-10-18 Hub 重新排位（小朋友：rearrange everything）----
+  //   上面：左 🏃 Training Zone、中 入口、右 🛍️ Shop Street（Skin Shop + Sell Stall）
+  //   中間：左 ✨ Magic Library ── 噴水池 ── 右 🐾 Pets Zone（地塊 + MY PETS 牌 + 地塊升級牌）
+  //   下面：💗 Breeding Lab（5 部繁殖機 + 升級牌）+ 🧪 Fuse Machine
+  //   最底：Owner's Garden、Playground、大門
+  // 地塊升級牌（閘口上面）
   const plotSign = dynamicSign(2.6, 1.6);
   const plotSignGroup = signOnPosts(plotSign.mesh, 2.6, 1.6, 2.0);
   plotSignGroup.position.set(PLOT.minX - 1.5, 0, PLOT.gateZ - 4.5);
@@ -1632,17 +1639,20 @@ export function createHub(scene) {
 
   // ---- 皮膚商店攤位（間條帳篷 + 櫃枱 + 公仔模特兒）----
   // 入口前面（小朋友 2026-10-15）：右邊皮膚商店、左邊賣寵物攤位，面向中間條路
-  const shopSpot = buildSkinShop(scene, 6.5, 4.5);
-  const sellStall = buildSellStall(scene, -6.5, 4.5, Math.PI / 2);
+  // 2026-10-18：搬去右上 🛍️ Shop Street，兩個攤位排排企、面向噴水池（+z）
+  const shopSpot = buildSkinShop(scene, 12.5, 4.8, Math.PI);
+  const sellStall = buildSellStall(scene, 22, 4.8, 0);
 
   // 「MY PETS」牌：撳 E 睇晒所有寵物
   const petsBoard = makeSign([{ text: 'MY PETS', size: 0.42 }, { text: 'Press E to see all your pets', size: 0.22 }], 3, 1.5, THEMES.pink);
   const petsSign = signOnPosts(petsBoard, 3, 1.5, 1.6);
-  petsSign.position.set(8.5, 0, 16);
-  petsSign.rotation.y = -0.5;
+  // 地塊下面嘅圍欄外面、面向繁殖機條路（由繁殖機拎完寵物行過嚟就見到）
+  const PETS_BOARD = { x: (PLOT.minX + PLOT.maxX) / 2, z: PLOT.maxZ + 1.3 };
+  petsSign.position.set(PETS_BOARD.x, 0, PETS_BOARD.z);
+  petsSign.rotation.y = 0; // 面向 +z（繁殖機）
   scene.add(petsSign);
-  addCollider(8.5, 16, 0.6);
-  const petsBoardSpot = { x: 8.5, z: 16 };
+  addCollider(PETS_BOARD.x, PETS_BOARD.z, 0.6);
+  const petsBoardSpot = { x: PETS_BOARD.x, z: PETS_BOARD.z + 1.6 };
 
   const hub = { scene, stations, machines, plot, kiosk, sellSpot: sellStall.spot, animators: [library.update, sellStall.update], petsBoardSpot, plotUpgradeSpot, machineUpgradeSpot, shopSpot, moneyTimer: 0, trainTimer: 0 };
   applyMachineLevel(hub);
@@ -2167,10 +2177,10 @@ export function getTierThumbnails(kind) {
 }
 
 // ================= 皮膚商店攤位 =================
-function buildSkinShop(scene, x, z) {
+function buildSkinShop(scene, x, z, rotY = Math.PI / 2) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
-  g.rotation.y = Math.PI / 2; // 櫃枱（本地 -z）面向 -x：中間條路
+  g.rotation.y = rotY; // 櫃枱喺本地 -z；rotY = π 就面向 +z（噴水池）
   scene.add(g);
   const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
   const wood = M(0x8d6e63);
@@ -2195,5 +2205,5 @@ function buildSkinShop(scene, x, z) {
   sign.rotation.y = Math.PI;
   g.add(sign);
   addCollider(x, z, 2.2);
-  return { x: x - 2.4, z };
+  return { x: x - 2.4 * Math.sin(rotY), z: z - 2.4 * Math.cos(rotY) }; // 櫃枱前面（本地 (0, -2.4)）
 }
