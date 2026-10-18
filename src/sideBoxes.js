@@ -6,7 +6,7 @@
 import { state } from './state.js';
 import { short } from './format.js';
 import { petPic } from './animalPics.js';
-import { itemMoney, kgOf, formatKg } from './data/animals.js';
+import { itemMoney, kgOf, formatKg, sizeText, mutationList, mutationEmoji } from './data/animals.js';
 import { rarityInfo, plotMoneyMulti, MACHINE_LEVELS } from './data/balance.js';
 import { moneyPerSecond, machineStatus, formatLeft } from './hub.js';
 import { boost } from './events.js';
@@ -72,7 +72,7 @@ function renderPets(force) {
       <div class="side-list">${pets.length ? pets.map(({ p, i }) => {
         const r = rarityInfo(p.rarity);
         return `<div class="side-row">${petPic(p.name, { rarity: p.rarity })}
-          <div class="side-info"><b>${p.name}</b><small style="color:${r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}${p.mutation === 'fire' ? ' · 🔥' : p.mutation === 'eclipse' ? ' · 🌑' : ''}</small>
+          <div class="side-info"><b>${p.name}</b><small style="color:${r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${mutationList(p).length ? ` · ${mutationEmoji(p)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>
           <small>⚖️ ${formatKg(kgOf(p))} · <span class="money">$${fmt(itemMoney(p) * multi)}/s</span></small></div>
           <button data-unequip="${i}">Unequip</button></div>`;
       }).join('') : '<p class="side-empty">No pets on your Plot yet.</p>'}</div>

@@ -58,7 +58,7 @@ import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, HAMMER
 import { setGateOpen, fuseMachine, PARK_GATE } from './hubPark.js';
 import { fusePets, isFuseOpen } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
-import { itemMoney, formatKg } from './data/animals.js';
+import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText } from './data/animals.js';
 import { inDiscord, startDiscord } from './discordActivity.js';
 import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText, setGymPresent } from './gym.js';
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
@@ -547,8 +547,8 @@ const hubActions = {
     state.tokens += tokens; // 每隻新寵物都有 Skin Tokens（越稀有越多）
     setTimeout(() => popup(`🎟️ +${tokens} Skin Tokens`), 1200);
     quest('pets', pets.length);
-    const giant = pets.find((p) => p.sizeMul);
-    const fire = pets.find((p) => p.mutation === 'fire');
+    const giant = pets.find((p) => p.sizeMul > 1);
+    const fire = pets.find((p) => hasMutation(p, 'fire'));
     if (fire) announce(`🔥🔥 FIRE MUTATION! Your ${fire.name} is ON FIRE: x${FIRE_MONEY} money! 🐉`);
     else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
     play(giant || fire ? 'tierUp' : 'ding');
@@ -900,20 +900,29 @@ setAdminActions({
     camera.rotation.set(0, Math.PI, 0, 'YXZ');
     popup('💪 Welcome to the Ranger Gym!');
   },
+  // 🚀 一次過開晒所有新嘢（Fuse、魔法王國、Gym）；未打 Boss 就好似 gotoGym 咁跳過實驗室（會重新載入）
+  unlockAll() {
+    state.bigButton = true;
+    state.gymEarly = true;
+    if (!gym.present) return this.gotoGym();
+    save();
+    this.unlockEarly();
+  },
   gymEarly(on) {
     state.gymEarly = on;
     save();
     popup(on ? '💪 The Ranger Gym is open early!' : '💪 The Gym is back to its opening date.');
   },
-  givePet({ name, rarity, sizeMul, mutation }) {
+  givePet({ name, rarity, sizeMul, mutation, flipped }) {
     const a = findAnimal(name);
-    const kg = Math.round(randomKg(a) * (sizeMul || 1) * 10) / 10;
-    const pet = { name: a.name, biome: a.biome, kg, rarity: a.rarity || rarity, onPlot: false, ...(sizeMul ? { sizeMul } : {}), ...(mutation ? { mutation } : {}), ...(a.fuse ? { fuse: true } : {}) };
+    if (sizeMul === 1) sizeMul = null;
+    const kg = Math.max(0.1, Math.round(randomKg(a) * (sizeMul || 1) * 10) / 10);
+    const pet = { name: a.name, biome: a.biome, kg, rarity: a.rarity || rarity, onPlot: false, ...(sizeMul ? { sizeMul } : {}), ...(mutation ? { mutation } : {}), ...(flipped ? { flipped: true } : {}), ...(a.fuse ? { fuse: true } : {}) };
     state.pets.push(pet);
     if (!a.fuse && !state.indexFound.includes(a.name)) state.indexFound.push(a.name);
     save();
     play('rescue');
-    popup(`🎁 ${sizeMul ? 'GIANT ' : ''}${pet.rarity} ${a.name} is in your backpack! (${formatKg(kg)})`);
+    popup(`🎁 ${flipped ? '🙃 ' : ''}${sizeText(sizeMul) ? `${sizeText(sizeMul)} ` : ''}${mutationEmoji(pet)}${mutationEmoji(pet) ? ' ' : ''}${pet.rarity} ${a.name} is in your backpack! (${formatKg(kg)})`);
   },
   allIndex() {
     for (const a of ANIMALS) if (!state.indexFound.includes(a.name)) state.indexFound.push(a.name);
@@ -1116,12 +1125,12 @@ function startEclipseIntro() {
 function eclipseTarget() {
   const pos = camera.position;
   const roll = Math.random();
-  const plot = hub.plot.pets.filter((p) => !p.pet.mutation);
+  const plot = hub.plot.pets.filter((p) => !hasMutation(p.pet, 'eclipse'));
   if (roll < 0.45 && plot.length) {
     const p = plot[Math.floor(Math.random() * plot.length)].group.position;
     return { pos: p.clone(), groundY: 0 };
   }
-  const wild = rescue.wild.filter((w) => !w.mutation);
+  const wild = rescue.wild.filter((w) => !hasMutation(w, 'eclipse'));
   if (roll < 0.7 && wild.length) {
     const w = wild[Math.floor(Math.random() * wild.length)];
     return { pos: w.group.position.clone(), groundY: groundAt(w.group.position.x, w.group.position.z, 999) };
@@ -1135,8 +1144,8 @@ function eclipseStrike(at) {
   play('hit');
   const near = (p) => Math.hypot(p.x - at.x, p.z - at.z) < STRIKE_RADIUS + 0.6;
   // 地塊寵物：70% 機會變 🌑 ECLIPSE（Fire 寵物唔會變）
-  const hit = hub.plot.pets.filter((p) => !p.pet.mutation && near(p.group.position) && Math.random() < 0.7).map((p) => p.pet);
-  for (const pet of hit) pet.mutation = 'eclipse';
+  const hit = hub.plot.pets.filter((p) => !hasMutation(p.pet, 'eclipse') && near(p.group.position) && Math.random() < 0.7).map((p) => p.pet);
+  for (const pet of hit) pet.mutation = addMutation(pet, 'eclipse'); // Fire 寵物都可以疊埋 Eclipse
   if (hit.length) {
     refreshPlotPets(hub);
     announce(`🌑 ECLIPSE MUTATION! Your ${hit.map((p) => p.name).join(' and ')} earn${hit.length > 1 ? '' : 's'} x6 money!`);
@@ -1145,8 +1154,8 @@ function eclipseStrike(at) {
   }
   // 野生動物：救返嚟、繁殖出嚟都係 Eclipse
   for (const w of rescue.wild) {
-    if (w.mutation || !near(w.group.position)) continue;
-    w.mutation = 'eclipse';
+    if (hasMutation(w, 'eclipse') || !near(w.group.position)) continue;
+    w.mutation = addMutation(w, 'eclipse');
     addFireAura(w.model, 'eclipse');
     popup(`🌑 The wild ${w.animal.name} got the ECLIPSE mutation! Rescue it!`);
   }
@@ -1550,7 +1559,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (batNow) popup('🏏 You got a BAT! Get close and press E or click to hit him!');
   }
   const sel = selectedHotbarItem();
-  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null, sel?.item.mutation ?? null);
+  setHolding(rescue, sel?.kind === 'tool' ? null : sel?.item.name ?? null, sel?.item.mutation ?? null, !!sel?.item.flipped);
   // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
   const showTool = sel?.kind === 'tool' && !rescue.carrying;
   const bat = !!sel?.item.bat;

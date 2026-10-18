@@ -16,8 +16,8 @@ import { boost } from './events.js';
 import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
-import { buildAnimalModel } from './animalModels.js';
-import { kgOf, formatKg, itemMoney, kgScale, findAnimal } from './data/animals.js';
+import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
+import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation } from './data/animals.js';
 import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
 
 const INTERACT_DISTANCE = 2.8;
@@ -1518,20 +1518,26 @@ function addPetToPlot(plot, scene, pet) {
   // 用返真實大細（之前縮到最多 2.4 米，大象變到好細），再跟重量放大縮細；
   // 只有超大嘅（例如藍鯨）先縮到地塊放得落
   applyPetSkin(model, state.petSkin); // 寵物皮膚
-  if (pet.mutation === 'fire') addFireAura(model); // 🔥 Fire 變異：一圈火
-  if (pet.mutation === 'eclipse') addFireAura(model, 'eclipse'); // 🌑 Eclipse 變異：黑紫火 + 白光環
   const maxDim = Math.max(size.x, size.y, size.z);
   const giant = pet.sizeMul || 1; // La Combination 變大嘅寵物
   // 普通寵物最大 7 米；巨型寵物（GIANT／BIG PET FRENZY）可以大到 60 米（同野生動物一樣）
   model.scale.multiplyScalar(Math.min(kgScale(pet) * giant * Math.min(1, 7 / maxDim), (giant > 1 ? 60 : 20) / maxDim));
   if (model.userData.move === 'fly') model.userData.flying = true;
   const g = new THREE.Group();
-  g.add(model);
+  // 🙃 倒轉：包多層；火圈加喺外層，火焰照樣向上
+  let body = model;
+  if (pet.flipped) {
+    body = new THREE.Group();
+    body.add(flipUpsideDown(model));
+    body.userData.noFireAura = model.userData.noFireAura; // Royal Skywhale 唔要火圈
+  }
+  for (const m of mutationList(pet)) addFireAura(body, m); // 🔥 Fire：一圈火；🌑 Eclipse：黑紫火 + 白光環（可以兩樣都有）
+  g.add(body);
   const kg = kgOf(pet);
   const rarity = rarityInfo(pet.rarity);
   const label = makeLabel([
     { text: pet.name },
-    { text: `${pet.mutation === 'fire' ? '🔥 FIRE · ' : pet.mutation === 'eclipse' ? '🌑 ECLIPSE · ' : ''}${pet.sizeMul ? `${rarity.name} · GIANT x${pet.sizeMul}` : rarity.name}`, color: pet.mutation === 'fire' ? '#ff6d00' : pet.mutation === 'eclipse' ? '#ea80fc' : pet.sizeMul ? '#ff9100' : rarity.color },
+    { text: `${pet.flipped ? '🙃 ' : ''}${mutationList(pet).length ? `${mutationText(pet)} · ` : ''}${sizeText(pet.sizeMul) ? `${rarity.name} · ${sizeText(pet.sizeMul)}` : rarity.name}`, color: mutationList(pet).length ? mutationInfo(mutationList(pet)[0]).color : pet.sizeMul ? '#ff9100' : rarity.color },
     { text: `${formatKg(kg)} · $${fmt(itemMoney(pet))}/s`, color: '#76ff03' },
   ], 0.8);
   label.position.y = new THREE.Box3().setFromObject(model).max.y + 0.7;
@@ -2000,7 +2006,7 @@ export function fillMachine(machine, item) {
   state.borrowed.splice(state.borrowed.indexOf(item), 1);
   if (second) state.borrowed.splice(state.borrowed.indexOf(second), 1);
   const total = Math.max(reproduceSeconds(item), second ? reproduceSeconds(second) : 0);
-  const pick = (a) => ({ name: a.name, biome: a.biome, kg: a.kg, rarity: a.rarity, sizeMul: a.sizeMul });
+  const pick = (a) => ({ name: a.name, biome: a.biome, kg: a.kg, rarity: a.rarity, sizeMul: a.sizeMul, ...(a.mutation ? { mutation: a.mutation } : {}), ...(a.flipped ? { flipped: true } : {}) }); // 變異、倒轉都帶入機
   state.machines[machine.index] = { ...pick(item), second: second ? pick(second) : null, total, endsAt: Date.now() + total * 1000 };
   return second;
 }
@@ -2014,7 +2020,8 @@ export function collectPet(machine) {
     const pet = { name: a.name, biome: a.biome, kg: a.kg, rarity: a.rarity, onPlot: false };
     if (a.sizeMul) pet.sizeMul = a.sizeMul; // 巨型入、巨型出（之前會變返細）
     if (a.mutation) pet.mutation = a.mutation;
-    if (level.fireChance && Math.random() < level.fireChance) pet.mutation = 'fire'; // Dragon's Lair：🔥 Fire 變異
+    if (a.flipped) pet.flipped = true;
+    if (level.fireChance && Math.random() < level.fireChance) pet.mutation = addMutation(pet, 'fire'); // Dragon's Lair：🔥 Fire 變異（疊落去）
     if (level.giantChance && Math.random() < level.giantChance) {
       const extra = Math.max(1.5, Math.round((1 + Math.random() * 9) * 10) / 10);
       pet.sizeMul = Math.round((pet.sizeMul || 1) * extra * 10) / 10;

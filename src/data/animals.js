@@ -183,8 +183,30 @@ export function kgOf(item) {
 
 export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
 
+// ---- 變異（可以疊：🔥 Fire + 🌑 Eclipse，小朋友 2026-10-18）----
+// 存法：item.mutation 係字串，'fire'、'eclipse' 或者 'fire+eclipse'（舊存檔照用得）
+export const MUTATIONS = ['fire', 'eclipse'];
+const MUTATION_INFO = {
+  fire: { emoji: '🔥', name: 'FIRE', color: '#ff6d00' },
+  eclipse: { emoji: '🌑', name: 'ECLIPSE', color: '#ea80fc' },
+};
+export const mutationInfo = (m) => MUTATION_INFO[m];
+export const mutationList = (x) => {
+  const m = typeof x === 'string' ? x : x?.mutation;
+  return m ? m.split('+').filter((k) => MUTATION_INFO[k]) : [];
+};
+export const hasMutation = (x, m) => mutationList(x).includes(m);
+export const joinMutations = (list) => MUTATIONS.filter((m) => list.includes(m)).join('+') || null; // 固定次序：fire+eclipse
+export const addMutation = (x, m) => joinMutations([...mutationList(x), m]);
+export const mutationMoneyMulti = (x) => mutationList(x).reduce((k, m) => k * (m === 'fire' ? FIRE_MONEY : m === 'eclipse' ? ECLIPSE_MONEY : 1), 1);
+export const mutationEmoji = (x) => mutationList(x).map((m) => MUTATION_INFO[m].emoji).join('');
+export const mutationText = (x) => mutationList(x).map((m) => `${MUTATION_INFO[m].emoji} ${MUTATION_INFO[m].name}`).join(' ');
+
+// ---- 大細（sizeMul：0.25–10；冇 = 1）----
+export const sizeText = (sizeMul) => (!sizeMul || sizeMul === 1 ? '' : sizeMul < 1 ? `TINY x${sizeMul}` : `GIANT x${sizeMul}`);
+
 // 一隻救返嚟嘅動物／寵物每秒賺幾多（重量 × 生態區 × 稀有度）
-export const itemMoney = (item) => (item.money ?? petMoney(kgOf(item), item.biome, item.rarity)) * (item.mutation === 'fire' ? FIRE_MONEY : item.mutation === 'eclipse' ? ECLIPSE_MONEY : 1); // Fuse 寵物有自己定好嘅 money；🔥 Fire ×4
+export const itemMoney = (item) => (item.money ?? petMoney(kgOf(item), item.biome, item.rarity)) * mutationMoneyMulti(item); // Fuse 寵物有自己定好嘅 money；🔥 Fire ×4、🌑 Eclipse ×6（可以疊）
 
 // 越重越大隻：同一種動物，最輕嗰隻 ×0.8，最重嗰隻 ×1.25（小朋友：大細要跟重量）
 export function kgScale(item) {

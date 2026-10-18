@@ -87,7 +87,7 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
   // 頭頂：名 + 重量 + 每秒賺幾多錢（越重、越遠嘅生態區越多）
   const label = makeLabel([
     { text: animal.name },
-    { text: `${special ? '★ ' : ''}${rarity}${special ? ' ★' : ''}${sizeMul ? ` · 🔥 x${sizeMul}` : ''}`, color: info.color },
+    { text: `${special ? '★ ' : ''}${rarity}${special ? ' ★' : ''}${sizeMul && sizeMul !== 1 ? ` · 🔥 x${sizeMul}` : ''}`, color: info.color },
     { text: `${formatKg(kg)} · $${short(petMoney(kg, biome, rarity))}/s`, color: '#76ff03' },
   ]);
   label.position.y = model.userData.height * sizeK + 0.8;
@@ -128,12 +128,17 @@ export function nearestAnimal(rescue) {
 }
 
 // 一個縮細咗、拎喺手（畫面右下角）嘅模型
-function handModel(animal) {
+function handModel(animal, flipped = false) {
   const model = buildAnimalModel(animal);
   const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
   const realMax = Math.max(size.x, size.y, size.z); // 真實大細（頭頂 show 寵物要用）
   model.scale.multiplyScalar(0.4 / realMax);
   model.rotation.y = Math.PI * 0.8; // 第一身：側身對住玩家
+  if (flipped) {
+    // 🙃 倒轉：rotation.z 反轉（thirdPerson 只改 rotation.y），抬返上去
+    model.rotation.z = Math.PI;
+    model.position.y = size.y * (0.4 / realMax);
+  }
   model.traverse((m) => (m.castShadow = false));
   const wrapper = new THREE.Group(); // 外面包多層：外層喺手度搖，入面隻動物自己郁
   wrapper.position.set(0.5, -0.5, -0.95);
@@ -184,14 +189,14 @@ export function deliver(rescue) {
 }
 
 // 快捷欄揀咗嘅嘢拎喺手（抱住救援動物時就收埋）
-export function setHolding(rescue, name, mutation = null) {
+export function setHolding(rescue, name, mutation = null, flipped = false) {
   const show = rescue.carrying ? null : name;
-  const key = show && mutation ? `${show}#${mutation}` : show; // 🔥 Fire／🌑 Eclipse 寵物要換過有光環嘅模型
+  const key = show && (mutation || flipped) ? `${show}#${mutation || ''}${flipped ? '#flip' : ''}` : show; // 🔥 Fire／🌑 Eclipse／🙃 倒轉寵物要換過模型
   if ((rescue.holding?.key ?? rescue.holding?.name ?? null) === key) return;
   if (rescue.holding) rescue.holding.model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.holding = null;
   if (show) {
-    const model = handModel(findAnimal(show));
+    const model = handModel(findAnimal(show), flipped);
     applyPetSkin(model, state.petSkin); // 寵物皮膚
     if (mutation) addFireAura(model, mutation);
     rescue.camera.add(model);

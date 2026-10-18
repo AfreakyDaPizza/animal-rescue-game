@@ -3,7 +3,7 @@
 // 第一次改嘢之前會備份真存檔（SAVE_KEY + '-backup'），可以一撳還原
 import { state } from './state.js';
 import { short } from './format.js';
-import { ANIMALS, FUSE_PETS } from './data/animals.js';
+import { ANIMALS, FUSE_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
 import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
@@ -14,7 +14,7 @@ const fmt = short; // K／M／B／T（src/format.js）
 let actions = null;
 let tab = 'future';
 let confirm = null; // 撳兩下先做：例如 'index'、'max'
-const pick = { name: ANIMALS[0].name, rarity: 'Mythic', giant: false, mutation: '' };
+const pick = { name: ANIMALS[0].name, rarity: 'Mythic', size: 1, mutations: [], flipped: false };
 let spawnBiome = 0;
 let spawnRarity = 'Mythic';
 
@@ -43,15 +43,21 @@ function confirmButton(id, label, extra = '') {
     : `<button data-admin="ask" data-what="${id}" ${extra}>${label}</button>`;
 }
 
+// 🔮 所有有日期嘅新嘢：加一個新更新（例如 Halloween）就喺度加一行，再喺 main.js 嘅 unlockAll 開埋佢
+// open：到咗日期未；early：提早開咗未
+const FUTURE = [
+  { emoji: '🧪', name: 'Fuse Machine', date: FUSE_OPEN_DATE, open: (s) => s.fuseDate, early: () => state.bigButton },
+  { emoji: '👑', name: 'Enchanted Kingdom', date: NEW_BIOME_DATE, open: (s) => s.kingdomDate, early: () => state.bigButton },
+  { emoji: '💪', name: 'Ranger Gym', date: GYM_OPEN_DATE, open: (s) => s.gymDate, early: () => state.gymEarly && actions.status().gymPresent },
+];
+
 function futureHtml() {
   const s = actions.status();
-  const row = (emoji, name, iso, open, early) => `<tr><td>${emoji} <b>${name}</b></td><td>${dateText(iso)}</td><td>${open ? '✅ Open' : early ? '🔓 Unlocked early' : '🔒 Coming soon'}</td></tr>`;
+  const row = (f) => `<tr><td>${f.emoji} <b>${f.name}</b></td><td>${dateText(f.date)}</td><td>${f.open(s) ? '✅ Open' : f.early() ? '🔓 Unlocked early' : '🔒 Coming soon'}</td></tr>`;
+  const allDone = FUTURE.every((f) => f.open(s) || f.early());
   return `<p class="index-summary">See what's coming and unlock it <b>early</b>.</p>
-    <table>
-      ${row('🧪', 'Fuse Machine', FUSE_OPEN_DATE, s.fuseDate, state.bigButton)}
-      ${row('👑', 'Enchanted Kingdom', NEW_BIOME_DATE, s.kingdomDate, state.bigButton)}
-      ${row('💪', 'Ranger Gym', GYM_OPEN_DATE, s.gymDate, state.gymEarly)}
-    </table>
+    <table>${FUTURE.map(row).join('')}</table>
+    <div class="pet-actions">${allDone ? '<button class="grey" data-admin="noop">✔ Everything is unlocked!</button>' : s.gymPresent ? '<button data-admin="unlockAll" class="sell big-unlock">🚀 Unlock ALL future updates</button>' : confirmButton('unlockAll', '🚀 Unlock ALL future updates (skips the Lab boss!)', 'class="big-unlock"')}</div>
     <div class="pet-actions">
       <button data-admin="unlock" ${state.bigButton ? 'class="grey"' : ''}>${state.bigButton ? '✔ Fuse + Kingdom unlocked' : '🔓 Unlock Fuse Machine + Enchanted Kingdom'}</button>
       <button data-admin="gym" class="${state.gymEarly ? 'grey' : ''}">${state.gymEarly ? '✔ Gym open early (tap to close)' : '💪 Open the Gym early'}</button>
@@ -60,6 +66,14 @@ function futureHtml() {
     ${s.gymPresent ? '' : '<p class="hint">The Gym is where the Lab is. Going there now skips the Mutated Scientist Poacher fight, and the Lab will be gone.</p>'}`;
 }
 
+const findRarity = () => [...ANIMALS, ...FUSE_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
+// 預覽：例如「🙃 GIANT x10 🔥🌑 Mythic Celestial Sunlion」
+const previewText = () => {
+  const muts = MUTATIONS.filter((m) => pick.mutations.includes(m)).map((m) => mutationInfo(m).emoji).join('');
+  return [pick.flipped ? '🙃' : '', sizeText(pick.size), muts, findRarity(), pick.name].filter(Boolean).join(' ');
+};
+const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
+
 function petsHtml() {
   const all = [...ANIMALS, ...FUSE_PETS];
   const opt = (v, cur, label = v) => `<button data-admin="${v === cur ? 'noop' : 'set'}" data-k="__K__" data-v="${v}" class="${v === cur ? '' : 'grey'}">${label}</button>`;
@@ -67,8 +81,14 @@ function petsHtml() {
   return `<p class="index-summary">Pick any pet and add it to your backpack.</p>
     <p><b>Picked:</b> ${pick.name}</p>
     <div class="pet-actions">${choose('rarity', RARITIES.map((r) => r.name), pick.rarity)}</div>
-    <div class="pet-actions">${choose('giant', ['0', '1'], pick.giant ? '1' : '0', ['Normal size', '🦣 GIANT x3'])}</div>
-    <div class="pet-actions">${choose('mutation', ['', 'fire', 'eclipse'], pick.mutation, ['No mutation', '🔥 Fire', '🌑 Eclipse'])}</div>
+    <div class="pet-actions admin-size"><b>📏 Size</b>
+      <input type="range" id="admin-size" min="0.25" max="10" step="0.25" value="${pick.size}">
+      <span id="admin-size-num">x${pick.size}</span>
+      ${[0.5, 1, 3, 10].map((v) => `<button data-admin="size" data-v="${v}" class="${v === pick.size ? '' : 'grey'}">x${v}</button>`).join('')}</div>
+    <div class="pet-actions"><b>✨ Mutations</b> ${MUTATIONS.map((m) => `<button data-admin="mut" data-v="${m}" class="${pick.mutations.includes(m) ? '' : 'grey'}">${pick.mutations.includes(m) ? '✔ ' : ''}${mutationInfo(m).emoji} ${niceName(m)}</button>`).join('')}
+      <small class="hint">Tap both to stack them!</small></div>
+    <div class="pet-actions"><button data-admin="flip" class="${pick.flipped ? '' : 'grey'}">${pick.flipped ? '✔ 🙃 Upside down' : '🙃 Upside down'}</button></div>
+    <p class="admin-preview">You'll get: <b id="admin-preview">${previewText()}</b></p>
     <div class="pet-actions"><button data-admin="give" class="sell">🎁 Give me this pet</button></div>
     <div class="cards">${all.map((a) => `<div class="card-animal ${a.name === pick.name ? 'equipped' : ''}">${petPic(a.name, { rarity: a.rarity || pick.rarity })}<b>${a.name}</b>
       <button data-admin="pick" data-name="${a.name}" class="${a.name === pick.name ? '' : 'grey'}">${a.name === pick.name ? '✔ Picked' : 'Pick'}</button></div>`).join('')}</div>`;
@@ -129,11 +149,12 @@ $('panel-body').addEventListener('click', (e) => {
     case 'gym': actions.backup(); actions.gymEarly(!state.gymEarly); break;
     case 'gotoGym': actions.backup(); actions.gotoGym(); return; // 可能會重新載入
     case 'pick': pick.name = d.name; break;
-    case 'set':
-      if (d.k === 'giant') pick.giant = d.v === '1';
-      else pick[d.k] = d.v;
-      break;
-    case 'give': actions.backup(); actions.givePet({ name: pick.name, rarity: pick.rarity, sizeMul: pick.giant ? 3 : null, mutation: pick.mutation || null }); break;
+    case 'set': pick[d.k] = d.v; break;
+    case 'size': pick.size = Number(d.v); break;
+    case 'mut': pick.mutations = pick.mutations.includes(d.v) ? pick.mutations.filter((m) => m !== d.v) : [...pick.mutations, d.v]; break;
+    case 'flip': pick.flipped = !pick.flipped; break;
+    case 'give': actions.backup(); actions.givePet({ name: pick.name, rarity: pick.rarity, sizeMul: pick.size === 1 ? null : pick.size, mutation: joinMutations(pick.mutations), flipped: pick.flipped }); break;
+    case 'unlockAll': actions.backup(); actions.unlockAll(); return; // 可能會重新載入
     case 'index': actions.backup(); actions.allIndex(); break;
     case 'max': actions.backup(); actions.maxStuff(); return; // 重新載入
     case 'rich': actions.backup(); actions.rich(); break;
@@ -145,4 +166,12 @@ $('panel-body').addEventListener('click', (e) => {
     case 'restore': actions.restore(); return;
   }
   rerender();
+});
+
+// 大細拉桿：拉嘅時候只更新數字同預覽（唔重畫，唔係會拉唔到）
+$('panel-body').addEventListener('input', (e) => {
+  if (e.target.id !== 'admin-size' || !isOpen()) return;
+  pick.size = Number(e.target.value);
+  $('admin-size-num').textContent = `x${pick.size}`;
+  $('admin-preview').textContent = previewText();
 });

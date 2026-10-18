@@ -472,6 +472,11 @@ body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-t
 /* 🔐 Secret Ranger Control Panel */
 .admin-tabs { flex-wrap: wrap; }
 .admin-tabs button { padding: 6px 10px; font-size: 14px; }
+.admin-size { align-items: center; }
+.admin-size input[type="range"] { flex: 1 1 160px; min-width: 120px; accent-color: #ffb300; }
+.admin-size #admin-size-num { min-width: 3.5em; font-weight: 800; }
+.admin-preview { margin: 6px 0; font-size: 16px; }
+.big-unlock { font-size: 17px; padding: 10px 18px; }
 
 /* ===== 小朋友 2026-10-18 新 UI ===== */
 :root { --stats-bottom: 12px; }

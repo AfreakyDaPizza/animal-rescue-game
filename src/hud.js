@@ -7,8 +7,8 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal } from './data/animals.js';
-import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS } from './data/balance.js';
+import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, sizeText } from './data/animals.js';
+import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
@@ -18,6 +18,8 @@ import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGE
 
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
+// 變異標籤（可以疊：🔥 FIRE x4 + 🌑 ECLIPSE x6）
+const mutationTags = (p) => mutationList(p).map((m) => (m === 'fire' ? `<small class="fire-tag">🔥 FIRE x${FIRE_MONEY}</small>` : `<small class="fire-tag eclipse-tag">🌑 ECLIPSE x${ECLIPSE_MONEY}</small>`)).join('');
 
 // 畫面中間下面嘅提示（例如「[E] Borrow Giant Panda」），null 就收埋
 export function setPrompt(html) {
@@ -190,7 +192,7 @@ function renderHotbar() {
     : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
     : it
-    ? `${it.item.mutation === 'fire' ? '🔥 FIRE ' : it.item.mutation === 'eclipse' ? '🌑 ECLIPSE ' : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
+    ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
     : items.length ? '' : 'Rescued animals and pets go here';
 }
 
@@ -280,7 +282,7 @@ function petsHtml() {
     const r = rarityInfo(p.rarity);
     return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
       ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
-      <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : p.mutation === 'eclipse' ? '<small class="fire-tag eclipse-tag">🌑 ECLIPSE x6</small>' : ''}
+      <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>${mutationTags(p)}
       <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.where || (p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack')}</p>${buttons}</div>`;
   };
   // 賺得最多排最前
@@ -313,7 +315,7 @@ function sellHtml() {
       const r = rarityInfo(p.rarity);
       return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
         ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
-        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : p.mutation === 'eclipse' ? '<small class="fire-tag eclipse-tag">🌑 ECLIPSE x6</small>' : ''}
+        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>${mutationTags(p)}
         <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="sell" data-i="${i}" class="sell">${confirmSell === i ? 'Sure? Sell!' : `Sell $${fmt(sellPrice(p))}`}</button></div></div>`;
     }).join('')}</div>`;
@@ -344,7 +346,7 @@ function fuseHtml() {
       const on = fusePicked.has(p);
       return `<div class="card-animal ${on ? 'equipped' : ''}" style="border-color:${r.color}">
         ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
-        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${p.sizeMul ? ` · GIANT x${p.sizeMul}` : ''}</small>${p.mutation === 'fire' ? '<small class="fire-tag">🔥 FIRE x4</small>' : p.mutation === 'eclipse' ? '<small class="fire-tag eclipse-tag">🌑 ECLIPSE x6</small>' : ''}
+        <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>${mutationTags(p)}
         <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="fuse-pick" data-i="${i}" ${!on && picked.length >= 3 ? 'disabled' : ''}>${on ? '✔ Picked' : 'Pick'}</button></div></div>`;
     }).join('')}</div>`;

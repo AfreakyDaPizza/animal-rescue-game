@@ -12,7 +12,9 @@ const flameGeo = new THREE.ConeGeometry(0.22, 0.8, 6);
 const auras = new Set();
 
 export function addFireAura(model, kind = 'fire') {
-  if (model.userData.fireAura) return;
+  if (kind && kind.includes('+')) return kind.split('+').forEach((k) => addFireAura(model, k)); // 疊咗幾種變異：每種一圈
+  model.userData.fireAuras ??= {};
+  if (model.userData.fireAuras[kind]) return;
   if (model.userData.noFireAura || model.userData.inner?.userData.noFireAura) return; // Royal Skywhale：小朋友唔要佢身邊有圈火
   const eclipse = kind === 'eclipse';
   model.updateMatrixWorld(true);
@@ -23,7 +25,7 @@ export function addFireAura(model, kind = 'fire') {
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   const g = new THREE.Group();
-  const r = Math.max(size.x, size.z) * 0.55 + 0.15;
+  const r = Math.max(size.x, size.z) * 0.55 + 0.15; // 第二圈變異：個框已經包埋第一圈火，所以自然大啲
   const s = Math.max(0.6, Math.max(size.x, size.y, size.z) / 2);
   const flames = [];
   for (let i = 0; i < 10; i++) {
@@ -52,6 +54,7 @@ export function addFireAura(model, kind = 'fire') {
   g.add(embers);
   model.add(g);
   model.userData.fireAura = g;
+  model.userData.fireAuras[kind] = g;
   auras.add({ g, flames, pos, geo, r, s, center, minY: box.min.y, height: size.y, corona });
 }
 

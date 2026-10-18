@@ -927,3 +927,16 @@ export function buildAnimalModel(animal) {
   g.userData.move ??= 'walk';
   return g;
 }
+
+// 🙃 倒轉寵物（控制台「Upside down」，小朋友 2026-10-18）：包多層，打橫轉 180°（頭照樣向前），再抬返上去企喺地面
+// 回傳外層 group；入面隻動物照樣郁（animate 照用原本個 model）
+export function flipUpsideDown(model) {
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const wrap = new THREE.Group();
+  wrap.add(model);
+  wrap.rotation.z = Math.PI;
+  wrap.position.y = box.isEmpty() ? 0 : box.max.y + box.min.y;
+  wrap.userData.flipOf = model;
+  return wrap;
+}
