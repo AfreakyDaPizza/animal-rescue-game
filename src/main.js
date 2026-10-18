@@ -6,6 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { buildStatueButton, pressStatueButton, updateStatueButton, nearStatueButton } from './statueButton.js'; // 🦏 犀牛像後面嘅掣
 import { createCrazyButton, crazyInteraction, updateCrazy, refillCrazy, pressCrazy } from './crazyButton.js'; // 🤪 秘密沙灘嘅瘋狂寵物掣
 import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
@@ -101,6 +102,7 @@ scene.add(stars);
 
 const updateWorld = buildWorld(scene);
 const crazy = createCrazyButton(scene); // 🤪 Crazy Pet Frenzy 掣（秘密沙灘）
+const statueBtn = buildStatueButton(scene); // 🦏 犀牛像後面嘅掣
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
 labStatus.gone = !!state.labBossDefeated; // 舊存檔：打贏咗 Boss = 實驗室已經爆咗
@@ -736,6 +738,13 @@ function currentInteraction() {
     if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
     if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
   }
+  // 🦏 犀牛像後面個掣：Speed 夠最後生態區、錢夠升晒級，但 IQ 變 0
+  if (nearStatueButton(pos)) return { prompt: '<kbd>E</kbd> Press the button behind the rhino 🦏 (⚠️ your IQ becomes 0!)', action: () => {
+    const { money, speed } = pressStatueButton(statueBtn);
+    save();
+    play('magic');
+    announce(`🦏 WHOOSH! +$${short(money)} and ${short(speed)} Speed... but your IQ is now 0! 🧠❌`);
+  } };
   // 💪 Gym 未開門
   if (gym.present && !gym.open && nearGymDoor(pos.x, pos.z)) {
     return { prompt: `🚧 The GYM opens on ${gymOpenDateText()}! (in ${gymCountdown()})` };
@@ -1417,6 +1426,7 @@ renderer.setAnimationLoop((timestamp) => {
   }
   beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
   if (!frozen) updateBeach(dt, time);
+  updateStatueButton(statueBtn, dt);
   if (!frozen) updateCrazy(crazy, dt, rescue, () => rescue.wild.forEach((w) => (w.crazy = false))); // 完咗：唔再補；剩低嗰啲留到下次入夜
   updateEclipse(eclipse, frozen ? 0 : dt, time, { active: boost.eclipse, playing: !isPaused(), camera, pickTarget: eclipseTarget, onStrike: eclipseStrike, onWarn: () => play('alarm') });
 
