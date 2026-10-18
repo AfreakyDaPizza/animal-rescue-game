@@ -3,7 +3,7 @@
 // 全部面向 -z。每個回傳 Group：userData.animate(time, moving)、userData.height、userData.move
 
 import * as THREE from 'three';
-import { box, pivot, cuteEyes, spike, BLACK, WHITE } from './modelKit.js';
+import { box, pivot, cuteEyes, spike, ball, slab, material, BLACK, WHITE } from './modelKit.js';
 import { beast, swimmer, bird, sideEyes } from './animals20.js';
 
 const PI = Math.PI;
@@ -133,39 +133,50 @@ function caribou() {
 }
 
 function walrus() {
-  const skin = 0xb0775a;
-  const pink = 0xc98f74;
-  const dark = 0x8d5e48;
+  // 海象（2026-10-18 重做）：胖嘟嘟順滑身、大鬚墊 + 硬鬚、兩條又長又粗嘅白象牙、粗粗嘅前鰭、後鰭
+  const skin = 0xb27a5c;
+  const pink = 0xcf9a7e;
+  const dark = 0x8a5a43;
   const g = new THREE.Group();
   const root = pivot(g);
-  // 前身好大（似一個大梨）
-  box(root, 1.5, 1.15, 1.5, skin, 0, 0.7, -0.25, 0.45);
-  box(root, 1.3, 0.35, 1.3, pink, 0, 0.18, -0.25, 0.45); // 肚
-  for (let i = 0; i < 4; i++) box(root, 1.52, 0.05, 0.08, dark, 0, 0.5 + i * 0.2, 0.2 - i * 0.05, 0.3); // 皺紋
-  const back = pivot(root, 0, 0.55, 0.45);
-  box(back, 1.18, 0.86, 1.15, skin, 0, -0.08, 0.45, 0.45);
-  box(back, 1.0, 0.25, 1.0, pink, 0, -0.42, 0.45, 0.45);
-  const tail = pivot(back, 0, -0.3, 1.05);
+  ball(root, 0.82, 0.7, 0.92, skin, 0, 0.72, -0.25); // 前身（好大）
+  ball(root, 0.74, 0.32, 0.82, pink, 0, 0.3, -0.25); // 肚
+  for (let i = 0; i < 3; i++) ball(root, 0.62 - i * 0.04, 0.06, 0.2, dark, 0, 1.15 - i * 0.18, -0.85 + i * 0.05).rotation.x = 0.9; // 頸嘅皺摺
+  const back = pivot(root, 0, 0.55, 0.35);
+  ball(back, 0.64, 0.48, 0.75, skin, 0, -0.08, 0.45);
+  ball(back, 0.56, 0.24, 0.62, pink, 0, -0.32, 0.45);
+  const tail = pivot(back, 0, -0.32, 1.1);
   for (const s of [-1, 1]) {
-    const f = box(tail, 0.42, 0.08, 0.6, dark, s * 0.25, -0.12, 0.22, 0.4);
-    f.rotation.y = s * 0.3;
+    slab(tail, [[0, 0.1], [0.22, 0.04], [0.4, -0.3], [0.3, -0.42], [0.08, -0.36], [-0.05, -0.15]], 0.07, dark, { plane: 'flat', key: 'wal-rear', bevel: 0.03, x: s * 0.14 }).scale.x = s;
   }
-  // 頭：圓圓、粗鬚墊、細眼、長長嘅象牙
-  const head = pivot(root, 0, 1.28, -1.0);
-  box(head, 0.9, 0.72, 0.75, skin, 0, 0, 0, 0.45);
-  box(head, 0.82, 0.42, 0.32, pink, 0, -0.2, -0.4, 0.48); // 鬚墊
-  for (const s of [-1, 1]) box(head, 0.36, 0.36, 0.3, pink, s * 0.2, -0.24, -0.45, 0.5);
-  for (let i = 0; i < 12; i++) box(head, 0.025, 0.025, 0.08, 0xf5e6c8, ((i % 6) - 2.5) * 0.12, -0.14 - Math.floor(i / 6) * 0.11, -0.62, 0.3);
-  cuteEyes(head, 0.24, 0.15, -0.38, 0.08, { iris: 0x3e2723 });
+  // 頭：圓頭、兩嚿大鬚墊、細眼
+  const head = pivot(root, 0, 1.32, -0.98);
+  ball(head, 0.46, 0.4, 0.42, skin, 0, 0, 0);
+  for (const s of [-1, 1]) ball(head, 0.22, 0.2, 0.2, pink, s * 0.15, -0.16, -0.32); // 鬚墊
+  ball(head, 0.14, 0.1, 0.1, dark, 0, -0.01, -0.4); // 鼻
+  for (const s of [-1, 1]) ball(head, 0.035, 0.025, 0.02, 0x4e2f22, s * 0.05, 0.0, -0.49);
+  for (let i = 0; i < 16; i++) {
+    const s = i < 8 ? -1 : 1;
+    const k = i % 8;
+    box(head, 0.025, 0.025, 0.12, 0xf5e6c8, s * (0.08 + (k % 4) * 0.06), -0.1 - Math.floor(k / 4) * 0.1, -0.5 + (k % 4) * 0.02, 0.3).rotation.y = s * -0.3; // 硬鬚
+  }
+  cuteEyes(head, 0.2, 0.13, -0.37, 0.075, { iris: 0x3e2723 });
+  // 象牙：又長又粗、慢慢收尖、微微向後彎
+  const tuskGeo = new THREE.CylinderGeometry(0.035, 0.075, 0.85, 10);
   for (const s of [-1, 1]) {
-    const tusk = pivot(head, s * 0.17, -0.38, -0.5);
-    box(tusk, 0.12, 0.5, 0.12, 0xfff8e1, 0, -0.25, 0, 0.45);
-    box(tusk, 0.1, 0.4, 0.1, 0xf3e5c0, 0, -0.65, 0.05, 0.45).rotation.x = 0.15;
+    const tusk = pivot(head, s * 0.13, -0.3, -0.42);
+    tusk.rotation.set(-0.18, 0, s * 0.06);
+    const m = new THREE.Mesh(tuskGeo, material(0xfffbea, { roughness: 0.35 }));
+    m.position.y = -0.4;
+    m.castShadow = true;
+    tusk.add(m);
   }
+  // 前鰭：粗粗嘅槳 + 腳趾
   const flippers = [-1, 1].map((s) => {
-    const p = pivot(root, s * 0.72, 0.18, -0.55);
-    box(p, 0.62, 0.1, 0.38, dark, s * 0.3, 0, 0, 0.4);
-    for (let k = 0; k < 4; k++) box(p, 0.06, 0.06, 0.08, 0x5d3e30, s * 0.55, 0.04, -0.12 + k * 0.08, 0.3);
+    const p = pivot(root, s * 0.66, 0.16, -0.6);
+    p.scale.x = s;
+    slab(p, [[0, 0.14], [0.3, 0.14], [0.62, 0.06], [0.7, -0.12], [0.5, -0.2], [0.2, -0.16], [0, -0.12]], 0.1, dark, { plane: 'flat', key: 'wal-front', bevel: 0.04 });
+    for (let k = 0; k < 4; k++) ball(p, 0.04, 0.03, 0.05, 0x5d3e30, 0.6 - k * 0.02, 0.05, 0.08 - k * 0.07);
     return { p, s };
   });
   g.userData.animate = (t, moving) => {
@@ -817,40 +828,49 @@ function pangolin() {
 }
 
 function slowLoris() {
-  // 懶猴：圓碌碌、毛茸茸，超大橙色眼 + 黑眼圈，中間一條白線，背脊一條深色線
-  const fur = 0xb39a82;
-  const fur2 = 0xc9b39c;
-  const g = beast({
-    body: { w: 0.44, h: 0.38, d: 0.6, y: 0.44, color: fur },
-    head: { w: 0.48, h: 0.42, d: 0.38, y: 0.68, z: -0.42, color: fur2 },
-    legs: { w: 0.12, h: 0.34, x: 0.15, zf: -0.2, zb: 0.2, color: 0x8d7764, paw: 0xd7c4b0 },
-    eyes: false,
-    walkSpeed: 3, // 好慢好慢
-    swing: 0.3,
-    extras(p) {
-      for (const s of [-1, 1]) {
-        const ring = box(p.head, 0.2, 0.24, 0.03, 0x4e342e, s * 0.11, 0.03, -0.195, 0.48); // 黑眼圈
-        ring.rotation.z = s * -0.25;
-        const ear = pivot(p.head, s * 0.2, 0.2, 0.05);
-        box(ear, 0.1, 0.1, 0.05, 0x8d7764, 0, 0, 0, 0.5);
-        box(ear, 0.06, 0.06, 0.02, 0xd7a0a0, 0, 0, -0.03, 0.5);
-        p.ears.push(ear);
-        box(p.head, 0.12, 0.12, 0.1, WHITE, s * 0.15, -0.13, -0.15, 0.45); // 白面頰
-      }
-      cuteEyes(p.head, 0.11, 0.03, -0.215, 0.16, { iris: 0xff9800 }); // 超大圓眼
-      box(p.head, 0.055, 0.3, 0.02, WHITE, 0, 0.08, -0.205, 0.4); // 中間白線
-      box(p.head, 0.08, 0.06, 0.03, 0x3e2723, 0, -0.1, -0.205, 0.45); // 鼻
-      box(p.root, 0.09, 0.045, 0.55, 0x6d4c41, 0, 0.635, 0, 0.3); // 背脊深色線
-      box(p.head, 0.1, 0.035, 0.3, 0x6d4c41, 0, 0.215, 0.0, 0.3);
-      // 毛茸茸
-      for (let i = 0; i < 10; i++) box(p.root, 0.08, 0.08, 0.08, fur2, ((i % 5) - 2) * 0.09, 0.63, -0.2 + Math.floor(i / 5) * 0.32, 0.5);
-      // 慢慢伸手捉嘢（前腳舉起放低）
-      p.animate = (t, moving) => {
-        if (!moving) p.legs[0].hip.rotation.x = -Math.max(0, Math.sin(t * 0.6)) * 0.9;
-        p.head.rotation.z = Math.sin(t * 0.5) * 0.1;
-      };
-    },
+  // 懶猴（2026-10-18 重做）：圓碌碌毛茸茸、超大圓眼（橙色 + 黑眼圈）、中間一條白線、細耳、慢慢郁
+  const fur = 0xb89f86;
+  const fur2 = 0xcdb79f;
+  const dark = 0x4e342e;
+  const g = new THREE.Group();
+  const root = pivot(g);
+  const body = pivot(root, 0, 0.42, 0.05);
+  ball(body, 0.26, 0.24, 0.34, fur, 0, 0, 0);
+  ball(body, 0.2, 0.14, 0.26, fur2, 0, -0.1, -0.02); // 肚
+  ball(body, 0.045, 0.02, 0.24, 0x6d4c41, 0, 0.228, 0); // 背脊深色線
+  const limbs = [[-0.16, -0.2], [0.16, -0.2], [-0.16, 0.22], [0.16, 0.22]].map(([x, z]) => {
+    const hip = pivot(root, x, 0.38, z);
+    ball(hip, 0.07, 0.2, 0.07, 0x8d7764, 0, -0.18, 0);
+    ball(hip, 0.08, 0.04, 0.09, 0xd7c4b0, 0, -0.36, -0.02); // 手掌
+    return hip;
   });
+  const head = pivot(root, 0, 0.66, -0.3);
+  ball(head, 0.24, 0.22, 0.2, fur2, 0, 0, 0);
+  ball(head, 0.09, 0.07, 0.06, WHITE, 0, -0.1, -0.16); // 白嘴
+  ball(head, 0.035, 0.025, 0.02, dark, 0, -0.07, -0.21); // 鼻
+  ball(head, 0.025, 0.11, 0.02, WHITE, 0, 0.04, -0.18); // 中間白線
+  for (const s of [-1, 1]) {
+    // 超大眼：黑眼圈 → 橙色大眼 → 黑眼珠 → 白反光（全部圓嘅）
+    const eye = pivot(head, s * 0.1, 0.035, -0.16);
+    eye.rotation.y = s * -0.25;
+    ball(eye, 0.1, 0.12, 0.04, dark, 0, 0, 0);
+    ball(eye, 0.075, 0.075, 0.04, 0xff9800, 0, 0, -0.02, { emissive: 0x6d3a00, emissiveIntensity: 0.3 });
+    ball(eye, 0.045, 0.045, 0.03, BLACK, 0, -0.005, -0.045);
+    ball(eye, 0.018, 0.018, 0.012, 0xffffff, s * -0.02, 0.025, -0.07);
+    const ear = pivot(head, s * 0.18, 0.13, 0.05);
+    ball(ear, 0.05, 0.05, 0.025, 0x8d7764, 0, 0, 0);
+    ball(ear, 0.03, 0.03, 0.01, 0xd7a0a0, 0, 0, -0.02);
+  }
+  for (let i = 0; i < 8; i++) ball(body, 0.06, 0.05, 0.06, fur2, ((i % 4) - 1.5) * 0.1, 0.18, -0.15 + Math.floor(i / 4) * 0.28); // 毛茸茸
+  g.userData.animate = (t, moving) => {
+    const sw = Math.sin(t * 3) * 0.3 * moving;
+    limbs.forEach((l, i) => (l.rotation.x = i === 0 || i === 3 ? sw : -sw));
+    if (!moving) limbs[0].rotation.x = -Math.max(0, Math.sin(t * 0.6)) * 0.9; // 慢慢伸手捉嘢
+    head.rotation.z = Math.sin(t * 0.5) * 0.1;
+    head.rotation.y = Math.sin(t * 0.35) * 0.35;
+  };
+  g.userData.height = 0.9;
+  g.userData.move = 'walk';
   return g;
 }
 
@@ -904,40 +924,55 @@ function a2_snowLeopard() {
 // ================= 採礦山 =================
 
 function andeanBear() {
-  // 眼鏡熊：黑色、面上有奶白色「眼鏡」花紋一路落到心口
-  const fur = 0x241f1b;
-  const cream = 0xf0dcae;
-  const g = beast({
-    body: { w: 1.0, h: 0.92, d: 1.55, y: 1.02, color: fur },
-    head: { w: 0.7, h: 0.62, d: 0.62, y: 1.34, z: -1.02, color: fur },
-    legs: { w: 0.34, h: 0.62, x: 0.31, zf: -0.5, zb: 0.5, color: fur, paw: 0x15120f, toes: 0x8d8d8d },
-    tail: { w: 0.15, h: 0.15, d: 0.1, y: 1.15, color: fur },
-    eyes: false,
-    walkSpeed: 7,
-    extras(p) {
-      box(p.root, 0.98, 0.3, 0.6, 0x2e2823, 0, 1.52, -0.45, 0.45); // 膊頭
-      for (const s of [-1, 1]) {
-        // 眼鏡：眼周圍一圈奶白色 + 落去嘴邊嘅線
-        const ring = box(p.head, 0.26, 0.26, 0.03, cream, s * 0.16, 0.06, -0.32, 0.5);
-        ring.rotation.z = s * 0.2;
-        box(p.head, 0.13, 0.13, 0.035, fur, s * 0.16, 0.06, -0.33, 0.5);
-        box(p.head, 0.06, 0.2, 0.03, cream, s * 0.24, -0.12, -0.32, 0.45);
-        const ear = pivot(p.head, s * 0.26, 0.34, 0.06);
-        box(ear, 0.17, 0.17, 0.1, fur, 0, 0.05, 0, 0.5);
-        box(ear, 0.09, 0.09, 0.03, 0x4a4039, 0, 0.05, -0.05, 0.5);
-        p.ears.push(ear);
-      }
-      cuteEyes(p.head, 0.16, 0.05, -0.345, 0.09, { iris: 0x5d4037 });
-      box(p.head, 0.34, 0.26, 0.22, 0xd8c49a, 0, -0.16, -0.37, 0.42); // 淺色嘴
-      box(p.head, 0.13, 0.08, 0.05, BLACK, 0, -0.08, -0.485, 0.45);
-      box(p.head, 0.16, 0.03, 0.03, 0x3e2723, 0, -0.25, -0.48, 0.3);
-      // 心口一條「V」字奶白色紋
-      for (const s of [-1, 1]) box(p.root, 0.12, 0.42, 0.06, cream, s * 0.16, 0.98, -0.785, 0.45).rotation.z = s * 0.45;
-      box(p.root, 0.2, 0.12, 0.06, cream, 0, 0.78, -0.785, 0.45);
-      // 毛：膊頭同背有幾撮
-      for (let i = 0; i < 8; i++) box(p.root, 0.12, 0.1, 0.12, 0x332c26, ((i % 4) - 1.5) * 0.22, 1.5, -0.2 + Math.floor(i / 4) * 0.5, 0.5);
-    },
+  // 眼鏡熊（2026-10-18 重做）：圓碌碌黑熊、面上大大個奶白色「眼鏡」花紋（眼周圍一圈）、奶白色嘴、心口奶白色「V」
+  const fur = 0x26201c;
+  const fur2 = 0x332b25;
+  const cream = 0xf2dcaa;
+  const g = new THREE.Group();
+  const root = pivot(g);
+  const body = pivot(root, 0, 1.0, 0);
+  ball(body, 0.55, 0.5, 0.82, fur, 0, 0, 0.05);
+  ball(body, 0.5, 0.36, 0.42, fur2, 0, 0.18, -0.45); // 膊頭
+  ball(body, 0.12, 0.1, 0.1, fur, 0, 0.12, 0.85); // 細尾
+  // 心口「V」字奶白紋
+  for (const s of [-1, 1]) ball(body, 0.08, 0.26, 0.05, cream, s * 0.14, -0.1, -0.74).rotation.z = s * 0.5;
+  ball(body, 0.12, 0.07, 0.05, cream, 0, -0.3, -0.72);
+  const legs = [[-0.32, -0.45], [0.32, -0.45], [-0.32, 0.5], [0.32, 0.5]].map(([x, z]) => {
+    const hip = pivot(root, x, 0.85, z);
+    ball(hip, 0.2, 0.42, 0.22, fur, 0, -0.38, 0);
+    ball(hip, 0.2, 0.1, 0.25, 0x17130f, 0, -0.78, -0.04); // 腳掌
+    for (const c of [-1, 0, 1]) ball(hip, 0.035, 0.025, 0.05, 0x9e9e9e, c * 0.08, -0.8, -0.27); // 爪
+    return hip;
   });
+  const head = pivot(root, 0, 1.38, -0.95);
+  ball(head, 0.36, 0.33, 0.33, fur, 0, 0, 0);
+  // 眼鏡：眼周圍一圈奶白色（好似戴咗眼鏡），一路落去面頰
+  const ringGeo = new THREE.TorusGeometry(0.1, 0.035, 8, 20);
+  for (const s of [-1, 1]) {
+    const ring = new THREE.Mesh(ringGeo, material(cream));
+    ring.position.set(s * 0.14, 0.07, -0.29);
+    ring.scale.set(1, 1.1, 0.7);
+    ring.rotation.y = s * 0.35;
+    head.add(ring);
+    ball(head, 0.04, 0.12, 0.04, cream, s * 0.22, -0.08, -0.25).rotation.z = s * 0.3; // 落去面頰嘅線
+    const ear = pivot(head, s * 0.23, 0.27, 0.05);
+    ball(ear, 0.1, 0.1, 0.06, fur, 0, 0, 0);
+    ball(ear, 0.055, 0.055, 0.02, 0x4a4039, 0, 0, -0.05);
+  }
+  cuteEyes(head, 0.14, 0.07, -0.31, 0.085, { iris: 0x5d4037 });
+  ball(head, 0.17, 0.13, 0.16, cream, 0, -0.12, -0.3); // 奶白色嘴
+  ball(head, 0.07, 0.05, 0.04, BLACK, 0, -0.06, -0.45); // 鼻
+  box(head, 0.12, 0.02, 0.02, 0x3e2723, 0, -0.18, -0.44, 0.3); // 口
+  g.userData.animate = (t, moving) => {
+    const sw = Math.sin(t * 7) * 0.5 * moving;
+    legs.forEach((l, i) => (l.rotation.x = i === 0 || i === 3 ? sw : -sw));
+    root.position.y = Math.abs(Math.sin(t * 7)) * 0.05 * moving;
+    head.rotation.y = Math.sin(t * 0.7) * 0.28 * (1 - moving);
+    head.rotation.x = Math.sin(t * 2) * 0.05;
+    body.rotation.z = Math.sin(t * 7) * 0.03 * moving; // 搖下搖下咁行
+  };
+  g.userData.height = 1.72;
+  g.userData.move = 'walk';
   return g;
 }
 
@@ -1128,43 +1163,63 @@ function takin() {
 }
 
 function desman() {
-  // 比利牛斯山水鼴：深啡色、長長識郁嘅「象鼻」、好大嘅蹼腳、扁長尾、銀色肚
+  // 比利牛斯山水鼴（2026-10-18 重做）：圓圓深啡身、銀色肚、又長又識郁嘅「象鼻」（尾端粉紅）、
+  // 好大嘅蹼腳（後腳）、長長扁扁嘅尾、細細嘅眼
   const fur = 0x5a4738;
   const fur2 = 0x6d5848;
-  const g = beast({
-    body: { w: 0.3, h: 0.24, d: 0.5, y: 0.24, color: fur },
-    head: { w: 0.22, h: 0.2, d: 0.22, y: 0.26, z: -0.33, color: fur2 },
-    legs: { w: 0.08, h: 0.12, x: 0.12, zf: -0.15, zb: 0.15, color: 0x3e2b1a, paw: 0x3e2b1a },
-    belly: 0xb7aca2,
-    eyeSize: 0.05,
-    walkSpeed: 14,
-    extras(p) {
-      // 長鼻：三節，尾端粉紅
-      let parent = p.head;
-      const nose = [];
-      for (let i = 0; i < 3; i++) {
-        const seg = pivot(parent, 0, i === 0 ? -0.03 : 0, i === 0 ? -0.1 : -0.1);
-        box(seg, 0.07 - i * 0.008, 0.06 - i * 0.006, 0.11, i === 2 ? 0xe57393 : 0x3e2b20, 0, 0, -0.05, 0.45);
-        nose.push(seg);
-        parent = seg;
-      }
-      a2_whiskers(p.head, 0.03, -0.05, -0.2, 0.12);
-      // 好大嘅蹼腳（後腳）
-      for (const l of p.legs.slice(2)) box(l.hip, 0.16, 0.03, 0.2, 0x2b1d14, 0, -0.12, -0.04, 0.4);
-      // 扁長尾（有鱗紋）
-      const tail = pivot(p.root, 0, 0.2, 0.25);
-      for (let i = 0; i < 5; i++) box(tail, 0.07 - i * 0.008, 0.1, 0.1, i % 2 ? 0x2b1d14 : 0x3e2b1a, 0, 0, 0.05 + i * 0.1, 0.4);
-      // 毛：濕濕地閃
-      box(p.root, 0.32, 0.06, 0.5, 0x7a6555, 0, 0.36, 0, 0.45, { roughness: 0.25 });
-      p.animate = (t) => {
-        nose.forEach((s, i) => {
-          s.rotation.y = Math.sin(t * 4 + i) * 0.35; // 鼻郁嚟郁去聞嘢
-          s.rotation.x = Math.sin(t * 3 + i) * 0.15;
-        });
-        tail.rotation.y = Math.sin(t * 5) * 0.3;
-      };
-    },
+  const g = new THREE.Group();
+  const root = pivot(g);
+  const body = pivot(root, 0, 0.22, 0.02);
+  ball(body, 0.17, 0.14, 0.27, fur, 0, 0, 0, { roughness: 0.28 }); // 毛濕濕地閃
+  ball(body, 0.14, 0.07, 0.22, 0xbdb3a8, 0, -0.07, 0); // 銀色肚
+  const head = pivot(root, 0, 0.25, -0.26);
+  ball(head, 0.12, 0.11, 0.13, fur2, 0, 0, 0, { roughness: 0.3 });
+  cuteEyes(head, 0.06, 0.04, -0.115, 0.04);
+  // 長鼻：6 節慢慢變幼，尾端粉紅（會郁嚟郁去聞嘢）
+  const nose = [];
+  let parent = pivot(head, 0, -0.01, -0.1);
+  for (let i = 0; i < 6; i++) {
+    const seg = pivot(parent, 0, 0, i === 0 ? 0 : -0.05);
+    const r = 0.035 - i * 0.003;
+    ball(seg, r, r * 0.85, 0.035, i === 5 ? 0xe57393 : 0x3e2b20, 0, 0, -0.025);
+    nose.push(seg);
+    parent = seg;
+  }
+  a2_whiskers(head, 0.03, -0.03, -0.12, 0.1);
+  // 腳：前腳細，後腳好大塊蹼（有腳趾）
+  const feet = [[-0.1, -0.13, 0], [0.1, -0.13, 0], [-0.12, 0.14, 1], [0.12, 0.14, 1]].map(([x, z, big]) => {
+    const p = pivot(root, x, 0.12, z);
+    ball(p, 0.035, 0.07, 0.035, 0x3e2b1a, 0, -0.05, 0);
+    if (big) {
+      const s = x < 0 ? -1 : 1;
+      const web = slab(p, [[0, 0.06], [0.06, 0.04], [0.09, -0.1], [0.03, -0.16], [-0.04, -0.15], [-0.08, -0.08], [-0.05, 0.04]], 0.015, 0x2b1d14, { plane: 'flat', key: 'desman-web', bevel: 0.006, y: -0.11, x: s * 0.02 });
+      web.material = material(0x2b1d14, { roughness: 0.3 });
+      for (let k = 0; k < 4; k++) ball(p, 0.01, 0.01, 0.02, 0xd7c4b0, -0.06 + k * 0.04, -0.1, -0.16 + Math.abs(k - 1.5) * 0.02); // 腳趾尖
+    } else ball(p, 0.04, 0.015, 0.05, 0x2b1d14, 0, -0.11, -0.02);
+    return p;
   });
+  // 長長扁扁嘅尾（有鱗紋）
+  const tail = pivot(body, 0, 0, 0.25);
+  const tsegs = [];
+  let tp = tail;
+  for (let i = 0; i < 5; i++) {
+    const seg = pivot(tp, 0, 0, i === 0 ? 0 : 0.08);
+    box(seg, 0.05 - i * 0.006, 0.07 - i * 0.008, 0.09, i % 2 ? 0x2b1d14 : 0x3e2b1a, 0, 0, 0.04, 0.4);
+    tsegs.push(seg);
+    tp = seg;
+  }
+  g.userData.animate = (t, moving) => {
+    nose.forEach((sg, i) => {
+      sg.rotation.y = Math.sin(t * 4 - i * 0.6) * 0.22; // 鼻郁嚟郁去聞嘢
+      sg.rotation.x = Math.sin(t * 3 + i) * 0.1 + (i > 2 ? 0.05 : 0);
+    });
+    const sw = Math.sin(t * 14) * 0.6 * moving;
+    feet.forEach((f, i) => (f.rotation.x = i === 0 || i === 3 ? sw : -sw));
+    tsegs.forEach((sg, i) => (sg.rotation.y = Math.sin(t * 5 - i * 0.7) * 0.18));
+    root.position.y = Math.abs(Math.sin(t * 14)) * 0.02 * moving;
+  };
+  g.userData.height = 0.45;
+  g.userData.move = 'walk';
   return g;
 }
 
@@ -1248,39 +1303,48 @@ function a2_andeanCat() {
 }
 
 function volcanoRabbit() {
-  // 火山兔：好細隻、深啡色、超短圓耳、睇唔到條尾，圓碌碌，跳下跳下
-  const fur = 0x5f4a3b;
-  const fur2 = 0x725a48;
-  const g = beast({
-    body: { w: 0.32, h: 0.3, d: 0.4, y: 0.26, color: fur },
-    head: { w: 0.3, h: 0.27, d: 0.27, y: 0.4, z: -0.25, color: fur2 },
-    legs: { w: 0.09, h: 0.12, x: 0.1, zf: -0.12, zb: 0.12, color: fur, paw: 0x4e3a2e },
-    belly: 0xa08a77,
-    eyeSize: 0.08,
-    eyeOpts: { iris: 0x3e2723 },
-    walkSpeed: 16,
-    swing: 0.9,
-    extras(p) {
-      for (const s of [-1, 1]) {
-        const ear = pivot(p.head, s * 0.09, 0.16, 0.03);
-        box(ear, 0.1, 0.12, 0.04, fur, 0, 0.04, 0, 0.5); // 細細圓耳（火山兔耳仔短）
-        box(ear, 0.06, 0.07, 0.02, 0xf2b0bd, 0, 0.04, -0.02, 0.5);
-        p.ears.push(ear);
-        box(p.head, 0.1, 0.1, 0.08, 0x8a7360, s * 0.1, -0.08, -0.09, 0.5); // 胖面頰
-      }
-      box(p.head, 0.06, 0.04, 0.02, 0xf48fb1, 0, -0.04, -0.14, 0.45);
-      box(p.head, 0.1, 0.06, 0.03, 0xd7c8b8, 0, -0.08, -0.14, 0.45); // 白嘴
-      a2_whiskers(p.head, 0.04, -0.06, -0.14, 0.12);
-      // 黑色「頸巾」花紋 + 毛茸茸背
-      box(p.root, 0.3, 0.06, 0.1, 0x3a2c22, 0, 0.36, -0.17, 0.45);
-      for (let i = 0; i < 6; i++) box(p.root, 0.08, 0.06, 0.08, fur2, ((i % 3) - 1) * 0.09, 0.42, -0.08 + Math.floor(i / 3) * 0.16, 0.5);
-      // 跳下跳下 + 鼻郁郁
-      p.animate = (t, moving) => {
-        p.root.position.y = Math.abs(Math.sin(t * 8)) * 0.12 * moving;
-        p.head.position.y = Math.sin(t * 20) * 0.004 * (1 - moving);
-      };
-    },
+  // 火山兔（2026-10-18 重做）：細細隻圓碌碌嘅兔仔、深啡色毛、細細圓圓嘅耳（粉紅入面）、大眼、粉紅鼻、白嘴、跳下跳下
+  const fur = 0x6b5442;
+  const fur2 = 0x7d6550;
+  const cream = 0xd9c7b2;
+  const g = new THREE.Group();
+  const root = pivot(g);
+  const body = pivot(root, 0, 0.24, 0.04);
+  ball(body, 0.2, 0.18, 0.24, fur, 0, 0, 0);
+  ball(body, 0.15, 0.1, 0.17, 0xb59f8a, 0, -0.08, -0.02); // 肚
+  ball(body, 0.06, 0.06, 0.05, fur2, 0, 0.04, 0.24); // 細細尾
+  for (let i = 0; i < 5; i++) ball(body, 0.05, 0.04, 0.05, fur2, ((i % 3) - 1) * 0.08, 0.15, -0.08 + Math.floor(i / 3) * 0.14); // 毛茸茸
+  // 腳：後腳大、前腳細
+  const feet = [[-0.1, 0.1, 0.09], [0.1, 0.1, 0.09], [-0.07, -0.13, 0.05], [0.07, -0.13, 0.05]].map(([x, z, r], i) => {
+    const p = pivot(root, x, 0.12, z);
+    ball(p, r * 0.8, r, r * 1.3, fur, 0, -0.06, i < 2 ? -0.03 : 0);
+    ball(p, r * 0.7, r * 0.35, r * 1.2, 0x4e3a2e, 0, -0.1, i < 2 ? -0.07 : -0.02);
+    return p;
   });
+  const head = pivot(root, 0, 0.4, -0.2);
+  ball(head, 0.16, 0.15, 0.15, fur2, 0, 0, 0);
+  for (const s of [-1, 1]) ball(head, 0.07, 0.06, 0.06, 0x8a7360, s * 0.08, -0.05, -0.1); // 胖面頰
+  ball(head, 0.07, 0.045, 0.04, cream, 0, -0.06, -0.13); // 白嘴
+  ball(head, 0.03, 0.022, 0.02, 0xf48fb1, 0, -0.025, -0.155); // 粉紅鼻
+  cuteEyes(head, 0.07, 0.03, -0.135, 0.065, { iris: 0x3e2723 });
+  a2_whiskers(head, 0.05, -0.05, -0.14, 0.12);
+  const ears = [-1, 1].map((s) => {
+    const ear = pivot(head, s * 0.07, 0.12, 0.02);
+    ear.rotation.z = s * -0.25;
+    ball(ear, 0.05, 0.065, 0.025, fur, 0, 0.05, 0);
+    ball(ear, 0.03, 0.045, 0.01, 0xf2b0bd, 0, 0.05, -0.018);
+    return ear;
+  });
+  g.userData.animate = (t, moving) => {
+    const hop = Math.abs(Math.sin(t * 8));
+    root.position.y = hop * 0.12 * moving;
+    feet.forEach((f, i) => (f.rotation.x = (i < 2 ? 1 : -1) * Math.sin(t * 8) * 0.5 * moving));
+    head.position.y = 0.4 + Math.sin(t * 20) * 0.004 * (1 - moving); // 鼻郁郁
+    head.rotation.y = Math.sin(t * 0.8) * 0.3 * (1 - moving);
+    ears.forEach((e, i) => (e.rotation.x = Math.max(0, Math.sin(t * 1.3 + i)) > 0.95 ? Math.sin(t * 30) * 0.3 : -0.1));
+  };
+  g.userData.height = 0.6;
+  g.userData.move = 'walk';
   return g;
 }
 
