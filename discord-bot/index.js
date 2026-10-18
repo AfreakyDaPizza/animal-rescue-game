@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { Client, Events, GatewayIntentBits, Routes } from 'discord.js';
 import { randomJoke } from './jokes.js';
-import { howToPlayEmbed, spawnsEmbed, newRareSpawns, rareMessage, GAME_URL } from './messages.js';
+import { howToPlayEmbed, spawnsEmbed, sharedFrenzy, newRareSpawns, rareMessage, GAME_URL } from './messages.js';
 
 const { DISCORD_TOKEN, CHANNEL_ID, RARE_ROLE_ID } = process.env;
 if (!DISCORD_TOKEN) {
@@ -68,7 +68,7 @@ client.on(Events.InteractionCreate, async (i) => {
     } else if (i.commandName === 'play') {
       await play(i);
     } else if (i.commandName === 'spawns') {
-      await i.reply({ embeds: [spawnsEmbed()] });
+      await i.reply({ embeds: [spawnsEmbed(Date.now(), await sharedFrenzy())] });
     }
   } catch (e) {
     console.error(`/${i.commandName} failed:`, e);

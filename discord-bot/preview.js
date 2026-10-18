@@ -6,6 +6,7 @@ const show = (title, obj) => console.log(`\n===== ${title} =====\n` + JSON.strin
 show('/joke', randomJoke());
 show('/howtoplay', howToPlayEmbed());
 show('/spawns', spawnsEmbed());
+show('/spawns (during a shared frenzy)', spawnsEmbed(Date.now(), { endsAt: Date.now() + 42000 }).description);
 
 // 搵下一個稀有動物（每 5 秒試一次，最多 3 個鐘）
 const seen = new Set(newRareSpawns(new Set()).map((a) => a.seed));

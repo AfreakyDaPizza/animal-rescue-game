@@ -1,0 +1,19 @@
+# Animal Rescue shared events: one tiny Cloudflare Worker + one Durable Object
+# Deploy: see README.md (npx wrangler login, then npx wrangler deploy)
+name = "animal-rescue-shared"
+main = "src/index.js"
+compatibility_date = "2025-04-01"
+
+[vars]
+# Keep these the same as CRAZY_FRENZY_SECONDS / CRAZY_COOLDOWN_MINUTES in src/data/balance.js
+CRAZY_SECONDS = "60"
+COOLDOWN_MINUTES = "15"
+
+[[durable_objects.bindings]]
+name = "EVENTS"
+class_name = "SharedEvents"
+
+# SQLite-backed Durable Objects are free on the Workers Free plan
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SharedEvents"]
