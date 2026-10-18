@@ -13,6 +13,7 @@ import { applyPetSkin } from './skins.js';
 import { makeSign, makeLabel, dynamicSign, THEMES } from './signs.js';
 import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { buildOwner } from './owner.js';
+import { shimmerTexture } from './ambience.js';
 
 // 位置（開場動畫都會用）
 export const FOUNTAIN = { x: HUB.cx, z: HUB.cz };
@@ -96,7 +97,8 @@ function buildFountain(root, live) {
   }
 
   // 水面（會閃）
-  const waterMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, emissive: 0x0288d1, emissiveIntensity: 0.25, transparent: true, opacity: 0.85, roughness: 0.05, metalness: 0.2 });
+  const shimmer = shimmerTexture(2, 2); // 水面閃光（ambience.js 會郁）
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, map: shimmer, emissive: 0x29b6f6, emissiveMap: shimmer, emissiveIntensity: 0.3, transparent: true, opacity: 0.88, roughness: 0.05, metalness: 0.2 });
   const pool = add(live, new THREE.CylinderGeometry(4.35, 4.35, 0.08, 32), waterMat, x, 0.72, z, false);
   const bowl = add(live, new THREE.CylinderGeometry(1.85, 1.85, 0.06, 24), waterMat, x, 2.99, z, false);
   // 水波紋（一圈圈向外擴散）
@@ -510,6 +512,42 @@ function roundPad(root, x, z, r, color, edge) {
   add(root, new THREE.CylinderGeometry(r, r, 0.05, 40), mat(color), x, 0.02, z, false);
 }
 // 區域牌：兩條柱 + 牌，面向 (fx, fz)
+// 🌼 花圃（2026-10-18 present 前：出世點周圍靚啲）：兩個 InstancedMesh（莖 + 花），行得穿、唔加碰撞
+function flowerBeds(live) {
+  const beds = [];
+  for (const s of [-1, 1]) {
+    beds.push([s * 4.2, s * 8.4, 12.6, 14.8]); // 出世點旁邊（噴水池樹籬前面）
+    beds.push([s * 5.6, s * 8.0, 1.2, 7.6]); // 入口廣場兩邊
+  }
+  const spots = [];
+  for (const [xa, xb, za, zb] of beds) {
+    const x1 = Math.min(xa, xb);
+    const x2 = Math.max(xa, xb);
+    for (let x = x1; x <= x2; x += 0.55) for (let z = za; z <= zb; z += 0.55) spots.push([x + (Math.random() - 0.5) * 0.35, z + (Math.random() - 0.5) * 0.35]);
+  }
+  const stems = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.36, 0.05), mat(0x43a047), spots.length);
+  const heads = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.12, 0), mat(0xffffff), spots.length);
+  const leaves = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.04, 0.1), mat(0x66bb6a), spots.length);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const c = new THREE.Color();
+  spots.forEach(([x, z], i) => {
+    const h = 0.25 + Math.random() * 0.2;
+    m.compose(new THREE.Vector3(x, h / 2, z), q, new THREE.Vector3(1, h / 0.36, 1));
+    stems.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(x, h + 0.05, z), q.setFromEuler(new THREE.Euler(0, Math.random() * 3, 0)), new THREE.Vector3(1, 0.7, 1));
+    heads.setMatrixAt(i, m);
+    heads.setColorAt(i, c.setHex(flowerColors[(i * 7) % flowerColors.length]));
+    m.compose(new THREE.Vector3(x, 0.1, z), q.setFromEuler(new THREE.Euler(0, Math.random() * 3, 0.2)), new THREE.Vector3(1, 1, 1));
+    leaves.setMatrixAt(i, m);
+  });
+  for (const im of [stems, heads, leaves]) {
+    im.castShadow = false;
+    im.receiveShadow = true;
+    live.add(im);
+  }
+}
+
 function zoneSign(live, x, z, text, theme, fx = HUB.cx, fz = HUB.cz) {
   const g = new THREE.Group();
   const sign = makeSign([{ text, size: 0.42 }], 4.2, 0.95, theme);
@@ -594,6 +632,7 @@ export function buildHubPark(root, live) {
   live.add(lab);
 
   updates.push(buildFountain(root, live));
+  flowerBeds(live);
   buildStatues(root);
   buildHammock(root, live);
   updates.push(buildComingSoon(root, live));

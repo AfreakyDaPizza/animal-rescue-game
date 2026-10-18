@@ -144,6 +144,6 @@ export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
 
   // 開始畫面：「Tap to Play」
   const start = $('start-button');
-  if (start) start.textContent = 'Tap to Play';
+  if (start) start.textContent = '▶ TAP TO PLAY';
   return { reset: resetJoy };
 }

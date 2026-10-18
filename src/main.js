@@ -6,6 +6,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { createAmbience, updateAmbience, setAmbienceQuality } from './ambience.js'; // ✨ 粒子、雲、霧色、水光（2026-10-18 present 前靚啲）
 import { buildStatueButton, pressStatueButton, updateStatueButton, nearStatueButton } from './statueButton.js'; // 🦏 犀牛像後面嘅掣
 import { createCrazyButton, crazyInteraction, updateCrazy, refillCrazy, pressCrazy } from './crazyButton.js'; // 🤪 秘密沙灘嘅瘋狂寵物掣
 import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea } from './world.js';
@@ -78,10 +80,12 @@ scene.background = new THREE.Color(0x87ceeb); // 天空藍
 scene.fog = new THREE.Fog(0xcfeaff, 70, 220); // 遠處慢慢變淡
 
 // 燈：天空光 + 太陽（有影）
-const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6b5a3a, 1.3);
+const hemi = new THREE.HemisphereLight(0xd4ebff, 0x5c6b3c, 1.3); // 地面反光帶少少草綠
 const sun = new THREE.DirectionalLight(0xfff1d6, 2.2); // 暖暖嘅太陽光
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004; // 冇咗啲「影紋」
+sun.shadow.normalBias = 0.02;
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, far: 100 });
 scene.add(hemi, sun, sun.target);
 
@@ -96,9 +100,16 @@ const starGeometry = new THREE.BufferGeometry();
 starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
 const stars = new THREE.Points(
   starGeometry,
-  new THREE.PointsMaterial({ color: 0xffffff, size: 1.2, transparent: true, opacity: 0, fog: false }),
+  new THREE.PointsMaterial({ color: 0xffffff, size: 1.9, transparent: true, opacity: 0, fog: false }),
 );
 scene.add(stars);
+// 第二層細星（一閃一閃）
+const stars2 = new THREE.Points(
+  new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(starPositions.map((v, i) => v * (i % 3 === 1 ? 0.97 : 1.03) + (i % 3 === 0 ? 9 : 0)), 3)),
+  new THREE.PointsMaterial({ color: 0xcfe0ff, size: 1.2, transparent: true, opacity: 0, fog: false }),
+);
+scene.add(stars2);
+const ambience = createAmbience(scene); // ✨ 粒子、雲、霧色
 
 const updateWorld = buildWorld(scene);
 const crazy = createCrazyButton(scene); // 🤪 Crazy Pet Frenzy 掣（秘密沙灘）
@@ -153,8 +164,25 @@ if (inDiscord()) {
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.45, 1.05);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.5, 1.05);
 composer.addPass(bloomPass);
+// 調色（2026-10-18）：顏色鮮少少、對比少少、四邊淡淡暗角（電影感）
+const gradePass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, saturation: { value: 1.12 }, contrast: { value: 1.04 }, vignette: { value: 0.32 }, warmth: { value: 0.025 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float saturation; uniform float contrast; uniform float vignette; uniform float warmth; varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      vec3 col = mix(vec3(l), c.rgb, saturation);
+      col = (col - 0.18) * contrast + 0.18;
+      col += vec3(warmth, warmth * 0.4, -warmth * 0.5) * l;
+      vec2 v = vUv - 0.5;
+      col *= 1.0 - vignette * smoothstep(0.25, 0.8, dot(v, v) * 2.0);
+      gl_FragColor = vec4(max(col, 0.0), c.a);
+    }`,
+});
+composer.addPass(gradePass);
 composer.addPass(new OutputPass());
 
 // ================= 畫質（電腦慢就自動調低）=================
@@ -175,6 +203,8 @@ function applyQuality() {
   composer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = q >= 1;
   sun.castShadow = q >= 1;
+  sun.shadow.radius = q >= 2 ? 2.5 : 1; // 高／中畫質：影嘅邊柔和啲
+  setAmbienceQuality(ambience, q); // ✨ 粒子：最低 = 冇、低 = 一半
   const size = q >= 2 ? 2048 : 1024;
   if (sun.shadow.mapSize.x !== size) {
     sun.shadow.mapSize.set(size, size);
@@ -1616,7 +1646,9 @@ renderer.setAnimationLoop((timestamp) => {
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
   if (heldModel) heldModel.visible = !petsHidden;
-  stars.material.opacity = dayNight.blend;
+  stars.material.opacity = dayNight.blend * (0.85 + Math.sin(time * 2.1) * 0.15);
+  stars2.material.opacity = dayNight.blend * (0.55 + Math.sin(time * 3.3 + 1.7) * 0.4); // 一閃一閃
+  updateAmbience(ambience, frozen ? 0 : dt, time, camera.position, whereIs(camera.position.x, camera.position.z), dayNight.blend, dayNight.dusk, sky);
 
   // 太陽跟住玩家，影先會一直清楚
   sun.position.set(pos.x + 15, 30, pos.z + 8);
@@ -1690,4 +1722,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

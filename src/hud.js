@@ -57,11 +57,25 @@ function updateEventBanner() {
   }
 }
 
+// 數值變大就彈一彈（每次只係改字，唔會每格都重新排版）
+const lastStat = {};
+function bumpStat(id, value) {
+  const el = $(id);
+  const text = fmt(value);
+  if (el.textContent !== text) el.textContent = text;
+  if (lastStat[id] !== undefined && value > lastStat[id]) {
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+  lastStat[id] = value;
+}
+
 export function updateHud(dayNight, location) {
   updateEventBanner();
-  $('hud-money').textContent = fmt(state.money);
-  $('hud-speed').textContent = fmt(state.speed);
-  $('hud-iq').textContent = fmt(state.iq);
+  bumpStat('hud-money', state.money);
+  bumpStat('hud-speed', state.speed);
+  bumpStat('hud-iq', state.iq);
   $('hud-jump').textContent = fmt(state.jumpPower || 0); // 💪 Gym 彈床：有 Jump Power 先顯示
   $('hud-jump-box').hidden = !state.jumpPower;
   $('hud-tokens').textContent = fmt(state.tokens);
@@ -82,16 +96,23 @@ export function updateHud(dayNight, location) {
 // 彈出「+5 Speed」，飄上去然後消失
 export function popup(text) {
   const el = document.createElement('div');
-  el.className = 'popup';
+  // 唔同顏色：💰 錢 金色、⚡ Speed 藍、🧠 IQ 粉紅（加數就彈一彈）
+  const kind = /\$/.test(text) ? 'money' : /speed/i.test(text) ? 'speed' : /\bIQ\b/.test(text) ? 'iq' : '';
+  el.className = `popup${/^\+/.test(text) ? ' gain' : ''}${kind ? ` ${kind}` : ''}`;
   el.textContent = text;
   $('popups').appendChild(el);
   setTimeout(() => el.remove(), 1200);
 }
 
 // 大字提示（例如入夜）
+// 稀有動物：用稀有度顏色 + 閃光（見 style.css #announce.rare）
+const RARE_WORDS = [['ETERNAL', '#18ffff'], ['MYTHIC', '#ff4081'], ['LEGENDARY', '#ffca28']];
 export function announce(text) {
   const el = $('announce');
   el.textContent = text;
+  const rare = RARE_WORDS.find(([w]) => text.toUpperCase().includes(w));
+  el.classList.toggle('rare', !!rare);
+  el.style.setProperty('--c', rare ? rare[1] : '#ffffff');
   el.classList.remove('show');
   void el.offsetWidth; // 重新開始動畫
   el.classList.add('show');
@@ -222,6 +243,8 @@ export function openPanel(kind) {
   $('panel').dataset.kind = kind;
   $('panel').hidden = false;
 }
+
+$('panel-x').addEventListener('click', () => $('panel-close').click()); // 右上角 ✕ = Close
 
 export function closePanel() {
   openPanelKind = null;

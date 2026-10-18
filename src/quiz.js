@@ -48,6 +48,7 @@ export function askQuestion({ title, biome, hard = false }) {
   const choices = shuffle([correct, ...wrong]);
 
   $('quiz-title').textContent = q.vocab ? `📚 Word Power! ${title}` : title;
+  $('quiz').classList.toggle('vocab', !!q.vocab); // 生字題：另一個顏色
   $('quiz-question').textContent = q.q;
   $('quiz-iq').textContent = removeCount
     ? `🧠 Your IQ (${short(Math.floor(state.iq))}) removed ${removeCount} wrong answer${removeCount > 1 ? 's' : ''}!`

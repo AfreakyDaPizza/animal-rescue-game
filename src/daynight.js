@@ -92,8 +92,17 @@ export function updateDayNight(dn, dt) {
   dn.scene.background.lerpColors(day.sky, NIGHT.sky, b);
   dn.scene.fog.color.copy(dn.scene.background);
   if (dn.sky) {
-    dn.sky.uniforms.bottom.value.copy(dn.scene.background);
-    dn.sky.uniforms.top.value.lerpColors(day.skyTop, NIGHT.skyTop, b);
+    const u = dn.sky.uniforms;
+    u.bottom.value.copy(dn.scene.background);
+    u.top.value.lerpColors(day.skyTop, NIGHT.skyTop, b);
+    // 太陽：日頭高高，黃昏慢慢喺生態區方向（-z）落山；夜晚換月亮
+    if (u.sunDir) {
+      const elev = THREE.MathUtils.lerp(0.95, THREE.MathUtils.lerp(0.16, 0.035, late), d);
+      u.sunDir.value.set(0.35, elev, -1).normalize();
+      u.sunColor.value.copy(day.sunColor);
+      u.sunAmt.value = (1 - b) * (0.55 + d * 0.85);
+      u.moonAmt.value = b;
+    }
   }
   dn.hemi.intensity = THREE.MathUtils.lerp(day.hemi, NIGHT.hemi, b);
   dn.sun.intensity = THREE.MathUtils.lerp(day.sun, NIGHT.sun, b);
