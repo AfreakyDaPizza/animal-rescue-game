@@ -1114,3 +1114,6 @@ export const ANIMALS_20 = {
     beak: 0xf9d55a, beakType: 'short', eyeRing: 0x1e88e5, crest: 0xffffff, size: 0.8, tailLen: 0.5, legColor: 0x90a4ae, upright: 0.4,
   }),
 };
+
+// 俾 worstPets.js（白鯨）用：順滑身 builder 同埋形狀小工具
+export { sleek, sleekEyes, noseIn, tailOut, smooth01, seeded };
