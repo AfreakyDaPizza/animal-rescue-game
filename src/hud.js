@@ -82,11 +82,17 @@ export function updateHud(dayNight, location) {
   $('hud-location').textContent = location;
 
   const timer = $('hud-timer');
+  // 「(at …)」／「Biomes reset」包喺 span：窄畫面收埋（startstyle.css），唔好撞頂部掣
+  const html = dayNight.isNight
+    ? `🌙 Night!<span class="timer-extra"> Biomes reset ·</span> Day in ${formatTime(dayNight.timeLeft)}`
+    : `☀️ Night in ${formatTime(dayNight.timeLeft)}<span class="timer-extra"> (at ${nextNightClock(dayNight)})</span>`;
+  if (timer.dataset.html !== html) {
+    timer.dataset.html = html;
+    timer.innerHTML = html;
+  }
   if (dayNight.isNight) {
-    timer.textContent = `🌙 Night! Biomes reset · Day in ${formatTime(dayNight.timeLeft)}`;
     timer.classList.add('night');
   } else {
-    timer.textContent = `☀️ Night in ${formatTime(dayNight.timeLeft)} (at ${nextNightClock(dayNight)})`;
     timer.classList.remove('night');
     timer.classList.toggle('soon', dayNight.timeLeft <= 30); // 最後 30 秒變紅
   }

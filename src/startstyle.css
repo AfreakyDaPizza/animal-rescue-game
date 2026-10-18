@@ -1,0 +1,309 @@
+/* =====================================================================
+   🎨 全部 UI 跟「Start your game」開始畫面嘅款（小朋友 2026-10-18：好鍾意開始畫面，其他 UI 都要咁）
+   米白→淺綠漸變卡、白粗邊 + 深綠外圈、3D 底影、Fredoka 粗字黑邊、綠色 3D 膠囊掣、彈入動畫
+   淨係改樣（CSS），id／class 唔變；喺 polish.css 之後載入
+   ===================================================================== */
+:root {
+  --st-ink: #1b3a1f;          /* 深綠字 */
+  --st-ink-soft: #3e5c41;
+  --st-cream: #fffef8;
+  --st-mint: #f1f8e9;
+  --st-ring: rgba(27, 94, 32, 0.65);
+  --st-dark: #0b2a12;         /* logo 黑邊 */
+  --st-gold: #ffd54f;
+  --st-green: #69f0ae;
+  --st-card: linear-gradient(180deg, var(--st-cream) 0%, var(--st-mint) 100%);
+  --st-shadow: 0 0 0 3px var(--st-ring), 0 5px 0 rgba(0, 0, 0, 0.28), 0 8px 18px rgba(0, 0, 0, 0.22);
+  --st-btn: linear-gradient(180deg, #76ff03 0%, #43a047 55%, #2e7d32 100%);
+  --st-btn-hover: linear-gradient(180deg, #b2ff59 0%, #4caf50 55%, #2e7d32 100%);
+}
+
+/* ---------- 共用：粗字黑邊（同 logo 一樣） ---------- */
+#panel-title, #quiz-title, #tutorial-step, #side-box .side-head b, #hud-timer, .card h1,
+#device-chooser .card h2, #zone-title span, #announce, .popup {
+  font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+}
+
+/* =================== HUD 盒：變成米白卡 =================== */
+.hud-box {
+  background: var(--st-card);
+  color: var(--st-ink);
+  border: 3px solid #fff;
+  border-radius: 16px;
+  box-shadow: var(--st-shadow);
+  text-shadow: none;
+  font-weight: 700;
+}
+.hud-box kbd, #hud-buttons kbd, .side-btn kbd {
+  background: var(--st-gold); color: var(--st-dark); font-weight: 800;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); text-shadow: none;
+}
+
+/* 夜晚倒數：好似 PLAY 掣嗰種綠色膠囊，白粗字黑邊 */
+#hud-timer {
+  border-radius: 999px; padding: 6px 22px; font-size: 20px; letter-spacing: 0.5px;
+  background: linear-gradient(180deg, #ffca28 0%, #fb8c00 60%, #e65100 100%);
+  color: #fff; border: 3px solid #fff;
+  -webkit-text-stroke: 4px var(--st-dark); paint-order: stroke fill;
+  box-shadow: 0 0 0 3px #bf360c, 0 5px 0 rgba(0, 0, 0, 0.3), 0 8px 18px rgba(0, 0, 0, 0.25);
+  animation: st-pop 0.45s cubic-bezier(.2, 1.4, .4, 1);
+}
+#hud-timer.night { background: linear-gradient(180deg, #7986cb 0%, #3949ab 60%, #1a237e 100%); border-color: #fff; box-shadow: 0 0 0 3px #1a237e, 0 5px 0 rgba(0, 0, 0, 0.3); }
+#hud-timer.soon { background: linear-gradient(180deg, #ff8a80 0%, #e53935 60%, #b71c1c 100%); box-shadow: 0 0 0 3px #7f0000, 0 5px 0 rgba(0, 0, 0, 0.3); }
+#event-banner { border-radius: 999px; color: var(--st-ink); opacity: 1; font-size: 14px; }
+#event-banner.live {
+  color: #fff; border-color: #fff; border-radius: 16px;
+  background: linear-gradient(90deg, #d500f9, #ff4081, #ff9100);
+  -webkit-text-stroke: 3px rgba(60, 0, 50, 0.85); paint-order: stroke fill;
+  box-shadow: 0 0 0 3px #880e4f, 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* 頂部掣：米白膠囊，hover 浮起，撳落壓低（3D） */
+#hud-buttons button.hud-box {
+  border-radius: 14px; color: var(--st-ink); font-weight: 800;
+  background: var(--st-card); border: 3px solid #fff;
+  box-shadow: 0 0 0 2px var(--st-ring), 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+#hud-buttons button.hud-box:hover { background: linear-gradient(180deg, #ffffff, #dcedc8); filter: none; border-color: #fff; transform: translateY(-2px); }
+#hud-buttons button.hud-box:active { transform: translateY(3px); box-shadow: 0 0 0 2px var(--st-ring), 0 1px 0 rgba(0, 0, 0, 0.3); }
+
+/* 左下數值：label 深綠，數字好似 logo 咁粗字黑邊 */
+#hud-stats { border-radius: 18px; padding: 10px 18px 8px; animation: st-pop 0.5s cubic-bezier(.2, 1.4, .4, 1); }
+#hud-stats .label { color: var(--st-ink); font-weight: 800; }
+#hud-stats .stat-line b {
+  font-weight: 800; letter-spacing: 0.5px;
+  -webkit-text-stroke: 4px var(--st-dark); paint-order: stroke fill;
+}
+#hud-stats .stat-line:nth-child(1) b { color: var(--st-gold); }
+#hud-stats .stat-line:nth-child(2) b { color: #ff80ab; }
+#hud-stats .stat-line:nth-child(3) b { color: #40c4ff; }
+#hud-stats .stat-small { color: var(--st-ink-soft); opacity: 1; font-weight: 700; }
+#hud-stats .stat-small b { color: #e65100; }
+#hud-location { border-radius: 999px; color: var(--st-ink); font-weight: 800; }
+#hud-help { color: var(--st-ink-soft); opacity: 0.95; font-weight: 600; }
+#hud-carry { background: var(--st-btn); color: #fff; -webkit-text-stroke: 3px var(--st-dark); paint-order: stroke fill; box-shadow: 0 0 0 3px #1b5e20, 0 5px 0 rgba(0, 0, 0, 0.3); }
+
+/* 撳 E 提示 */
+#hud-prompt { border-radius: 18px; color: var(--st-ink); font-weight: 800; animation: st-pop-x 0.3s cubic-bezier(.2, 1.4, .4, 1); }
+#hud-prompt kbd { background: var(--st-btn); color: #fff; border: 2px solid #1b5e20; box-shadow: 0 3px 0 #1b5e20; padding: 0 9px; -webkit-text-stroke: 0; }
+
+/* 知識卡 */
+#fact {
+  background: var(--st-card); color: var(--st-ink); border: 4px solid #fff; border-radius: 22px;
+  box-shadow: 0 0 0 4px var(--st-ring), 0 8px 0 rgba(0, 0, 0, 0.25), 0 16px 40px rgba(0, 0, 0, 0.35);
+  font-weight: 600; animation: st-pop-x 0.45s cubic-bezier(.2, 1.4, .4, 1);
+}
+#fact b { color: #2e7d32; font-weight: 800; }
+
+/* 快捷欄：米白格仔，綠色外圈；揀咗 = 金色 */
+.slot {
+  background: var(--st-card); border: 3px solid #fff; border-radius: 14px;
+  box-shadow: 0 0 0 2px var(--st-ring), 0 4px 0 rgba(0, 0, 0, 0.3);
+  color: var(--st-ink);
+}
+.slot .num { color: var(--st-ink); opacity: 0.85; font-weight: 800; }
+.slot.rescued { background: linear-gradient(180deg, #ffe0b2, #ffb74d); }
+.slot.pet { background: linear-gradient(180deg, #dcedc8, #9ccc65); }
+.slot.selected { border-color: #fff; box-shadow: 0 0 0 3px #ff8f00, 0 0 0 6px var(--st-gold), 0 4px 0 rgba(0, 0, 0, 0.3); }
+#hotbar-label { color: #fff; -webkit-text-stroke: 4px var(--st-dark); paint-order: stroke fill; text-shadow: none; font-weight: 800; }
+
+/* 右邊兩粒掣：好似 PLAY 掣（綠色 3D），開咗 = 金色 */
+.side-btn {
+  background: var(--st-card); border: 3px solid #fff; border-radius: 18px; color: var(--st-ink);
+  box-shadow: 0 0 0 3px var(--st-ring), 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+.side-btn:hover { background: linear-gradient(180deg, #ffffff, #dcedc8); border-color: #fff; filter: none; }
+.side-btn:active { transform: translateY(3px); box-shadow: 0 0 0 3px var(--st-ring), 0 1px 0 rgba(0, 0, 0, 0.3); }
+.side-btn.on { background: linear-gradient(180deg, #ffe082, #ffb300); border-color: #fff; box-shadow: 0 0 0 3px #e65100, 0 5px 0 rgba(0, 0, 0, 0.3); }
+#side-box { border-radius: 20px; color: var(--st-ink); animation: st-slide 0.3s cubic-bezier(.2, 1.4, .4, 1); }
+#side-box .side-head b { font-size: 19px; color: #fff; -webkit-text-stroke: 4px var(--st-dark); paint-order: stroke fill; }
+#side-box .side-total { color: #2e7d32; font-weight: 800; }
+#side-box .side-level { color: #ad1457; }
+#side-box .side-row { background: #fff; border: 2px solid #c5e1a5; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08); }
+#side-box .side-row.ready { background: #e8f5e9; border-color: #66bb6a; }
+#side-box .side-info small { opacity: 1; color: var(--st-ink-soft); }
+#side-box .money { color: #e65100; }
+#side-box .side-time { color: #e65100; font-weight: 800; }
+#side-box .side-time .ready { color: #2e7d32; }
+#side-box .empty-machine { background: #eceff1; }
+#side-box .side-hint { color: #558b2f; font-weight: 700; }
+#side-box .side-empty { color: var(--st-ink-soft); opacity: 1; }
+#side-box button[data-unequip] { background: linear-gradient(180deg, #b0bec5, #78909c); border: 2px solid #546e7a; box-shadow: 0 3px 0 #455a64; }
+#side-box .side-all { background: var(--st-btn); border: 3px solid #1b5e20; color: #fff; border-radius: 999px; box-shadow: 0 4px 0 #1b5e20; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+#side-box .side-all:hover { background: var(--st-btn-hover); }
+#side-box .side-all:active { transform: translateY(3px); box-shadow: 0 1px 0 #1b5e20; }
+
+/* 稀有動物方向牌：米白卡，邊框用稀有度色 */
+.sighting {
+  background: var(--st-card); color: var(--st-ink); border: 3px solid #fff; border-radius: 14px; font-weight: 700;
+  box-shadow: 0 0 0 3px var(--c), 0 4px 0 rgba(0, 0, 0, 0.3); animation: none;
+}
+.sighting b, .sighting .arrow { color: var(--c); -webkit-text-stroke: 3px var(--st-dark); paint-order: stroke fill; }
+.sighting small { opacity: 1; color: var(--st-ink-soft); }
+
+/* 教學：黃色版開始卡 */
+#tutorial {
+  background: linear-gradient(180deg, #fffde7 0%, #ffecb3 100%); color: #4e342e;
+  border: 4px solid #fff; border-radius: 20px;
+  box-shadow: 0 0 0 4px #ff8f00, 0 6px 0 rgba(0, 0, 0, 0.28), 0 10px 22px rgba(0, 0, 0, 0.25);
+}
+#tutorial-step { font-size: 15px; color: #fff; letter-spacing: 1px; -webkit-text-stroke: 4px #bf360c; paint-order: stroke fill; }
+#tutorial-skip { background: linear-gradient(180deg, #ffe082, #ffb300); border: 2px solid #e65100; border-radius: 999px; color: #4e342e; font-weight: 800; box-shadow: 0 3px 0 #e65100; }
+#tutorial-skip:active { transform: translateY(2px); box-shadow: 0 1px 0 #e65100; }
+#tutorial-arrow, #lab-arrow { -webkit-text-stroke: 3px var(--st-dark); paint-order: stroke fill; text-shadow: 0 4px 0 rgba(0, 0, 0, 0.3); }
+
+/* Boss 血條：紫色版開始卡 */
+#boss-bar {
+  background: linear-gradient(180deg, #f3e5f5, #e1bee7); color: #4a148c; border: 3px solid #fff;
+  box-shadow: 0 0 0 3px #6a1b9a, 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+#boss-bar b { color: #fff; -webkit-text-stroke: 4px #38006b; paint-order: stroke fill; }
+#boss-bar .hp { color: #4a148c; }
+#boss-bar small, #boss-bar small.you { color: #6a1b9a; }
+#boss-bar .status { color: #2e7d32; }
+#boss-bar .hpbar { background: #fff; border-color: #6a1b9a; }
+
+/* =================== 面板：同開始卡一樣 =================== */
+#panel .card.wide {
+  background: var(--st-card); border: 4px solid #fff; border-radius: 26px;
+  box-shadow: 0 0 0 4px var(--st-ring), 0 12px 0 rgba(0, 0, 0, 0.25), 0 24px 60px rgba(0, 0, 0, 0.45);
+  animation: card-in 0.4s cubic-bezier(.2, 1.4, .4, 1);
+  color: var(--st-ink);
+}
+#panel-title {
+  font-size: 30px; font-weight: 700; letter-spacing: 2px; color: var(--st-gold);
+  -webkit-text-stroke: 6px var(--st-dark); paint-order: stroke fill;
+  text-shadow: none; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35));
+  border-bottom: 4px solid #1b5e20; border-radius: 22px 22px 0 0;
+}
+#panel[data-kind="quests"] #panel-title { color: #fff; }
+#panel[data-kind="admin"] #panel-title, #panel[data-kind="fuse"] #panel-title, #panel[data-kind="portal"] #panel-title { color: var(--st-green); }
+.card h3 { color: #2e7d32; font-weight: 800; border-bottom: 3px dashed #aed581; }
+.card h1 { color: var(--st-gold); -webkit-text-stroke: 6px var(--st-dark); paint-order: stroke fill; }
+
+/* 卡入面所有掣：綠色 3D 膠囊（同 PLAY 一樣） */
+.card button {
+  background: var(--st-btn); color: #fff; border: 3px solid #1b5e20; border-radius: 999px;
+  box-shadow: 0 5px 0 #1b5e20, 0 8px 14px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); font-weight: 800; letter-spacing: 0.5px;
+  transition: transform 0.12s;
+}
+.card button:hover { background: var(--st-btn-hover); transform: translateY(-2px); }
+.card button:active { transform: translateY(4px); box-shadow: 0 1px 0 #1b5e20; }
+.card button.grey { background: linear-gradient(180deg, #cfd8dc, #90a4ae 60%, #607d8b); border-color: #455a64; box-shadow: 0 5px 0 #455a64; }
+.card button.sell { background: linear-gradient(180deg, #ffcc80, #fb8c00 55%, #e65100); border-color: #bf360c; box-shadow: 0 5px 0 #bf360c; }
+.card button:disabled, .card button:disabled:hover { background: #cfd8dc; border-color: #b0bec5; box-shadow: 0 3px 0 #b0bec5; color: #78909c; text-shadow: none; transform: none; cursor: not-allowed; }
+.card-buttons button { border-radius: 12px; border-width: 2px; box-shadow: 0 3px 0 #1b5e20; padding: 5px 4px; }
+.card-buttons button.grey { box-shadow: 0 3px 0 #455a64; }
+.card-buttons button.sell { box-shadow: 0 3px 0 #bf360c; }
+.quest button { background: linear-gradient(180deg, #ce93d8, #8e24aa 60%, #6a1b9a); border-color: #4a148c; box-shadow: 0 4px 0 #4a148c; }
+/* 右上 ✕：紅色 3D 方掣 */
+.card button.panel-x { border-radius: 14px; background: linear-gradient(180deg, #ff8a80, #e53935 60%, #b71c1c); border: 3px solid #fff; box-shadow: 0 0 0 2px #7f0000, 0 4px 0 #7f0000; }
+.card button.panel-x:hover { background: linear-gradient(180deg, #ffab91, #ef5350 60%, #c62828); transform: rotate(8deg); }
+
+/* 分頁：米白膠囊，揀咗 = 綠色 PLAY 款 */
+.tabs button {
+  background: #fff; color: var(--st-ink); border: 3px solid #c5e1a5; text-shadow: none;
+  box-shadow: 0 4px 0 #aed581;
+}
+.tabs button:hover { background: #f1f8e9; }
+.tabs button.active { background: var(--st-btn); color: #fff; border-color: #1b5e20; box-shadow: 0 4px 0 #1b5e20; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+
+/* 動物卡：白卡 + 粗邊 + 3D 底影 */
+.card-animal { border-width: 3px; border-radius: 16px; background: #fff; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1); }
+.card-animal b { color: var(--st-ink); }
+.card-animal.equipped { background: linear-gradient(180deg, #f1f8e9, #dcedc8); }
+.card-animal.locked { background: #f5f5f5; }
+.quest { background: #fff; border: 3px solid #c5e1a5; border-radius: 16px; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08); }
+.fuse-chance { background: #fff; border-radius: 16px; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1); }
+.portal-route { background: linear-gradient(180deg, #fff, #f3e5f5); border: 3px solid #e1bee7; border-radius: 16px; }
+.progress { background: #fff; border: 3px solid #c5e1a5; height: 18px; }
+.progress div { background: linear-gradient(90deg, #76ff03, #43a047); }
+.card .hint { background: #fff3e0; border: 2px dashed #ffb74d; border-radius: 12px; }
+.card table td { border-bottom: 1px dashed #dcedc8; }
+
+/* =================== 問答：開始卡款 =================== */
+.card.quiz {
+  background: var(--st-card); border: 4px solid #fff; border-radius: 26px;
+  box-shadow: 0 0 0 4px #c62828, 0 12px 0 rgba(0, 0, 0, 0.25), 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+#quiz-title {
+  font-size: 28px; font-weight: 700; letter-spacing: 1px; color: var(--st-gold) !important;
+  -webkit-text-stroke: 6px #4a0000; paint-order: stroke fill; text-shadow: none;
+  border-radius: 22px 22px 0 0;
+}
+#quiz.vocab #quiz-title { color: var(--st-green) !important; -webkit-text-stroke-color: #2a0050; }
+#quiz-question { color: var(--st-ink); font-weight: 800; }
+#quiz-answers button { border: 3px solid #fff; border-radius: 18px; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3); -webkit-text-stroke: 3px rgba(0, 0, 0, 0.45); paint-order: stroke fill; text-shadow: none; }
+#quiz-answers button kbd { -webkit-text-stroke: 0; }
+#quiz-result { font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-size: 24px; -webkit-text-stroke: 5px #fff; paint-order: stroke fill; }
+#quiz-iq { color: var(--st-ink-soft); font-weight: 700; }
+
+/* =================== 彈出字 + 大字公告：logo 款粗黑邊 =================== */
+.popup { -webkit-text-stroke: 5px var(--st-dark); paint-order: stroke fill; text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35); font-weight: 700; }
+#announce { color: #fff; font-weight: 700; -webkit-text-stroke: 7px var(--st-dark); paint-order: stroke fill; text-shadow: 0 5px 0 rgba(0, 0, 0, 0.35); }
+#announce.rare { color: var(--c); -webkit-text-stroke: 7px var(--st-dark); text-shadow: 0 0 22px var(--c), 0 5px 0 rgba(0, 0, 0, 0.4); }
+#zone-title span { -webkit-text-stroke: 7px var(--st-dark); paint-order: stroke fill; text-shadow: 0 6px 0 rgba(0, 0, 0, 0.35); }
+#zone-title small { color: #fff; -webkit-text-stroke: 4px var(--st-dark); paint-order: stroke fill; }
+
+/* =================== 揀裝置 =================== */
+#device-chooser .card { background: var(--st-card); border-radius: 26px; box-shadow: 0 0 0 4px var(--st-ring), 0 12px 0 rgba(0, 0, 0, 0.25), 0 24px 60px rgba(0, 0, 0, 0.45); animation: card-in 0.5s cubic-bezier(.2, 1.4, .4, 1); }
+#device-chooser .card h2 { font-size: 32px; color: var(--st-gold); -webkit-text-stroke: 6px var(--st-dark); paint-order: stroke fill; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3)); }
+.device-buttons button { background: var(--st-btn); border-radius: 22px; border: 3px solid #1b5e20; box-shadow: 0 6px 0 #1b5e20, 0 10px 20px rgba(0, 0, 0, 0.3); }
+.device-buttons button b { -webkit-text-stroke: 4px var(--st-dark); paint-order: stroke fill; }
+
+/* =================== 電影字幕 + 結尾字：logo 款 =================== */
+#intro-caption, #movie-caption { font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-style: normal; color: #fff; -webkit-text-stroke: 5px var(--st-dark); paint-order: stroke fill; text-shadow: 0 4px 0 rgba(0, 0, 0, 0.4); }
+#intro-bubble, #movie-bubble { border-width: 4px; border-color: var(--st-dark); border-radius: 24px; box-shadow: 0 0 0 4px #fff, 0 7px 0 rgba(0, 0, 0, 0.35); }
+#intro-final, #movie-final { font-family: 'Fredoka', 'Trebuchet MS', sans-serif; -webkit-text-stroke: 6px var(--st-dark); paint-order: stroke fill; }
+#movie-final { -webkit-text-stroke-width: 4px; }
+#intro-skip, #movie-skip { color: #fff; opacity: 0.85; }
+
+/* =================== 彈入動畫 =================== */
+@keyframes st-pop { from { transform: scale(0.85); opacity: 0; } }
+@keyframes st-pop-x { from { transform: translateX(-50%) scale(0.85); opacity: 0; } }
+@keyframes st-slide { from { transform: translateY(-50%) translateX(24px); opacity: 0; } }
+#hud-timer { animation-name: st-pop-timer; }
+@keyframes st-pop-timer { from { transform: translateX(-50%) scale(0.85); opacity: 0; } }
+#hud-timer.soon { animation: timer-pulse 0.8s ease-in-out infinite alternate; }
+
+/* =================== 細畫面 + 手機 =================== */
+/* 1280–1500 闊：夜晚倒數收埋「(at …)」，唔好撞右上嗰排掣 */
+@media (max-width: 1500px) { #hud-timer .timer-extra { display: none; } }
+@media (max-height: 760px) {
+  #panel-title { font-size: 26px; }
+  #quiz-title { font-size: 24px; }
+}
+body.mobile #panel-title { font-size: 22px; -webkit-text-stroke-width: 5px; }
+body.mobile #hud-stats { border-width: 2px; }
+body.mobile #hud-stats .stat-line b { -webkit-text-stroke-width: 3px; }
+body.mobile #hud-timer { font-size: 16px; padding: 4px 14px; -webkit-text-stroke-width: 3px; }
+body.mobile #side-box { animation: st-pop 0.3s ease-out; }
+body.mobile .side-btn { border-radius: 14px; }
+
+/* 手機打橫（例如 844×390）：唔好撞（QA 發現） */
+body.mobile #hud-buttons kbd { display: none; }
+@media (max-height: 460px) {
+  /* 頂部掣細啲；倒數搬去數值盒隔籬，唔好俾頂部掣遮住 */
+  body.mobile #hud-buttons { gap: 4px; top: calc(6px + env(safe-area-inset-top, 0px)); }
+  body.mobile #hud-buttons button.hud-box { font-size: 12px; padding: 4px 7px; border-width: 2px; }
+  body.mobile #hud-timer { top: calc(6px + env(safe-area-inset-top, 0px)); left: calc(170px + env(safe-area-inset-left, 0px)); transform: none; animation: none; }
+  body.mobile #hud-timer.soon { animation: none; }
+  body.mobile #event-banner { display: none; }
+  /* 稀有動物牌：喺倒數下面，最多 2 個，唔好遮住 JUMP／USE */
+  body.mobile #sightings { top: calc(48px + env(safe-area-inset-top, 0px)); left: calc(170px + env(safe-area-inset-left, 0px)); right: auto; bottom: auto; gap: 4px; }
+  body.mobile #sightings .sighting:nth-child(n+3) { display: none; }
+  body.mobile .sighting { font-size: 11px; padding: 2px 8px; border-width: 2px; }
+  body.mobile .sighting .arrow { font-size: 15px; }
+  /* 細盒：喺頂部掣下面、快捷欄上面 */
+  body.mobile #side-box { top: calc(46px + env(safe-area-inset-top, 0px)); max-height: calc(100vh - 140px); }
+  /* 教學卡細啲，少啲遮住搖桿 */
+  body.mobile #tutorial { top: calc(100px + env(safe-area-inset-top, 0px)); width: min(250px, calc(100vw - 24px)); padding: 6px 10px; font-size: 12px; border-width: 3px; }
+  body.mobile #tutorial-step { font-size: 12px; -webkit-text-stroke-width: 3px; }
+  body.mobile #tutorial-skip { margin-top: 4px; font-size: 11px; padding: 2px 8px; }
+  body.mobile #hud-location { display: none; } /* 入新地方有大字，打橫手機冇位 */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-animal, #hud-stats, #hud-timer, #side-box, #hud-prompt, #fact { animation: none !important; }
+}
