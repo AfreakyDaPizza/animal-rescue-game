@@ -21,7 +21,7 @@ import { BIOMES } from './data/biomeList.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
 import { HUB } from './hubShape.js';
-import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH } from './labShape.js';
+import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, GYM, GYM_DOOR } from './labShape.js';
 import { beach } from './secretBeach.js';
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
@@ -52,6 +52,7 @@ export function whereIs(x, z) {
   if (z > ARENA.z - ARENA.r - 5) return 'Boss Arena';
   if (z > LAB_DOOR_Z + 0.5) return 'Laboratory';
   if (x > BEACH.minX && z > BEACH.minZ && z < BEACH.maxZ) return 'Secret Beach';
+  if (x >= GYM.minX && x <= GYM.maxX && z >= GYM.minZ && z <= GYM.maxZ) return 'Gym';
   if (z > STEM.maxZ && Math.hypot(x - HUB.cx, z - HUB.cz) > HUB.r - 0.3) return 'Outside the Park';
   if (z > STEM.maxZ) return 'Hub';
   const i = Math.min(BIOMES.length - 1, Math.floor((STEM.maxZ - z) / BIOME_LENGTH));
@@ -70,6 +71,8 @@ export function addCollider(x, z, r) {
 export const gate = { locked: false, mesh: null };
 // Hub 底大門（ANIMAL RESCUE PARK）：圖鑑有 25 隻先開（Issue #2）；開咗先行得出去前院同實驗室
 export const parkGate = { open: false };
+// 💪 Gym（小朋友 2026-10-18）：open = 開咗門（行得入去）；main.js 每格畫面設定
+export const gymArea = { open: false };
 
 // ---- 石台（可以跳上去企）----
 // { minX, maxX, minZ, maxZ, top }：top 係台面有幾高
@@ -105,7 +108,7 @@ export function isWalkable(x, z, radius, feetY = 0) {
   const inHub = z >= HUB.minZ + r && Math.hypot(x - HUB.cx, z - HUB.cz) <= HUB.r - r;
   // 通道向下伸入 Hub 少少，等兩部分接得順，唔會喺接口卡住
   const stemIntoHub = { ...STEM, maxZ: 8 };
-  const outside = parkGate.open && (inRect(GATE_LANE) || inRect(YARD) || inRect(LAB_DOOR) || inRect(LAB) || (beach.open && inRect(BEACH)));
+  const outside = parkGate.open && (inRect(GATE_LANE) || inRect(YARD) || inRect(LAB_DOOR) || inRect(LAB) || (beach.open && inRect(BEACH)) || (gymArea.open && (inRect(GYM) || inRect(GYM_DOOR))));
   if (Math.hypot(x - ARENA.x, z - ARENA.z) <= ARENA.r - r) return colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius); // 圓形 Arena：圓形力場牆擋住
   const inKingdom = kingdom.open && (inRect(biomeRect(6)) || inRect(KINGDOM_DOOR));
   if (!inHub && !inRect(stemIntoHub) && !outside && !inKingdom) return false;

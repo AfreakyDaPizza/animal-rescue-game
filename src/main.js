@@ -5,9 +5,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt } from './world.js';
+import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
-import { createPlayer, updatePlayer, teleportPlayer } from './player.js';
+import { createPlayer, updatePlayer, teleportPlayer, jumpHeight, jumpVelocity } from './player.js';
 import { showDeviceChooser, setupMobile } from './mobile.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
@@ -56,6 +56,8 @@ import { fusePets } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
 import { inDiscord, startDiscord } from './discordActivity.js';
+import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText } from './gym.js';
+import { GYM, GYM_DOOR_Z, GYM_PORTAL, GYM_FRONT, inGym } from './labShape.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 之後畫質系統會再調
@@ -95,6 +97,7 @@ scene.add(stars);
 
 const updateWorld = buildWorld(scene);
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
+const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const eclipse = createEclipse(scene); // Eclipse 日蝕活動（天上嘅日蝕、DNA 激光）
 const hub = createHub(scene);
@@ -678,10 +681,15 @@ function currentInteraction() {
   // 秘密沙灘：長櫈坐低睇流星、同神秘人傾偈
   if (beach.open) {
     if (Math.hypot(pos.x - BEACH_PORTAL.x, pos.z - BEACH_PORTAL.z) < 2.6) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Park', action: () => travel(0, 14, 0, '🏡 Back to the Animal Rescue Park!') };
-    if (whereIs(pos.x, pos.z) === 'Laboratory' && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: () => travel(BEACH_ARRIVE.x, BEACH_ARRIVE.z, -Math.PI / 2, '🏖️ The Secret Beach!') };
+    if (whereIs(pos.x, pos.z) === 'Laboratory' && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
+    if (gym.holder.visible && Math.hypot(pos.x - GYM_PORTAL.x, pos.z - GYM_PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
     if (sitting) return { prompt: '🌠 Watching the meteors... <kbd>E</kbd> Stand up', action: standUp };
     if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
     if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
+  }
+  // 💪 Gym 未開門
+  if (gym.holder.visible && !gym.open && Math.abs(pos.z - GYM_DOOR_Z) < 5 && pos.x > GYM.maxX - 1 && pos.x < GYM.maxX + 9) {
+    return { prompt: `🚧 The GYM opens on ${gymOpenDateText()}! (in ${gymCountdown()})` };
   }
   // Boss 戰：用球棒打佢
   if (selectedHotbarItem()?.item.bat && whereIs(pos.x, pos.z) === 'Boss Arena') {
@@ -835,6 +843,19 @@ function travel(x, z, rotY, text) {
   teleportPlayer(player, x, z);
   camera.rotation.set(0, rotY, 0, 'YXZ');
   announce(text);
+}
+// 去秘密沙灘：第一次去先播 Owner 俾錢、流星嗰段（小朋友 2026-10-18：爆炸之後先見到 Gym，傳送門喺 Gym 門外）
+function goToBeach() {
+  if (!state.beachFinaleSeen && !endingRunning) {
+    endingRunning = true;
+    player.controls.unlock();
+    closePanel();
+    flashScreen();
+    play('portal');
+    beachFinale();
+    return;
+  }
+  travel(BEACH_ARRIVE.x, BEACH_ARRIVE.z, -Math.PI / 2, '🏖️ The Secret Beach!');
 }
 let sitting = false;
 function sitDown() {
@@ -1080,8 +1101,22 @@ function startEnding() {
   closePanel();
   playEnding({
     scene, camera, fight, short: true,
-    onDone: () => playLabEscape({ scene, camera, onDone: beachFinale }),
+    onDone: () => playLabEscape({ scene, camera, onDone: afterEscape }),
   });
+}
+// 爆炸之後：企喺前院，望住新 Gym（OPENING SOON）同門外嘅傳送門
+function afterEscape() {
+  endingRunning = false;
+  state.labEndingSeen = true;
+  hideBoss(fight);
+  fight.phase = 'gone';
+  save();
+  teleportPlayer(player, GYM_FRONT.x, GYM_FRONT.z);
+  camera.rotation.set(0, Math.PI / 2 - 0.35, 0, 'YXZ'); // 望向 Gym（-x），少少望住傳送門
+  announce(isGymOpen() ? '💪 The RANGER GYM is open! Go in and train!' : `💪 The RANGER GYM opens on ${gymOpenDateText()}!`);
+  setTimeout(() => popup('🌀 Walk to the glowing portal and press E to visit the SECRET BEACH 🏖️'), 2600);
+  play('day');
+  resume();
 }
 function beachFinale() {
   const animals = ENDING_ANIMALS.map((name) => {
@@ -1105,6 +1140,7 @@ function beachFinale() {
       beach.collab = false;
       endingRunning = false;
       state.labEndingSeen = true;
+      state.beachFinaleSeen = true;
       hideBoss(fight);
       fight.phase = 'gone';
       lieOnHammock();
@@ -1133,6 +1169,7 @@ let pausedSince = 0; // 幾時開始暫停（0 = 冇暫停）
 const timer = new THREE.Timer();
 let time = 0;
 let wasTraining = null;
+let wasGym = null;
 let lastStep = 0;
 let lastLocation = null;
 
@@ -1160,6 +1197,10 @@ renderer.setAnimationLoop((timestamp) => {
   updateMovie(dt);
   if (!frozen) updateLab(dt, time, pos);
   beach.open = !!state.labBossDefeated; // 小朋友：打完 Boss 先見到秘密沙灘
+  // 💪 Gym：打完 Boss（實驗室爆炸）先見到；GYM_OPEN_DATE 到咗先行得入去
+  gym.holder.visible = !!state.labBossDefeated;
+  gymArea.open = gym.holder.visible && isGymOpen();
+  if (!frozen) updateGym(dt, time, pos);
   // Biome 7：NEW_BIOME_DATE 到咗先開；第一次行到閘門前面就播開門動畫
   kingdom.open = (isNewBiomeOpen() || kingdomDebug || state.bigButton) && (state.kingdomSeen || movie.active);
   if ((isNewBiomeOpen() || kingdomDebug || state.bigButton) && !state.kingdomSeen && !movie.active && !intro.active && pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10) {
@@ -1193,12 +1234,29 @@ renderer.setAnimationLoop((timestamp) => {
       if (station.video) setTimeout(() => popup('🖱️ Scroll to watch funny videos!'), 1300);
     }
     wasTraining = station;
+    // 💪 Gym 嘅機
+    const gymStation = station ? null : gymStationAt(pos.x, pos.z);
+    if (gymStation && gymStation !== wasGym) popup(gymStation.enterText);
+    wasGym = gymStation;
     // 企喺跑步機：睇片，背景音樂停、AI 聲讀片（小朋友 2026-10-17）
     watchVideos(!!station?.video);
 
     if (fling) updateFling(dt);
     else if (sitting) camera.position.set(BENCH.x + 0.05, 1.75, BENCH.z); // 坐喺長櫈睇流星
-    else updatePlayer(player, dt, station ? station.standHeight : 0);
+    else updatePlayer(player, dt, station ? station.standHeight : gymStation ? gymStation.standHeight : 0);
+    // 🦘 彈床：一落地就自動彈返上去（跳得越高越好玩）
+    if (gymStation?.kind === 'trampoline' && player.grounded) {
+      player.vy = jumpVelocity(Math.max(3.2, jumpHeight() * 1.35));
+      player.grounded = false;
+      gym.bounce = 1;
+      play('boing');
+    }
+    const gymGains = trainInGym(gymStation, dt);
+    if (gymGains.length) {
+      quest('train', 1);
+      popup(gymGains.map((g) => `+${g.amount.toLocaleString('en-US')} ${g.label}`).join('  '));
+      play('blip');
+    }
     const { trained, earned } = updateHub(hub, dt, time, pos.x, pos.z);
     if (earned) quest('money', earned);
     if (trained) {
@@ -1260,7 +1318,7 @@ renderer.setAnimationLoop((timestamp) => {
     const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
     if (bosses.some((b) => b.mode === 'chase') || labBattle) setMusicMood('boss');
     else if (dayNight.isNight) setMusicMood('night');
-    else setMusicMood(location === 'Hub' ? 'hub' : 'biome');
+    else setMusicMood(location === 'Hub' || location === 'Gym' ? 'hub' : 'biome');
     if (safeTime <= 0 && caught) onBossCatch(caught);
     else if (safeTime <= 0) {
       const hit = hazardHit(hazards, pos.x, pos.z, player.feetY); // 跳高啲就跳得過
@@ -1324,12 +1382,17 @@ renderer.setAnimationLoop((timestamp) => {
     held: rescue.carrying?.model || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
     walking: player.walking, feetY: player.feetY,
-    station: trainingStationAt(hub, camera.position.x, camera.position.z),
+    station: trainingStationAt(hub, camera.position.x, camera.position.z) || (gymStationAt(camera.position.x, camera.position.z)?.kind === 'treadmill' ? { kind: 'treadmill' } : null),
   });
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
   if (!inMovie && viewCam !== camera && inLab(camera.position.x, camera.position.z)) {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
     viewCam.position.x = THREE.MathUtils.clamp(viewCam.position.x, LAB.minX + 1.3, LAB.maxX - 1.3);
+  }
+  // 💪 Gym 入面：第三身鏡頭唔好退咗出牆外面
+  if (!inMovie && viewCam !== camera && inGym(camera.position.x, camera.position.z)) {
+    viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, GYM.minZ + 1.3, GYM.maxZ - 1.3);
+    viewCam.position.x = THREE.MathUtils.clamp(viewCam.position.x, GYM.minX + 1.3, GYM.maxX - 1.3);
   }
   if (!inMovie && viewCam !== camera && Math.hypot(camera.position.x - ARENA.x, camera.position.z - ARENA.z) < ARENA.r) {
     const dx = viewCam.position.x - ARENA.x;
@@ -1399,7 +1462,7 @@ const labDebug = {
   // 直接播結局：game.lab.ending()
   ending() {
     labDebug.open();
-    Object.assign(state, { labBossDefeated: true, labEndingSeen: false });
+    Object.assign(state, { labBossDefeated: true, labEndingSeen: false, beachFinaleSeen: false });
     if (fight.phase !== 'defeated') {
       hideBoss(fight);
       fight.phase = 'gone';
@@ -1409,7 +1472,7 @@ const labDebug = {
   resetFight: () => resetFight(fight),
   reset() {
     Object.assign(state, {
-      labUnlocked: false, labVisited: false, labBossDefeated: false, labRewardPaid: false, labEndingSeen: false,
+      labUnlocked: false, labVisited: false, labBossDefeated: false, labRewardPaid: false, labEndingSeen: false, beachFinaleSeen: false,
       hasHammer: false, labPodsSmashed: [], labLegendaryGiven: 0, labGivenSpecies: [],
     });
     parkGate.open = false;
@@ -1417,4 +1480,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

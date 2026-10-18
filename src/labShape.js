@@ -76,3 +76,12 @@ export const BENCH = W(BENCH_LOCAL);
 export const STRANGER = W(STRANGER_LOCAL);
 export const BEACH_PORTAL = W(BEACH_PORTAL_LOCAL);
 export const BEACH_ARRIVE = { x: BEACH.minX + 8, z: 81.5 }; // 去到沙灘企喺邊
+
+// ---- 💪 GYM（小朋友 2026-10-18）：實驗室爆炸之後，喺前院左邊（-x）出現；GYM_OPEN_DATE 先開門 ----
+// 大門向 +x（對住前院），門外有傳送門去秘密沙灘
+export const GYM = { minX: -66, maxX: -30, minZ: 63, maxZ: 100, wallH: 8 };
+export const GYM_DOOR_Z = 81.5; // 大門中間
+export const GYM_DOOR = { minX: -34, maxX: -21, minZ: GYM_DOOR_Z - 3, maxZ: GYM_DOOR_Z + 3 }; // 門口條路（駁去前院）
+export const GYM_PORTAL = { x: -20.6, z: 70, y: 2.7 }; // 門外去秘密沙灘嘅傳送門（面向 +x）
+export const GYM_FRONT = { x: -14, z: 80 }; // 爆炸動畫之後企喺度（望住 Gym）
+export const inGym = (x, z) => inRect(GYM, x, z);

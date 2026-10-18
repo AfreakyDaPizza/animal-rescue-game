@@ -4,12 +4,12 @@
 import * as THREE from 'three';
 import { isWalkable, groundAt, HUB } from './world.js';
 import { state } from './state.js';
+import { JUMP_POWER_HEIGHT, JUMP_POWER_MAX } from './data/balance.js';
 
 const RADIUS = 0.4;      // 玩家有幾闊（用嚟撞嘢）
 const EYE_HEIGHT = 1.6;  // 對眼有幾高
 const GRAVITY = 28;      // 跌落嚟幾快
 const JUMP_SPEED = 10.5; // 跳起有幾勁（大約跳到 2 米高）
-const AIR_SPEED_CAP = 9; // 喺半空最快幾快（Speed 好高都唔會一跳飛過頭）
 const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣）
 
 // Speed 數值 → 每秒行幾多格
@@ -18,6 +18,10 @@ const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣
 export function walkSpeed(speed) {
   return 6 + 3 * Math.log2(Math.max(speed, 100) / 100);
 }
+
+// 跳起嘅速度：普通跳大約 2 米高；Jump Power（Gym 嘅彈床）每點高多 JUMP_POWER_HEIGHT 米
+export const jumpHeight = (power = state.jumpPower) => (JUMP_SPEED * JUMP_SPEED) / (2 * GRAVITY) + Math.min(Math.max(0, power || 0), JUMP_POWER_MAX) * JUMP_POWER_HEIGHT;
+export const jumpVelocity = (height = jumpHeight()) => Math.sqrt(2 * GRAVITY * height);
 
 // ---- 滑鼠轉頭（自己寫，取代 three.js 嘅 PointerLockControls）----
 // Chrome 鎖住滑鼠時間中會俾一下好大嘅「假」移動（電腦慢嗰陣更多），鏡頭就會亂飛。
@@ -155,9 +159,8 @@ export function updatePlayer(player, dt, extraGround = 0) {
     right.crossVectors(forward, UP);
 
     const len = Math.hypot(f, s); // 斜行唔好快過直行
-    let speed = walkSpeed(state.speed);
-    // 只係喺半空先限速（企喺山／樓梯上面照跑得快，小朋友 2026-10-15）
-    if (!player.grounded) speed = Math.min(speed, AIR_SPEED_CAP);
+    // 喺半空都保持跑步速度（小朋友老師話：跑跑下跳起會慢咗好多，2026-10-18 取消咗半空限速）
+    const speed = walkSpeed(state.speed);
     const step = speed * dt * mag;
     // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
     const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));
@@ -180,7 +183,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
   const ground = Math.max(extraGround, groundAt(p.x, p.z, player.feetY));
   const wantJump = keys.has('Space') || touchInput.jump; // 手機：撳住 JUMP 掣
   if (player.grounded && wantJump) {
-    player.vy = JUMP_SPEED;
+    player.vy = jumpVelocity();
     player.grounded = false;
     player.jumped = true; // main.js 用嚟出跳嘅聲
   }

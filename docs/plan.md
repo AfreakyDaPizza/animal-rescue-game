@@ -188,3 +188,12 @@ src/data/questions.js ← 野生動物問題
 12. 以後加地方：前院（`YARD`）兩邊可以再開路（例如閘外海灘睇流星），秘密結局「THE COLLAB」未做。
 
 測試（開發模式 console）：`game.lab.unlock()`（好似撳紅色掣）、`game.lab.open()`、`game.lab.hammer()`、`game.lab.smashAll()`、`game.lab.legendary(3)`、`game.lab.arena()`／`game.lab.start()`（直接入 Arena 開打）、`game.lab.god = true`（唔會俾打中）、`game.lab.attack('drones'|'animals'|'portal')`、`game.lab.tired()`、`game.lab.hitCapsule()`、`game.lab.ending()`、`game.lab.fight.timeScale = 3`（快轉）、`game.lab.reset()`（清晒實驗室進度）。
+
+## 💪 Ranger Gym（小朋友 2026-10-18）
+1. 實驗室爆炸之後（`state.labBossDefeated`）前院左邊（-x）出現 Gym（`src/gym.js`，位置 `GYM`／`GYM_DOOR`／`GYM_PORTAL` 喺 `src/labShape.js`）。爆炸動畫最後兩個鏡頭影 Gym 同門外傳送門，玩完企喺 Gym 門口（`GYM_FRONT`）。
+2. `GYM_OPEN_DATE = '2026-10-31'`（balance.js）先開門；之前門口有圍欄、「OPENING SOON」同倒數牌，行唔入去。
+3. 門外傳送門去秘密沙灘；第一次去先播 Owner 俾錢＋流星嗰段（`state.beachFinaleSeen`；舊存檔跟 `labEndingSeen`）。實驗室傳送門一樣。
+4. 入面：⚡ 4X Treadmill（每 2–4 秒 +4 × Hub 跑步機每秒）、🦘 Trampoline（自動彈，每 5 秒 +1 Jump Power，冇升級）、🧠 Brain Bench（每 3 秒 Speed + IQ 各 2 ×）、🧗 Climbing Wall of Wisdom（爬上去，每 2–4 秒 +4 × 學生桌每秒 IQ）。數值 `GYM_*`。我揀嘅：Brain Bench 同 Climbing Wall 兩部機。
+5. `state.jumpPower`：每點跳高 `JUMP_POWER_HEIGHT`（0.02 米），最多計 `JUMP_POWER_MAX`（300 點 = 多 6 米）。HUD 有 🦘（有 Jump Power 先顯示），My Stats 有一行。
+6. 小朋友老師話跑跑下跳會慢好多 → 取消咗半空限速（`player.js`），半空保持跑步速度。
+7. 測試：`game.openGym()`（唔理日子即刻開）、`game.lab.ending()`（再睇爆炸 → Gym）。

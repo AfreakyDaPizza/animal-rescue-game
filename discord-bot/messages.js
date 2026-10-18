@@ -36,6 +36,7 @@ export function howToPlayEmbed() {
       { name: '6. Your Plot 💰', value: 'Put pets on your **Plot**. They earn money every second. Heavier and rarer pets earn more!' },
       { name: '7. Night 🌙', value: 'Every 5 minutes it turns night for 20 seconds. The Biomes lock and **new animals spawn**. Machines are 10x faster at night.' },
       { name: '8. Events 🎉', value: 'Every :00 and :30 an event starts: Giant Pets, Rare Rush, Pet Frenzy, Training No Mercy, Troll Frenzy or Eclipse.' },
+      { name: '9. Ranger Gym 💪', value: 'After the Laboratory explodes, a **Gym** appears next to the yard (opens Saturday 31 October). **4X Treadmill** = Speed x4, **Trampoline** = Jump Power, **Brain Bench** = Speed + IQ, **Climbing Wall of Wisdom** = IQ x4. The portal outside goes to the Secret Beach!' },
       { name: 'Keys', value: '**P** stats · **I** Index · **Q** quests · **1-0** hotbar · mouse wheel = zoom' },
     ],
     footer: { text: 'Type /spawns to see which animals are out right now!' },

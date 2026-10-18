@@ -1,7 +1,7 @@
 // 畫面上嘅資料（HUD）：數值、夜晚倒數、位置、快捷欄、My Stats 同 Animal Index 面板
 
 import { state, save } from './state.js';
-import { walkSpeed } from './player.js';
+import { walkSpeed, jumpHeight } from './player.js';
 import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
@@ -57,6 +57,8 @@ export function updateHud(dayNight, location) {
   $('hud-money').textContent = fmt(state.money);
   $('hud-speed').textContent = fmt(state.speed);
   $('hud-iq').textContent = fmt(state.iq);
+  $('hud-jump').textContent = fmt(state.jumpPower || 0); // 💪 Gym 彈床：有 Jump Power 先顯示
+  $('hud-jump-box').hidden = !state.jumpPower;
   $('hud-tokens').textContent = fmt(state.tokens);
   $('hud-location').textContent = location;
 
@@ -96,7 +98,7 @@ export function showZoneTitle(location) {
   const el = $('zone-title');
   const i = BIOMES.findIndex((b) => b.name === location);
   // Issue #2：大門外面
-  const extra = { Laboratory: ['⚠️ Danger zone', '🔬 The Laboratory', '#b388ff'], 'Outside the Park': ['Outside the gate', 'Lab Road', '#76ff03'] }[location];
+  const extra = { Laboratory: ['⚠️ Danger zone', '🔬 The Laboratory', '#b388ff'], 'Outside the Park': ['Outside the gate', 'Lab Road', '#76ff03'], Gym: ['Get faster · Get smarter', '💪 Ranger Gym', '#ff9100'] }[location];
   el.querySelector('small').textContent = extra ? extra[0] : i >= 0 ? `Biome ${i + 1}` : 'Welcome back to';
   el.querySelector('span').textContent = extra ? extra[1] : i >= 0 ? BIOMES[i].short : 'The Hub';
   el.style.setProperty('--zone-color', extra ? extra[2] : i >= 0 ? BIOME_THEMES[i].top : '#ffd54f');
@@ -237,6 +239,7 @@ function statsHtml() {
       <tr><td>⚡ Speed</td><td>${fmt(state.speed)}</td></tr>
       <tr><td>🏃 Walk speed</td><td>${walkSpeed(state.speed).toFixed(1)} steps/sec</td></tr>
       <tr><td>🧠 IQ</td><td>${fmt(state.iq)}</td></tr>
+      <tr><td>🦘 Jump Power</td><td>${fmt(state.jumpPower || 0)} (jump ${jumpHeight().toFixed(1)} m high)</td></tr>
       <tr><td>🏋️ Treadmill</td><td>${level('treadmillLevel')} (+${trainingGainLabel(state.treadmillLevel, 'speed', fmt)}/sec)</td></tr>
       <tr><td>📚 Student Table</td><td>${level('tableLevel')} (+${trainingGainLabel(state.tableLevel, 'iq', fmt)}/sec)</td></tr>
     </table>

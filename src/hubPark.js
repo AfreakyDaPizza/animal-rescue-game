@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { HUB } from './hubShape.js';
+import { GYM, GYM_PORTAL } from './labShape.js';
 import { addCollider } from './world.js';
 import { buildAnimalModel } from './animalModels.js';
 import { findAnimal } from './data/animals.js';
@@ -43,7 +44,10 @@ const trunkMat = mat(0x6b4423);
 const leafA = mat(0x2e7d32);
 const leafB = mat(0x43a047);
 const leafC = mat(0x66bb6a);
+// 💪 Gym（小朋友 2026-10-18）嗰塊地同門口傳送門：唔好種樹
+const gymClearing = (x, z) => (x > GYM.minX - 4 && x < GYM.maxX + 9 && z > GYM.minZ - 5 && z < GYM.maxZ + 5) || Math.hypot(x - GYM_PORTAL.x, z - GYM_PORTAL.z) < 6;
 function tree(root, x, z, s = 1, kind = 0) {
+  if (gymClearing(x, z)) return;
   add(root, new THREE.BoxGeometry(0.7 * s, 4.4 * s, 0.7 * s), trunkMat, x, 2.2 * s, z);
   if (kind === 1) {
     // 松樹
