@@ -10,7 +10,8 @@ export const EVENTS = [
   { id: 'training', emoji: '🏋️', name: 'TRAINING NO MERCY', desc: 'Treadmill & Student Table give 100x!', duration: 20 },
   // 小朋友 2026-10-17：Troll Frenzy（好稀有嘅寵物，但 Boss 快 1,000,000 倍）同 Eclipse（日蝕：繁殖機 x20、日蝕激光）
   { id: 'troll', emoji: '🤡', name: 'TROLL FRENZY', desc: 'CRAZY rare pets everywhere... but every Boss is 1,000,000x FASTER! Good luck! 🤡', duration: 60 },
-  { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180 },
+  // 小朋友 2026-10-18：刪走 Eclipse 活動（已經有 🌑 Eclipse 變異嘅寵物照樣保留 x6）
+  // { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180 },
 ];
 // （秘密拉桿同 BIG PET FRENZY：2026-10-15 小朋友叫刪走）
 
