@@ -1,5 +1,5 @@
 // 💪 Gym 動作（小朋友 2026-10-18：「gym 要有動畫，好似攀石、舉重同其他」）
-// 第三身：公仔做動作（衝刺、彈床花式、臥推、攀石、打沙包、划艇）
+// 第三身：公仔做動作（衝刺、彈床、臥推、攀石、打沙包、划艇）—— 2026-10-18 改做 Minecraft 款（手腳硬直、鐘擺咁擺）
 // 第一身：鏡頭輕輕跟住動作郁（唔好太勁，唔好暈）
 // 所有 Gym 座標都係「設計座標」（gym.js），用 gymToWorld 轉去世界；面向 = 設計座標嘅 yaw + GYM_TURN
 // 公仔：面向 -z，腳喺 (0,0,0)；手腳 rotation.x 正數 = 向前（面嗰邊）；avatar.g.rotation.order = 'YXZ'
@@ -31,8 +31,6 @@ function place(avatar, lx, y, lz, localYaw) {
 }
 const local = (eye) => gymToLocal(eye.position.x, eye.position.z);
 
-// 彈床：每次彈起揀一個花式
-const TRICKS = ['arms', 'tuck', 'star', 'flip', 'arms', 'star', 'tuck', 'flip'];
 
 // 回傳 true = 已經擺好姿勢（thirdPerson.js 唔使再做行路動畫）
 export function poseGym(tp, st, { feetY, dt, time }) {
@@ -44,81 +42,41 @@ export function poseGym(tp, st, { feetY, dt, time }) {
   const me = local(eye);
 
   if (st.kind === 'treadmill') {
-    // ⚡ 衝刺：高抬腿、雙手大力擺、身向前傾，鎖住向住跑步機前面
-    tp.phase += dt * 20;
+    // ⚡ 衝刺（Minecraft 款）：手腳硬直大力擺、身少少向前，鎖住向住跑步機前面
+    tp.phase += dt * 14;
     const s = Math.sin(tp.phase);
-    place(avatar, st.x, feetY + Math.abs(s) * 0.14, THREE.MathUtils.clamp(me.z, st.z - 1.6, st.z + 1.8), 0);
-    avatar.g.rotation.x = -0.2;
-    L.rotation.x = 0.35 + s * 1.05;
-    R.rotation.x = 0.35 - s * 1.05;
-    AL.rotation.x = 0.4 - s * 1.2;
-    AR.rotation.x = 0.4 + s * 1.2;
-    AL.rotation.z = -0.12;
-    AR.rotation.z = 0.12;
-    avatar.head.rotation.x = 0.1;
+    place(avatar, st.x, feetY + Math.abs(Math.cos(tp.phase)) * 0.06, THREE.MathUtils.clamp(me.z, st.z - 1.6, st.z + 1.8), 0);
+    avatar.g.rotation.x = -0.15;
+    L.rotation.x = s * 1.0;
+    R.rotation.x = -s * 1.0;
+    AL.rotation.x = -s * 1.0;
+    AR.rotation.x = s * 1.0;
+    AL.rotation.z = -0.04;
+    AR.rotation.z = 0.04;
+    avatar.head.rotation.x = Math.sin(tp.phase * 2) * 0.04;
     return true;
   }
 
   if (st.kind === 'trampoline') {
-    // 🦘 彈床：升嘅時候舉高手；最高嗰下做花式（抱膝、星形跳、前空翻）
-    const T = tp.tramp || (tp.tramp = { inAir: false, apex: 0, lastApex: 2, prevH: 0, n: 0, trick: 'arms' });
+    // 🦘 彈床（Minecraft 款）：升嘅時候雙手打直舉高、跌嘅時候張開手；雙腳併埋
+    const T = tp.tramp || (tp.tramp = { prevH: 0, k: 0 });
     const h = feetY - st.top;
-    if (!T.inAir && h > 0.15) {
-      T.inAir = true;
-      T.n++;
-      T.trick = TRICKS[T.n % TRICKS.length];
-      T.apex = 0;
-    } else if (T.inAir && h < 0.08) {
-      T.inAir = false;
-      if (T.apex > 0.5) T.lastApex = T.apex;
-    }
     const up = h >= T.prevH;
     T.prevH = h;
-    if (T.inAir) T.apex = Math.max(T.apex, h);
-    const top = Math.max(0.5, up ? T.lastApex : T.apex);
-    const p = T.inAir ? (up ? 0.5 * Math.min(1, h / top) : 1 - 0.5 * Math.min(1, h / top)) : 0; // 0 → 0.5（最高）→ 1
-    const peak = T.inAir ? Math.sin(Math.PI * p) : 0; // 最高嗰下 = 1
+    const inAir = h > 0.1;
+    // up：舉高（π），跌：張開（打側）；落地：手垂低
+    const target = !inAir ? 0 : up ? 1 : 0.5;
+    T.k += (target - T.k) * Math.min(1, dt * 10);
     avatar.g.position.set(eye.position.x, feetY, eye.position.z);
     avatar.g.rotation.set(0, eye.rotation.y, 0, 'YXZ');
-    if (!T.inAir) {
-      // 落地：屈少少、手向下
-      avatar.g.position.y = feetY - 0.05;
-      AL.rotation.x = AR.rotation.x = 0.4;
-      L.rotation.x = R.rotation.x = 0.25;
-      return true;
-    }
-    if (T.trick === 'tuck') {
-      const k = smooth(Math.min(1, peak * 1.6));
-      L.rotation.x = R.rotation.x = k * 1.9;
-      AL.rotation.x = AR.rotation.x = lerp(Math.PI, 1.3, k);
-      AL.rotation.z = -0.2 * k;
-      AR.rotation.z = 0.2 * k;
-    } else if (T.trick === 'star') {
-      const k = smooth(Math.min(1, peak * 1.5));
-      AL.rotation.z = -2.3 * k;
-      AR.rotation.z = 2.3 * k;
-      AL.rotation.x = AR.rotation.x = (1 - k) * Math.PI;
-      L.rotation.z = -0.55 * k;
-      R.rotation.z = 0.55 * k;
-    } else if (T.trick === 'flip') {
-      // 前空翻：繞住腰（離地 1.1 米）轉一個圈
-      const a = -Math.PI * 2 * smooth(p);
-      const k = Math.sin(Math.PI * p);
-      L.rotation.x = R.rotation.x = 1.7 * k;
-      AL.rotation.x = AR.rotation.x = lerp(Math.PI, 1.2, k);
-      avatar.g.rotation.x = a;
-      v3.set(0, 1.1, 0).applyEuler(avatar.g.rotation);
-      avatar.g.position.y = feetY + 1.1 - v3.y;
-      avatar.g.position.x = eye.position.x - v3.x;
-      avatar.g.position.z = eye.position.z - v3.z;
-    } else {
-      // 普通：升 = 雙手舉高，跌 = 張開手
-      AL.rotation.x = AR.rotation.x = up ? Math.PI : lerp(Math.PI, 0.6, 1 - peak);
-      AL.rotation.z = up ? 0 : -0.9;
-      AR.rotation.z = up ? 0 : 0.9;
-      L.rotation.x = 0.15;
-      R.rotation.x = -0.05;
-    }
+    const raise = Math.min(1, T.k * 2); // 0 → 1 舉手
+    const spread = Math.max(0, 1 - Math.abs(T.k - 0.5) * 2); // 跌落嚟張開
+    AL.rotation.x = AR.rotation.x = Math.PI * raise * (1 - spread * 0.5);
+    AL.rotation.z = -0.1 - spread * 1.1;
+    AR.rotation.z = 0.1 + spread * 1.1;
+    L.rotation.z = -0.04;
+    R.rotation.z = 0.04;
+    avatar.head.rotation.x = up && inAir ? -0.15 : 0.05;
     return true;
   }
 

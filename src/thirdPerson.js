@@ -273,15 +273,14 @@ function toHand(tp, held) {
   held.userData.inner.rotation.y = Math.PI * 0.8;
 }
 
-// ================= 企定／行路／跑步／跳嘅動畫（小朋友 2026-10-18：要型啲）=================
+// ================= 企定／行路／跑步／跳嘅動畫（小朋友 2026-10-18：要 Minecraft 款）=================
+// Minecraft 款：手腳硬直，淨係喺膊頭／髖關節好似鐘擺咁擺；左手同右腳一齊向前
 // 用真實移動速度決定行定跑；所有比重（move／run／air）慢慢過渡（約 0.15 秒），唔會一下跳轉
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const mix = (a, b, k) => a + (b - a) * k;
-const IDLE_VARIANTS = ['stretch', 'watch', 'hop', 'wave'];
-const VARIANT_TIME = { stretch: 2.4, watch: 2.6, hop: 1.4, wave: 2.2 };
 
 function trackMotion(tp, dt, { walking, running, grounded, vy }) {
-  const a = (tp.anim ??= { v: 0, move: 0, run: 0, air: 0, phase: 0, still: 0, nextIdle: 8, variant: null, varT: 0, look: 0, lookTo: 0, lookT: 2, land: 0, launch: 0, jumpRun: 0, wasAir: false, vy: 0 });
+  const a = (tp.anim ??= { v: 0, move: 0, run: 0, air: 0, phase: 0, still: 0, look: 0, lookTo: 0, lookT: 2, vy: 0 });
   const { x, z } = tp.eye.position;
   if (tp.lastX !== undefined && dt > 0) {
     const d = Math.hypot(x - tp.lastX, z - tp.lastZ);
@@ -291,7 +290,7 @@ function trackMotion(tp, dt, { walking, running, grounded, vy }) {
   tp.lastX = x;
   tp.lastZ = z;
   const k = 1 - Math.exp(-dt / 0.15); // 約 0.15 秒過渡
-  const kFast = 1 - Math.exp(-dt / 0.07);
+  const kFast = 1 - Math.exp(-dt / 0.08);
   const moving = walking && (running || a.v > 0.6);
   a.move += ((moving ? 1 : 0) - a.move) * k;
   const runTarget = running ? 1 : clamp01((a.v - 7) / 11); // 7 m/s 以下行路，18 m/s 以上全速跑
@@ -299,214 +298,82 @@ function trackMotion(tp, dt, { walking, running, grounded, vy }) {
   const air = !grounded && !running;
   a.air += ((air ? 1 : 0) - a.air) * kFast;
   a.vy = vy;
-  // 起跳／落地
-  if (air && !a.wasAir) {
-    a.launch = 1;
-    a.jumpRun = a.run * a.move;
-  }
-  if (!air && a.wasAir) a.land = 1;
-  a.wasAir = air;
-  a.launch = Math.max(0, a.launch - dt * 3.5);
-  a.land = Math.max(0, a.land - dt * 3.6);
-  // 步伐：行慢啲、跑快啲；喺半空唔郁
-  if (!air) a.phase += dt * mix(8.5, 15, a.run) * a.move * (running ? 1.1 : 1);
-  // 企定：計時，夠 8 秒先玩特別動作
-  if (moving || air) {
-    a.still = 0;
-    a.variant = null;
-    a.nextIdle = 8;
-  } else a.still += dt;
-  if (!a.variant && a.still > a.nextIdle) {
-    a.variant = IDLE_VARIANTS[Math.floor(Math.random() * IDLE_VARIANTS.length)];
-    a.varT = 0;
-  }
-  if (a.variant) {
-    a.varT += dt;
-    if (a.varT > VARIANT_TIME[a.variant]) {
-      a.variant = null;
-      a.nextIdle = a.still + 5 + Math.random() * 6;
-    }
-  }
-  // 四圍望：每幾秒轉一轉頭
+  // 步伐：行慢啲、跑快啲；喺半空唔郁（手腳慢慢擺返埋中間）
+  if (!air) a.phase += dt * mix(7, 12.5, a.run) * a.move;
+  if (moving || air) a.still = 0;
+  else a.still += dt;
+  // 企定：每幾秒輕輕轉一轉頭（Minecraft 咁四圍望）
   a.lookT -= dt;
   if (a.lookT <= 0) {
-    a.lookTo = Math.random() < 0.4 ? 0 : (Math.random() * 2 - 1) * 0.55;
-    a.lookT = 2 + Math.random() * 3;
+    a.lookTo = Math.random() < 0.45 ? 0 : (Math.random() * 2 - 1) * 0.5;
+    a.lookT = 2.5 + Math.random() * 3.5;
   }
-  a.look += (a.lookTo - a.look) * clamp01(dt * 3);
+  a.look += (a.lookTo - a.look) * clamp01(dt * 2.5);
   return a;
 }
 
-// 一段動作嘅「力度」：0 → 1 → 0（頭尾慢慢郁）
-const envelope = (t, total, edge = 0.35) => clamp01(Math.min(t / edge, (total - t) / edge));
-
 function applyLocomotion(avatar, a, { feetY, held, t }) {
   const [L, R] = avatar.legs;
-  const [KL, KR] = avatar.knees;
   const [AL, AR] = avatar.arms;
-  const [EL, ER] = avatar.elbows;
-  const { torso, head, g } = avatar;
+  const { head, g } = avatar;
   const m = a.move;
   const r = a.run;
   const idle = 1 - m;
-  const ph = a.phase;
-  const sin = Math.sin(ph);
-  const cos = Math.cos(ph);
+  const s = Math.sin(a.phase);
 
-  // ---- 地面：企定（呼吸、擺手、重心）+ 行／跑 ----
-  const breath = Math.sin(t * 2.3);
-  const shift = Math.sin(t * 0.45) * 0.035 * idle; // 重心左右移
-  const legAmp = mix(0.55, 1.05, r) * m;
-  const kneeAmp = mix(0.55, 1.5, r) * m;
-  const armAmp = mix(0.5, 1.15, r) * m;
-  let lx = sin * legAmp;
-  let rx = -sin * legAmp;
-  let lk = -Math.max(0, cos) * kneeAmp - 0.04 * idle - Math.max(0, shift) * 3;
-  let rk = -Math.max(0, -cos) * kneeAmp - 0.04 * idle - Math.max(0, -shift) * 3;
-  let alx = -sin * armAmp + Math.sin(t * 1.1) * 0.04 * idle;
-  let arx = sin * armAmp - Math.sin(t * 1.1) * 0.04 * idle;
-  let alz = -(0.06 + breath * 0.02) * idle - 0.08 * r * m;
-  let arz = (0.06 + breath * 0.02) * idle + 0.08 * r * m;
-  let el = mix(0.12, 0.2, m) + mix(0, 1.35, r) * m;
-  let er = el;
-  let elz = 0;
-  let erz = 0;
-  let twist = sin * mix(0.08, 0.2, r) * m;
-  let lean = -mix(0.04, 0.24, r) * m;
-  let bounce = Math.abs(sin) * mix(0.04, 0.17, r) * m;
-  let tiltZ = shift;
-  let hx = 0.02 * idle;
-  let hy = a.look * idle - twist * 0.7;
-  let chest = breath * 0.015 * idle;
+  // 行：±0.6；跑：±1.0（鐘擺咁擺）
+  const swing = mix(0.6, 1.0, r) * m;
+  let lx = s * swing;
+  let rx = -s * swing;
+  // 手同對面隻腳一齊：左手向前 = 右腳向前
+  let alx = -s * swing;
+  let arx = s * swing;
+  // 企定：手好輕好慢咁飄（Minecraft idle）
+  // 擺手時少少向外（Minecraft 都有）：由後面望都睇得出手一前一後
+  let alz = -(0.05 + Math.sin(t * 0.9) * 0.035) * idle - (0.04 + Math.abs(s) * 0.09) * m;
+  let arz = (0.05 + Math.sin(t * 0.9) * 0.035) * idle + (0.04 + Math.abs(s) * 0.09) * m;
+  alx += Math.sin(t * 0.67) * 0.045 * idle;
+  arx -= Math.sin(t * 0.67) * 0.045 * idle;
+  let llz = 0;
+  let rlz = 0;
+  // 頭：企定四圍望；行路輕輕上下點
+  let hx = Math.sin(a.phase * 2) * 0.035 * m;
+  let hy = a.look * idle;
+  // 跑：成個人少少向前傾
+  let lean = -0.13 * r * m;
+  let bob = Math.abs(Math.cos(a.phase)) * 0.045 * m;
 
-  // ---- 企耐咗：特別動作 ----
-  if (a.variant && idle > 0.5) {
-    const v = a.variant;
-    const T = VARIANT_TIME[v];
-    const e = envelope(a.varT, T);
-    if (v === 'stretch' && !held) {
-      alx = mix(alx, Math.PI * 0.95, e);
-      arx = mix(arx, Math.PI * 0.95, e);
-      alz = mix(alz, 0.25, e);
-      arz = mix(arz, -0.25, e);
-      el = er = mix(el, 0, e);
-      lean += 0.1 * e; // 向後拗
-      hx = mix(hx, -0.35, e);
-      bounce += 0.06 * e; // 踮腳
-      hy *= 1 - e;
-    } else if (v === 'watch' && !held) {
-      alx = mix(alx, 1.25, e);
-      alz = mix(alz, 0.55, e);
-      el = mix(el, 1.5, e);
-      elz = 0;
-      hx = mix(hx, 0.4, e);
-      hy = mix(hy, 0.35, e);
-      rk += -Math.max(0, Math.sin(a.varT * 10)) * 0.25 * e; // 腳踢踢
-      rx += Math.max(0, Math.sin(a.varT * 10)) * 0.15 * e;
-    } else if (v === 'hop') {
-      const p = a.varT / T;
-      const hop = Math.max(0, Math.sin(p * Math.PI * 2)); // 兩下細跳
-      bounce += hop * 0.32;
-      lk -= hop * 0.7;
-      rk -= hop * 0.7;
-      lx += hop * 0.35;
-      rx += hop * 0.35;
-      if (!held) {
-        alx = mix(alx, 0.9, hop);
-        arx = mix(arx, 0.9, hop);
-      }
-      hx = mix(hx, -0.15, hop);
-    } else if (v === 'wave' && !held) {
-      arx = mix(arx, 0.3, e);
-      arz = mix(arz, 2.5, e);
-      er = mix(er, 0.25, e);
-      erz = Math.sin(a.varT * 13) * 0.55 * e; // 搖手
-      hy = mix(hy, -0.2, e);
-      tiltZ -= 0.05 * e;
-    }
-  }
-
-  // ---- 半空：起跳伸直、半空縮腳、跑跳係跨步 ----
+  // 半空：雙腳併埋、雙手少少向外向上
   const air = a.air;
   if (air > 0.001) {
-    const jr = a.jumpRun;
-    const apex = clamp01(1 - Math.abs(a.vy) / 7); // 去到最高點縮得最緊
-    const falling = a.vy < 0 ? clamp01(-a.vy / 9) : 0; // 跌落嚟：腳伸返直準備落地
-    const tuck = (0.55 + 0.45 * apex) * (1 - falling * 0.6);
-    // 企定跳：雙腳縮埋、雙手舉高
-    const sLx = 0.95 * tuck;
-    const sLk = -1.7 * tuck;
-    const sAx = 2.7;
-    const sAz = 0.3;
-    // 跑跳：一腳向前、一腳向後；一手前一手後
-    const rLx = 1.05 * tuck + 0.15;
-    const rLk = -0.45 * tuck;
-    const rRx = -0.55;
-    const rRk = -1.35 * tuck;
-    lx = mix(lx, mix(sLx, rLx, jr), air);
-    rx = mix(rx, mix(sLx, rRx, jr), air);
-    lk = mix(lk, mix(sLk, rLk, jr), air);
-    rk = mix(rk, mix(sLk, rRk, jr), air);
-    if (!held) {
-      alx = mix(alx, mix(sAx, -0.9, jr), air);
-      arx = mix(arx, mix(sAx, 2.2, jr), air);
-      alz = mix(alz, mix(-sAz, -0.25, jr), air);
-      arz = mix(arz, mix(sAz, 0.2, jr), air);
-      el = mix(el, mix(0.15, 0.6, jr), air);
-      er = mix(er, mix(0.15, 0.9, jr), air);
-    }
-    lean = mix(lean, mix(0.05, -0.2, jr), air);
-    twist = mix(twist, -0.12 * jr, air);
-    bounce *= 1 - air;
-    hx = mix(hx, mix(-0.2, 0, jr), air);
+    lx = mix(lx, 0, air);
+    rx = mix(rx, 0, air);
+    llz = mix(llz, -0.05, air);
+    rlz = mix(rlz, 0.05, air);
+    alx = mix(alx, 0.35, air);
+    arx = mix(arx, 0.35, air);
+    alz = mix(alz, -0.5, air);
+    arz = mix(arz, 0.5, air);
     hy *= 1 - air;
-    tiltZ *= 1 - air;
+    hx = mix(hx, -0.08, air);
+    bob *= 1 - air;
   }
 
-  // 抱住寵物：雙手一直舉高托住
+  // 抱住寵物：雙手打直舉起托住（隻寵物喺頭頂），腳照擺
   if (held) {
-    alx = arx = Math.PI;
+    alx = Math.PI * 0.92 + s * 0.05 * m;
+    arx = Math.PI * 0.92 - s * 0.05 * m;
     alz = -0.08;
     arz = 0.08;
-    el = er = 0.05;
-    elz = erz = 0;
   }
 
-  L.rotation.x = lx;
-  R.rotation.x = rx;
-  KL.rotation.x = lk;
-  KR.rotation.x = rk;
+  L.rotation.set(lx, 0, llz);
+  R.rotation.set(rx, 0, rlz);
   AL.rotation.set(alx, 0, alz);
   AR.rotation.set(arx, 0, arz);
-  EL.rotation.set(el, 0, elz);
-  ER.rotation.set(er, 0, erz);
-  torso.rotation.y = twist;
-  torso.position.y = chest;
   head.rotation.set(hx, hy, 0);
   g.rotation.x = lean;
-  g.rotation.z = tiltZ;
-  g.position.y = feetY + bounce;
-
-  // 起跳先壓低（0.06 秒）再拉長；落地壓扁再彈返
-  const l = a.land;
-  const sinceLaunch = 1 - a.launch; // 0 → 1（約 0.29 秒）
-  let sy = 1;
-  if (a.launch > 0) sy = sinceLaunch < 0.2 ? 1 - 0.14 * (sinceLaunch / 0.2) : 1 + 0.1 * a.launch;
-  if (l > 0) {
-    const sq = Math.sin(l * Math.PI) * 0.75 + l * 0.25;
-    sy = Math.min(sy, 1 - 0.2 * sq);
-    KL.rotation.x -= 0.9 * sq;
-    KR.rotation.x -= 0.9 * sq;
-    L.rotation.x += 0.45 * sq;
-    R.rotation.x += 0.45 * sq;
-    if (!held) {
-      AL.rotation.x = mix(AL.rotation.x, 0.6, sq);
-      AR.rotation.x = mix(AR.rotation.x, 0.6, sq);
-    }
-    g.rotation.x -= 0.08 * sq;
-  }
-  const sxz = 1 + (1 - sy) * 0.6;
-  g.scale.set(sxz, sy, sxz);
+  g.position.y = feetY + bob;
 }
 
 const fwd = new THREE.Vector3();
@@ -573,7 +440,7 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded
     avatar.g.position.set(station.x, -0.08, station.z + 1.3); // 櫈面高 0.62，屁股啱啱坐喺上面
     avatar.g.rotation.y = 0;
     avatar.legs.forEach((l) => (l.rotation.x = Math.PI / 2)); // 正數 = 向前
-    avatar.knees.forEach((k) => (k.rotation.x = -Math.PI / 2)); // 小腿垂直落地
+    // Minecraft 款：對腳打直向前（膝頭唔屈）
     avatar.arms[0].rotation.x = 1.15; // 左手撳住本書
     avatar.arms[0].rotation.z = 0;
     avatar.arms[1].rotation.x = 1.15 + Math.sin(tp.phase2) * 0.08; // 右手寫字
