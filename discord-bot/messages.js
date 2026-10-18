@@ -43,7 +43,20 @@ export function howToPlayEmbed() {
   };
 }
 
-export function spawnsEmbed(now = Date.now()) {
+// 共享活動伺服器（shared-server/）：而家有冇人撳咗秘密掣（冇設定／連唔到 = null）；1.5 秒內唔答就當冇（Discord 要 3 秒內回覆）
+export async function sharedFrenzy(url = process.env.SHARED_SERVER_URL) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url.replace(/\/+$/, '') + '/state', { signal: AbortSignal.timeout(1500) });
+    const data = await res.json();
+    return data?.crazy ? { endsAt: data.crazy.endsAt - (data.now - Date.now()) } : null;
+  } catch {
+    return null;
+  }
+}
+
+// frenzy：sharedFrenzy() 嘅結果（有人撳咗秘密沙灘個掣）
+export function spawnsEmbed(now = Date.now(), frenzy = null) {
   const p = predictSpawns(now);
   const ev = p.event;
   const nightLeft = NIGHT_LENGTH - ((now / 1000) % (5 * 60));
@@ -53,6 +66,7 @@ export function spawnsEmbed(now = Date.now()) {
     title: '🗺️ Wild animals right now',
     url: GAME_URL,
     description: [
+      ...(frenzy ? [`🤪 **CRAZY PET FRENZY** for everyone! Someone pressed the secret button. Ends ${ts(frenzy.endsAt)} - every biome has Legendary & Mythic pets!`] : []),
       ev.active ? `${ev.ev.emoji} **${ev.ev.name}** is on! Ends ${ts(now + ev.left * 1000)}.` : `🎉 Next event ${ts(now + ev.next * 1000)}.`,
       nightLeft > 0 ? `🌙 It's night: the Biomes open ${ts(now + nightLeft * 1000)}.` : `🔄 New animals ${ts(p.nextRefresh)} (at ${ts(p.nextRefresh, 't')}).`,
     ].join('\n'),
