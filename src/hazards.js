@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { biomeRect, groundAt } from './world.js';
 import { MOUNTAIN, SUMMIT } from './biomes.js';
-import { HAZARD_COUNT, HAZARD_SPEED } from './data/balance.js';
+import { HAZARD_COUNT, HAZARD_SPEED, HAZARD_DASH_SPEED, HAZARD_DASH_SECONDS, HAZARD_SURPRISE_EVERY, HAZARD_TURN_CHANCE, HAZARD_JUMP_CLEAR } from './data/balance.js';
 
 const mat = (color, extra) => new THREE.MeshStandardMaterial({ color, ...extra });
 
@@ -268,7 +268,18 @@ export function updateHazards(hazards, dt, time) {
   for (const h of hazards) {
     const pos = h.group.position;
     const key = h.axis;
-    pos[key] += h.dir * h.speed * dt;
+    // 突然衝刺／掉頭（小朋友：障礙物要難啲避）
+    const [s0, s1] = HAZARD_SURPRISE_EVERY;
+    h.surprise ??= s0 + Math.random() * (s1 - s0);
+    h.surprise -= dt;
+    h.dash = Math.max(0, (h.dash || 0) - dt);
+    if (h.speed > 0 && h.surprise <= 0) {
+      h.surprise = s0 + Math.random() * (s1 - s0);
+      if (!h.oneWay && Math.random() < HAZARD_TURN_CHANCE) h.dir = -h.dir;
+      else h.dash = HAZARD_DASH_SECONDS;
+    }
+    pos[key] += h.dir * h.speed * (h.dash > 0 ? HAZARD_DASH_SPEED : 1) * dt;
+    h.warn.material.color.setHex(h.dash > 0 ? 0xffea00 : 0xff1744); // 衝刺時個圈變黃
     if (pos[key] > h.max || pos[key] < h.min) {
       if (h.oneWay) pos[key] = h.min; // 碌到山腳：由山頂再碌過
       else {
@@ -291,6 +302,6 @@ export function hazardHit(hazards, px, pz, feetY = 0, playerRadius = 0.4) {
     const sideways = h.axis === 'z' && h.kind.hx !== h.kind.hz; // 打直行嘅礦車：長闊對調
     const hx = sideways ? h.kind.hz : h.kind.hx;
     const hz = sideways ? h.kind.hx : h.kind.hz;
-    return dx < hx + playerRadius && dz < hz + playerRadius && Math.abs(feetY - h.group.position.y) < 1.0;
+    return dx < hx + playerRadius && dz < hz + playerRadius && feetY - h.group.position.y < HAZARD_JUMP_CLEAR && feetY - h.group.position.y > -1.0;
   }) || null;
 }

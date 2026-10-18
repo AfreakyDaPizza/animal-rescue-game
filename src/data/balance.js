@@ -97,8 +97,16 @@ export const upgradeCost = (level) =>
   level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1));
 
 // ---- 障礙物：每個生態區幾多個、郁得幾快 ----
-export const HAZARD_COUNT = [4, 5, 6, 7, 8, 9, 10];
-export const HAZARD_SPEED = [3, 4, 5, 6, 7.5, 9, 10];
+// Kid 2026-10-18: "make obstacles harder to dodge" → +2 each, about 40% faster, sudden dashes, harder to jump over
+export const HAZARD_COUNT = [6, 7, 8, 9, 10, 11, 12];
+export const HAZARD_SPEED = [4.2, 5.6, 7, 8.4, 10.5, 12.6, 14];
+// Every few seconds an obstacle may suddenly DASH (this many times faster for a moment) or turn around
+export const HAZARD_DASH_SPEED = 2.2;
+export const HAZARD_DASH_SECONDS = 0.7;
+export const HAZARD_SURPRISE_EVERY = [2, 5]; // seconds between surprises (random between these 2)
+export const HAZARD_TURN_CHANCE = 0.35; // chance a surprise is a quick U-turn instead of a dash
+// How high your feet must be to jump OVER an obstacle (bigger = harder; train Jump Power at the Gym!)
+export const HAZARD_JUMP_CLEAR = 1.35; // a normal jump peaks at about 1.5, so you need good timing (was 1.0)
 
 // ---- 地塊：一開始放到 8 隻，可以升級 10 次（每次 +1），最多 18 隻 ----
 export const PLOT_START_SLOTS = 8;

@@ -73,8 +73,8 @@ You can change them right on the GitHub website. You don't need to install anyth
 | How often each rarity shows up (%) | `{ name: 'Mythic', chance: 2, money: 15, ...` | The 5 `chance` numbers **must add up to 100** |
 | How many times more money a rarity makes | `money: 15` (in the same line) | Bigger = that rarity earns more |
 | Seconds a Reproduce Machine takes | `REPRODUCE_SECONDS = [30, 60, 120, 240, 480, 900]` | Smaller = pets come faster |
-| How many obstacles are in each biome | `HAZARD_COUNT = [4, 5, 6, 7, 8, 9]` | Bigger = harder |
-| How fast the obstacles move | `HAZARD_SPEED = [3, 4, 5, 6, 7.5, 9]` | Bigger = harder |
+| How many obstacles are in each biome | `HAZARD_COUNT = [6, 7, 8, 9, 10, 11, 12]` | Bigger = harder |
+| How fast the obstacles move | `HAZARD_SPEED = [4.2, 5.6, 7, 8.4, 10.5, 12.6, 14]` | Bigger = harder |
 | How many pets fit on your Plot at the start | `PLOT_START_SLOTS = 8` | Bigger = more pets |
 | Selling a pet gives you this many seconds of its money | `SELL_SECONDS = 60` | Bigger = sells for more |
 | Money for cleaning up one piece of beach trash | `TRASH_REWARD = 20` | Bigger = more cash |
