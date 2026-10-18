@@ -116,8 +116,9 @@ export const FUSE_RARITY_SCORE = { Common: 0, Rare: 1, Epic: 2, Legendary: 3, My
 // LOW = when you put in 3 Commons (score 0). HIGH = when you put in 3 Mythics (score 12). In between = a mix.
 export const FUSE_CHANCES_LOW = [62, 28, 9, 1, 0];
 export const FUSE_CHANCES_HIGH = [4, 10, 21, 35, 30];
-// The new pet earns: (money/sec of the 3 pets you put in, added up) x this number (depends on what you get)
-export const FUSE_MONEY_BONUS = { Common: 1.3, Rare: 1.6, Epic: 2.2, Legendary: 3.5, Mythic: 6 };
+// The new pet earns: (AVERAGE money/sec of the 3 pets you put in) x this number (depends on what you get)
+// Nerfed (kid: "I got a 416mil/s Spideron"): it used to ADD UP all 3 pets and then multiply, so fusing again and again made pets crazy rich.
+export const FUSE_MONEY_BONUS = { Common: 1, Rare: 1.2, Epic: 1.5, Legendary: 2, Mythic: 3 };
 
 // ---- Biome 2 沙灘執垃圾：執一件有幾錢 ----
 export const TRASH_REWARD = 20;

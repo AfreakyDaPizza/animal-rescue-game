@@ -1,5 +1,5 @@
 // Fuse Machine（小朋友 2026-10-17 Issue #4）：揀 3 隻寵物溶埋做 1 隻 Fuse 先有嘅特別寵物
-// 放入去嘅寵物越稀有，出 Mythic 嘅機會越高；新寵物每秒賺 = 3 隻加埋 × FUSE_MONEY_BONUS
+// 放入去嘅寵物越稀有，出 Mythic 嘅機會越高；新寵物每秒賺 = 3 隻嘅平均 × FUSE_MONEY_BONUS
 
 import { state } from './state.js';
 import { FUSE_PETS, itemMoney, randomKg } from './data/animals.js';
@@ -42,7 +42,7 @@ export function fusePets(pets) {
     }
   }
   const info = FUSE_PETS.find((p) => p.name === pick.name);
-  const inputMoney = pets.reduce((n, p) => n + itemMoney(p), 0);
+  const inputMoney = pets.reduce((n, p) => n + itemMoney(p), 0) / 3; // 平均（以前加埋，太勁）
   for (const p of pets) state.pets.splice(state.pets.indexOf(p), 1);
   const pet = {
     name: info.name, biome: info.biome, rarity: info.rarity, kg: randomKg(info), fuse: true, onPlot: false,

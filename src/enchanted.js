@@ -311,7 +311,47 @@ export function enchanted(staticRoot, rect, rand, live) {
   sparkles.frustumCulled = false;
   view.add(sparkles);
 
+  // 未開嘅時候：成個王國俾一大團魔法霧遮住（小朋友：未 unlock 就要好大霧）
+  const fogTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.6)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const fog = new THREE.Group();
+  const fogMat = [0xede7f6, 0xd1c4e9, 0xe1f5fe].map((color) => new THREE.SpriteMaterial({ map: fogTex, color, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
+  const puffs = [];
+  for (let i = 0; i < 500; i++) {
+    const front = i >= 420; // 最尾 80 嚿：閘門後面一排（由橋望過去最易見到）
+    const edge = i < 140; // 頭 140 嚿貼住王國邊（由外面望入嚟最密）
+    const x = front || !edge ? (rand() * 2 - 1) * half : (i % 2 ? 1 : -1) * (half - rand() * 10);
+    const z = front ? rect.maxZ - 4 - rand() * 22 : edge && i % 4 < 2 ? rect.maxZ - rand() * 12 : rect.minZ + rand() * d;
+    const s = new THREE.Sprite(fogMat[i % 3]);
+    const size = 30 + rand() * 30;
+    s.scale.set(size, size * 0.8, 1);
+    const y = KINGDOM_Y + 2 + rand() * 46;
+    s.position.set(x, y, z);
+    fog.add(s);
+    puffs.push({ s, x, y, p: rand() * 6 });
+  }
+  live.add(fog);
+  let fogK = 1;
+
   return (dt, t) => {
+    fogK = Math.max(0, Math.min(1, fogK + (kingdom.open || kingdomView.reveal ? -dt / 3 : dt / 3))); // 開門時慢慢散
+    fog.visible = fogK > 0;
+    if (fog.visible) {
+      fogMat.forEach((m) => (m.opacity = 0.95 * fogK));
+      for (const f of puffs) f.s.position.set(f.x + Math.sin(t * 0.1 + f.p) * 3, f.y + Math.sin(t * 0.2 + f.p) * 1.5, f.s.position.z);
+    }
     view.visible = kingdom.open || kingdomView.reveal;
     if (!view.visible) return;
     runes.forEach((r, i) => r.userData.spin?.(t + i));

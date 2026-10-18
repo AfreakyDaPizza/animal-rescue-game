@@ -843,6 +843,9 @@ function buildBridge(scene, live, rect) {
   for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(sideW, GATE_H, 1.2), stone), s * (HOLE_W / 2 + sideW / 2), GATE_H / 2, wallZ);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(HOLE_W, top, 1.2), stone), 0, top / 2, wallZ);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(HOLE_W, GATE_H - HOLE_TOP, 1.2), stone), 0, (GATE_H + HOLE_TOP) / 2, wallZ);
+  // 閘門兩邊嘅牆一路去到山（小朋友：傳送門旁邊冇咗牆，望到個天）
+  const sideSpan = rect.maxX + 14 - GATE_W / 2;
+  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(sideSpan, GATE_H, 1.6), stone), s * (GATE_W / 2 + sideSpan / 2), GATE_H / 2, wallZ - 0.2);
   for (const s of [-1, 1]) {
     add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.4, GATE_H + 4, 2.4), stone2), s * (GATE_W / 2), (GATE_H + 4) / 2, wallZ + 0.4); // 大柱
     add(scene, new THREE.Mesh(new THREE.OctahedronGeometry(1.3), mat(0xd500f9, { emissive: 0xd500f9, emissiveIntensity: 1.4, flatShading: true })), s * (GATE_W / 2), GATE_H + 5, wallZ + 0.4);

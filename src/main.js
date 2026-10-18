@@ -35,7 +35,7 @@ import { updateEvents, forceEvent, boost } from './events.js';
 import { createEclipse, updateEclipse, applyEclipseSky, playEclipseIntro, STRIKE_RADIUS } from './eclipse.js';
 import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS } from './data/balance.js';
 import { animateFireAuras } from './fireAura.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, pressButton, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
@@ -108,6 +108,12 @@ const hub = createHub(scene);
     fix(m?.second);
   });
   state.indexFound = state.indexFound.map((n) => (n === 'Enchanted Sunlion' ? 'Celestial Sunlion' : n));
+}
+// Fuse nerf（2026-10-18）：舊 Fuse 寵物用新計法（3 隻平均 × 新倍數，以前係 3 隻加埋 × 舊倍數）
+if (!state.fuseNerfed) {
+  const OLD = { Common: 1.3, Rare: 1.6, Epic: 2.2, Legendary: 3.5, Mythic: 6 };
+  for (const p of state.pets) if (p.fuse && p.money && OLD[p.rarity]) p.money = Math.max(1, Math.round((p.money * FUSE_MONEY_BONUS[p.rarity]) / (3 * OLD[p.rarity])));
+  state.fuseNerfed = true;
 }
 // 舊存檔買過「擴建 Hub」：而家 Hub 免費變大咗，退返啲代幣
 let hubRefund = 0;
