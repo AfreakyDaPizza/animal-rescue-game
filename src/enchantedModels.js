@@ -141,6 +141,10 @@ export function buildSkywhaleModel() {
   const GOLDC = 0xf2b632;
   const DARK = 0x070b1f;
   const BALEEN = 0xd9cfb4;
+  const EYE_HOT = 0xe6ffff; // 眼中間白熱
+  const EYE_RIM = 0x0097c7; // 眼珠外圈
+  const PUPIL = 0x021a24; // 窄瞳孔
+  const LID = 0x1a2552; // 眼皮（比身淺少少）
   const S = 1.45;
   const LEN = 9.6;
   const W = 3.2;
@@ -160,7 +164,7 @@ export function buildSkywhaleModel() {
   let fallRef = null;
   const inner = sleek({
     skin: SKIN, belly: BELLY, len: LEN, w: W, h: H, n: 2.2, belt: -0.35, rings: 46, around: 30,
-    glow: { [VEIN]: 2.2, [EYE]: 3.2 },
+    glow: { [VEIN]: 2.2 },
     // 好大個頭（前面高啲、鈍）、身長而有力、尾柄幼
     prof: (u) => [
       noseIn(u, 0.2) * tailOut(u, 0.5, 0.12) * (1 - 0.1 * smooth01(0.22, 0.5, u)),
@@ -184,16 +188,33 @@ export function buildSkywhaleModel() {
         if (tilt) m.rotateY(tilt);
         return m;
       };
-      // ---- 兇兇嘅眼：深色眼窩 + 窄窄發光眼（斜斜）+ 好粗嘅眉骨（凸出嚟遮住眼）+ 金眉甲 ----
-      const browM = material(0x16204d, { roughness: 0.5 });
+      // ---- 兇兇嘅眼（小朋友 2026-10-18：之前個眼好核突 → 重做）----
+      // 杏仁形、陷入個頭入面：深色眼窩 → 發光青色眼珠 → 白熱中心 → 直直嘅窄瞳孔 + 反光；
+      // 上面一塊厚眼皮（凸出少少遮住眼頂，好兇）、下面一條細眼皮、金色細眉線、眼尾拖一條發光符文線
+      const eyeSocketM = material(DARK, { roughness: 0.6 });
+      const eyeRimM = glow(EYE_RIM, 1.6);
+      const eyeM = glow(EYE, 2.4);
+      const eyeHotM = glow(EYE_HOT, 3.0);
+      const pupilM = material(PUPIL, { roughness: 0.2 });
+      const shineM = glow(0xffffff, 2);
+      const lidM = material(LID, { roughness: 0.45 });
       for (const side of [0, 1]) {
         const A = (a) => (side ? PI - a : a);
-        const sl = side ? -0.45 : 0.45;
-        dot(0.165, A(0.36), 0.42, 0.14, 0.62, DARK, -0.03, sl); // 眼窩
-        dot(0.165, A(0.37), 0.26, 0.14, 0.62, EYE, 0.05, sl); // 發光窄眼
-        dot(0.162, A(0.37), 0.08, 0.1, 0.22, 0xe0ffff, 0.08, sl); // 眼中間最光
-        plate(0.155, A(0.55), 0.32, 0.22, 0.75, browM, -0.02, side ? 0.4 : -0.4); // 粗眉骨
-        plate(0.158, A(0.6), 0.2, 0.1, 0.62, goldM, 0.14, side ? 0.4 : -0.4); // 金眉甲
+        const sl = side ? -0.32 : 0.32; // 眼斜斜（前低後高）
+        const U = 0.172;
+        const AN = 0.36;
+        // 用順滑嘅波波（貼住頭表面）砌，近睇都唔會見到一格格
+        plate(U, A(AN), 0.33, 0.07, 0.8, eyeSocketM, -0.05, sl); // 眼窩（陷入去）
+        plate(U, A(AN), 0.21, 0.06, 0.63, eyeRimM, -0.03, sl); // 眼珠外圈（深啲嘅青）
+        plate(U - 0.002, A(AN), 0.165, 0.06, 0.52, eyeM, -0.022, sl); // 發光眼珠（杏仁形）
+        plate(U - 0.004, A(AN - 0.01), 0.075, 0.06, 0.22, eyeHotM, -0.016, sl); // 白熱中心
+        plate(U - 0.004, A(AN - 0.01), 0.15, 0.05, 0.034, pupilM, -0.008, sl); // 直直窄瞳孔
+        plate(U - 0.016, A(AN + 0.065), 0.035, 0.03, 0.05, shineM, 0.005, sl); // 反光
+        plate(U + 0.002, A(AN + 0.16), 0.14, 0.13, 0.9, lidM, -0.05, sl); // 上眼皮（厚、凸出）
+        plate(U + 0.004, A(AN - 0.15), 0.065, 0.07, 0.72, lidM, -0.04, sl); // 下眼皮
+        plate(U + 0.004, A(AN + 0.27), 0.045, 0.05, 0.62, goldM, -0.02, sl * 1.3); // 金眉線（一條順滑嘅金邊）
+        for (let k = 0; k < 16; k++) dot(U + 0.05 + k * 0.0065, A(AN + 0.02 - k * 0.012), 0.022, 0.02, 0.05, VEIN, 0.005); // 眼尾符文線
+        dot(U + 0.16, A(AN - 0.17), 0.06, 0.02, 0.06, VEIN, 0.006); // 符文線尾嗰粒
       }
       // ---- 微微張開嘅口：深色口線 + 下面一排鯨鬚（唔係牙）----
       for (const side of [0, 1]) {
@@ -280,81 +301,112 @@ export function buildSkywhaleModel() {
       // ---- 背脊一排尖刺（深色 + 金尖），越後越細 ----
       for (let k = 0; k < 13; k++) {
         const u = 0.3 + k * 0.045;
-        if (u > 0.4 && u < 0.62) continue; // 背上個浮島嗰度唔放
+        if (u > 0.36 && u < 0.69) continue; // 背上個浮島嗰度唔放
         const { pv, y, z } = at(u, PI / 2, -0.05);
         const hgt = 0.9 * (1 - k / 16);
         cone(pv, 0.18 * (1 - k / 20), hgt, darkSpikeM, 0, y + hgt / 2 - 0.05, z, 0.45);
         cone(pv, 0.07, hgt * 0.35, goldM, 0, y + hgt * 0.95, z + hgt * 0.2, 0.45);
       }
-      // ---- 背上：史詩級浮空森林遺跡（大樹、水晶神殿、爛石柱、細瀑布）----
+      // ---- 背上：浮空聖地（小朋友 2026-10-18：之前個島好核突 → 重做）----
+      // 一個貼住背脊弧度嘅圓圓青苔泥丘、一棵好靚嘅大樹（幾層圓樹冠 + 發光花）、幾嚿石、花同蕨、一道細細嘅古石拱門（中間青色符文）
       {
-        const { pv, y, z } = at(0.5, PI / 2, -0.15);
-        const isle = pivot(pv, 0, y + 0.05, z);
-        ball(isle, 1.55, 0.42, 1.35, 0x5d4037, 0, -0.1, 0); // 泥／石底
-        ball(isle, 1.15, 0.5, 1.0, 0x4e342e, 0, -0.42, 0); // 吊落嚟嘅石（好似浮島底）
-        ball(isle, 0.55, 0.45, 0.5, 0x3e2723, 0.3, -0.72, 0.2);
-        ball(isle, 1.6, 0.25, 1.4, 0x388e3c, 0, 0.16, 0); // 草
-        for (let i = 0; i < 10; i++) {
-          const a = (i / 10) * PI * 2;
-          ball(isle, 0.32, 0.2, 0.32, i % 2 ? 0x2e7d32 : 0x43a047, Math.cos(a) * 1.15, 0.3, Math.sin(a) * 1.0); // 草叢
+        const { pv, y, z } = at(0.5, PI / 2, -0.22);
+        const isle = pivot(pv, 0, y, z);
+        const moss = material(0x4f9a3a, { roughness: 0.85 });
+        const mossDark = material(0x3b7d2c, { roughness: 0.9 });
+        const earth = material(0x5b4033, { roughness: 0.95 });
+        // 泥丘：一半埋入身（貼住背），上面一層青苔，邊邊有青苔垂落少少
+        ball(isle, 1.3, 0.34, 1.5, 0, 0, 0.02, 0, earth);
+        ball(isle, 1.24, 0.3, 1.44, 0, 0, 0.12, 0, moss);
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * PI * 2 + 0.2;
+          ball(isle, 0.34, 0.1, 0.34, 0, Math.cos(a) * 1.0, 0.18, Math.sin(a) * 1.18, i % 2 ? moss : mossDark);
         }
-        // 爛石柱（一高一斷一倒）
-        const stone = material(0xb0bec5, { roughness: 0.8 });
-        const pillar = (x, zz, h, tilt = 0) => {
-          const c = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, h, 8), stone);
-          c.position.set(x, 0.3 + h / 2, zz);
-          c.rotation.z = tilt;
-          c.castShadow = true;
-          isle.add(c);
-          box(isle, 0.36, 0.1, 0.36, 0x90a4ae, x + Math.sin(-tilt) * h, 0.32 + h * Math.cos(tilt), zz, 0.3);
-        };
-        pillar(0.9, 0.45, 1.3);
-        pillar(0.95, -0.35, 0.7);
-        pillar(-1.0, 0.65, 0.5);
-        const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 8), stone);
-        fallen.position.set(-0.9, 0.38, -0.5);
-        fallen.rotation.set(0, 0.5, PI / 2);
-        isle.add(fallen);
-        // 水晶神殿：石台 + 發光大水晶 + 細水晶
-        box(isle, 0.7, 0.18, 0.7, 0x78909c, 0.85, 0.36, 0.05, 0.25);
-        const big = cone(isle, 0.2, 0.9, crystalM, 0.85, 0.9, 0.05, 0, 0, 5);
-        big.scale.set(1, 1, 1);
-        cone(isle, 0.1, 0.45, crystalM, 0.62, 0.66, 0.2, 0, 0.35, 5);
-        cone(isle, 0.1, 0.5, crystalM, 1.06, 0.68, -0.12, 0, -0.35, 5);
-        // 大樹（粗樹幹 + 幾層樹冠）
-        const trunkM = material(0x5d4037);
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.26, 1.6, 10), trunkM);
-        trunk.position.set(-0.35, 1.05, 0.0);
-        trunk.castShadow = true;
-        isle.add(trunk);
-        for (const [dx, dz, r] of [[0.25, 0.1, 0.12], [-0.2, -0.2, 0.1]]) {
-          const br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.6, 6), trunkM);
-          br.position.set(-0.35 + dx, 1.55, dz);
-          br.rotation.z = -dx * 2.2;
-          isle.add(br);
+        // 石：幾嚿有棱角嘅灰藍石
+        const rockM = material(0x7d8a9c, { roughness: 0.8, flatShading: true });
+        const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+        for (const [x, yy, zz, k, ry] of [[0.75, 0.32, 0.55, 0.26, 0.4], [0.95, 0.28, 0.2, 0.16, 1.2], [-0.8, 0.3, -0.65, 0.22, 2.1], [-0.55, 0.26, 0.85, 0.14, 0.7]]) {
+          const r = new THREE.Mesh(rockGeo, rockM);
+          r.scale.set(k * 1.2, k * 0.85, k);
+          r.position.set(x, yy, zz);
+          r.rotation.set(0.3, ry, 0.2);
+          r.castShadow = true;
+          isle.add(r);
         }
-        [[0, 2.15, 0, 0.75, 0x2e7d32], [0.45, 1.9, 0.15, 0.5, 0x388e3c], [-0.45, 1.95, -0.1, 0.52, 0x1b5e20], [0.05, 2.6, -0.05, 0.5, 0x43a047], [-0.1, 1.85, 0.45, 0.45, 0x2e7d32], [0.1, 1.85, -0.45, 0.45, 0x388e3c]].forEach(([x, yy, zz, r, c]) =>
-          ball(isle, r, r * 0.85, r, c, x - 0.35, yy, zz));
-        // 樹上幾粒發光果（青）
-        for (const [x, yy, zz] of [[0.2, 2.3, 0.45], [-0.75, 2.05, 0.2], [-0.2, 2.75, -0.4]]) ball(isle, 0.08, 0.08, 0.08, VEIN, x - 0.35, yy, zz, crystalM);
-        // 細瀑布：由浮島右邊流落去（一串半透明藍色水，會郁）
-        const waterM = new THREE.MeshStandardMaterial({ color: 0x81d4fa, emissive: 0x29b6f6, emissiveIntensity: 0.5, transparent: true, opacity: 0.75, roughness: 0.1 });
-        const fall = pivot(isle, 2.15, 0.12, -0.5);
-        const drops = [];
-        for (let i = 0; i < 14; i++) {
-          const d = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), waterM);
-          d.scale.set(0.13, 0.22, 0.09);
-          fall.add(d);
-          drops.push(d);
+        // 大樹：樹根 + 微微彎嘅樹幹 + 三層圓樹冠（下大上細）+ 發光花
+        const trunkM = material(0x6b4a35, { roughness: 0.8 });
+        const tree = pivot(isle, -0.15, 0.28, 0.15);
+        for (let k = 0; k < 4; k++) {
+          const a = (k / 4) * PI * 2 + 0.4;
+          const root = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.09, 0.42, 6), trunkM);
+          root.position.set(Math.cos(a) * 0.17, 0.06, Math.sin(a) * 0.17);
+          root.rotation.set(Math.sin(a) * 1.1, 0, -Math.cos(a) * 1.1);
+          tree.add(root);
         }
-        ball(isle, 0.45, 0.08, 0.32, 0x4fc3f7, 1.25, 0.3, -0.5, waterM); // 水池
-        box(isle, 0.75, 0.08, 0.28, 0x4fc3f7, 1.8, 0.2, -0.5, 0.3, { emissive: 0x29b6f6, emissiveIntensity: 0.4 }); // 流出去嘅水
-        box(isle, 0.5, 0.25, 0.4, 0x6d4c41, 1.85, 0.05, -0.5, 0.3); // 伸出去嘅石（水由呢度流落去）
-        const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.5), new THREE.MeshBasicMaterial({ color: 0xb3e5fc, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }));
-        sheet.position.set(2.2, -0.6, -0.5);
-        sheet.rotation.y = PI / 2;
-        isle.add(sheet); // 一塊薄薄嘅水簾
-        fallRef = drops;
+        const t1 = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.2, 0.9, 10), trunkM);
+        t1.position.set(0, 0.45, 0);
+        t1.rotation.z = 0.06;
+        t1.castShadow = true;
+        tree.add(t1);
+        const t2 = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.75, 10), trunkM);
+        t2.position.set(-0.04, 1.25, 0);
+        t2.rotation.z = -0.08;
+        t2.castShadow = true;
+        tree.add(t2);
+        const leafA = material(0x2f7d3a, { roughness: 0.7 });
+        const leafB = material(0x3f9a45, { roughness: 0.7 });
+        const leafC = material(0x5cb85a, { roughness: 0.7 });
+        // 樹冠：一大嚿圓頂 + 一圈細啲嘅圓團（好似一朵朵雲）
+        ball(tree, 0.78, 0.6, 0.78, 0, 0, 1.85, 0, leafB);
+        for (let k = 0; k < 7; k++) {
+          const a = (k / 7) * PI * 2;
+          const r = 0.62;
+          ball(tree, 0.42, 0.36, 0.42, 0, Math.cos(a) * r, 1.62 + (k % 2) * 0.12, Math.sin(a) * r, k % 3 === 0 ? leafA : k % 3 === 1 ? leafB : leafC);
+        }
+        for (let k = 0; k < 4; k++) {
+          const a = (k / 4) * PI * 2 + 0.5;
+          ball(tree, 0.36, 0.32, 0.36, 0, Math.cos(a) * 0.32, 2.2, Math.sin(a) * 0.32, k % 2 ? leafC : leafB);
+        }
+        ball(tree, 0.3, 0.26, 0.3, 0, 0, 2.48, 0, leafC);
+        const bloomPink = material(0xff9ad5, { emissive: 0xff4fb3, emissiveIntensity: 1.1 });
+        const bloomCyan = material(0x9ffcff, { emissive: 0x18e0ff, emissiveIntensity: 1.3 });
+        [[0.98, 1.65, 0.25], [-0.7, 1.7, 0.75], [0.35, 1.68, -0.98], [-0.92, 1.6, -0.45], [0.6, 2.2, 0.42], [-0.5, 2.25, -0.38], [0.15, 2.3, 0.68], [0.2, 2.7, -0.2], [-0.2, 1.45, 0.98], [0.7, 1.5, -0.6]].forEach(([x, yy, zz], i) =>
+          ball(tree, 0.075, 0.075, 0.075, 0, x, yy, zz, i % 3 ? bloomPink : bloomCyan));
+        // 花同蕨
+        const stemM = material(0x2e7d32);
+        const fernM = material(0x66bb6a, { roughness: 0.8 });
+        const petals = [0xfff176, 0xf48fb1, 0xb39ddb, 0xffffff];
+        [[0.45, -0.75], [-0.95, 0.2], [0.2, 0.95], [-0.3, -1.05], [1.0, -0.35], [-0.9, 0.75]].forEach(([x, zz], i) => {
+          const st = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 4), stemM);
+          st.position.set(x, 0.38, zz);
+          isle.add(st);
+          ball(isle, 0.06, 0.04, 0.06, petals[i % 4], x, 0.5, zz);
+          ball(isle, 0.025, 0.025, 0.025, 0xffb300, x, 0.53, zz);
+        });
+        for (const [x, zz, ry] of [[0.25, 0.55, 0.3], [-0.55, -0.15, 1.6], [0.6, -0.15, 2.6], [-0.2, -0.75, 4]]) {
+          const fern = pivot(isle, x, 0.32, zz);
+          fern.rotation.y = ry;
+          for (let k = 0; k < 5; k++) {
+            const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.42, 4), fernM);
+            f.position.set(0, 0.14, 0);
+            f.rotation.set(0.75, (k / 5) * PI * 2, 0, 'YXZ');
+            f.scale.z = 0.35;
+            fern.add(f);
+          }
+        }
+        // 古石門（好似遺跡）：兩條方柱（有柱頭）+ 一條橫樑 + 橫樑中間一粒發光青色符文石 + 少少藤
+        const sand = { roughness: 0.75 };
+        const arch = pivot(isle, 0.66, 0.3, -0.6);
+        arch.rotation.y = -0.55;
+        for (const sx of [-0.28, 0.28]) {
+          box(arch, 0.17, 0.08, 0.17, 0xbcaaa4, sx, 0.04, 0, 0.3, sand); // 柱腳
+          box(arch, 0.12, 0.55, 0.12, 0xd7ccc8, sx, 0.355, 0, 0.25, sand); // 柱
+          box(arch, 0.17, 0.07, 0.17, 0xbcaaa4, sx, 0.665, 0, 0.3, sand); // 柱頭
+        }
+        box(arch, 0.8, 0.12, 0.18, 0xd7ccc8, 0, 0.76, 0, 0.3, sand); // 橫樑
+        box(arch, 0.62, 0.05, 0.14, 0xbcaaa4, 0, 0.845, 0, 0.3, sand);
+        ball(arch, 0.07, 0.07, 0.03, 0, 0, 0.76, -0.095, crystalM); // 符文石
+        for (const [x, yy] of [[-0.3, 0.6], [-0.27, 0.45], [-0.31, 0.3], [0.1, 0.7], [0.3, 0.52]]) ball(arch, 0.05, 0.05, 0.05, 0, x, yy, -0.07, mossDark); // 藤
       }
       // ---- 細背鰭（尖）----
       fin(0.66, PI / 2, [[0.5, 0], [0.1, 0.2], [-0.25, 0.62], [-0.32, 0.55], [-0.28, 0.12], [-0.4, 0]], { key: 'swx-dorsal', depth: 0.12 });
