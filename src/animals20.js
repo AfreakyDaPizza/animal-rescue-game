@@ -344,16 +344,20 @@ function panda() {
   });
 }
 
-function elephant(forest) {
-  const skin = forest ? 0x6f6a65 : 0x9a948c;
-  const dark = forest ? 0x5b5651 : 0x847e77;
-  const pinkIn = 0xcf9f98;
+// o（Octophant 用）：skin／dark／pinkIn／toes／tuskColor／tusk（象牙長度倍數）／eyeSize／eyeOpts／more(p, { trunk, ears })／animate(t, moving)
+export function elephant(forest, o = {}) {
+  const skin = o.skin ?? (forest ? 0x6f6a65 : 0x9a948c);
+  const dark = o.dark ?? (forest ? 0x5b5651 : 0x847e77);
+  const pinkIn = o.pinkIn ?? 0xcf9f98;
+  const tuskK = o.tusk ?? 1;
   const g = quad({
     body: { w: 2.0, h: 1.75, d: 2.6, y: 2.2, color: skin },
     head: { w: 1.35, h: 1.3, d: 1.1, y: 2.7, z: -1.62, color: skin },
-    legs: { w: 0.62, h: 1.45, x: 0.6, zf: -0.82, zb: 0.82, color: skin, foot: dark, toes: 0xf1e8d8 },
-    tail: { seg: 3, w: 0.1, len: 0.8, y: 2.45, color: skin, tip: 0x3e3a36, angle: 1.0 },
-    eyeSize: 0.12,
+    legs: { w: 0.62, h: 1.45, x: 0.6, zf: -0.82, zb: 0.82, color: skin, foot: dark, toes: o.toes ?? 0xf1e8d8 },
+    tail: { seg: 3, w: 0.1, len: 0.8, y: 2.45, color: skin, tip: o.tailTip ?? 0x3e3a36, angle: 1.0 },
+    eyeSize: o.eyeSize ?? 0.12,
+    eyeOpts: o.eyeOpts,
+    eyes: o.eyes,
     walkSpeed: 5.5,
     swing: 0.32,
     extras(p) {
@@ -377,7 +381,7 @@ function elephant(forest) {
         ear.scale.x = s;
         slab(ear, outline, 0.07, skin, { plane: 'side', key: `${kk}-ear`, bevel: 0.035, bend });
         slab(ear, shrink(0.78, cx, cy), 0.03, pinkIn, { plane: 'side', key: `${kk}-ear-in`, bevel: 0.02, bend, x: 0.085 });
-        slab(ear, rim, 0.05, dark, { plane: 'side', key: `${kk}-ear-rim`, bevel: 0.025, bend: (x, y) => bend(x, y) + 0.02, x: 0.09 }); // 向前摺嘅耳邊
+        slab(ear, rim, 0.05, o.rim ?? dark, { plane: 'side', key: `${kk}-ear-rim`, bevel: 0.025, bend: (x, y) => bend(x, y) + 0.02, x: 0.09 }); // 向前摺嘅耳邊
         for (const [x1, y1, rot, len] of [[-0.3, -0.25, -0.5, 0.55], [-0.45, -0.5, -0.9, 0.5], [-0.35, 0.05, -0.15, 0.6]]) {
           const vein = box(ear, 0.03, 0.035, len * L * 0.7, skin, bend(x1 * L, y1 * L) + 0.12, y1 * L, -x1 * L, 0.4); // 血管紋
           vein.rotation.x = rot;
@@ -399,14 +403,16 @@ function elephant(forest) {
       for (const s of [-1, 1]) {
         const tusk = pivot(p.head, s * 0.34, -0.44, -0.46);
         tusk.rotation.x = forest ? 0.9 : 0.55;
-        box(tusk, 0.14, 0.14, forest ? 0.75 : 0.6, 0xfff8e1, 0, 0, -0.28, 0.45);
-        const tip = pivot(tusk, 0, 0, forest ? -0.62 : -0.55);
+        box(tusk, 0.14, 0.14, (forest ? 0.75 : 0.6) * tuskK, o.tuskColor ?? 0xfff8e1, 0, 0, -0.28 * tuskK, 0.45);
+        const tip = pivot(tusk, 0, 0, (forest ? -0.62 : -0.55) * tuskK);
         tip.rotation.x = -0.6;
-        box(tip, 0.11, 0.11, 0.35, 0xfffde7, 0, 0, -0.14, 0.45);
+        box(tip, 0.11, 0.11, 0.35 * tuskK, o.tuskColor ?? 0xfffde7, 0, 0, -0.14 * tuskK, 0.45);
       }
-      p.animate = (t) => {
+      o.more?.(p, { trunk, ears });
+      p.animate = (t, moving) => {
         trunk.forEach((seg, i) => (seg.rotation.x = Math.sin(t * 1.4 + i * 0.6) * 0.14 - (i ? 0.16 : -0.05)));
         ears.forEach(({ ear, s }) => (ear.rotation.y = s * (0.5 + Math.sin(t * 2) * 0.2))); // 耳向外打開，撥下撥下
+        o.animate?.(t, moving);
       };
     },
   });
