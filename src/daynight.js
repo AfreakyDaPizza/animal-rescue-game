@@ -3,8 +3,8 @@
 import * as THREE from 'three';
 
 // ---- 時間（秒）----
-export const DAY_LENGTH = 5 * 60; // 白天幾耐先入夜（原稿：每 5 分鐘）
-export const NIGHT_LENGTH = 20;   // 夜晚有幾耐（原稿冇講，暫定 20 秒）
+import { DAY_LENGTH, NIGHT_LENGTH } from './data/clock.js'; // 白天 5 分鐘、夜晚 20 秒
+export { DAY_LENGTH, NIGHT_LENGTH };
 const FADE = 3;                   // 天光／天黑要幾秒慢慢變
 
 const DAY = {

@@ -32,6 +32,7 @@ class MouseLook extends THREE.EventDispatcher {
     this.domElement = domElement;
     this.isLocked = false;
     this.virtual = false; // 手機版（小朋友 2026-10-17）：冇滑鼠鎖，「鎖住」只係代表「玩緊」
+    this.dragLook = false; // Discord Activity（電腦）：冇滑鼠鎖，撳住滑鼠拖轉鏡頭（main.js 設定）
     this.freeMode = false; // Shift Lock 熄咗：見到滑鼠，按住右鍵拖先轉鏡頭
     this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
     document.addEventListener('mousemove', (e) => this.onMove(e));
@@ -43,8 +44,13 @@ class MouseLook extends THREE.EventDispatcher {
     });
   }
   onMove(e) {
-    const dragging = this.freeMode && !this.isLocked && (e.buttons & 2); // 放開滑鼠時：右鍵拖轉鏡頭
-    if (!this.isLocked && !dragging) return;
+    if (this.dragLook) {
+      // Discord 入面（鎖唔到滑鼠）：撳住滑鼠拖先轉鏡頭
+      if (!e.buttons || (!this.isLocked && !this.freeMode)) return;
+    } else {
+      const dragging = this.freeMode && !this.isLocked && (e.buttons & 2); // 放開滑鼠時：右鍵拖轉鏡頭
+      if (!this.isLocked && !dragging) return;
+    }
     if (this.skip > 0) {
       this.skip -= 1;
       return;

@@ -55,6 +55,7 @@ import { setGateOpen, fuseMachine } from './hubPark.js';
 import { fusePets } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
+import { inDiscord, startDiscord } from './discordActivity.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 之後畫質系統會再調
@@ -125,6 +126,12 @@ fight.onDefeat = () => {
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
 const player = createPlayer(camera, document.body);
+// Discord Activity：鎖唔到滑鼠，改用撳住滑鼠拖轉鏡頭；平時網頁版唔變（src/discordActivity.js）
+if (inDiscord()) {
+  player.controls.virtual = true;
+  player.controls.dragLook = true;
+  startDiscord();
+}
 // 發光效果（Bloom）：好光嘅嘢（燈條、水晶、光柱、Boss 紅眼）會發出柔和光暈，睇落型好多
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
@@ -459,6 +466,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
+  if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
   if (e.code === 'Escape' && player.controls.freeMode) {
     player.controls.freeMode = false; // 放開滑鼠嗰陣撳 Esc：暫停
     startScreen.hidden = false;
@@ -1264,12 +1272,12 @@ renderer.setAnimationLoop((timestamp) => {
       save();
     }
     updateTutorial(tutorial, time);
-    handleEvents();
     const it = currentInteraction();
     setPrompt(it?.prompt ?? null);
     updateBossSigns(state.speed, state.iq);
     dayNight.forceDusk = location === BIOMES[3].name; // Issue #2：Arctic Meltdown 永遠係黃昏天（夜晚照樣入夜）
     updateDayNight(dayNight, dt);
+    handleEvents(); // 要喺 updateDayNight 之後：活動同入夜同一刻開始（整點／半點），活動嘅動物先唔會俾入夜 spawnAll 蓋咗
     applyBeachSky(scene, sky.uniforms, hemi, sun); // 秘密沙灘：星空
     applyEclipseSky(eclipse, scene, sky.uniforms, hemi, sun); // Eclipse：成個地圖變日蝕色
     updateHud(dayNight, location);

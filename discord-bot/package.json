@@ -1,0 +1,16 @@
+{
+  "name": "animal-rescue-discord-bot",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Discord bot for Animal Rescue: jokes, how to play, spawn list and rare-animal pings",
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "register": "node --env-file=.env register.js",
+    "start": "node --env-file=.env index.js",
+    "preview": "node preview.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  }
+}

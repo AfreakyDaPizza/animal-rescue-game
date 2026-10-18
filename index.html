@@ -4,9 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Animal Rescue</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <!-- 字款喺背景載，連唔到 Google 都唔會阻住遊戲 -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <!-- 字款喺背景載，連唔到 Google 都唔會阻住遊戲；Discord Activity 入面唔載（Discord 擋晒外面網站，用後備字款） -->
+    <script>
+      if (!/[?&]frame_id=/.test(location.search)) {
+        const font = document.createElement('link');
+        font.rel = 'stylesheet';
+        font.href = 'https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap';
+        document.head.appendChild(font);
+      }
+    </script>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -100,6 +106,7 @@
         </p>
         <button id="start-button">Click to Play</button>
         <p class="small mobile-only">Left stick: move · Drag the screen: look around · JUMP · USE · tap the hotbar to pick a pet · ⏸ pause</p>
+        <p class="small pc-only discord-only">🎮 In Discord: <b>hold the mouse button and drag</b> to look around</p>
         <p class="small pc-only">WASD / Arrow keys move · Space jump · Mouse look · E use · 1-0 hotbar · scroll to zoom camera · P stats · I index · G graphics · Esc pause</p>
       </div>
     </div>

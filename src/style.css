@@ -427,6 +427,8 @@ body:has(#boss-bar:not([hidden])) #event-banner { display: none; }
 .device-buttons button b { font-size: 26px; }
 .device-buttons button small { font-size: 14px; font-weight: 600; opacity: 0.85; line-height: 1.3; }
 .mobile-only { display: none; }
+.discord-only { display: none; } /* Discord Activity 先見到（src/discordActivity.js 加 body.in-discord） */
+body.in-discord .discord-only { display: block; }
 body.mobile .mobile-only { display: block; }
 body.mobile .pc-only, body.mobile #hud-help, body.mobile #crosshair { display: none !important; }
 
