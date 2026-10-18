@@ -14,6 +14,7 @@
       }
     </script>
     <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/polish.css" />
   </head>
   <body>
     <!-- 上面：夜晚倒數 + 面板掣（數值搬咗去左下角，小朋友 2026-10-18） -->
@@ -104,14 +105,23 @@
 
     <!-- 未開始／暫停 -->
     <div id="start" class="overlay">
-      <div class="card">
-        <h1>🐼 Animal Rescue</h1>
-        <p>Rescue endangered animals and bring them home safely!</p>
+      <div class="start-bg" aria-hidden="true">
+        <span style="--x:8%;--d:0s;--t:14s">🐼</span><span style="--x:22%;--d:-4s;--t:17s">🐘</span><span style="--x:37%;--d:-9s;--t:15s">🐢</span>
+        <span style="--x:52%;--d:-2s;--t:19s">🦏</span><span style="--x:66%;--d:-7s;--t:16s">🐋</span><span style="--x:80%;--d:-11s;--t:18s">🦜</span>
+        <span style="--x:92%;--d:-5s;--t:13s">🐯</span><span style="--x:15%;--d:-13s;--t:20s">🍃</span><span style="--x:72%;--d:-15s;--t:21s">🍃</span>
+      </div>
+      <div class="card start-card">
+        <div class="logo" aria-label="Animal Rescue">
+          <span class="logo-paw">🐾</span>
+          <span class="logo-line logo-1">ANIMAL</span>
+          <span class="logo-line logo-2">RESCUE</span>
+        </div>
+        <p class="tagline">Rescue endangered animals. Learn. Protect our planet. 🌍</p>
         <p class="hint">
-          Train <b>Speed</b> on the Treadmill and <b>IQ</b> at the Student Table.<br />
+          Train <b>⚡ Speed</b> on the Treadmill and <b>🧠 IQ</b> at the Student Table.<br />
           Bosses chase you when you borrow their animal - be fast!
         </p>
-        <button id="start-button">Click to Play</button>
+        <button id="start-button" class="play-button">▶ PLAY</button>
         <p class="small mobile-only">Left stick: move · Drag the screen: look around · JUMP · USE · tap the hotbar to pick a pet · ⏸ pause</p>
         <p class="small pc-only discord-only">🎮 In Discord: <b>hold the mouse button and drag</b> to look around</p>
         <p class="small pc-only">WASD / Arrow keys move · Space jump · Mouse look · E use · 1-0 hotbar · scroll to zoom camera · P stats · I index · G graphics · Esc pause</p>
@@ -121,6 +131,7 @@
     <!-- 資料面板（My Stats／Animal Index） -->
     <div id="panel" class="overlay" hidden>
       <div class="card wide">
+        <button id="panel-x" class="panel-x" title="Close">✕</button>
         <h2 id="panel-title">📋 My Stats</h2>
         <div id="panel-body"></div>
         <button id="panel-close">Close <kbd id="panel-close-key">P</kbd></button>
