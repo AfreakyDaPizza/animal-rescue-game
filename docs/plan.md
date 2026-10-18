@@ -190,7 +190,7 @@ src/data/questions.js ← 野生動物問題
 測試（開發模式 console）：`game.lab.unlock()`（好似撳紅色掣）、`game.lab.open()`、`game.lab.hammer()`、`game.lab.smashAll()`、`game.lab.legendary(3)`、`game.lab.arena()`／`game.lab.start()`（直接入 Arena 開打）、`game.lab.god = true`（唔會俾打中）、`game.lab.attack('drones'|'animals'|'portal')`、`game.lab.tired()`、`game.lab.hitCapsule()`、`game.lab.ending()`、`game.lab.fight.timeScale = 3`（快轉）、`game.lab.reset()`（清晒實驗室進度）。
 
 ## 💪 Ranger Gym（小朋友 2026-10-18）
-1. 實驗室爆炸之後（`state.labBossDefeated`）前院左邊（-x）出現 Gym（`src/gym.js`，位置 `GYM`／`GYM_DOOR`／`GYM_PORTAL` 喺 `src/labShape.js`）。爆炸動畫最後兩個鏡頭影 Gym 同門外傳送門，玩完企喺 Gym 門口（`GYM_FRONT`）。
+1. 小朋友再改：實驗室爆炸之後**實驗室冇咗**（`labStatus.gone`，`src/labShape.js`；`lab.building` 同佢嘅撞嘢一齊拎走），Gym 喺實驗室原位（大門向前院，z = 100）。`src/gym.js` 用「設計座標」（`GYM_LOCAL`，大門向 +x）起，成座轉 90° 搬過去（`gymToWorld`／`gymToLocal`）；世界座標 `GYM`／`GYM_DOOR`／`GYM_PORTAL` 俾 main.js、world.js 用。Gym 嘅撞嘢同彈床石台未出現就唔放入世界（`setGymPresent`）。爆炸動畫：煙最濃嗰下實驗室冇咗，Gym 由地底升上嚟，之後影 Gym 大門同前院嘅傳送門，玩完企喺 Gym 門口（`GYM_FRONT`）。
 2. `GYM_OPEN_DATE = '2026-10-31'`（balance.js）先開門；之前門口有圍欄、「OPENING SOON」同倒數牌，行唔入去。
 3. 門外傳送門去秘密沙灘；第一次去先播 Owner 俾錢＋流星嗰段（`state.beachFinaleSeen`；舊存檔跟 `labEndingSeen`）。實驗室傳送門一樣。
 4. 入面：⚡ 4X Treadmill（每 2–4 秒 +4 × Hub 跑步機每秒）、🦘 Trampoline（自動彈，每 5 秒 +1 Jump Power，冇升級）、🧠 Brain Bench（每 3 秒 Speed + IQ 各 2 ×）、🧗 Climbing Wall of Wisdom（爬上去，每 2–4 秒 +4 × 學生桌每秒 IQ）。數值 `GYM_*`。我揀嘅：Brain Bench 同 Climbing Wall 兩部機。

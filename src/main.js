@@ -56,8 +56,8 @@ import { fusePets } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg } from './data/animals.js';
 import { inDiscord, startDiscord } from './discordActivity.js';
-import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText } from './gym.js';
-import { GYM, GYM_DOOR_Z, GYM_PORTAL, GYM_FRONT, inGym } from './labShape.js';
+import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText, setGymPresent } from './gym.js';
+import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 之後畫質系統會再調
@@ -98,6 +98,7 @@ scene.add(stars);
 const updateWorld = buildWorld(scene);
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
+labStatus.gone = !!state.labBossDefeated; // 舊存檔：打贏咗 Boss = 實驗室已經爆咗
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const eclipse = createEclipse(scene); // Eclipse 日蝕活動（天上嘅日蝕、DNA 激光）
 const hub = createHub(scene);
@@ -682,13 +683,13 @@ function currentInteraction() {
   if (beach.open) {
     if (Math.hypot(pos.x - BEACH_PORTAL.x, pos.z - BEACH_PORTAL.z) < 2.6) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Park', action: () => travel(0, 14, 0, '🏡 Back to the Animal Rescue Park!') };
     if (whereIs(pos.x, pos.z) === 'Laboratory' && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
-    if (gym.holder.visible && Math.hypot(pos.x - GYM_PORTAL.x, pos.z - GYM_PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
+    if (gym.present && Math.hypot(pos.x - GYM_PORTAL.x, pos.z - GYM_PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
     if (sitting) return { prompt: '🌠 Watching the meteors... <kbd>E</kbd> Stand up', action: standUp };
     if (Math.hypot(pos.x - BENCH.x, pos.z - BENCH.z) < 2.4) return { prompt: '<kbd>E</kbd> Sit down and watch the meteors 🌠', action: sitDown };
     if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
   }
   // 💪 Gym 未開門
-  if (gym.holder.visible && !gym.open && Math.abs(pos.z - GYM_DOOR_Z) < 5 && pos.x > GYM.maxX - 1 && pos.x < GYM.maxX + 9) {
+  if (gym.present && !gym.open && nearGymDoor(pos.x, pos.z)) {
     return { prompt: `🚧 The GYM opens on ${gymOpenDateText()}! (in ${gymCountdown()})` };
   }
   // Boss 戰：用球棒打佢
@@ -1111,8 +1112,9 @@ function afterEscape() {
   hideBoss(fight);
   fight.phase = 'gone';
   save();
+  labStatus.gone = true;
   teleportPlayer(player, GYM_FRONT.x, GYM_FRONT.z);
-  camera.rotation.set(0, Math.PI / 2 - 0.35, 0, 'YXZ'); // 望向 Gym（-x），少少望住傳送門
+  camera.rotation.set(0, Math.PI - 0.35, 0, 'YXZ'); // 望向 Gym 大門（+z），少少望住左邊嘅傳送門
   announce(isGymOpen() ? '💪 The RANGER GYM is open! Go in and train!' : `💪 The RANGER GYM opens on ${gymOpenDateText()}!`);
   setTimeout(() => popup('🌀 Walk to the glowing portal and press E to visit the SECRET BEACH 🏖️'), 2600);
   play('day');
@@ -1198,8 +1200,9 @@ renderer.setAnimationLoop((timestamp) => {
   if (!frozen) updateLab(dt, time, pos);
   beach.open = !!state.labBossDefeated; // 小朋友：打完 Boss 先見到秘密沙灘
   // 💪 Gym：打完 Boss（實驗室爆炸）先見到；GYM_OPEN_DATE 到咗先行得入去
-  gym.holder.visible = !!state.labBossDefeated;
-  gymArea.open = gym.holder.visible && isGymOpen();
+  // 小朋友 2026-10-18：實驗室爆咗就冇咗，Gym 喺原位（labStatus.gone：開機時睇存檔；爆炸動畫入面煙最濃嗰下設定）
+  setGymPresent(labStatus.gone);
+  gymArea.open = gym.present && isGymOpen();
   if (!frozen) updateGym(dt, time, pos);
   // Biome 7：NEW_BIOME_DATE 到咗先開；第一次行到閘門前面就播開門動畫
   kingdom.open = (isNewBiomeOpen() || kingdomDebug || state.bigButton) && (state.kingdomSeen || movie.active);
@@ -1385,7 +1388,7 @@ renderer.setAnimationLoop((timestamp) => {
     station: trainingStationAt(hub, camera.position.x, camera.position.z) || (gymStationAt(camera.position.x, camera.position.z)?.kind === 'treadmill' ? { kind: 'treadmill' } : null),
   });
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
-  if (!inMovie && viewCam !== camera && inLab(camera.position.x, camera.position.z)) {
+  if (!inMovie && viewCam !== camera && !labStatus.gone && inLab(camera.position.x, camera.position.z)) {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
     viewCam.position.x = THREE.MathUtils.clamp(viewCam.position.x, LAB.minX + 1.3, LAB.maxX - 1.3);
   }
