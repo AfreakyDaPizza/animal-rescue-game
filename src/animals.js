@@ -1,6 +1,7 @@
 // 動物：喺生態區出現、借、抱住返 Hub、跌咗返去生態區
 
 import * as THREE from 'three';
+import { short } from './format.js';
 import { addFireAura } from './fireAura.js';
 import { animalsInBiome, formatKg, kgScale, findAnimal } from './data/animals.js';
 import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, rarityInfo } from './data/balance.js';
@@ -87,7 +88,7 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
   const label = makeLabel([
     { text: animal.name },
     { text: `${special ? '★ ' : ''}${rarity}${special ? ' ★' : ''}${sizeMul ? ` · 🔥 x${sizeMul}` : ''}`, color: info.color },
-    { text: `${formatKg(kg)} · $${petMoney(kg, biome, rarity).toLocaleString('en-US')}/s`, color: '#76ff03' },
+    { text: `${formatKg(kg)} · $${short(petMoney(kg, biome, rarity))}/s`, color: '#76ff03' },
   ]);
   label.position.y = model.userData.height * sizeK + 0.8;
   group.add(label);

@@ -2,6 +2,7 @@
 // 同一日大家都係同一組任務（用日期揀）；第二日自動換新
 
 import { state, save } from './state.js';
+import { short } from './format.js';
 
 export const QUEST_POOL = [
   { id: 'rescue', text: 'Rescue {n} animals', counts: [2, 3, 5], reward: 6 },
@@ -43,7 +44,7 @@ export function todayQuests() {
   return state.quests;
 }
 
-export const questText = (q) => QUEST_POOL.find((p) => p.id === q.id).text.replace('{n}', q.n.toLocaleString('en-US'));
+export const questText = (q) => QUEST_POOL.find((p) => p.id === q.id).text.replace('{n}', short(q.n));
 
 // 有嘢發生（例如救咗一隻動物）就叫：questEvent('rescue', 1)；完成會回傳嗰個任務
 export function questEvent(id, amount = 1) {

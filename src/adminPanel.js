@@ -2,6 +2,7 @@
 // 好似管理員面板：提早開新嘢、攞任何寵物、成本 Index、Max 晒、開活動、喺生態區出指定稀有度
 // 第一次改嘢之前會備份真存檔（SAVE_KEY + '-backup'），可以一撳還原
 import { state } from './state.js';
+import { short } from './format.js';
 import { ANIMALS, FUSE_PETS } from './data/animals.js';
 import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
@@ -9,7 +10,7 @@ import { EVENTS } from './events.js';
 import { petPic } from './animalPics.js';
 
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+const fmt = short; // K／M／B／T（src/format.js）
 let actions = null;
 let tab = 'future';
 let confirm = null; // 撳兩下先做：例如 'index'、'max'

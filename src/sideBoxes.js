@@ -4,6 +4,7 @@
 // 細盒唔係全畫面面板，遊戲照玩；每次只開一個
 
 import { state } from './state.js';
+import { short } from './format.js';
 import { petPic } from './animalPics.js';
 import { itemMoney, kgOf, formatKg } from './data/animals.js';
 import { rarityInfo, plotMoneyMulti, MACHINE_LEVELS } from './data/balance.js';
@@ -11,7 +12,7 @@ import { moneyPerSecond, machineStatus, formatLeft } from './hub.js';
 import { boost } from './events.js';
 
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+const fmt = short; // K／M／B／T（src/format.js）
 
 let open = null; // 'pets' | 'timers' | null
 let opts = { machineCount: 5, unequip: () => {}, onToggle: () => {} };
@@ -23,6 +24,7 @@ export function initSideBoxes(options) {
   $('side-pets-btn').addEventListener('click', () => toggleSideBox('pets'));
   $('side-timers-btn').addEventListener('click', () => toggleSideBox('timers'));
   $('side-box').addEventListener('click', (e) => {
+    if (e.target.closest('button[data-allpets]')) return opts.openAll?.(); // 打開完整寵物面板
     const b = e.target.closest('button[data-unequip]');
     if (!b) return;
     const pet = state.pets[Number(b.dataset.unequip)];
@@ -74,7 +76,8 @@ function renderPets(force) {
           <small>⚖️ ${formatKg(kgOf(p))} · <span class="money">$${fmt(itemMoney(p) * multi)}/s</span></small></div>
           <button data-unequip="${i}">Unequip</button></div>`;
       }).join('') : '<p class="side-empty">No pets on your Plot yet.</p>'}</div>
-      <p class="side-hint">To equip a pet, put it on your Plot 🌿</p>`;
+      <p class="side-hint">To equip a pet, put it on your Plot 🌿</p>
+      <button class="side-all" data-allpets="1">📋 All my pets</button>`;
   } else {
     const t = $('side-total');
     if (t) t.textContent = fmt(moneyPerSecond());

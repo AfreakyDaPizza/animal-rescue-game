@@ -1,6 +1,7 @@
 // 遊戲由呢度開始：起場景、燈、鏡頭，然後每格畫面更新一次
 
 import * as THREE from 'three';
+import { short } from './format.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -574,7 +575,7 @@ const hubActions = {
   },
   placePet(pet) {
     if (!placePet(hub, pet)) return;
-    popup(`+$${itemMoney(pet).toLocaleString('en-US')} / sec`);
+    popup(`+$${short(itemMoney(pet))} / sec`);
     play('coin');
     save();
   },
@@ -643,6 +644,10 @@ setShopActions({
 let sideFreed = false;
 initSideBoxes({
   machineCount: hub.machines.length,
+  openAll() {
+    toggleSideBox('pets');
+    togglePanel('pets');
+  },
   unequip(pet) {
     unequipPet(hub, pet);
     play('click');
@@ -688,7 +693,7 @@ setPetActions({
   },
   sell(pet) {
     const price = sellPet(hub, pet);
-    popup(`💰 Sold ${pet.name} for $${price.toLocaleString('en-US')}`);
+    popup(`💰 Sold ${pet.name} for $${short(price)}`);
     play('coin');
     save();
   },
@@ -702,14 +707,14 @@ setPetActions({
     play('magic');
     setTimeout(() => play('upgrade'), 1200);
     const r = rarityInfo(pet.rarity);
-    announce(`🧪 FUSED! You got a ${r.name.toUpperCase()} ${pet.name}! ($${itemMoney(pet).toLocaleString('en-US')}/s)`);
+    announce(`🧪 FUSED! You got a ${r.name.toUpperCase()} ${pet.name}! ($${short(itemMoney(pet))}/s)`);
     save();
     closePanel();
     resume();
   },
   sellMany(pets) {
     const price = pets.reduce((n, p) => n + sellPet(hub, p), 0);
-    popup(`💰 Sold ${pets.length} pets for $${price.toLocaleString('en-US')}`);
+    popup(`💰 Sold ${pets.length} pets for $${short(price)}`);
     play('coin');
     save();
   },
@@ -1297,7 +1302,7 @@ function beachFinale() {
       if (state.labRewardPaid) return;
       state.labRewardPaid = true;
       state.money += LAB_REWARD;
-      popup(`💰 +$${LAB_REWARD.toLocaleString('en-US')}`);
+      popup(`💰 +$${short(LAB_REWARD)}`);
       save();
     },
     onDone() {
@@ -1437,14 +1442,14 @@ renderer.setAnimationLoop((timestamp) => {
     const gymGains = trainInGym(gymStation, dt);
     if (gymGains.length) {
       quest('train', 1);
-      popup(gymGains.map((g) => `+${g.amount.toLocaleString('en-US')} ${g.label}`).join('  '));
+      popup(gymGains.map((g) => `+${short(g.amount)} ${g.label}`).join('  '));
       play('blip');
     }
     const { trained, earned } = updateHub(hub, dt, time, pos.x, pos.z);
     if (earned) quest('money', earned);
     if (trained) {
       quest('train', 1);
-      popup(`+${trained.amount.toLocaleString('en-US')} ${trained.station.stat}`);
+      popup(`+${short(trained.amount)} ${trained.station.stat}`);
       play('blip');
     }
     if (player.jumped) {
@@ -1478,8 +1483,8 @@ renderer.setAnimationLoop((timestamp) => {
       quest('rescue');
       play('rescue');
       let extra = '<br>👉 Put it in a Reproduce Machine (bottom of the Hub)!';
-      if (reward) extra += `<br>📖 New species in your Index! +$${reward.toLocaleString('en-US')}`;
-      if (biomeBonus) extra += `<br>🏆 Biome complete! +$${biomeBonus.toLocaleString('en-US')}`;
+      if (reward) extra += `<br>📖 New species in your Index! +$${short(reward)}`;
+      if (biomeBonus) extra += `<br>🏆 Biome complete! +$${short(biomeBonus)}`;
       showFact(animal, extra);
       save();
     }

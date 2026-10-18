@@ -9,6 +9,7 @@
 //      `--------------`
 
 import * as THREE from 'three';
+import { short } from './format.js';
 import { biomeFloorTexture } from './biomeArt.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { decorateBiome } from './biomes.js';
@@ -258,7 +259,7 @@ function addBossSign(scene, i, z) {
   bossSigns.push({ i, sign });
 }
 
-const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+const fmt = short; // K／M／B／T（src/format.js）
 export function updateBossSigns(speed, iq) {
   for (const { i, sign } of bossSigns) {
     const boss = BOSSES[i];

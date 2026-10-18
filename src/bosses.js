@@ -2,6 +2,7 @@
 // 只有你借咗佢生態區嘅動物，佢先會追你；佢唔可以走出自己嘅生態區
 
 import * as THREE from 'three';
+import { short } from './format.js';
 import { buildGuardianRig } from './enchantedModels.js';
 import { boost } from './events.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -269,7 +270,7 @@ export function createBosses(scene) {
     rig.g.scale.setScalar(1.1);
     group.add(rig.g);
 
-    const label = makeLabel([{ text: `BOSS: ${info.name}`, color: '#ff5252' }, { text: `${info.speed.toLocaleString('en-US')} Speed`, color: '#ffeb3b' }], 1.1);
+    const label = makeLabel([{ text: `BOSS: ${info.name}`, color: '#ff5252' }, { text: `${short(info.speed)} Speed`, color: '#ffeb3b' }], 1.1);
     label.position.y = 4.7;
     group.add(label);
 
@@ -345,7 +346,7 @@ export function updateBosses(bosses, dt, time, player) {
       const troll = boost.bossSpeed > 1;
       b.label.userData.setLines([
         { text: `${troll ? '🤡 TROLL ' : ''}BOSS: ${b.info.name}`, color: troll ? '#ff9100' : '#ff5252' },
-        { text: `${(b.info.speed * boost.bossSpeed).toLocaleString('en-US')} Speed`, color: '#ffeb3b' },
+        { text: `${short((b.info.speed * boost.bossSpeed))} Speed`, color: '#ffeb3b' },
       ]);
     }
   }

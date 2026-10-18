@@ -2,6 +2,7 @@
 // 5 部繁殖機、有圍欄嘅地塊（Plot）、動物圖鑑檯
 
 import * as THREE from 'three';
+import { short } from './format.js';
 import { PLOT } from './hubShape.js';
 import { addCollider, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
@@ -20,7 +21,7 @@ import { kgOf, formatKg, itemMoney, kgScale, findAnimal } from './data/animals.j
 import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
 
 const INTERACT_DISTANCE = 2.8;
-const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+const fmt = short; // K／M／B／T（src/format.js）
 
 function add(group, geometry, material, x, y, z) {
   const mesh = new THREE.Mesh(geometry, material);
@@ -1643,16 +1644,8 @@ export function createHub(scene) {
   const shopSpot = buildSkinShop(scene, 12.5, 4.8, Math.PI);
   const sellStall = buildSellStall(scene, 22, 4.8, 0);
 
-  // 「MY PETS」牌：撳 E 睇晒所有寵物
-  const petsBoard = makeSign([{ text: 'MY PETS', size: 0.42 }, { text: 'Press E to see all your pets', size: 0.22 }], 3, 1.5, THEMES.pink);
-  const petsSign = signOnPosts(petsBoard, 3, 1.5, 1.6);
-  // 地塊下面嘅圍欄外面、面向繁殖機條路（由繁殖機拎完寵物行過嚟就見到）
-  const PETS_BOARD = { x: (PLOT.minX + PLOT.maxX) / 2, z: PLOT.maxZ + 1.3 };
-  petsSign.position.set(PETS_BOARD.x, 0, PETS_BOARD.z);
-  petsSign.rotation.y = 0; // 面向 +z（繁殖機）
-  scene.add(petsSign);
-  addCollider(PETS_BOARD.x, PETS_BOARD.z, 0.6);
-  const petsBoardSpot = { x: PETS_BOARD.x, z: PETS_BOARD.z + 1.6 };
+  // 「MY PETS」牌：2026-10-18 小朋友叫刪走（改用右邊 🐾 掣，入面有「All my pets」）
+  const petsBoardSpot = null;
 
   const hub = { scene, stations, machines, plot, kiosk, sellSpot: sellStall.spot, animators: [library.update, sellStall.update], petsBoardSpot, plotUpgradeSpot, machineUpgradeSpot, shopSpot, moneyTimer: 0, trainTimer: 0 };
   applyMachineLevel(hub);
@@ -1911,7 +1904,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
     const pet = selected?.kind === 'pet' ? selected.item : state.pets.find((p) => !p.onPlot);
     const used = petsOnPlot();
     const slots = plotSlots(state.plotLevel);
-    if (pet && used >= slots) options.push({ dist: gate, prompt: `🚫 Plot full (${used}/${slots})! Upgrade your Plot or unequip a pet at the MY PETS sign` });
+    if (pet && used >= slots) options.push({ dist: gate, prompt: `🚫 Plot full (${used}/${slots})! Upgrade your Plot or unequip a pet with the 🐾 button (B)` });
     else if (pet) options.push({ dist: gate, prompt: `<kbd>E</kbd> Put ${pet.name} on your Plot (${used}/${slots})`, action: () => actions.placePet(pet) });
     else options.push({ dist: gate, prompt: `Plot: ${used}/${slots} pets. Get pets from the Reproduce Machines!` });
   }
@@ -1950,8 +1943,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   if (se < INTERACT_DISTANCE + 0.8) options.push({ dist: se, prompt: '<kbd>E</kbd> Open the Sell Stall 💰', action: actions.openSell });
 
   // MY PETS 牌
-  const pb = near(hub.petsBoardSpot.x, hub.petsBoardSpot.z);
-  if (pb < INTERACT_DISTANCE + 0.5) options.push({ dist: pb, prompt: '<kbd>E</kbd> See all your pets', action: actions.openPets });
+
 
   // 圖鑑檯
   const k = near(hub.kiosk.x, hub.kiosk.z);

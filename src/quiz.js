@@ -2,6 +2,7 @@
 // IQ 夠高會幫你刪走錯嘅答案
 
 import { QUESTIONS } from './data/questions.js';
+import { short } from './format.js';
 import { BOSSES } from './data/balance.js';
 import { state } from './state.js';
 import { play } from './sound.js';
@@ -46,8 +47,8 @@ export function askQuestion({ title, biome, hard = false }) {
   $('quiz-title').textContent = title;
   $('quiz-question').textContent = q.q;
   $('quiz-iq').textContent = removeCount
-    ? `🧠 Your IQ (${Math.floor(state.iq).toLocaleString('en-US')}) removed ${removeCount} wrong answer${removeCount > 1 ? 's' : ''}!`
-    : `🧠 Tip: train IQ to ${BOSSES[biome].iq.toLocaleString('en-US')} at the Student Table to get help here.`;
+    ? `🧠 Your IQ (${short(Math.floor(state.iq))}) removed ${removeCount} wrong answer${removeCount > 1 ? 's' : ''}!`
+    : `🧠 Tip: train IQ to ${short(BOSSES[biome].iq)} at the Student Table to get help here.`;
   $('quiz-result').hidden = true;
   $('quiz-continue').hidden = true;
 

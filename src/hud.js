@@ -1,6 +1,7 @@
 // 畫面上嘅資料（HUD）：數值、夜晚倒數、位置、快捷欄、My Stats 同 Animal Index 面板
 
 import { state, save } from './state.js';
+import { short } from './format.js';
 import { walkSpeed, jumpHeight } from './player.js';
 import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
@@ -16,7 +17,7 @@ import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => Math.floor(n).toLocaleString('en-US');
+const fmt = short; // K／M／B／T（src/format.js）
 
 // 畫面中間下面嘅提示（例如「[E] Borrow Giant Panda」），null 就收埋
 export function setPrompt(html) {

@@ -2,6 +2,7 @@
 // 乾淨嘅沙灘同大海、星空、流星；長櫈可以坐低睇流星；遠處有個神秘 Ranger → 秘密結局「THE COLLAB」
 
 import * as THREE from 'three';
+import { short } from './format.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { BEACH_LOCAL as BEACH, BENCH_LOCAL as BENCH, STRANGER_LOCAL as STRANGER, BEACH_PORTAL_LOCAL as PORTAL, BEACH_OFFSET as OFF } from './labShape.js';
 import { addCollider as addWorldCollider } from './world.js';
@@ -436,7 +437,7 @@ export function playBeachFinale({ scene, camera, playMovie, once, play, owner, s
   root.add(cash);
   const finalLines = [
     'You saved the endangered animals!',
-    `You got paid $${reward.toLocaleString('en-US')}...`,
+    `You got paid $${short(reward)}...`,
     "but something's missing...",
     'the pets wanted you to stay here forever,',
     'so you decided to stay with them forever.',
@@ -464,7 +465,7 @@ export function playBeachFinale({ scene, camera, playMovie, once, play, owner, s
     ],
     lines: [
       [7.5, 10.5, () => owner.head, 'You did it, Ranger! You saved them ALL! 🎉', 'owner'],
-      [10.8, 14, () => owner.head, `Here is $${reward.toLocaleString('en-US')} for being the BEST ranger! 💰`, 'owner'],
+      [10.8, 14, () => owner.head, `Here is $${short(reward)} for being the BEST ranger! 💰`, 'owner'],
       [14.4, 17, () => me.head, 'Thank you! I love it here! 🐾', 'ranger'],
     ],
     update(t, dt) {

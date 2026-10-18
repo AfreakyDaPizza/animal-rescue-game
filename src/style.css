@@ -544,6 +544,8 @@ body.mobile .side-btn kbd { display: none; }
 #side-box button[data-unequip]:hover { background: #90a4ae; }
 #side-box button[data-unequip]:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); }
 #side-box .side-hint { margin: 8px 0 0; font-size: 13px; color: #c5e1a5; text-align: center; }
+#side-box .side-all { display: block; margin: 8px auto 0; padding: 6px 14px; font: inherit; font-weight: 700; border: 2px solid #1b1b1b; border-radius: 10px; background: #ffb300; color: #1b1b1b; cursor: pointer; }
+#side-box .side-all:hover { background: #ffca28; }
 #side-box .side-empty { margin: 6px 0; font-size: 14px; opacity: 0.8; text-align: center; }
 
 /* 手機：數值放返左上角（左下有搖桿同快捷欄）；位置牌喺佢下面；兩粒掣喺右上，避開跳／用掣 */
