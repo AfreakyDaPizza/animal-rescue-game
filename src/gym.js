@@ -1,5 +1,5 @@
 // 💪 RANGER GYM（小朋友 2026-10-18）
-// 實驗室爆炸之後喺前院左邊出現；GYM_OPEN_DATE（31 Oct）先開門，之前門口有「OPENING SOON」牌同倒數
+// 實驗室爆炸之後喺實驗室原位出現（實驗室冇咗）；GYM_OPEN_DATE（31 Oct）先開門，之前門口有「OPENING SOON」牌同倒數
 // 門外有個傳送門去秘密沙灘
 // 入面：
 //   ⚡ 4X Treadmill：每 2–4 秒加 Speed（= 4 × Hub 跑步機每秒加嘅）
@@ -10,9 +10,12 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { addCollider, addPlatform, bakeStatic } from './world.js';
+import { colliders, platforms, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, THEMES } from './signs.js';
-import { GYM, GYM_DOOR_Z, GYM_DOOR, GYM_PORTAL } from './labShape.js';
+import {
+  GYM_LOCAL as GYM, GYM_DOOR_Z_LOCAL as GYM_DOOR_Z, GYM_DOOR_LOCAL as GYM_DOOR, GYM_PORTAL_LOCAL as GYM_PORTAL,
+  GYM_TURN, GYM_SHIFT, gymToWorld, gymToLocal, gymRectToWorld,
+} from './labShape.js';
 import {
   GYM_OPEN_DATE, trainingGain, GYM_TREADMILL_MULTI, GYM_TREADMILL_EVERY, GYM_JUMP_GAIN, GYM_JUMP_EVERY,
   GYM_BENCH_MULTI, GYM_BENCH_EVERY, GYM_WALL_MULTI, GYM_WALL_EVERY,
@@ -22,6 +25,7 @@ import { boost } from './events.js';
 
 export const gym = {
   holder: null, // 成座 Gym（打贏實驗室 Boss 先見到）
+  present: false, // setGymPresent() 設定
   debug: false, // game.openGym()：唔理日子即刻開
   open: false,
   doors: [],
@@ -29,6 +33,29 @@ export const gym = {
   stations: [],
   bounce: 0, // 彈床張網凹落去幾多（main.js 每次彈就設 1）
 };
+
+// 呢個檔所有座標都係「設計座標」（大門向 +x）；撞嘢、石台要轉做世界座標（Gym 成座轉咗 90° 搬去實驗室個位）
+// 未出現（實驗室仲喺度）嘅時候唔放入世界，唔係就會喺實驗室入面有隱形牆
+const myColliders = [];
+const myPlatforms = [];
+const addCollider = (x, z, r) => {
+  const w = gymToWorld(x, z);
+  myColliders.push({ x: w.x, z: w.z, r });
+};
+const addPlatform = (rect, top, bottom = null) => myPlatforms.push({ ...gymRectToWorld(rect), top, bottom });
+// main.js：Gym 出現／消失（撞嘢同石台跟住加入／拎走）
+export function setGymPresent(on) {
+  if (gym.present === on) return;
+  gym.present = on;
+  gym.holder.visible = on;
+  for (const [list, mine] of [[colliders, myColliders], [platforms, myPlatforms]]) {
+    for (const o of mine) {
+      const i = list.indexOf(o);
+      if (on && i < 0) list.push(o);
+      if (!on && i >= 0) list.splice(i, 1);
+    }
+  }
+}
 
 // ---- 日子 ----
 const openDate = () => {
@@ -95,9 +122,13 @@ const between = ([a, b]) => a + Math.random() * (b - a);
 // ================= 起 Gym =================
 export function buildGym(scene) {
   const holder = new THREE.Group();
+  const frame = new THREE.Group(); // 設計座標 → 世界（實驗室原位，大門向前院）
+  frame.rotation.y = GYM_TURN;
+  frame.position.set(GYM_SHIFT.x, 0, GYM_SHIFT.z);
+  holder.add(frame);
   const still = new THREE.Group();
   const live = new THREE.Group();
-  holder.add(live);
+  frame.add(live);
   scene.add(holder);
   gym.holder = holder;
   holder.visible = false;
@@ -110,11 +141,12 @@ export function buildGym(scene) {
   buildClimbingWall(still, live, updates, 92);
   buildDecor(still, live, updates);
   buildPortal(still, live, updates);
-  bakeStatic(still, holder);
+  bakeStatic(still, frame);
 
-  return (dt, time, pos) => {
+  return (dt, time, worldPos) => {
     gym.open = isGymOpen();
     if (!holder.visible) return;
+    const pos = gymToLocal(worldPos.x, worldPos.z);
     const near = gym.open && Math.abs(pos.z - GYM_DOOR_Z) < 9 && pos.x > GYM.maxX - 9 && pos.x < GYM.maxX + 12;
     gym.doorOpen += ((near ? 1 : 0) - gym.doorOpen) * Math.min(1, dt * 3);
     for (const d of gym.doors) d.position.z = GYM_DOOR_Z + d.userData.side * (1.6 + gym.doorOpen * 3.1);
@@ -664,7 +696,8 @@ function buildPortal(root, live, updates) {
 // 玩家企喺邊部 Gym 機（冇 / 未開門就 null）
 export function gymStationAt(x, z) {
   if (!gym.open || !gym.holder?.visible) return null;
-  return gym.stations.find((s) => s.inZone(x, z)) || null;
+  const p = gymToLocal(x, z);
+  return gym.stations.find((s) => s.inZone(p.x, p.z)) || null;
 }
 let current = null;
 let timer = 0;

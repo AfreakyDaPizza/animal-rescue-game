@@ -77,11 +77,32 @@ export const STRANGER = W(STRANGER_LOCAL);
 export const BEACH_PORTAL = W(BEACH_PORTAL_LOCAL);
 export const BEACH_ARRIVE = { x: BEACH.minX + 8, z: 81.5 }; // 去到沙灘企喺邊
 
-// ---- 💪 GYM（小朋友 2026-10-18）：實驗室爆炸之後，喺前院左邊（-x）出現；GYM_OPEN_DATE 先開門 ----
-// 大門向 +x（對住前院），門外有傳送門去秘密沙灘
-export const GYM = { minX: -66, maxX: -30, minZ: 63, maxZ: 100, wallH: 8 };
-export const GYM_DOOR_Z = 81.5; // 大門中間
-export const GYM_DOOR = { minX: -34, maxX: -21, minZ: GYM_DOOR_Z - 3, maxZ: GYM_DOOR_Z + 3 }; // 門口條路（駁去前院）
-export const GYM_PORTAL = { x: -20.6, z: 70, y: 2.7 }; // 門外去秘密沙灘嘅傳送門（面向 +x）
-export const GYM_FRONT = { x: -14, z: 80 }; // 爆炸動畫之後企喺度（望住 Gym）
+// ---- 💪 GYM（小朋友 2026-10-18）：實驗室爆炸之後，實驗室冇咗，Gym 喺原位出現；GYM_OPEN_DATE 先開門 ----
+// gym.js 用「設計座標」（_LOCAL：大門向 +x）起，成座再轉 90° 搬去實驗室個位（大門向 -z，對住前院）
+export const GYM_LOCAL = { minX: -66, maxX: -30, minZ: 63, maxZ: 100, wallH: 8 };
+export const GYM_DOOR_Z_LOCAL = 81.5; // 大門中間
+export const GYM_DOOR_LOCAL = { minX: -34, maxX: -21, minZ: GYM_DOOR_Z_LOCAL - 3, maxZ: GYM_DOOR_Z_LOCAL + 3 };
+export const GYM_PORTAL_LOCAL = { x: -20.6, z: 70, y: 2.7 }; // 門外去秘密沙灘嘅傳送門（面向 +x）
+// 設計座標 → 世界：大門 (GYM_LOCAL.maxX, GYM_DOOR_Z_LOCAL) 去到實驗室門口 (0, LAB_DOOR_Z)；+x（出門）變 -z
+export const GYM_TURN = Math.PI / 2;
+export const GYM_SHIFT = { x: -GYM_DOOR_Z_LOCAL, z: LAB_DOOR_Z + GYM_LOCAL.maxX }; // rotation.y = GYM_TURN 之後再搬
+export const gymToWorld = (x, z) => ({ x: z + GYM_SHIFT.x, z: -x + GYM_SHIFT.z });
+export const gymToLocal = (x, z) => ({ x: GYM_SHIFT.z - z, z: x - GYM_SHIFT.x });
+const rectToWorld = (r) => {
+  const a = gymToWorld(r.minX, r.minZ);
+  const b = gymToWorld(r.maxX, r.maxZ);
+  return { ...r, minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x), minZ: Math.min(a.z, b.z), maxZ: Math.max(a.z, b.z) };
+};
+export const gymRectToWorld = rectToWorld;
+// 世界座標（main.js、world.js 用）
+export const GYM = rectToWorld(GYM_LOCAL); // x -18.5…18.5，z 100…136
+export const GYM_DOOR = rectToWorld(GYM_DOOR_LOCAL); // 門口條路（駁去前院）
+export const GYM_DOOR_X = 0;
+export const GYM_DOOR_Z = LAB_DOOR_Z; // 大門喺前牆（z = 100）
+export const GYM_PORTAL = { ...gymToWorld(GYM_PORTAL_LOCAL.x, GYM_PORTAL_LOCAL.z), y: GYM_PORTAL_LOCAL.y }; // 前院入面，面向 Hub
+export const GYM_FRONT = { x: 0, z: 86 }; // 爆炸動畫之後企喺度（望住 Gym 大門）
 export const inGym = (x, z) => inRect(GYM, x, z);
+// 企喺 Gym 大門前面（未開門嗰陣彈倒數）
+export const nearGymDoor = (x, z) => Math.abs(x - GYM_DOOR_X) < 5 && z < GYM_DOOR_Z + 1 && z > GYM_DOOR_Z - 9;
+// 實驗室爆咗冇咗（打贏 Boss 之後；main.js 設定）
+export const labStatus = { gone: false };

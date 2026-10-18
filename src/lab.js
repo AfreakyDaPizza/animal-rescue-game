@@ -7,14 +7,14 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { addCollider, bakeStatic, parkGate } from './world.js';
+import { addCollider, bakeStatic, parkGate, colliders } from './world.js';
 import { makeLabel, dynamicSign, THEMES } from './signs.js';
 import { PARK_GATE, setGateOpen } from './hubPark.js';
 import { buildAnimalModel } from './animalModels.js';
 import { ANIMALS } from './data/animals.js';
 import { LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY, LAB_LEGENDARY_NEEDED } from './data/balance.js';
 import { state } from './state.js';
-import { LAB, LAB_DOOR_Z, CAPSULES, PODS, PORTAL, ARENA, BOSS_PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT } from './labShape.js';
+import { LAB, LAB_DOOR_Z, CAPSULES, PODS, PORTAL, ARENA, BOSS_PORTAL, EXIT_PORTAL, RED_BUTTON, HAMMER_SPOT, labStatus } from './labShape.js';
 
 const LAB_MID = { x: 0, z: 124 }; // 實驗室中間（地上燈帶、頂上光環）
 
@@ -224,12 +224,22 @@ export function buildLab(scene) {
   lab.scene = scene;
   const updates = [];
 
-  buildShell(staticRoot, live, updates);
-  buildInterior(staticRoot, live, updates);
+  // 實驗室座樓（打贏 Boss 爆炸之後成座冇咗，Gym 喺原位出現）：自己一組，連撞嘢都可以一次過拎走
+  const labStatic = new THREE.Group();
+  const building = new THREE.Group();
+  const labLive = new THREE.Group();
+  building.add(labLive);
+  scene.add(building);
+  lab.building = building;
+  const c0 = colliders.length;
+  buildShell(labStatic, labLive, updates);
+  buildInterior(labStatic, labLive, updates);
+  buildPods(labLive);
+  lab.labPortal = makePortal(labStatic, labLive, updates, { ...PORTAL, color: 0xd500f9 });
+  lab.buildingColliders = colliders.slice(c0);
+  bakeStatic(labStatic, building);
   buildArena(staticRoot, live, updates);
   buildCapsules(live);
-  buildPods(live);
-  lab.labPortal = makePortal(staticRoot, live, updates, { ...PORTAL, color: 0xd500f9 });
   lab.bossPortal = makePortal(staticRoot, live, updates, { ...BOSS_PORTAL, color: 0xff1744 });
   lab.exitPortal = makePortal(staticRoot, live, updates, { ...EXIT_PORTAL, r: 2.4, color: 0x00e676, rotY: Math.PI });
   lab.exitPortal.target = 1; // 出口一直開住
@@ -252,6 +262,7 @@ export function buildLab(scene) {
   }
 
   return (dt, time, playerPos) => {
+    if (labStatus.gone) removeLabBuilding();
     updates.forEach((u) => u(dt, time));
     updateLockSign();
     // 實驗室門：行近先打開（開咗大門先得）
@@ -287,7 +298,7 @@ export function buildLab(scene) {
     // 燈只係喺附近先開（每盞燈都會令成個世界畫慢啲）
     const inLabZone = playerPos.z > 90 && playerPos.z < 170;
     const inArenaZone = playerPos.z > 260;
-    for (const l of lab.lights) l.visible = inLabZone;
+    for (const l of lab.lights) l.visible = inLabZone && !labStatus.gone;
     for (const l of lab.arenaLights) l.visible = inArenaZone;
   };
 }
@@ -1066,6 +1077,17 @@ export function updateLabGuide(camera, time, show) {
   const angle = Math.atan2(fx * tz - fz * tx, fx * tx + fz * tz);
   el.querySelector('span').style.transform = `rotate(${Math.round((angle * 180) / Math.PI)}deg)`;
   el.querySelector('small').textContent = `🔬 Laboratory · ${Math.round(Math.hypot(tx, LAB_DOOR_Z - pos.z))} m`;
+}
+
+// 實驗室爆炸：成座樓（同佢嘅撞嘢）冇咗；Arena、大門、鎚仔、紅掣照留
+function removeLabBuilding() {
+  if (!lab.building.visible) return;
+  lab.building.visible = false;
+  for (const c of lab.buildingColliders) {
+    const i = colliders.indexOf(c);
+    if (i >= 0) colliders.splice(i, 1);
+  }
+  for (const l of lab.lights) l.visible = false;
 }
 
 // 大門開咗（開鎖動畫完／debug 用）
