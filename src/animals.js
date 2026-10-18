@@ -2,8 +2,9 @@
 
 import * as THREE from 'three';
 import { addFireAura } from './fireAura.js';
-import { animalsInBiome, randomKg, formatKg, kgScale, findAnimal } from './data/animals.js';
-import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, randomRarity, rarityInfo } from './data/balance.js';
+import { animalsInBiome, formatKg, kgScale, findAnimal } from './data/animals.js';
+import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, rarityInfo } from './data/balance.js';
+import { seededRandom, rollWild } from './spawnRoll.js';
 import { buildAnimalModel } from './animalModels.js';
 import { biomeRect, KINGDOM_Y } from './world.js';
 import { SUMMIT } from './biomes.js';
@@ -28,16 +29,7 @@ export function createRescue(scene, camera) {
 
 // 喺某個生態區放一隻動物（入夜就叫一次）；animal／kg／rarity 唔俾就隨機揀
 // 回傳嗰隻動物嘅資料（main.js 用嚟宣佈 Legendary／Mythic）
-// 固定隨機：同一個 seed 永遠出同一隻動物（F5 唔會換過；小朋友 2026-10-11）
-function seededRandom(text) {
-  let h = 1779033703;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 3432918353);
-  return () => {
-    h = Math.imul(h ^ (h >>> 16), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return ((h ^= h >>> 16) >>> 0) / 4294967296;
-  };
-}
+// 固定隨機：同一個 seed 永遠出同一隻動物（seededRandom 喺 src/spawnRoll.js）
 
 // seed：呢隻動物嘅「身份」（例如「第 123 段白天 · Biome 2」）；救咗嘅就唔再出
 export function spawnAnimal(rescue, biome, animal = null, kg = null, rarity = null, { seed = null, sizeMul = null } = {}) {
@@ -62,19 +54,7 @@ export function spawnAnimal(rescue, biome, animal = null, kg = null, rarity = nu
 
 function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
 
-  if (!animal) {
-    const pool = animalsInBiome(biome);
-    // 有固定稀有度嘅（Biome 7 魔法動物）：越稀有越少出
-    const WEIGHT = { Common: 40, Rare: 25, Epic: 15, Legendary: 8, Mythic: 3, Eternal: 1 };
-    const total = pool.reduce((n, a) => n + (a.rarity ? WEIGHT[a.rarity] : 10), 0);
-    let roll = Math.random() * total;
-    animal = pool.find((a) => (roll -= a.rarity ? WEIGHT[a.rarity] : 10) < 0) || pool[0];
-  }
-  // Giant Pets 活動：變大 3 倍（重量都 ×3）
-  sizeMul = sizeMul ?? (boost.size > 1 ? boost.size : null);
-  kg = kg ?? (sizeMul ? Math.round(randomKg(animal) * sizeMul * 10) / 10 : randomKg(animal));
-  rarity = animal.rarity || (rarity ?? randomRarity()); // 魔法動物：固定稀有度
-  if (rarity === 'Eternal' && !sizeMul && Math.random() < 0.03) sizeMul = 3; // 小朋友：Eternal 有 3% 機會係巨型
+  ({ animal, kg, rarity, sizeMul } = rollWild(biome, animal, kg, rarity, sizeMul, boost.size)); // 揀邊隻、幾重、稀有度（src/spawnRoll.js）
   const info = rarityInfo(rarity);
   const special = rarity === 'Legendary' || rarity === 'Mythic' || rarity === 'Eternal';
   const rect = biomeRect(biome);
