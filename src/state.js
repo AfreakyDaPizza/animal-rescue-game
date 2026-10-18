@@ -35,6 +35,7 @@ const DEFAULTS = {
   labVisited: false, // 行入過實驗室（之後唔再指路）
   bigButton: false, // 撳咗橋下面個紅掣（開 Fuse Machine 同新生態區）
   fuseNerfed: false, // 舊 Fuse 寵物已經減咗錢（2026-10-18 Fuse nerf）
+  firstHatchSeen: false, // 睇咗第一隻寵物出世動畫（敲玻璃、爆、跳圈圈）
   kingdomSeen: false, // 睇咗 Biome 7 開門動畫
   collabSeen: false, // 睇咗秘密結局 THE COLLAB
   labBossDefeated: false, // 打贏咗 Mutated Scientist Poacher

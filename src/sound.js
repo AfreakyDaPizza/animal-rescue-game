@@ -144,6 +144,13 @@ const SOUNDS = {
     tone(4186, t + 0.5, 1.2, { type: 'sine', vol: 0.05 });
   },
   swoosh: (t) => noise(t, 0.25, { vol: 0.2, freq: 1500, q: 0.7, type: 'bandpass' }),
+  // 敲玻璃（第一隻寵物出世動畫）：叩叩
+  knock: (t) => {
+    tone(1250, t, 0.07, { type: 'triangle', vol: 0.28, slide: 0.6 });
+    noise(t, 0.05, { vol: 0.25, freq: 2600, q: 1.2, type: 'bandpass' });
+    tone(1150, t + 0.13, 0.07, { type: 'triangle', vol: 0.24, slide: 0.6 });
+    noise(t + 0.13, 0.05, { vol: 0.22, freq: 2400, q: 1.2, type: 'bandpass' });
+  },
   // Issue #2：實驗室 Boss 戰
   boom: (t) => {
     noise(t, 0.7, { vol: 0.5, freq: 350 });
