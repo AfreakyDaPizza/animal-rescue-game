@@ -70,6 +70,7 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
   function useShard() {
     if (busy) return false;
     if (state.hwShards <= 0) return popup('🔮 You have no Halloween Shards! Trade Soul Dust at the Statue of Halloween.'), false;
+    if (hub.plot.pets.length !== state.pets.filter((p) => p.onPlot).length) refreshPlot(); // 地塊 3D 寵物同存檔對齊
     const entries = hub.plot.pets.slice();
     if (!entries.length) return popup('🌿 Put some pets on your Plot first!'), false;
     busy = true;
@@ -116,9 +117,10 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
     let rebuilt = false;
     let newGroups = [];
     const lucky = hits.map((h) => h.pet);
-    const camFrom = { p: V(cx + 15, 12, cz + 17), l: V(cx, 3, cz) };
-    const camTo = { p: V(cx + 11, 10, cz + 13), l: V(cx, 5, cz) };
-    const camUp = { p: V(cx + 12, 4, cz + 12), l: V(cx, portalY - 1, cz) };
+    // 鏡頭喺地塊西南面（噴水池嗰邊）高位望落去，唔會撞到樹籬
+    const camFrom = { p: V(cx - 6, 17, cz + 19), l: V(cx, 2, cz) };
+    const camTo = { p: V(cx - 5, 14, cz + 16), l: V(cx, 4, cz) };
+    const camUp = { p: V(cx - 8, 5, cz + 10.5), l: V(cx, portalY - 1, cz) };
     const resultText = hits.length
       ? `🎉 ${hits.map((h) => `${mutationInfo(h.kind).emoji} ${h.pet.name} became ${mutationInfo(h.kind).name}!`).join('  ')}`
       : 'No luck this time... 🔮';
@@ -127,7 +129,7 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
       length: hits.length ? 8.5 : 6.5,
       shots: [
         [0, 2.4, camFrom, camTo],
-        [2.4, 5.4, camUp, { p: V(cx + 10, 6, cz + 10), l: V(cx, portalY, cz) }],
+        [2.4, 5.4, camUp, { p: V(cx - 7, 6, cz + 9.5), l: V(cx, portalY, cz) }],
         [5.4, 9, camTo, camFrom],
       ],
       captions: [

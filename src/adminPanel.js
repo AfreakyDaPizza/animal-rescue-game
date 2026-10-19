@@ -88,7 +88,7 @@ function petsHtml() {
       <span id="admin-size-num">x${pick.size}</span>
       ${[0.5, 1, 3, 10].map((v) => `<button data-admin="size" data-v="${v}" class="${v === pick.size ? '' : 'grey'}">x${v}</button>`).join('')}</div>
     <div class="pet-actions"><b>✨ Mutations</b> ${MUTATIONS.map((m) => `<button data-admin="mut" data-v="${m}" class="${pick.mutations.includes(m) ? '' : 'grey'}">${pick.mutations.includes(m) ? '✔ ' : ''}${mutationInfo(m).emoji} ${niceName(m)}</button>`).join('')}
-      <small class="hint">Tap both to stack them!</small></div>
+      <small class="hint">Tap more than one to stack them! (👻 Spectral x4 and 🟣 Phantom x5 come from Halloween Shards)</small></div>
     <div class="pet-actions"><button data-admin="flip" class="${pick.flipped ? '' : 'grey'}">${pick.flipped ? '✔ 🙃 Upside down' : '🙃 Upside down'}</button></div>
     <p class="admin-preview">You'll get: <b id="admin-preview">${previewText()}</b></p>
     <div class="pet-actions"><button data-admin="give" class="sell">🎁 Give me this pet</button></div>
