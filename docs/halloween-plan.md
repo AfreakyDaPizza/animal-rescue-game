@@ -3,7 +3,7 @@
 > The kid said "don't code it, it's an idea". Wait for the pictures and answers on GitHub before building.
 
 ## Getting there
-- A **Halloween portal** (in the Hub). You can go in and out any time.
+- A **Halloween portal** in the **middle of the Hub, replacing the fountain**. You can go in and out any time.
 - **Loading screen** between worlds (spooky and cool), so nothing crashes while the world loads.
 - You spawn in a **circle of ruins**. It's also the **safe spot**.
 - Large map. Everything is spooky and magical: a horror sky and creepy short render distance / fog.
@@ -53,5 +53,5 @@
 - [ ] Vacuum level costs (Soul Dust)
 - [ ] 15 rods: names and prices
 - [ ] What the always-on Express event is
-- [ ] Where the Halloween portal goes in the Hub
+- [x] Where the Halloween portal goes in the Hub → replaces the fountain in the middle
 - [ ] Start date (e.g. 31 October?)
