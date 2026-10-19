@@ -672,8 +672,14 @@ let voice = null;
 function pickVoice() {
   if (!speech) return null;
   const voices = speech.getVoices() || [];
-  return voices.find((v) => /en[-_]US/i.test(v.lang) && /Google|Samantha|Aria|Jenny/i.test(v.name))
-    || voices.find((v) => /^en/i.test(v.lang)) || null;
+  // 小朋友：把聲好難聽 → 揀最自然嘅聲：Edge 嘅 Natural／Online 聲 > Google > Mac 嘅 Samantha > 其他英文聲
+  const en = voices.filter((v) => /^en/i.test(v.lang));
+  const prefer = [/Natural|Neural/i, /Online/i, /Google US English/i, /Google UK English Female/i, /Google/i, /Samantha|Ava|Allison|Serena/i, /Aria|Jenny|Guy|Libby|Sonia/i];
+  for (const re of prefer) {
+    const v = en.find((x) => re.test(x.name));
+    if (v) return v;
+  }
+  return en.find((v) => /en[-_]US/i.test(v.lang)) || en[0] || null;
 }
 if (speech) {
   voice = pickVoice();
@@ -697,8 +703,8 @@ function narrate(video, index, muted) {
     const u = new SpeechSynthesisUtterance(`${video.title}. ${video.caption}`);
     if (voice) u.voice = voice;
     u.lang = voice?.lang || 'en-US';
-    u.pitch = video.pitch ?? 1 + ((index * 37) % 5) * 0.1; // 每條片把聲唔同
-    u.rate = video.rate ?? 1;
+    u.pitch = Math.min(1.1, Math.max(0.9, video.pitch ?? 1)); // 以前有啲片 1.6／0.7，聽落好怪 → 限喺 0.9–1.1
+    u.rate = Math.min(1.05, Math.max(0.9, video.rate ?? 0.95));
     speech.speak(u);
   } catch {
     // 唔讀得就算
