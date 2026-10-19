@@ -47,6 +47,8 @@ const DEFAULTS = {
   halloweenEarly: false, // 🔐 秘密控制台：提早開 Halloween 世界（小朋友 2026-10-19）
   adminUsed: false, // 🔐 用過秘密控制台改嘢（已經備份咗真存檔）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
+  rod: null, // 🎣 而家拎住嘅魚竿（FISHING_RODS 第幾支）；返普通世界就斷（小朋友 2026-10-19）
+  hwEggs: [], // 🥚 Halloween 蛋（{ name, rarity }），等放入 Egg Graveyard 孵
 };
 
 export const state = load();

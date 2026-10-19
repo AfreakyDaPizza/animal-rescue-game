@@ -99,6 +99,32 @@ export const trainingGainLabel = (level, stat, fmt) => (trainingRange(level) ? t
 export const upgradeCost = (level) =>
   level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1));
 
+// ---- 🎣 HALLOWEEN FISHING (kid 2026-10-19): 15 rods, fish for Halloween eggs at the Fishing Lake ----
+// price = money · bite = [fastest, slowest] seconds until a fish bites · luck = 0 to 1 (more = rarer eggs)
+// eternal = 0 to 1: chance boost for the ETERNAL Voidseer Pumpkin egg (only the best rods have it!)
+// ⚠️ Your rod BREAKS when you go back to the normal world, so you buy it again every visit.
+export const FISHING_RODS = [
+  { name: 'Twig Rod', price: 1000, bite: [14, 22], luck: 0, eternal: 0, color: '#8d6e63', glow: '#ffcc80' },
+  { name: 'Bone Rod', price: 10000, bite: [12, 19], luck: 0.05, eternal: 0, color: '#eeeeee', glow: '#fff59d' },
+  { name: 'Cobweb Caster', price: 50000, bite: [11, 17], luck: 0.1, eternal: 0, color: '#b0bec5', glow: '#e1f5fe' },
+  { name: 'Pumpkin Pole', price: 250000, bite: [10, 15], luck: 0.16, eternal: 0, color: '#ff8f00', glow: '#ffd54f' },
+  { name: 'Candy Corn Rod', price: 1000000, bite: [9, 14], luck: 0.22, eternal: 0, color: '#ffb300', glow: '#fff176' },
+  { name: 'Bat Wing Rod', price: 5000000, bite: [8, 13], luck: 0.29, eternal: 0, color: '#4a148c', glow: '#ce93d8' },
+  { name: "Witch's Broom Rod", price: 20000000, bite: [7, 11], luck: 0.36, eternal: 0, color: '#6d4c41', glow: '#b9f6ca' },
+  { name: 'Graveyard Reel', price: 75000000, bite: [6, 10], luck: 0.43, eternal: 0, color: '#546e7a', glow: '#80cbc4' },
+  { name: 'Spectral Rod', price: 250000000, bite: [5.5, 9], luck: 0.5, eternal: 0, color: '#80deea', glow: '#e0f7fa' },
+  { name: 'Moonlight Rod', price: 750000000, bite: [5, 8], luck: 0.58, eternal: 0, color: '#c5cae9', glow: '#fffde7' },
+  { name: 'Cauldron Caster', price: 2000000000, bite: [4.5, 7], luck: 0.66, eternal: 0, color: '#2e7d32', glow: '#76ff03' },
+  { name: 'Phantom Rod', price: 6000000000, bite: [4, 6], luck: 0.74, eternal: 0.1, color: '#311b92', glow: '#b388ff' },
+  { name: 'Wraith Reaper Rod', price: 15000000000, bite: [3.5, 5.5], luck: 0.82, eternal: 0.25, color: '#1b5e20', glow: '#69f0ae' },
+  { name: 'Bone Drake Rod', price: 40000000000, bite: [3, 5], luck: 0.91, eternal: 0.5, color: '#4a148c', glow: '#ea80fc' },
+  { name: "Voidseer's Reel", price: 100000000000, bite: [2, 4], luck: 1, eternal: 1, color: '#12002b', glow: '#18ffff' },
+];
+// How much the best luck multiplies each rarity (Common goes DOWN, rare stuff goes UP)
+export const FISHING_RARITY_BOOST = { Common: -0.85, Rare: 0, Epic: 1.5, Legendary: 4, Mythic: 10, Eternal: 60 };
+// Seconds you have to press E when the bobber dips ("!")
+export const FISHING_BITE_WINDOW = 1.6;
+
 // ---- 📚 Word Power: chance (0 to 1) that a quiz question is a school vocabulary question instead of an animal fact ----
 export const VOCAB_CHANCE = 0.4;
 

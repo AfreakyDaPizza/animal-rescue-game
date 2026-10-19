@@ -13,6 +13,6 @@ export function short(n) {
     i++;
   }
   const digits = v >= 100 ? 0 : v >= 10 ? 1 : 2;
-  const text = (Math.floor(v * 10 ** digits) / 10 ** digits).toFixed(digits).replace(/\.?0+$/, ''); // 向下取整：唔會未夠錢就顯示夠
+  const text = (Math.floor(v * 10 ** digits) / 10 ** digits).toFixed(digits).replace(/\.0+$|(\.\d*?)0+$/, '$1'); // 向下取整：唔會未夠錢就顯示夠；淨係刪小數點後面嘅 0（以前 250K 會變 25K）
   return (neg ? '-' : '') + text + SUFFIXES[i];
 }
