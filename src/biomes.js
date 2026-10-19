@@ -771,7 +771,14 @@ function buildBridge(scene, live, rect) {
   // 睇得見嘅欄杆：鐵柱 + 玻璃板 + 金色扶手
   const posts = Math.floor(len / 3);
   for (const s of [-1, 1]) {
-    for (let i = 0; i <= posts; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 0.25), iron), s * (W / 2 + 0.1), top + 0.8, z1 - (i * len) / posts);
+    for (let i = 0; i <= posts; i++) {
+      const pz = z1 - (i * len) / posts;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 0.25), iron), s * (W / 2 + 0.1), top + 0.8, pz);
+      // 柱頂金球 + 底座（小朋友 2026-10-19：欄杆要型啲）
+      add(scene, new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), gold), s * (W / 2 + 0.1), top + 1.82, pz, false);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.42), gold), s * (W / 2 + 0.1), top + 0.07, pz, false);
+    }
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, len), gold), s * (W / 2 + 0.1), top + 0.18, zc, false); // 底邊金條
     add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, len), glass), s * (W / 2 + 0.1), top + 0.7, zc, false);
     add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, len), gold), s * (W / 2 + 0.1), top + 1.6, zc, false);
   }

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { short } from './format.js';
 import { PLOT } from './hubShape.js';
 import { addCollider, bakeStatic } from './world.js';
+import { fencePost, fenceRails, archX } from './fences.js'; // 🪵 靚啲嘅圍欄
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall } from './hubBuildings.js';
@@ -1330,10 +1331,15 @@ function buildPlot(realScene) {
   grass.receiveShadow = true;
   scene.add(grass);
 
-  // 木圍欄：柱 + 兩條橫木
-  const wood = new THREE.MeshStandardMaterial({ color: 0xa1887f });
-  const postGeo = new THREE.BoxGeometry(0.25, 1.3, 0.25);
+  // 圍欄（小朋友 2026-10-19：要型啲）：圓角柱 + 底座 + 尖頂，三條橫木，四個角有發光寶石，閘口有拱門
+  // 碰撞位置同以前一樣（每 1 米一條柱），皮膚換 wood／trim／gem 三隻顏色
+  const wood = new THREE.MeshStandardMaterial({ color: 0xa1887f, roughness: 0.7 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.6 });
+  const gem = new THREE.MeshStandardMaterial({ color: 0xfff176, emissive: 0xffd54f, emissiveIntensity: 1.4, flatShading: true });
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.8 });
+  const style = { post: wood, rail: wood, trim, h: 1.3, w: 0.26, cap: 'ball', rails: [0.32, 0.72, 1.08], railW: 0.09, railH: 0.12, vines: 0.35, leaf };
   const corners = [[minX, minZ], [maxX, minZ], [maxX, maxZ], [minX, maxZ]];
+  const inGate = (x, z) => x === minX && Math.abs(z - gateZ) < gateWidth / 2;
   corners.forEach(([x1, z1], i) => {
     const [x2, z2] = corners[(i + 1) % 4];
     const length = Math.hypot(x2 - x1, z2 - z1);
@@ -1341,40 +1347,36 @@ function buildPlot(realScene) {
     for (let s = 0; s <= steps; s++) {
       const x = x1 + ((x2 - x1) * s) / steps;
       const z = z1 + ((z2 - z1) * s) / steps;
-      if (x === minX && Math.abs(z - gateZ) < gateWidth / 2) continue; // 閘口
-      const post = new THREE.Mesh(postGeo, wood);
-      post.position.set(x, 0.65, z);
-      post.castShadow = true;
-      scene.add(post);
+      if (inGate(x, z)) continue; // 閘口
+      const corner = s === 0;
+      fencePost(scene, x, z, corner ? { ...style, w: 0.38, h: 1.55, gem } : style);
       addCollider(x, z, 0.4);
       // 同下一條柱之間嘅橫木
       if (s < steps) {
         const nx = x1 + ((x2 - x1) * (s + 1)) / steps;
         const nz = z1 + ((z2 - z1) * (s + 1)) / steps;
-        if (nx === minX && Math.abs(nz - gateZ) < gateWidth / 2) continue;
-        for (const y of [0.45, 0.95]) {
-          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 1.0), wood);
-          rail.position.set((x + nx) / 2, y, (z + nz) / 2);
-          rail.rotation.y = Math.atan2(nx - x, nz - z);
-          scene.add(rail);
-        }
+        if (inGate(nx, nz)) continue;
+        fenceRails(scene, x, z, nx, nz, style);
       }
     }
   });
 
-  // 閘口拱門 + 牌
+  // 閘口：兩條粗柱 + 圓拱 + 頂上寶石
   for (const dz of [-gateWidth / 2 - 0.2, gateWidth / 2 + 0.2]) {
-    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), wood);
-    pole.position.set(minX, 1.6, gateZ + dz);
-    scene.add(pole);
+    fencePost(scene, minX, gateZ + dz, { ...style, w: 0.42, h: 4.3, cap: 'ball', capMat: trim, gem });
   }
+  archX(scene, minX, gateZ - gateWidth / 2 - 0.2, gateZ + gateWidth / 2 + 0.2, 4.35, trim, 0.16);
+  const crest = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), gem);
+  crest.position.set(minX, 4.35 + gateWidth / 2 + 0.6, gateZ);
+  crest.scale.y = 1.5;
+  scene.add(crest);
   const sign = dynamicSign(4.2, 1.2);
   sign.mesh.position.set(minX, 3.4, gateZ);
   sign.mesh.rotation.y = -Math.PI / 2; // 面向 Hub 中間
   realScene.add(sign.mesh); // 牌會變字，唔焊
   bakeStatic(scene, realScene);
   const skins = buildPlotSkins(realScene);
-  return { sign, pets: [], grassMat, wood, skins };
+  return { sign, pets: [], grassMat, wood, trim, gem, skins };
 }
 
 // ================= 地塊皮膚：每升一級換一個 =================
@@ -1506,6 +1508,14 @@ export function applyPlotSkin(hub, level = state.plotLevel) {
   const skin = PLOT_SKINS[Math.min(level, PLOT_SKINS.length - 1)];
   hub.plot.grassMat.color.setHex(skin.ground);
   hub.plot.wood.color.setHex(skin.fence);
+  // 飾邊：淺色圍欄配深色邊、深色圍欄配淺色邊；寶石跟每款皮膚
+  const c = new THREE.Color(skin.fence);
+  const hsl = c.getHSL({});
+  hub.plot.trim.color.copy(c).offsetHSL(0, 0, hsl.l > 0.45 ? -0.28 : 0.22);
+  const GEMS = { flowers: 0xff80ab, beach: 0x4dd0e1, bamboo: 0xc6ff00, snow: 0x80d8ff, candy: 0xff4081, jungle: 0x76ff03, lava: 0xff6d00, crystal: 0xea80fc, gold: 0xffd740, rainbow: 0x18ffff, royal: 0xffd740 };
+  const g = GEMS[skin.deco] ?? 0xfff176;
+  hub.plot.gem.color.setHex(g);
+  hub.plot.gem.emissive.setHex(g);
   for (const [name, g] of Object.entries(hub.plot.skins)) g.visible = name === skin.deco;
   return skin;
 }

@@ -22,6 +22,7 @@ import { BIOMES } from './data/biomeList.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
 import { HUB } from './hubShape.js';
+import { fenceMat, roundBox } from './fences.js'; // 🪵 圍牆裝飾
 import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, GYM, GYM_DOOR, labStatus } from './labShape.js';
 import { beach } from './secretBeach.js';
 export { HUB };
@@ -138,8 +139,11 @@ export function buildWorld(scene) {
   // 圍牆：通道（直）+ Hub 頂嘅兩截直線 + Hub 個圓弧（大門口留個窿）
   const wallMaterial = new THREE.MeshStandardMaterial({ map: stoneTexture() });
   // 生態區兩邊同最尾：唔再係石牆，改做好高嘅山丘（每個生態區唔同樣，見 biomeBorders.js）
-  addWall(scene, -HUB_TOP_HALF, 0, STEM.minX, 0, wallMaterial);
-  addWall(scene, STEM.maxX, 0, HUB_TOP_HALF, 0, wallMaterial);
+  // 圍牆而家放入 staticRoot 一齊焊埋（以前每幅牆一個 draw call）
+  addWall(staticRoot, -HUB_TOP_HALF, 0, STEM.minX, 0, wallMaterial);
+  addWall(staticRoot, STEM.maxX, 0, HUB_TOP_HALF, 0, wallMaterial);
+  decorateWall(staticRoot, -HUB_TOP_HALF, 0, STEM.minX, 0, 0, 1, wallMaterial, 0);
+  decorateWall(staticRoot, STEM.maxX, 0, HUB_TOP_HALF, 0, 0, 1, wallMaterial, 1);
   buildBiomeBorders(staticRoot);
   const a0 = Math.asin(-HUB.cz / HUB.r); // 右上角（z = 0）嘅角度
   const a1 = Math.PI - a0; // 左上角
@@ -149,7 +153,11 @@ export function buildWorld(scene) {
     const [x1, z1] = arc(a0 + ((a1 - a0) * i) / SEGMENTS);
     const [x2, z2] = arc(a0 + ((a1 - a0) * (i + 1)) / SEGMENTS);
     if (Math.abs((x1 + x2) / 2) < 3.2 && z1 > HUB.cz) continue; // 大門口
-    addWall(scene, x1, z1, x2, z2, wallMaterial, 0.15);
+    addWall(staticRoot, x1, z1, x2, z2, wallMaterial, 0.15);
+    const mx = (x1 + x2) / 2;
+    const mz = (z1 + z2) / 2;
+    const d = Math.hypot(HUB.cx - mx, HUB.cz - mz);
+    decorateWall(staticRoot, x1, z1, x2, z2, (HUB.cx - mx) / d, (HUB.cz - mz) / d, wallMaterial, i);
   }
 
   // 雲：而家喺 ambience.js（會飄、跟天空變色）
@@ -209,6 +217,63 @@ function addHubFloor(scene) {
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
+}
+
+// 圍牆裝飾（小朋友 2026-10-19：要型啲）：頂邊石、城垛、每隔幾段一條粗柱（柱頂石球）、
+// 向 Hub 嗰面掛旗同爬藤。(nx, nz) = 向 Hub 中間嘅方向；i = 第幾段（決定邊度起柱／掛旗）
+const BANNER_COLORS = [0x2e7d32, 0xffb300, 0x1565c0, 0xc62828];
+function decorateWall(root, x1, z1, x2, z2, nx, nz, stone, i) {
+  const coping = fenceMat(0xd7ccc8, { roughness: 0.8 });
+  const dark = fenceMat(0x8d8378, { roughness: 0.9 });
+  const ivy = fenceMat(0x388e3c, { roughness: 0.9 });
+  const gold = fenceMat(0xffc107, { metalness: 0.6, roughness: 0.35 });
+  const len = Math.hypot(x2 - x1, z2 - z1);
+  const ry = -Math.atan2(z2 - z1, x2 - x1);
+  const put = (g, m, x, y, z, rot = ry, shadow = true) => {
+    const mesh = new THREE.Mesh(g, m);
+    mesh.position.set(x, y, z);
+    mesh.rotation.y = rot;
+    mesh.castShadow = shadow;
+    root.add(mesh);
+    return mesh;
+  };
+  const mx = (x1 + x2) / 2;
+  const mz = (z1 + z2) / 2;
+  // 頂邊石 + 底腳線
+  put(new THREE.BoxGeometry(len + 0.2, 0.28, WALL_THICKNESS + 0.3), coping, mx, WALL_HEIGHT + 0.14, mz);
+  put(new THREE.BoxGeometry(len + 0.15, 0.45, WALL_THICKNESS + 0.18), dark, mx, 0.22, mz, ry, false);
+  // 城垛：一嚿嚿凸起
+  const n = Math.max(1, Math.round(len / 1.6));
+  for (let k = 0; k < n; k++) {
+    const t = (k + 0.5) / n;
+    put(roundBox(0.75, 0.55, WALL_THICKNESS + 0.1, 0.08), coping, x1 + (x2 - x1) * t, WALL_HEIGHT + 0.55, z1 + (z2 - z1) * t);
+  }
+  // 爬藤（隨機幾嚿，向 Hub 嗰面）
+  for (let k = 0; k < 3; k++) {
+    const h = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+    const r = h - Math.floor(h);
+    if (r > 0.55) continue;
+    const t = 0.2 + 0.6 * ((k + r) / 3);
+    const vh = 1.2 + r * 2;
+    put(new THREE.BoxGeometry(0.5 + r * 0.6, vh, 0.12), ivy, x1 + (x2 - x1) * t + nx * (WALL_THICKNESS / 2 + 0.04), WALL_HEIGHT - vh / 2, z1 + (z2 - z1) * t + nz * (WALL_THICKNESS / 2 + 0.04), ry, false);
+  }
+  if (i % 5 !== 0) return;
+  // 粗柱 + 柱頂石球
+  const px = x1;
+  const pz = z1;
+  put(roundBox(1.6, WALL_HEIGHT + 1.3, 1.6, 0.12), stone, px, (WALL_HEIGHT + 1.3) / 2, pz);
+  put(roundBox(1.9, 0.3, 1.9, 0.08), coping, px, WALL_HEIGHT + 1.45, pz);
+  put(new THREE.SphereGeometry(0.5, 12, 8), coping, px, WALL_HEIGHT + 2.05, pz);
+  // 旗（向 Hub）：金色棍 + 一幅布 + 白色圓形徽號
+  if (nx === 0 && nz === 0) return;
+  const c = BANNER_COLORS[(i / 5) % BANNER_COLORS.length | 0];
+  const bx = px + nx * 0.86;
+  const bz = pz + nz * 0.86;
+  const fy = Math.atan2(nx, nz);
+  put(new THREE.BoxGeometry(1.3, 0.09, 0.09), gold, bx, WALL_HEIGHT + 0.6, bz, fy, false);
+  put(new THREE.BoxGeometry(1.1, 2.1, 0.05), fenceMat(c, { roughness: 0.9 }), bx, WALL_HEIGHT - 0.5, bz, fy, false);
+  put(new THREE.ConeGeometry(0.55, 0.45, 3), fenceMat(c, { roughness: 0.9 }), bx, WALL_HEIGHT - 1.75, bz, fy, false).rotation.z = Math.PI;
+  put(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16), fenceMat(0xfffde7), bx + nx * 0.04, WALL_HEIGHT - 0.35, bz + nz * 0.04, 0, false).rotation.set(Math.PI / 2, fy, 0, "YXZ");
 }
 
 // 一幅直線牆，由 (x1,z1) 去 (x2,z2)；extra = 兩頭加長幾多（轉角位唔會有窿）

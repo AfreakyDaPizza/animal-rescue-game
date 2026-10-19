@@ -546,7 +546,18 @@ export function smugglersV2(scene, rect, rand, live) {
       const coil = add(scene, new THREE.TorusGeometry(0.3, 0.025, 4, 10), wire, x, 6.8, z, false);
       coil.rotation.y = Math.PI / 2;
     }
-    for (let z = rect.maxZ - 0.5; z > rect.minZ; z -= 4) add(scene, new THREE.BoxGeometry(0.12, 3.4, 0.12), dark, x, 5.1, z);
+    for (let z = rect.maxZ - 0.5; z > rect.minZ; z -= 4) {
+      add(scene, new THREE.BoxGeometry(0.12, 3.4, 0.12), dark, x, 5.1, z);
+      // 柱頂斜臂（擺鐵蒺藜嗰種）+ 黃黑警告帶（小朋友 2026-10-19：圍欄要型啲）
+      const arm = add(scene, new THREE.BoxGeometry(0.08, 0.7, 0.08), dark, x - side * 0.18, 6.85, z, false);
+      arm.rotation.z = side * 0.6;
+      add(scene, new THREE.BoxGeometry(0.16, 0.35, 0.16), hazard, x, 3.6, z, false);
+    }
+    // 頂、底兩條鐵管（圍欄唔再係塊浮喺度嘅網）
+    for (const y of [3.55, 6.5]) {
+      const pipe = add(scene, new THREE.CylinderGeometry(0.05, 0.05, len, 6), wire, x, y, cz, false);
+      pipe.rotation.x = Math.PI / 2;
+    }
   }
 
   // 8) 瞭望塔（四隻腳 + 細屋 + 探射燈喺頂轉）

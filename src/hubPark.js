@@ -14,6 +14,7 @@ import { makeSign, makeLabel, dynamicSign, THEMES } from './signs.js';
 import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { buildOwner } from './owner.js';
 import { shimmerTexture } from './ambience.js';
+import { fenceLine } from './fences.js'; // 🪵 前院白色木欄
 
 // 位置（開場動畫都會用）
 export const FOUNTAIN = { x: HUB.cx, z: HUB.cz };
@@ -418,6 +419,16 @@ function buildGate(root, live) {
     add(root, rbox(1.7, 0.5, 1.7), cap, x + s * 3.6, 6.7, z);
   }
   add(root, rbox(8.6, 0.7, 0.8), cap, x, 6.0, z);
+  // 柱頂金色球 + 柱身爬藤 + 底座（小朋友 2026-10-19：要型啲）
+  const goldTop = mat(0xffc107, { metalness: 0.6, roughness: 0.35 });
+  const ivy = mat(0x388e3c);
+  for (const s of [-1, 1]) {
+    add(root, new THREE.SphereGeometry(0.45, 14, 10), goldTop, x + s * 3.6, 7.4, z);
+    add(root, rbox(2.0, 0.6, 2.0), cap, x + s * 3.6, 0.3, z);
+    for (let k = 0; k < 4; k++) add(root, new THREE.BoxGeometry(0.5, 0.7 + (k % 2) * 0.5, 0.1), ivy, x + s * 3.6 + (k - 1.5) * 0.3, 1.2 + k * 1.1, z - 0.74, false);
+  }
+  const crest = add(root, new THREE.OctahedronGeometry(0.5, 0), goldTop, x, 7.9, z);
+  crest.scale.y = 1.4;
   const sign = makeSign([{ text: 'ANIMAL RESCUE PARK', size: 0.4 }], 6.6, 1.1, THEMES.green);
   sign.position.set(x, 7.1, z - 0.45);
   sign.rotation.y = Math.PI;
@@ -437,6 +448,9 @@ function buildGate(root, live) {
   add(root, new THREE.BoxGeometry(6, 0.05, 38), mat(0x616161), x, 0.02, z + 19, false);
   const outside = add(root, new THREE.BoxGeometry(150, 0.5, 130), mat(0x689f38), x, -0.27, z + 65, false);
   outside.receiveShadow = true;
+  // 前院兩邊：白色尖頂木欄（小朋友 2026-10-19），每隔幾條柱有金色寶石；只係裝飾（前院本身已經行唔出去）
+  const picket = { post: mat(0xfafafa), rail: mat(0xf5f5f5), trim: mat(0x90a4ae), h: 1.25, w: 0.24, cap: 'pyramid', rails: [0.35, 0.85], pickets: 0.32, pickH: 1.0, spacing: 2.4, gemEvery: 4, gem: mat(0xffd54f, { emissive: 0xffb300, emissiveIntensity: 0.9 }) };
+  for (const s of [-1, 1]) fenceLine(root, [[x + s * 24.7, z + 1.2], [x + s * 24.7, z + 38]], picket);
   // 樹種喺前院同實驗室外面（Issue #2：中間留位俾實驗室）
   for (let i = 0; i < 26; i++) {
     const side = i % 2 ? 1 : -1;
@@ -562,10 +576,22 @@ const hedgeMat = mat(0x2e7d32);
 const hedgeTop = mat(0x388e3c);
 const flowerColors = [0xff6b6b, 0xffd93d, 0xff9ff3, 0xffffff, 0x74b9ff, 0xba68c8];
 // 一段直嘅矮樹籬，上面有花
-function hedge(root, x1, z1, x2, z2) {
+const planterMat = mat(0xd7ccc8);
+const planterTrim = mat(0x8d6e63);
+function hedge(root, x1, z1, x2, z2, ends = false) {
   const len = Math.hypot(x2 - x1, z2 - z1);
   const h = add(root, new THREE.BoxGeometry(0.8, 0.8, len), hedgeMat, (x1 + x2) / 2, 0.4, (z1 + z2) / 2);
   h.rotation.y = Math.atan2(x2 - x1, z2 - z1);
+  // 石花槽（小朋友 2026-10-19：圍欄要型啲）：樹籬企喺一個淺色石槽入面，有深色邊
+  add(root, new THREE.BoxGeometry(1.05, 0.32, len + 0.12), planterMat, (x1 + x2) / 2, 0.16, (z1 + z2) / 2, false).rotation.y = h.rotation.y;
+  add(root, new THREE.BoxGeometry(1.12, 0.08, len + 0.18), planterTrim, (x1 + x2) / 2, 0.34, (z1 + z2) / 2, false).rotation.y = h.rotation.y;
+  if (ends) {
+    // 兩頭：圓圓嘅修剪樹球企喺石柱上面
+    for (const [ex, ez] of [[x1, z1], [x2, z2]]) {
+      add(root, rbox(0.9, 0.6, 0.9), planterMat, ex, 0.3, ez);
+      add(root, new THREE.SphereGeometry(0.42, 12, 8), hedgeTop, ex, 0.98, ez);
+    }
+  }
   const top = add(root, new THREE.BoxGeometry(0.85, 0.12, len + 0.05), hedgeTop, (x1 + x2) / 2, 0.85, (z1 + z2) / 2, false);
   top.rotation.y = h.rotation.y;
   const n = Math.floor(len / 0.9);
@@ -647,8 +673,8 @@ export function buildHubPark(root, live) {
   }
   // 路兩邊嘅樹籬
   for (const s of [-1, 1]) {
-    hedge(root, s * 3.2, 12, s * 3.2, 14.5);
-    hedge(root, s * 3.2, 44, s * 3.2, 58);
+    hedge(root, s * 3.2, 12, s * 3.2, 14.5, true);
+    hedge(root, s * 3.2, 44, s * 3.2, 58, true);
   }
 
   // 圍牆內邊種一圈樹（只喺下半部分，避開大門、吊床、遊樂場）
