@@ -39,7 +39,7 @@ import { short } from './format.js';
 const RANK = { Common: 0, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4, Eternal: 5 };
 const SPECIAL = new Set(['Legendary', 'Mythic', 'Eternal']);
 const CATCH = 1.6; // × Boss 大細
-const EGG_SIZE = 1.2; // 地上隻蛋大概幾高（米）
+const EGG_SIZE = 1.6; // 地上隻蛋大概幾高（米）
 
 // 🎣 其他系統（釣魚）用：直接放一隻蛋入背囊
 export function addEgg(name, rarity) {
@@ -62,6 +62,26 @@ const fmtTime = (sec) => {
   return m ? `${m}:${String(sec % 60).padStart(2, '0')}` : `${sec}s`;
 };
 
+// 柔光圈（canvas 放射漸變）：令蛋喺霧入面都見到
+let haloTex = null;
+function halo(color, size) {
+  if (!haloTex) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grd.addColorStop(0, 'rgba(255,255,255,1)');
+    grd.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    haloTex = new THREE.CanvasTexture(c);
+  }
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+  sp.scale.setScalar(size);
+  return sp;
+}
+
 // 蛋模型縮到大概 EGG_SIZE 咁高、底貼地
 function eggModel(name, rarity, size = EGG_SIZE) {
   const m = buildHalloweenEgg(name, rarity);
@@ -70,6 +90,7 @@ function eggModel(name, rarity, size = EGG_SIZE) {
   m.scale.multiplyScalar(size / h);
   const g = new THREE.Group();
   m.position.y = -box.min.y * (size / h);
+  m.userData.baseY = m.position.y;
   g.add(m);
   g.userData.inner = m;
   return g;
@@ -97,16 +118,20 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.05;
     g.add(ring);
-    let beam = null;
-    if (SPECIAL.has(info.rarity)) {
-      beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 60, 12, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide }));
-      beam.position.y = 30;
-      g.add(beam);
-    }
+    // 每隻蛋都有光柱（越稀有越粗越高）+ 一團柔光，喺霧入面都見到
+    const special = SPECIAL.has(info.rarity);
+    const bh = special ? 60 : 14 + RANK[info.rarity] * 6;
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(special ? 0.35 : 0.18, special ? 0.6 : 0.3, bh, 12, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: special ? 0.35 : 0.22, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide }));
+    beam.position.y = bh / 2;
+    g.add(beam);
+    const glowSprite = halo(color, special ? 4.2 : 3);
+    glowSprite.position.y = EGG_SIZE * 0.55;
+    g.add(glowSprite);
     const label = makeLabel([{ text: `🥚 ${info.name} Egg`, color: '#ffffff' }, { text: info.rarity, color: rarityInfo(info.rarity).color }], 0.75);
-    label.position.y = EGG_SIZE + 0.9;
+    label.position.y = EGG_SIZE + 1.1;
+    label.material.fog = false;
     g.add(label);
-    hw.wild.push({ biome: bi, name: info.name, rarity: info.rarity, group: g, ring, beam, x, z, phase: Math.random() * 6 });
+    hw.wild.push({ biome: bi, name: info.name, rarity: info.rarity, group: g, ring, beam, glow: glowSprite, x, z, phase: Math.random() * 6 });
   }
   HW_BIOMES.forEach((_, bi) => {
     for (let i = 0; i < HALLOWEEN_EGGS_PER_BIOME; i++) spawnEgg(bi);
@@ -130,8 +155,8 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
 
   // ---------- 🔴 發光紅色箭咀（地上，帶你返 Spawn Ruins）----------
   const arrow = new THREE.Group();
-  const arrowMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, transparent: true, opacity: 0.95, fog: false, depthWrite: false });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff5252, transparent: true, opacity: 0.35, fog: false, depthWrite: false, blending: THREE.AdditiveBlending });
+  const arrowMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, transparent: true, opacity: 0.95, fog: false, depthWrite: false, depthTest: false }); // 永遠畫喺最面（唔會俾地板遮住）
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff5252, transparent: true, opacity: 0.35, fog: false, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending });
   const shape = new THREE.Shape();
   shape.moveTo(0, -1.6);
   shape.lineTo(1.1, -0.2);
@@ -158,6 +183,8 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     return d;
   });
   arrow.visible = false;
+  arrow.renderOrder = 999;
+  arrow.traverse((o) => (o.renderOrder = 999));
   root.add(arrow);
   // HUD：畫面頂中間嘅大箭咀 + 距離
   const hud = document.createElement('div');
@@ -205,6 +232,20 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
       }
     });
   }
+  // 🪦 蛋墳場：每個位都有柔光（空位係紫色「放蛋喺度」），入口上面有個大牌（霧入面都見到）
+  const slotGlows = EGG_SLOTS.map((p) => {
+    const sp = halo(0xb388ff, 2.6);
+    sp.position.set(p.x, 1.2, p.z);
+    root.add(sp);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.65, 3, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xb388ff, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+    col.position.set(p.x, 2.2, p.z);
+    root.add(col);
+    return { sp, col };
+  });
+  const bigSign = makeLabel([{ text: '🪦 EGG GRAVEYARD', color: '#e1bee7' }, { text: 'Put your eggs here to hatch them! ⬇', color: '#ffd54f' }], 2.6);
+  bigSign.material.fog = false;
+  bigSign.position.set(HW_X, 8.5, EGG_SLOTS[0].z - 8);
+  root.add(bigSign);
   refreshSlots();
   const slotLeft = (s) => s.start / 1000 + hatchSecondsOf(s.name) - Date.now() / 1000;
 
@@ -335,9 +376,13 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     const here = inHalloween(player.x, player.z);
     // 野生蛋：轉吓、浮吓；拎走咗嘅一陣再出
     for (const w of hw.wild) {
-      w.group.userData.inner.userData.animate?.(time + w.phase);
-      w.group.userData.inner.rotation.y = time * 0.6 + w.phase;
-      if (w.ring) w.ring.material.opacity = 0.55 + Math.sin(time * 3 + w.phase) * 0.3;
+      const inner = w.group.userData.inner;
+      inner.userData.animate?.(time + w.phase);
+      inner.rotation.y = time * 0.6 + w.phase;
+      inner.position.y = inner.userData.baseY + 0.25 + Math.sin(time * 2 + w.phase) * 0.18; // 浮吓浮吓
+      inner.rotation.z = Math.sin(time * 3.1 + w.phase) * 0.12; // 搖吓搖吓
+      w.ring.material.opacity = 0.55 + Math.sin(time * 3 + w.phase) * 0.3;
+      w.glow.material.opacity = 0.6 + Math.sin(time * 2.4 + w.phase) * 0.25;
     }
     for (let bi = 0; bi < 3; bi++) {
       const count = hw.wild.filter((w) => w.biome === bi).length + (hw.carrying?.biome === bi ? 1 : 0);
@@ -374,10 +419,11 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     hud.hidden = !hw.carrying;
     if (hw.carrying) {
       const ang = Math.atan2(toX, toZ); // 0 = 向 +z
-      const ahead = Math.min(4.5, Math.max(1.5, dist - RUINS_SAFE_R));
-      arrow.position.set(player.x + (toX / dist) * ahead, (player.feetY ?? 0) + 0.12 + Math.sin(time * 6) * 0.05, player.z + (toZ / dist) * ahead);
-      arrow.rotation.y = ang + Math.PI; // 個形尖頭向 -y（平放後 = +z），轉向目標
+      const ahead = Math.min(8, Math.max(2, dist - RUINS_SAFE_R)); // 喺公仔前面（第三身唔會俾公仔遮住）
+      arrow.position.set(player.x + (toX / dist) * ahead, (player.feetY ?? 0) + 0.4 + Math.sin(time * 6) * 0.06, player.z + (toZ / dist) * ahead);
+      arrow.rotation.y = ang; // 個形尖頭向 -y（平放後 = +z），轉向目標
       arrowMat.opacity = 0.75 + Math.sin(time * 8) * 0.2;
+      arrow.scale.setScalar(1.8 + Math.sin(time * 6) * 0.15);
       drips.forEach((d) => {
         d.userData.t = (d.userData.t + dt * 1.2) % 1;
         d.position.set(d.userData.x, 0.5 - d.userData.t * 0.5, 0.6);
@@ -394,6 +440,15 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
 
     // 蛋墳場：倒數牌
     const slots = slotsList();
+    slotGlows.forEach((gl, i) => {
+      const s2 = slots[i];
+      const ready = s2 && slotLeft(s2) <= 0;
+      const c = !s2 ? 0xb388ff : ready ? 0x69f0ae : 0xffb74d; // 空位紫、孵緊橙、孵好綠
+      gl.sp.material.color.setHex(c);
+      gl.col.material.color.setHex(c);
+      gl.sp.material.opacity = 0.55 + Math.sin(time * 2 + i) * 0.2 + (ready ? 0.25 : 0);
+      gl.col.material.opacity = !s2 ? 0.14 + Math.sin(time * 2 + i) * 0.06 : ready ? 0.3 : 0.08;
+    });
     hw.slotModels.forEach((m, i) => {
       if (!m || !slots[i]) return;
       m.group.userData.inner.userData.animate?.(time + i);
