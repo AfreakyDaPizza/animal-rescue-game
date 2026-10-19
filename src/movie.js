@@ -38,6 +38,7 @@ export const shake = (amount) => (movie.shake = Math.max(movie.shake, amount));
 
 export function updateMovie(dt) {
   if (!movie.active) return;
+  dt *= movie.timeScale ?? 1; // 測試用：慢鏡（game.movie.timeScale）
   movie.time += dt;
   const t = movie.time;
   const follow = movie.update?.(t, dt);
@@ -109,7 +110,7 @@ function updateBubble(t) {
   }
   el.classList.toggle('show', headPos.z < 1 && shown.length > 0);
   el.style.left = `${Math.min(0.85, Math.max(0.15, headPos.x * 0.5 + 0.5)) * 100}%`;
-  el.style.top = `${Math.min(0.75, Math.max(0.2, -headPos.y * 0.5 + 0.5)) * 100}%`;
+  el.style.top = `${Math.min(0.75, Math.max(0.3, -headPos.y * 0.5 + 0.5)) * 100}%`; // 唔好俾上面黑邊遮住對白
 }
 
 export function finishMovie() {
