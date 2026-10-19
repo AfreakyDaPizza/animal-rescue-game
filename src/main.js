@@ -66,6 +66,9 @@ import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText 
 import { inDiscord, startDiscord } from './discordActivity.js';
 import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText, setGymPresent } from './gym.js';
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
+import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky, showLoading, loading } from './halloweenWorld.js'; // 🎃 Halloween 世界
+import { HW_ARRIVE, inHalloween } from './halloweenShape.js';
+import { FOUNTAIN } from './hubPark.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 之後畫質系統會再調
@@ -117,6 +120,8 @@ const crazy = createCrazyButton(scene); // 🤪 Crazy Pet Frenzy 掣（秘密沙
 const statueBtn = buildStatueButton(scene); // 🦏 犀牛像後面嘅掣
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
+const hubPortal = buildHubPortal(scene, FOUNTAIN.x, FOUNTAIN.z); // 🎃 Hub 中間嘅 Halloween 傳送門（取代噴水池）
+let hwWorld = null; // 🎃 Halloween 世界：第一次入去先起（載入畫面）
 labStatus.gone = !!state.labBossDefeated; // 舊存檔：打贏咗 Boss = 實驗室已經爆咗
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const eclipse = createEclipse(scene); // Eclipse 日蝕活動（天上嘅日蝕、DNA 激光）
@@ -314,7 +319,7 @@ const dayNight = createDayNight({ scene, hemi, sun, sky }, () => {
   gate.locked = true;
   play('night');
   setTimeout(() => popup('🌙 Night bonus: Reproduce Machines are 10x faster!'), 3500);
-  if (camera.position.z < 0) {
+  if (camera.position.z < 0 && !inHalloween(camera.position.x, camera.position.z)) { // 🎃 Halloween 世界唔會俾人帶返 Hub
     if (rescue.carrying) {
       loseAnimal(rescue);
       setCarrying(null);
@@ -322,13 +327,13 @@ const dayNight = createDayNight({ scene, hemi, sun, sky }, () => {
     teleportPlayer(player, 0, 4);
     camera.rotation.set(0, 0, 0, 'YXZ');
     announce('🌙 Night! Rangers brought you back. The biomes are locked!');
-  } else announce('🌙 Night falls... the biomes are locked and reset!');
+  } else if (!inHalloween(camera.position.x, camera.position.z)) announce('🌙 Night falls... the biomes are locked and reset!'); // 🎃 Halloween 世界：唔講
   resetBosses(bosses);
   spawnAll(); // 每個生態區換過一隻新動物
 }, () => {
   gate.locked = false;
   play('day');
-  announce('☀️ Morning! The biomes are open!');
+  if (!inHalloween(camera.position.x, camera.position.z)) announce('☀️ Morning! The biomes are open!');
 });
 spawnAll(); // 放第一批動物（要日夜系統起好先知係第幾段白天）
 
@@ -390,7 +395,7 @@ try {
   // 冇 sessionStorage 就照播
 }
 
-const isPaused = () => intro.active || movie.active || !startScreen.hidden || isPanelOpen() || isQuizOpen() || !!document.getElementById('device-chooser');
+const isPaused = () => intro.active || movie.active || loading.active || !startScreen.hidden || isPanelOpen() || isQuizOpen() || !!document.getElementById('device-chooser');
 
 // 手機版：觸控（搖桿、拖動轉鏡頭、掣），畫質預設低啲
 let mobileOn = false;
@@ -771,6 +776,13 @@ setPetActions({
 
 function currentInteraction() {
   const pos = camera.position;
+  // 🎃 Halloween 傳送門：Hub 中間（未開就話幾時開）；Halloween 世界出生點嗰道返 Hub
+  if (hubPortal.near(pos)) {
+    if (!isHalloweenOpen()) return { prompt: `🔒 🎃 The Halloween World opens in ${halloweenCountdown()}` };
+    if (rescue.carrying) return { prompt: '🐾 Bring your animal to the Hub first, then enter the Halloween World!' };
+    return { prompt: '<kbd>E</kbd> 🎃 Enter the HALLOWEEN WORLD 👻', action: enterHalloween };
+  }
+  if (hwWorld && inHalloween(pos.x, pos.z) && hwWorld.nearBackPortal(pos)) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Hub', action: leaveHalloween };
   // Biome 2 沙灘嘅垃圾：執走有少少錢
   const trash = TRASH.find((t) => t.group.visible && Math.hypot(pos.x - t.x, pos.z - t.z) < 2);
   if (trash) return { prompt: `<kbd>E</kbd> Clean up the ${trash.name} 🗑️ (+$${TRASH_REWARD})`, action: () => cleanTrash(trash) };
@@ -903,7 +915,7 @@ const reloadNoIntro = () => {
   location.reload();
 };
 setAdminActions({
-  status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present }),
+  status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present, halloweenDate: isHalloweenOpen() && !state.halloweenEarly }),
   hasBackup,
   // 第一次改嘢之前：備份真存檔
   backup() {
@@ -960,9 +972,15 @@ setAdminActions({
   unlockAll() {
     state.bigButton = true;
     state.gymEarly = true;
+    state.halloweenEarly = true; // 🎃
     if (!gym.present) return this.gotoGym();
     save();
     this.unlockEarly();
+  },
+  halloweenEarly(on) {
+    state.halloweenEarly = on;
+    save();
+    popup(on ? '🎃 The HALLOWEEN WORLD is open early! Go to the portal in the middle of the Hub.' : '🎃 Halloween is back to its opening date.');
   },
   gymEarly(on) {
     state.gymEarly = on;
@@ -1079,6 +1097,36 @@ function cleanTrash(trash) {
   play('coin');
   popup(`♻️ You cleaned up a ${trash.name}! +$${TRASH_REWARD}`);
   save();
+}
+
+// ---- 🎃 Halloween 世界：傳送門 + 載入畫面 ----
+let hwTravelling = false;
+async function enterHalloween() {
+  if (hwTravelling || rescue.carrying) return;
+  hwTravelling = true;
+  play('portal');
+  await showLoading(hwWorld ? '🎃 Entering the Halloween World...' : '🎃 Building the Halloween World...', async (progress) => {
+    if (!hwWorld) hwWorld = await buildHalloween(scene, progress);
+    teleportPlayer(player, HW_ARRIVE.x, HW_ARRIVE.z);
+    camera.rotation.set(0, HW_ARRIVE.rotY, 0, 'YXZ');
+    halloween.sky = 1; // 一出現就係恐怖天空（唔使慢慢變）
+  });
+  hwTravelling = false;
+  play('spooky');
+  announce('🎃 Welcome to the HALLOWEEN WORLD! 👻');
+  setTimeout(() => popup('⭕ The Spawn Ruins are a SAFE ZONE. Bosses cannot come in!'), 2500);
+}
+async function leaveHalloween() {
+  if (hwTravelling) return;
+  hwTravelling = true;
+  play('portal');
+  await showLoading('🌀 Going back to the Hub...', async () => {
+    teleportPlayer(player, FOUNTAIN.x, FOUNTAIN.z - 8);
+    camera.rotation.set(0, 0, 0, 'YXZ');
+    halloween.sky = 0;
+  }, 1.2);
+  hwTravelling = false;
+  announce('🏡 Back at the Animal Rescue Park!');
 }
 
 // ---- 秘密沙灘 ----
@@ -1578,7 +1626,7 @@ renderer.setAnimationLoop((timestamp) => {
       play('alarm');
       popup('⚠️ The Boss is chasing you! RUN!');
     }
-    setSightings(rescue.wild.filter((w) => w.special && (w.biome !== 6 || kingdom.open)), camera); // Biome 7 未開唔好講
+    setSightings(inHalloween(pos.x, pos.z) ? [] : rescue.wild.filter((w) => w.special && (w.biome !== 6 || kingdom.open)), camera); // Biome 7 未開唔好講；🎃 Halloween 世界入面唔講普通世界嘅動物
     // 背景音樂跟住情況轉：俾 Boss 追 > 夜晚 > 生態區 > Hub
     const labHit = updateLabFight(fight, dt, time, {
       x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Boss Arena', safe: safeTime > 0 || !!fling || labDebug.god,
@@ -1586,6 +1634,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (labHit) onLabHit(labHit);
     const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
     if (bosses.some((b) => b.mode === 'chase') || labBattle) setMusicMood('boss');
+    else if (inHalloween(pos.x, pos.z)) setMusicMood('spooky'); // 🎃（Halloween 世界日夜都係呢首）
     else if (dayNight.isNight) setMusicMood('night');
     else setMusicMood(location === 'Hub' || location === 'Gym' ? 'hub' : 'biome');
     if (safeTime <= 0 && caught) onBossCatch(caught);
@@ -1682,6 +1731,14 @@ renderer.setAnimationLoop((timestamp) => {
   stars.material.opacity = dayNight.blend * (0.85 + Math.sin(time * 2.1) * 0.15);
   stars2.material.opacity = dayNight.blend * (0.55 + Math.sin(time * 3.3 + 1.7) * 0.4); // 一閃一閃
   updateAmbience(ambience, frozen ? 0 : dt, time, camera.position, whereIs(camera.position.x, camera.position.z), dayNight.blend, dayNight.dusk, sky);
+  // 🎃 Halloween 世界：恐怖天空、好近嘅霧、行雷（要喺 updateAmbience 之後，唔係霧會俾佢蓋返）
+  applyHalloweenSky({ scene, skyUniforms: sky.uniforms, hemi, sun, dt, camPos: camera.position, playSound: play });
+  hubPortal.update(time, isHalloweenOpen());
+  hwWorld?.update(dt, time, camera.position);
+  if (halloween.sky > 0.01) {
+    stars.material.opacity *= 1 - halloween.sky; // 普通星星喺好遠，Halloween 有自己嘅
+    stars2.material.opacity *= 1 - halloween.sky;
+  }
 
   // 太陽跟住玩家，影先會一直清楚
   sun.position.set(pos.x + 15, 30, pos.z + 8);
@@ -1755,4 +1812,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

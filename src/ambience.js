@@ -93,6 +93,10 @@ const PROFILES = {
   dust: { colors: [0xd7b98e, 0xbca07a, 0xe6d3b0], size: 0.14, opacity: 0.55, motion: 'drift', speed: 1.1, sway: 0.6 },
   mist: { colors: [0xf3f0ff, 0xe8eaf6], size: 2.6, opacity: 0.16, motion: 'mist', speed: 0.5, sway: 0.4, few: true },
   embers: { colors: [0xffab40, 0xff6e40, 0xfff59d], size: 0.15, opacity: 0.9, motion: 'rise', speed: 0.7, sway: 0.6, additive: true, blink: true },
+  // 🎃 Halloween 世界
+  wisps: { colors: [0x18ffff, 0x76ff03, 0xea80fc], size: 0.26, opacity: 1, motion: 'wander', speed: 0.5, sway: 1.2, additive: true, blink: true },
+  ghostmist: { colors: [0xb39ddb, 0x9575cd, 0x7e57c2], size: 3, opacity: 0.14, motion: 'mist', speed: 0.4, sway: 0.5, few: true },
+  ash: { colors: [0x9e9e9e, 0x757575, 0xff7043], size: 0.14, opacity: 0.7, motion: 'fall', speed: 0.5, sway: 1 },
 };
 // 地方名（whereIs 回傳）→ 粒子；夜晚 Hub 變螢火蟲
 const B = (i) => BIOMES[i].name;
@@ -107,6 +111,15 @@ const AREA = {
   'Secret Beach': 'spray',
   Gym: 'pollen',
   'Outside the Park': 'pollen',
+  // 🎃 Halloween 世界（halloweenShape.js 嘅地方名）
+  '🎃 Spawn Ruins': 'embers',
+  'Pumpkin Graveyard': 'embers',
+  'Hollow Sprites': 'wisps',
+  'Abandoned Manor': 'ash',
+  'Egg Graveyard': 'ghostmist',
+  'Train Station': 'ghostmist',
+  'Fishing Lake': 'ghostmist',
+  'Ghost World': 'wisps',
 };
 // 每個地方嘅霧色（遠處）；會同天空色混埋，夜晚就淡返
 const FOG_TINT = {
@@ -175,6 +188,7 @@ export function updateAmbience(amb, dt, time, camPos, location, night, dusk, sky
   // 揀粒子（夜晚 Hub／Gym 變螢火蟲）；轉地方先淡出再換
   let want = AREA[location] || null;
   if (night > 0.5 && (want === 'pollen' || want === 'leaves')) want = 'fireflies';
+  if (amb.halloween && !want) want = 'embers'; // 🎃 Halloween 世界未有名嘅地方
   if (want !== amb.profile) {
     amb.fade = Math.max(0, amb.fade - dt * 1.5);
     if (amb.fade === 0) applyProfile(amb, want);

@@ -657,7 +657,7 @@ export function buildHubPark(root, live) {
   lab.rotation.y = Math.PI;
   live.add(lab);
 
-  updates.push(buildFountain(root, live));
+  // 噴水池：2026-10-19 小朋友叫 Halloween 傳送門取代佢（halloweenWorld.js buildHubPortal，main.js 起）
   flowerBeds(live);
   buildStatues(root);
   buildHammock(root, live);

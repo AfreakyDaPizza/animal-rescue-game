@@ -52,3 +52,34 @@
 - [x] Eggs, bosses and souls → Issue #6 (pictures: soul bestiary + boss sheet)
 - [x] Vacuum, rods, Phantom Express → Claude designs them
 - [ ] The map (the kid is sending it on GitHub)
+
+## 🗺️ The map (built 2026-10-19, `src/halloweenShape.js`)
+The kid said "do the world first". We designed the map ourselves. Everything is far to the west (x ≈ -1400), and the Ghost World is even further (x ≈ -2000).
+
+```
+                 ┌──────────────────────┐ z -350
+                 │  🏚️ ABANDONED MANOR   │  hw3 (Boss: Bone Drake guards the manor gate)
+                 │  (manor + front yard)│  eggs in the front yard
+                 ├──────────────────────┤ z -240
+                 │  👻 HOLLOW SPRITES    │  hw2 (Boss: Hollow Wraith)
+                 │  (dark forest, fog)  │
+                 ├──────────────────────┤ z -130
+                 │  🎃 PUMPKIN GRAVEYARD │  hw1 (Boss: Pumpkin Tyrant)
+                 │ (pumpkins, tombs)    │
+    ┌────────┐   └─────────╮  ╭─────────┘ z -20
+    │🎣 FISH- │   ╭─────────╯  ╰────────╮   ┌──────────────┐
+    │ ING     ├───┤  ⭕ SPAWN RUINS     ├───┤ 🚂 TRAIN      │══ tracks ══
+    │ LAKE    │   │ safe zone + portal  │   │   STATION    │
+    └────────┘   ╰─────────╮  ╭────────╯   └──────────────┘
+                           │🪦 EGG  │  z 18…66
+                           │GRAVEYARD│ (8 egg slots)
+                           └────────┘
+   🚂 The Phantom Express goes to the 👻 GHOST WORLD: a misty island with the Statue of Halloween + the vacuum shop.
+```
+
+- The Hub portal replaces the fountain. It opens on `HALLOWEEN_OPEN_DATE` (balance.js), or early with the Control Panel (`state.halloweenEarly`).
+- A spooky loading screen shows for every trip (`showLoading` in `src/halloweenWorld.js`). The world is built the first time you go in.
+- Horror sky, close fog per area, lightning: `applyHalloweenSky` (`src/halloweenWorld.js`).
+- Hooks for the next helpers (`src/halloweenShape.js`):
+  - **Positions:** `HW_BIOMES[i].rect / bossHome / eggZone / entrance`, `EGG_SLOTS`, `TRAIN_BOARD`, `TRAIN_STOP`, `TRACK_X`, `GHOST_WORLD`, `GHOST_ARRIVE`, `GHOST_TRAIN_STOP`, `STATUE_OF_HALLOWEEN`, `VACUUM_SHOP`, `FISH_SPOT`, `ROD_SHOP`, `DOCK`, `RUINS`, `RUINS_SAFE_R`.
+  - **Checks:** `inHalloween`, `inGhostWorld`, `inSafeZone`, `hwZoneAt`, `hwBiomeIndexAt`.

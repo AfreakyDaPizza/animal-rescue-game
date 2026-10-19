@@ -131,7 +131,16 @@ export function showZoneTitle(location) {
   const el = $('zone-title');
   const i = BIOMES.findIndex((b) => b.name === location);
   // Issue #2：大門外面
-  const extra = { Laboratory: ['⚠️ Danger zone', '🔬 The Laboratory', '#b388ff'], 'Outside the Park': ['Outside the gate', 'Lab Road', '#76ff03'], Gym: ['Get faster · Get smarter', '💪 Ranger Gym', '#ff9100'] }[location];
+  const extra = { Laboratory: ['⚠️ Danger zone', '🔬 The Laboratory', '#b388ff'], 'Outside the Park': ['Outside the gate', 'Lab Road', '#76ff03'], Gym: ['Get faster · Get smarter', '💪 Ranger Gym', '#ff9100'],
+    // 🎃 Halloween 世界（halloweenShape.js）
+    '🎃 Spawn Ruins': ['🎃 Halloween World · Safe zone', '⭕ Spawn Ruins', '#b388ff'],
+    'Pumpkin Graveyard': ['🎃 Halloween Biome 1', '🎃 Pumpkin Graveyard', '#ff9100'],
+    'Hollow Sprites': ['🎃 Halloween Biome 2', '👻 Hollow Sprites', '#69f0ae'],
+    'Abandoned Manor': ['🎃 Halloween Biome 3', '🏚️ Abandoned Manor', '#ea80fc'],
+    'Egg Graveyard': ['Hatch your eggs here', '🪦 Egg Graveyard', '#9575cd'],
+    'Train Station': ['All aboard...', '🚂 Phantom Express', '#76ff03'],
+    'Fishing Lake': ['Fish for Halloween eggs', '🎣 Fishing Lake', '#4fc3f7'],
+    'Ghost World': ['Catch the ghosts!', '👻 Ghost World', '#b388ff'] }[location];
   el.querySelector('small').textContent = extra ? extra[0] : i >= 0 ? `Biome ${i + 1}` : 'Welcome back to';
   el.querySelector('span').textContent = extra ? extra[1] : i >= 0 ? BIOMES[i].short : 'The Hub';
   el.style.setProperty('--zone-color', extra ? extra[2] : i >= 0 ? BIOME_THEMES[i].top : '#ffd54f');
