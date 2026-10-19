@@ -215,6 +215,9 @@ export const CRAZY_GIANT_CHANCE = 50; // % chance a crazy pet is GIANT (x3 size 
 export const CRAZY_MUTATION_CHANCE = 35; // % chance a crazy pet has 🔥 Fire or 🌑 Eclipse
 
 // ---- 🎃 HALLOWEEN (Issue #6) ----
+// The day the Halloween portal in the middle of the Hub opens (year-month-day). Before this day it shows a countdown.
+// The Secret Ranger Control Panel can open it early.
+export const HALLOWEEN_OPEN_DATE = '2026-10-21';
 // The 6 souls you catch with the Ghost Vacuum.
 // dust = [min, max] Soul Dust you get for catching it
 // catchSeconds = how long you must hold the vacuum on it with a Lv1 vacuum (stronger souls take longer)

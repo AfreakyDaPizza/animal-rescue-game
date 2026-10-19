@@ -4,7 +4,7 @@
 import { state } from './state.js';
 import { short } from './format.js';
 import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
-import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE } from './data/balance.js';
+import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
 import { petPic } from './animalPics.js';
@@ -49,6 +49,7 @@ const FUTURE = [
   { emoji: '🧪', name: 'Fuse Machine', date: FUSE_OPEN_DATE, open: (s) => s.fuseDate, early: () => state.bigButton },
   { emoji: '👑', name: 'Enchanted Kingdom', date: NEW_BIOME_DATE, open: (s) => s.kingdomDate, early: () => state.bigButton },
   { emoji: '💪', name: 'Ranger Gym', date: GYM_OPEN_DATE, open: (s) => s.gymDate, early: () => state.gymEarly && actions.status().gymPresent },
+  { emoji: '🎃', name: 'Halloween World', date: HALLOWEEN_OPEN_DATE, open: (s) => s.halloweenDate, early: () => state.halloweenEarly },
 ];
 
 function futureHtml() {
@@ -62,6 +63,7 @@ function futureHtml() {
       <button data-admin="unlock" ${state.bigButton ? 'class="grey"' : ''}>${state.bigButton ? '✔ Fuse + Kingdom unlocked' : '🔓 Unlock Fuse Machine + Enchanted Kingdom'}</button>
       <button data-admin="gym" class="${state.gymEarly ? 'grey' : ''}">${state.gymEarly ? '✔ Gym open early (tap to close)' : '💪 Open the Gym early'}</button>
       ${s.gymPresent ? '<button data-admin="gotoGym">🏃 Take me to the Gym</button>' : confirmButton('gotoGym', '🏃 Take me to the Gym (skips the Lab boss!)')}
+      <button data-admin="halloween" class="${state.halloweenEarly ? 'grey' : ''}">${state.halloweenEarly ? '✔ Halloween open early (tap to close)' : '🎃 Open the Halloween World early'}</button>
     </div>
     ${s.gymPresent ? '' : '<p class="hint">The Gym is where the Lab is. Going there now skips the Mutated Scientist Poacher fight, and the Lab will be gone.</p>'}`;
 }
@@ -147,6 +149,7 @@ $('panel-body').addEventListener('click', (e) => {
     case 'cancel': break;
     case 'unlock': actions.backup(); actions.unlockEarly(); return; // 會播開門動畫、收埋面板
     case 'gym': actions.backup(); actions.gymEarly(!state.gymEarly); break;
+    case 'halloween': actions.backup(); actions.halloweenEarly(!state.halloweenEarly); break;
     case 'gotoGym': actions.backup(); actions.gotoGym(); return; // 可能會重新載入
     case 'pick': pick.name = d.name; break;
     case 'set': pick[d.k] = d.v; break;

@@ -119,6 +119,16 @@ const SOUNDS = {
     for (let i = 0; i < 10; i++) tone(1000 + Math.random() * 2000, t + i * 0.06, 0.3, { vol: 0.07 });
     arp(t + 0.6, [659, 831, 988, 1319], 0.1, { type: 'triangle', vol: 0.18 });
   },
+  // 🎃 Halloween：行雷、鬼魂笑聲
+  thunder: (t) => {
+    noise(t, 0.15, { vol: 0.55, freq: 2200 });
+    noise(t + 0.1, 2.6, { vol: 0.5, freq: 220 });
+    tone(38, t + 0.05, 2.4, { type: 'sine', vol: 0.4, slide: 0.7 });
+  },
+  spooky: (t) => {
+    tone(330, t, 1.2, { type: 'sine', vol: 0.12, slide: 0.6 });
+    tone(415, t + 0.25, 1.4, { type: 'sine', vol: 0.1, slide: 0.55 });
+  },
   rumble: (t) => {
     noise(t, 2.2, { vol: 0.45, freq: 140 });
     tone(45, t, 2.2, { type: 'sine', vol: 0.35, slide: 0.8 });
@@ -202,6 +212,7 @@ const MOODS = {
   biome: { bpm: 124, wave: 'square', chords: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]] }, // Am F G Em：冒險
   boss: { bpm: 156, wave: 'sawtooth', chords: [[57, 60, 64], [58, 62, 65], [57, 60, 64], [56, 59, 64]] }, // 緊張
   night: { bpm: 76, wave: 'sine', chords: [[57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]] }, // 柔和
+  spooky: { bpm: 82, wave: 'sine', chords: [[50, 53, 57], [51, 54, 57], [49, 52, 56], [50, 53, 56]] }, // 🎃 Halloween：Dm、減和弦、陰森
 };
 const midi = (m) => 440 * 2 ** ((m - 69) / 12);
 let mood = 'hub';
@@ -225,7 +236,7 @@ function scheduleStep(time) {
     tone(midi(note), time, stepLength * 1.8, { type: 'triangle', vol: 0.12, out });
   }
   // 鼓（非夜晚）：每拍一下輕輕嘅 hi-hat
-  if (mood !== 'night' && step % 2 === 0) {
+  if (mood !== 'night' && mood !== 'spooky' && step % 2 === 0) {
     const len = Math.ceil(ctx.sampleRate * 0.03);
     const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -254,7 +265,7 @@ function startMusic() {
   }, 50);
 }
 
-// 轉音樂風格：'hub'、'biome'、'boss'、'night'
+// 轉音樂風格：'hub'、'biome'、'boss'、'night'、'spooky'
 export function setMusicMood(newMood) {
   if (newMood === mood || !MOODS[newMood]) return;
   mood = newMood;

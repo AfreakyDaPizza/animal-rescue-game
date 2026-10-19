@@ -25,6 +25,7 @@ import { HUB } from './hubShape.js';
 import { fenceMat, roundBox } from './fences.js'; // 🪵 圍牆裝飾
 import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, GYM, GYM_DOOR, labStatus } from './labShape.js';
 import { beach } from './secretBeach.js';
+import { inHalloween, hwWalkable, hwZoneAt } from './halloweenShape.js'; // 🎃 Halloween 世界（好遠嘅西邊）
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
 export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
@@ -50,6 +51,7 @@ export function biomeRect(i) {
 
 // 玩家而家喺邊？（Hub 或者第幾個生態區）
 export function whereIs(x, z) {
+  if (inHalloween(x, z)) return hwZoneAt(x, z); // 🎃 Halloween 世界：'🎃 Spawn Ruins'、'Pumpkin Graveyard'…（halloweenShape.js）
   // Hub 大門外面（Issue #2）：前院、實驗室、圓形 Boss Arena（好遠，經傳送門去）
   if (z > ARENA.z - ARENA.r - 5) return 'Boss Arena';
   if (labStatus.gone && x >= GYM.minX && x <= GYM.maxX && z >= GYM.minZ && z <= GYM.maxZ) return 'Gym'; // 實驗室爆咗：原位係 Gym
@@ -97,6 +99,8 @@ export function groundAt(x, z, feetY) {
 
 // feetY：玩家腳嘅高度。太矮嘅時候，石台就好似牆咁擋住（要跳先上到）
 export function isWalkable(x, z, radius, feetY = 0) {
+  // 🎃 Halloween 世界：自己一套範圍（夜晚閘、普通地圖都唔理）
+  if (inHalloween(x, z)) return hwWalkable(x, z, radius) && colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius);
   if (gate.locked && z < 0.8) return false; // 閘口落咗，入唔到通道
   for (const p of platforms) {
     // 矮嘅樓梯級唔計公仔闊度（級太淺，計埋就會俾第二級擋住，踏唔上第一級）
