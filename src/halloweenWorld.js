@@ -906,13 +906,13 @@ function buildManor(root, live, rand, lanterns) {
 // ================= 恐怖天空（main.js 喺 updateAmbience 之後叫）=================
 // 血紅紫色天、好近嘅霧、間中行雷閃電；每個地方嘅霧唔同（Hollow Sprites 最大霧）
 const ZONE_FOG = {
-  '🎃 Spawn Ruins': [0x3d1434, 12, 80],
+  '🎃 Spawn Ruins': [0x3d1434, 16, 110],
   'Pumpkin Graveyard': [0x4a1e0a, 9, 66],
   'Hollow Sprites': [0x123a2c, 5, 44],
   'Abandoned Manor': [0x2c1844, 8, 60],
-  'Egg Graveyard': [0x1e0d22, 9, 62],
-  'Train Station': [0x1d1026, 10, 75],
-  'Fishing Lake': [0x0d1a24, 8, 58],
+  'Egg Graveyard': [0x2a1530, 14, 95],
+  'Train Station': [0x2a1838, 16, 110],
+  'Fishing Lake': [0x16303c, 14, 95],
   'Ghost World': [0x1d0f33, 12, 85],
 };
 const C = (h) => new THREE.Color(h);
@@ -924,6 +924,7 @@ const _flashC = C(0xd1c4e9);
 const SUN_RED = C(0xff7a5c);
 let fogNear = 70;
 let fogFar = 220;
+let hwAmbient = null;
 export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, playSound }) {
   const inside = inHalloween(camPos.x, camPos.z);
   halloween.inside = inside;
@@ -931,6 +932,7 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
   if (inside && halloween.sky > 0.97) halloween.sky = 1;
   const k = halloween.sky;
   if (!scene.fog) return;
+  if (k < 0.002 && hwAmbient) hwAmbient.intensity = 0; // 返到正常世界：熄咗佢
   if (k < 0.002) {
     fogNear = scene.fog.near;
     fogFar = scene.fog.far;
@@ -966,9 +968,15 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
     scene.fog.near = THREE.MathUtils.lerp(scene.fog.near, fogNear, k);
     scene.fog.far = THREE.MathUtils.lerp(scene.fog.far, fogFar, k);
   }
+  // 額外環境光（小朋友：太暗睇唔到攤位）：只喺 Halloween 世界入面著
+  if (!hwAmbient) {
+    hwAmbient = new THREE.AmbientLight(0xd9c2ff, 0);
+    scene.add(hwAmbient);
+  }
+  hwAmbient.intensity = THREE.MathUtils.lerp(hwAmbient.intensity, 1.6 * k, Math.min(1, dt * 3));
   // 光：暗紅月光 + 閃電一下好光
-  hemi.intensity = THREE.MathUtils.lerp(hemi.intensity, 1.05 + flash * 1.4, k);
-  sun.intensity = THREE.MathUtils.lerp(sun.intensity, 1.25 + flash * 1.2, k);
+  hemi.intensity = THREE.MathUtils.lerp(hemi.intensity, 2.1 + flash * 1.4, k); // 小朋友：太暗，睇唔到啲攤位（1.05 → 2.1）
+  sun.intensity = THREE.MathUtils.lerp(sun.intensity, 2.0 + flash * 1.2, k);
   sun.color.lerp(SUN_RED, k);
 }
 
