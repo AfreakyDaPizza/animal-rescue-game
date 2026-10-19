@@ -98,7 +98,8 @@ export const ROD_SHOP = { x: HW_X - 30, z: -20 }; // 魚竿舖（15 支）
 // ---------- 行得嘅範圍（world.js isWalkable 用）----------
 // 普通世界嘅 Boss／障礙物／夜晚閘都唔理 Halloween 世界
 const RECTS = [
-  ...HW_BIOMES.map((b) => b.rect),
+  // 3 個生態區連埋一條（分開計嘅話，兩區交界會有一條隱形牆）
+  { minX: HW_BIOMES[0].rect.minX, maxX: HW_BIOMES[0].rect.maxX, minZ: HW_BIOMES[2].rect.minZ, maxZ: HW_BIOMES[0].rect.maxZ },
   EGG_GRAVEYARD,
   STATION,
   LAKE_SHORE,

@@ -218,6 +218,16 @@ export const CRAZY_MUTATION_CHANCE = 35; // % chance a crazy pet has 🔥 Fire o
 // The day the Halloween portal in the middle of the Hub opens (year-month-day). Before this day it shows a countdown.
 // The Secret Ranger Control Panel can open it early.
 export const HALLOWEEN_OPEN_DATE = '2026-10-21';
+// 🥚 Halloween eggs + NO MERCY bosses
+// How fast each Halloween boss is (Speed you need to escape). Order: Pumpkin Tyrant, Hollow Wraith, Bone Drake.
+// The Enchanted Royal Guardian is 440,000,000, so these are much faster!
+export const HALLOWEEN_BOSS_SPEED = [1000000000, 3000000000, 10000000000];
+export const HALLOWEEN_BOSS_SIZE = 3; // how big the bosses are (3 = like the Royal Guardian)
+export const HALLOWEEN_HEAD_START = 3; // seconds before the egg's boss starts chasing you
+export const HALLOWEEN_EGGS_PER_BIOME = 3; // how many eggs lie in each Halloween biome
+export const HALLOWEEN_EGG_RESPAWN = 40; // seconds until a new egg appears after one is taken
+export const HALLOWEEN_FOG_NEAR = 3; // when you carry an egg, the fog closes in to this (smaller = scarier)
+export const HALLOWEEN_FOG_FAR = 22;
 // The 6 souls you catch with the Ghost Vacuum.
 // dust = [min, max] Soul Dust you get for catching it
 // catchSeconds = how long you must hold the vacuum on it with a Lv1 vacuum (stronger souls take longer)

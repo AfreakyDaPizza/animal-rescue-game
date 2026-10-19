@@ -44,6 +44,8 @@ const DEFAULTS = {
   beachFinaleSeen: null, // 去過秘密沙灘睇 Owner 俾錢嗰段未（null = 舊存檔，跟 labEndingSeen）
   crazyReadyAt: 0, // 🤪 秘密沙灘個瘋狂寵物掣幾時再撳得（毫秒）
   gymEarly: false, // 🔐 秘密控制台：提早開 Gym
+  hwEggs: [], // 🥚 Halloween 蛋（救返嚟、未放落蛋墳場）：{ name, rarity }
+  hwSlots: [null, null, null, null, null, null, null, null], // 🪦 蛋墳場 8 個位：{ name, rarity, start } 或者 null
   halloweenEarly: false, // 🔐 秘密控制台：提早開 Halloween 世界（小朋友 2026-10-19）
   adminUsed: false, // 🔐 用過秘密控制台改嘢（已經備份咗真存檔）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
