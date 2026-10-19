@@ -44,6 +44,9 @@ const DEFAULTS = {
   beachFinaleSeen: null, // 去過秘密沙灘睇 Owner 俾錢嗰段未（null = 舊存檔，跟 labEndingSeen）
   crazyReadyAt: 0, // 🤪 秘密沙灘個瘋狂寵物掣幾時再撳得（毫秒）
   gymEarly: false, // 🔐 秘密控制台：提早開 Gym
+  soulDust: 0, // 💀 Halloween：捉鬼得嘅 Soul Dust
+  hwShards: 0, // 🔮 Halloween Shard（可以疊）
+  vacuumLevel: 0, // 🧹 Ghost Vacuum 等級（0 = 未有，1–5）
   halloweenEarly: false, // 🔐 秘密控制台：提早開 Halloween 世界（小朋友 2026-10-19）
   adminUsed: false, // 🔐 用過秘密控制台改嘢（已經備份咗真存檔）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）

@@ -469,6 +469,8 @@ body:has(#panel:not([hidden])) #touch-ui, body:has(#quiz:not([hidden])) #touch-u
 body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); font-size: 15px; }
 .device-switch button { margin: 0 4px; padding: 6px 12px; font-size: 15px; }
 .card-animal .eclipse-tag { color: #aa00ff; }
+.card-animal .spectral-tag { color: #00acc1; }
+.card-animal .phantom-tag { color: #7e57c2; }
 /* 🔐 Secret Ranger Control Panel */
 .admin-tabs { flex-wrap: wrap; }
 .admin-tabs button { padding: 6px 10px; font-size: 14px; }

@@ -88,7 +88,7 @@ function petsHtml() {
       <span id="admin-size-num">x${pick.size}</span>
       ${[0.5, 1, 3, 10].map((v) => `<button data-admin="size" data-v="${v}" class="${v === pick.size ? '' : 'grey'}">x${v}</button>`).join('')}</div>
     <div class="pet-actions"><b>✨ Mutations</b> ${MUTATIONS.map((m) => `<button data-admin="mut" data-v="${m}" class="${pick.mutations.includes(m) ? '' : 'grey'}">${pick.mutations.includes(m) ? '✔ ' : ''}${mutationInfo(m).emoji} ${niceName(m)}</button>`).join('')}
-      <small class="hint">Tap both to stack them!</small></div>
+      <small class="hint">Tap more than one to stack them! (👻 Spectral x4 and 🟣 Phantom x5 come from Halloween Shards)</small></div>
     <div class="pet-actions"><button data-admin="flip" class="${pick.flipped ? '' : 'grey'}">${pick.flipped ? '✔ 🙃 Upside down' : '🙃 Upside down'}</button></div>
     <p class="admin-preview">You'll get: <b id="admin-preview">${previewText()}</b></p>
     <div class="pet-actions"><button data-admin="give" class="sell">🎁 Give me this pet</button></div>
@@ -114,7 +114,7 @@ function eventsHtml() {
   const biomes = BIOMES.map((b, i) => [i, b.name]);
   return `<p class="index-summary">Start any event right now.</p>
     <div class="pet-actions">${EVENTS.map((e) => `<button data-admin="event" data-id="${e.id}">${e.emoji} ${e.name}</button>`).join('')}</div>
-    <div class="pet-actions"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button></div>
+    <div class="pet-actions"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button> <button data-admin="train">🚂 Phantom Express now</button></div>
     <h3>Spawn an animal</h3>
     <div class="pet-actions">${biomes.map(([i, n]) => `<button data-admin="biome" data-i="${i}" class="${i === spawnBiome ? '' : 'grey'}">${i + 1}. ${n.replace(/^Biome \d+ - /, '')}</button>`).join('')}</div>
     <div class="pet-actions">${RARITIES.map((r) => `<button data-admin="srarity" data-v="${r.name}" class="${r.name === spawnRarity ? '' : 'grey'}">${r.name}</button>`).join('')}</div>
@@ -163,6 +163,7 @@ $('panel-body').addEventListener('click', (e) => {
     case 'rich': actions.backup(); actions.rich(); break;
     case 'event': actions.backup(); actions.event(d.id); return;
     case 'crazy': actions.crazy(); return;
+    case 'train': actions.backup(); actions.train(); return;
     case 'biome': spawnBiome = Number(d.i); break;
     case 'srarity': spawnRarity = d.v; break;
     case 'spawn': actions.spawn(spawnBiome, spawnRarity); return;

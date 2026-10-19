@@ -70,6 +70,8 @@ export const MACHINE_QUIZ_MIN_CUT = 20; // ...but always at least this many seco
 export const MACHINE_QUIZ_COOLDOWN = 10; // Seconds before the same machine can ask another question
 export const FIRE_MONEY = 4; // 🔥 FIRE pets earn this many times more money
 export const ECLIPSE_MONEY = 6; // 🌑 ECLIPSE pets (hit by an Eclipse laser) earn this many times more money
+export const SPECTRAL_MONEY = 4; // 👻 SPECTRAL pets (from a Halloween Shard) earn this many times more money
+export const PHANTOM_MONEY = 5; // 🟣 PHANTOM pets (from a Halloween Shard) earn this many times more money
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
 export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000, 2000000, 3000000, 5000000]; // last 3 = Halloween
@@ -234,3 +236,31 @@ export const HALLOWEEN_SOULS = [
 // Soul orb attacks: how fast they fly (smaller = easier to dodge) and how long the warning glow lasts before they fire
 export const HALLOWEEN_SOUL_ORB_SPEED = 6;
 export const HALLOWEEN_SOUL_ORB_WARNING = 0.9;
+// When a soul orb hits you, you drop this much Soul Dust (never below 0)
+export const SOUL_ORB_HIT_DUST = 10;
+// How many ghosts float around the Ghost World at the same time
+export const GHOST_MAX_SOULS = 12;
+
+// ---- 🚂 PHANTOM EXPRESS ----
+// The train comes every this many minutes (at :00 on the real clock) and waits this many minutes for you
+export const PHANTOM_EXPRESS_EVERY_MINUTES = 60;
+export const PHANTOM_EXPRESS_STAY_MINUTES = 30;
+
+// ---- 🧹 GHOST VACUUM (buy and upgrade at the Vacuum Shop in the Ghost World, with Soul Dust) ----
+// cost = Soul Dust to buy that level · power = how fast it catches (2 = twice as fast)
+// range = how far it reaches (metres) · cone = how wide the beam is (degrees)
+export const GHOST_VACUUM = [
+  { name: 'Rusty Ghost Grabber', cost: 0, power: 1, range: 7, cone: 25, color: 0x9e9e9e },
+  { name: 'Slime Sucker', cost: 600, power: 1.6, range: 9, cone: 30, color: 0x76ff03 },
+  { name: 'Frost Phantom Vac', cost: 2500, power: 2.5, range: 11, cone: 34, color: 0x40c4ff },
+  { name: 'Void Vortex', cost: 9000, power: 4, range: 13, cone: 38, color: 0xb388ff },
+  { name: 'Golden Soul Reaper 5000', cost: 30000, power: 6.5, range: 16, cone: 42, color: 0xffd740 },
+];
+
+// ---- 🔮 HALLOWEEN SHARDS (Statue of Halloween) ----
+// One shard costs this much Soul Dust
+export const HALLOWEEN_SHARD_COST = 400;
+// When you use a shard, each pet on your Plot has this % chance to get hit
+export const SHARD_HIT_CHANCE = 25;
+// A pet that gets hit becomes 🟣 PHANTOM this % of the time, otherwise 👻 SPECTRAL
+export const SHARD_PHANTOM_CHANCE = 50;

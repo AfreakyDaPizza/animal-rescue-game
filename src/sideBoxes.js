@@ -25,6 +25,7 @@ export function initSideBoxes(options) {
   $('side-timers-btn').addEventListener('click', () => toggleSideBox('timers'));
   $('side-box').addEventListener('click', (e) => {
     if (e.target.closest('button[data-allpets]')) return opts.openAll?.(); // 打開完整寵物面板
+    if (e.target.closest('button[data-shard]')) return opts.useShard?.(); // 🔮 用 Halloween Shard
     const b = e.target.closest('button[data-unequip]');
     if (!b) return;
     const pet = state.pets[Number(b.dataset.unequip)];
@@ -65,7 +66,7 @@ function renderPets(force) {
   const multi = boost.money * plotMoneyMulti(state.plotLevel);
   const pets = state.pets.map((p, i) => ({ p, i })).filter(({ p }) => p.onPlot);
   pets.sort((a, b) => itemMoney(b.p) - itemMoney(a.p));
-  const sig = `pets|${pets.map(({ p, i }) => `${i}:${p.name}:${p.rarity}`).join(',')}|${multi}`;
+  const sig = `pets|${pets.map(({ p, i }) => `${i}:${p.name}:${p.rarity}:${p.mutation || ''}`).join(',')}|${multi}|${state.hwShards}`;
   if (force || sig !== lastSig) {
     lastSig = sig;
     box.innerHTML = `<div class="side-head"><b>🐾 My Plot Pets</b><span class="side-total">💰 $<span id="side-total">${fmt(moneyPerSecond())}</span>/s</span></div>
@@ -77,7 +78,8 @@ function renderPets(force) {
           <button data-unequip="${i}">Unequip</button></div>`;
       }).join('') : '<p class="side-empty">No pets on your Plot yet.</p>'}</div>
       <p class="side-hint">To equip a pet, put it on your Plot 🌿</p>
-      <button class="side-all" data-allpets="1">📋 All my pets</button>`;
+      <button class="side-all" data-allpets="1">📋 All my pets</button>
+      ${state.hwShards > 0 ? `<button class="side-all side-shard" data-shard="1">🔮 Use Halloween Shard (${state.hwShards})</button>` : ''}`;
   } else {
     const t = $('side-total');
     if (t) t.textContent = fmt(moneyPerSecond());
