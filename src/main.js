@@ -1648,6 +1648,7 @@ renderer.setAnimationLoop((timestamp) => {
   const inMovie = intro.active || movie.active;
   if (inMovie) thirdPerson.avatar.g.visible = false;
   updateLabGuide(camera, time, state.labUnlocked && !state.labVisited && !inMovie);
+  document.body.classList.toggle('in-movie', inMovie); // 播緊片：收埋稀有動物通知（唔好遮住畫面）
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,

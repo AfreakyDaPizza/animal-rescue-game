@@ -307,3 +307,4 @@ body.mobile #hud-buttons kbd { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .card-animal, #hud-stats, #hud-timer, #side-box, #hud-prompt, #fact { animation: none !important; }
 }
+body.in-movie #announce, body.in-movie #sightings, body.in-movie #popup { visibility: hidden !important; }
