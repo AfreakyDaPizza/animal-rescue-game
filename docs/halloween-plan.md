@@ -47,11 +47,8 @@
 - The red arrow glows and drips red, but isn't gory.
 
 ## Still waiting for (from the kid, on GitHub)
-- [ ] Eggs: names, pictures, rarities, hatch times
-- [ ] 6 ghosts: names, pictures, strength
-- [ ] Boss names and looks (3)
-- [ ] Vacuum level costs (Soul Dust)
-- [ ] 15 rods: names and prices
-- [ ] What the always-on Express event is
 - [x] Where the Halloween portal goes in the Hub → replaces the fountain in the middle
-- [ ] Start date (e.g. 31 October?)
+- [x] Start date → **Wednesday 21 October 2026**; the Control Panel can unlock it early
+- [x] Eggs, bosses and souls → Issue #6 (pictures: soul bestiary + boss sheet)
+- [x] Vacuum, rods, Phantom Express → Claude designs them
+- [ ] The map (the kid is sending it on GitHub)
