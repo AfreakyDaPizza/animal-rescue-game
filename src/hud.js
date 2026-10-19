@@ -7,7 +7,8 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, sizeText } from './data/animals.js';
+import { ANIMALS, HALLOWEEN_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, sizeText } from './data/animals.js';
+import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
@@ -504,7 +505,7 @@ function tierIndexHtml(kind) {
 }
 
 function animalIndexHtml() {
-  const found = state.indexFound.length;
+  const found = ANIMALS.filter((a) => state.indexFound.includes(a.name)).length; // 🎃 Halloween 寵物另外計
   let html = `
     <div class="progress"><div style="width:${(found / ANIMALS.length) * 100}%"></div></div>
     <p class="index-summary"><b>${found} / ${ANIMALS.length}</b> species registered.
@@ -523,6 +524,20 @@ function animalIndexHtml() {
     }
     html += '</div>';
   });
+  // 🎃 Halloween 寵物（由蛋孵出嚟）：自己一段
+  html += `<h2 class="hw-index">🎃 Halloween Pets <span class="count">${HALLOWEEN_PETS.filter((a) => state.indexFound.includes(a.name)).length}/${HALLOWEEN_PETS.length}</span></h2>
+    <p class="reward">Hatch them from eggs in the Halloween world!</p>`;
+  for (const hb of HALLOWEEN_BIOMES) {
+    const pets = HALLOWEEN_PETS.filter((a) => a.hw === hb.key);
+    const got = pets.filter((a) => state.indexFound.includes(a.name)).length;
+    html += `<h3>${hb.emoji} ${hb.name} <span class="count">${got}/${pets.length}${got === pets.length ? ' ✅' : ''}</span></h3><div class="cards">`;
+    for (const a of pets) {
+      html += state.indexFound.includes(a.name)
+        ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not hatched yet</small></div>`;
+    }
+    html += '</div>';
+  }
   return html;
 }
 
