@@ -213,3 +213,21 @@ export const CRAZY_COOLDOWN_MINUTES = 15; // how long until you can press the bu
 export const CRAZY_MYTHIC_CHANCE = 40; // % chance a crazy pet is Mythic (the rest are Legendary)
 export const CRAZY_GIANT_CHANCE = 50; // % chance a crazy pet is GIANT (x3 size and kg)
 export const CRAZY_MUTATION_CHANCE = 35; // % chance a crazy pet has 🔥 Fire or 🌑 Eclipse
+
+// ---- 🎃 HALLOWEEN (Issue #6) ----
+// The 6 souls you catch with the Ghost Vacuum.
+// dust = [min, max] Soul Dust you get for catching it
+// catchSeconds = how long you must hold the vacuum on it with a Lv1 vacuum (stronger souls take longer)
+// weight = how often it appears (bigger = more common)
+// attackEvery = seconds between its slow soul-orb attacks (0 = it never attacks). The orbs are slow, so you can dodge them!
+export const HALLOWEEN_SOULS = [
+  { id: 'small', name: 'Small Soul', dust: [20, 20], catchSeconds: 1.5, weight: 40, attackEvery: 0 },
+  { id: 'wandering', name: 'Wandering Soul', dust: [25, 50], catchSeconds: 2.5, weight: 28, attackEvery: 0 },
+  { id: 'phantom', name: 'Phantom Spirit', dust: [50, 150], catchSeconds: 4, weight: 16, attackEvery: 6 },
+  { id: 'wraith', name: 'Wraith Soul', dust: [200, 300], catchSeconds: 7, weight: 9, attackEvery: 5 },
+  { id: 'ghoul', name: 'Ghoul', dust: [400, 500], catchSeconds: 10, weight: 5, attackEvery: 4 },
+  { id: 'poltergeist', name: 'Poltergeist Ghoul', dust: [500, 1000], catchSeconds: 14, weight: 2, attackEvery: 3.5 },
+];
+// Soul orb attacks: how fast they fly (smaller = easier to dodge) and how long the warning glow lasts before they fire
+export const HALLOWEEN_SOUL_ORB_SPEED = 6;
+export const HALLOWEEN_SOUL_ORB_WARNING = 0.9;
