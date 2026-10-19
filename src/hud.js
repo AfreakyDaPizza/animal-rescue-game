@@ -15,6 +15,7 @@ import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachine
 import { fuseChances } from './fuse.js';
 import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
 import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
+import { rodShopHtml } from './rodShop.js'; // 🎣 Halloween 魚竿舖
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -254,6 +255,7 @@ export function openPanel(kind) {
     portal: ['🌀 The Portal', portalHtml, 'E'],
     admin: ['🔐 SECRET RANGER CONTROL PANEL', adminHtml, 'E'],
     ...extraPanels,
+    rods: ['🎣 Skeleton Sam\'s Rod Shop', rodShopHtml, 'E'],
   };
   const [title, html, key] = panels[kind];
   $('panel-title').textContent = title;

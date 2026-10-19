@@ -184,6 +184,10 @@ const SOUNDS = {
     for (let i = 0; i < 6; i++) tone(210 + (i % 2) * 30, t + i * 0.12, 0.12, { type: 'sawtooth', vol: 0.04 });
   },
   poof: (t) => noise(t, 0.6, { vol: 0.25, freq: 2500, q: 0.6, type: 'bandpass' }),
+  splash: (t) => { // 🎣 魚咬鈎：水花
+    noise(t, 0.35, { vol: 0.35, freq: 900, q: 0.8, type: 'bandpass' });
+    tone(220, t, 0.25, { type: 'sine', vol: 0.18, slide: 0.5 });
+  },
   solar: (t) => {
     arp(t, [784, 988, 1175, 1568, 1976], 0.06, { type: 'triangle', vol: 0.2 });
     noise(t, 0.9, { vol: 0.12, freq: 5000, type: 'highpass' });

@@ -66,6 +66,8 @@ import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText 
 import { inDiscord, startDiscord } from './discordActivity.js';
 import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText, setGymPresent } from './gym.js';
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
+import { createFishing, fishingInteraction, updateFishing, breakRod, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋）
+import { setRodShopActions } from './rodShop.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky, showLoading, loading } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
@@ -258,6 +260,14 @@ function cycleQuality() {
 applyQuality();
 
 const thirdPerson = createThirdPerson(scene, camera); // 拎住寵物時用第三身
+// 🎣 Halloween 釣魚：魚竿舖、拋竿、釣蛋（src/fishing.js）
+const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar });
+const fishUI = { play: (n) => play(n), popup: (t) => popup(t), announce: (t) => announce(t), save: () => save(), flash: () => flashScreen() };
+setRodShopActions({ buy: (i) => buyRod(i, fishUI) });
+if (state.rod !== null && state.rod !== undefined) {
+  state.rod = null; // 重新載入 = 返咗普通世界：魚竿斷咗
+  setTimeout(() => popup('🎣 Your rod crumbled to dust... buy a new one next time!'), 4000);
+}
 // Issue #2：手上嘅鎚仔（第一身掛喺鏡頭；第三身掛喺公仔右手）
 const handHammer = hammerModel();
 handHammer.position.set(0.45, -0.45, -0.8);
@@ -443,7 +453,7 @@ function enableMobile() {
     controls: player.controls,
     isPaused,
     onUse: () => {
-      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
+      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
       if (!isPaused()) interact();
     },
     onPause: () => {
@@ -572,7 +582,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB' && !isPanelOpen()) toggleSideBox('pets'); // 🐾 地塊寵物
   if (e.code === 'KeyT' && !isPanelOpen()) toggleSideBox('timers'); // ⏱️ 繁殖機時間
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
@@ -831,6 +841,10 @@ function currentInteraction() {
   if (inHalloween(pos.x, pos.z)) {
     const hw = phantom.interaction(pos) || shards.interaction(pos) || ghostHunt.interaction(pos); // 🚂 上車／返程、🗿 雕像、🧹 吸塵機舖
     if (hw) return hw;
+  }
+  if (hwWorld && inHalloween(pos.x, pos.z)) {
+    const fi = fishingInteraction(fishing, pos, { openShop: () => togglePanel('rods'), ui: fishUI }); // 🎣 魚竿舖／釣魚
+    if (fi) return fi;
   }
   // Biome 2 沙灘嘅垃圾：執走有少少錢
   const trash = TRASH.find((t) => t.group.visible && Math.hypot(pos.x - t.x, pos.z - t.z) < 2);
@@ -1181,6 +1195,7 @@ async function leaveHalloween() {
     halloween.sky = 0;
   }, 1.2);
   hwTravelling = false;
+  breakRod(fishing, fishUI); // 🎣 返普通世界：魚竿斷（小朋友規定）
   announce('🏡 Back at the Animal Rescue Park!');
 }
 
@@ -1762,6 +1777,7 @@ renderer.setAnimationLoop((timestamp) => {
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
     time,
   });
+  if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
   if (!inMovie && viewCam !== camera && !labStatus.gone && inLab(camera.position.x, camera.position.z)) {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
@@ -1872,4 +1888,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
