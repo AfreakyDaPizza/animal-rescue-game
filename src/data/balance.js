@@ -21,7 +21,10 @@ export const BOSSES = [
 // 越遠嘅生態區底價越高（小朋友話遠嘅要賺多啲）；重啲都賺多啲，但唔會爆錶
 // 例：100 kg 熊貓 ≈ $2/秒；6,000 kg 大象 ≈ $9/秒；150,000 kg 藍鯨 ≈ $199/秒；
 //     6 kg 菲律賓鷹 ≈ $31/秒；450 kg 北極熊 ≈ $468/秒；160 kg 大猩猩 ≈ $2,265/秒
-export const BIOME_BASE_MONEY = [1, 5, 25, 150, 1000, 6000, 60000];
+// 🎃 Halloween pets (biome 7, 8, 9 = Pumpkin Graveyard, Hollow Sprites, Abandoned Manor): money per second base.
+// Kid can change these! Biome 7 Enchanted Kingdom is 60000, so Halloween starts a bit higher and goes up.
+export const HALLOWEEN_BASE_MONEY = [80000, 140000, 250000];
+export const BIOME_BASE_MONEY = [1, 5, 25, 150, 1000, 6000, 60000, ...HALLOWEEN_BASE_MONEY];
 export const WEIGHT_BONUS = 0.1;
 export const petMoney = (kg, biome, rarity = 'Common') =>
   Math.max(1, Math.round(BIOME_BASE_MONEY[biome] * (1 + Math.sqrt(kg) * WEIGHT_BONUS) * rarityInfo(rarity).money));
@@ -48,7 +51,7 @@ export function randomRarity() {
 }
 
 // ---- 繁殖機要幾耐（秒）：越遠嘅生態區越耐 ----
-export const REPRODUCE_SECONDS = [30, 60, 120, 240, 480, 900, 1500];
+export const REPRODUCE_SECONDS = [30, 60, 120, 240, 480, 900, 1500, 1800, 2400, 3000]; // last 3 = Halloween pets
 
 // ---- 繁殖機升級（小朋友 2026-10-11）：一次升晒 5 部 ----
 // timeFactor：繁殖時間 × 幾多（0.8 = 快 20%）；cost：升去呢級要幾錢
@@ -69,8 +72,8 @@ export const FIRE_MONEY = 4; // 🔥 FIRE pets earn this many times more money
 export const ECLIPSE_MONEY = 6; // 🌑 ECLIPSE pets (hit by an Eclipse laser) earn this many times more money
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
-export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000];
-export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 4000000, 40000000];
+export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000, 2000000, 3000000, 5000000]; // last 3 = Halloween
+export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 4000000, 40000000, 60000000, 90000000, 150000000]; // last 3 = Halloween
 
 // ---- 跑步機／學生桌升級 ----
 // 第 L 級：每秒加 5 × 2^(L-1)；升去下一級要 50 × 2.4^(L-1) 蚊（小朋友 2026-10-11 話要貴啲）
