@@ -193,6 +193,28 @@ const SOUNDS = {
     tone(392, t, 0.4, { type: 'triangle', vol: 0.15 });
     tone(587, t + 0.15, 0.5, { type: 'triangle', vol: 0.15 });
   },
+  // 🚂 Phantom Express 汽笛（兩個音，有啲走音，陰陰森森）
+  whistle: (t) => {
+    tone(587, t, 1.1, { type: 'sine', vol: 0.18, slide: 0.97 });
+    tone(740, t, 1.1, { type: 'sine', vol: 0.12, slide: 0.96 });
+    tone(587, t + 1.3, 0.7, { type: 'sine', vol: 0.15, slide: 0.9 });
+    noise(t, 1.8, { vol: 0.06, freq: 3000, type: 'highpass' }); // 蒸汽
+  },
+  // 🧹 吸塵機（揸住嘅時候每 0.25 秒叫一次）
+  vacuum: (t) => {
+    noise(t, 0.3, { vol: 0.09, freq: 900, q: 0.8, type: 'bandpass' });
+    tone(110, t, 0.3, { type: 'sawtooth', vol: 0.025 });
+  },
+  // 👻 捉到鬼：吸入去「啵」一聲 + 閃閃
+  soulCatch: (t) => {
+    tone(300, t, 0.25, { type: 'sine', vol: 0.25, slide: 4 });
+    arp(t + 0.15, [880, 1175, 1568], 0.06, { type: 'triangle', vol: 0.14 });
+  },
+  // 🔮 Halloween Shard
+  shard: (t) => {
+    arp(t, [440, 523, 659, 831, 988], 0.09, { type: 'sine', vol: 0.2 });
+    noise(t + 0.3, 1, { vol: 0.08, freq: 5000, type: 'highpass' });
+  },
 };
 
 export function play(name) {

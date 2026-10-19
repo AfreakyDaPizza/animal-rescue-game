@@ -114,7 +114,7 @@ function eventsHtml() {
   const biomes = BIOMES.map((b, i) => [i, b.name]);
   return `<p class="index-summary">Start any event right now.</p>
     <div class="pet-actions">${EVENTS.map((e) => `<button data-admin="event" data-id="${e.id}">${e.emoji} ${e.name}</button>`).join('')}</div>
-    <div class="pet-actions"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button></div>
+    <div class="pet-actions"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button> <button data-admin="train">🚂 Phantom Express now</button></div>
     <h3>Spawn an animal</h3>
     <div class="pet-actions">${biomes.map(([i, n]) => `<button data-admin="biome" data-i="${i}" class="${i === spawnBiome ? '' : 'grey'}">${i + 1}. ${n.replace(/^Biome \d+ - /, '')}</button>`).join('')}</div>
     <div class="pet-actions">${RARITIES.map((r) => `<button data-admin="srarity" data-v="${r.name}" class="${r.name === spawnRarity ? '' : 'grey'}">${r.name}</button>`).join('')}</div>
@@ -163,6 +163,7 @@ $('panel-body').addEventListener('click', (e) => {
     case 'rich': actions.backup(); actions.rich(); break;
     case 'event': actions.backup(); actions.event(d.id); return;
     case 'crazy': actions.crazy(); return;
+    case 'train': actions.backup(); actions.train(); return;
     case 'biome': spawnBiome = Number(d.i); break;
     case 'srarity': spawnRarity = d.v; break;
     case 'spawn': actions.spawn(spawnBiome, spawnRarity); return;

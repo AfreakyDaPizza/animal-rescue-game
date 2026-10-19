@@ -308,3 +308,12 @@ body.mobile #hud-buttons kbd { display: none; }
   .card-animal, #hud-stats, #hud-timer, #side-box, #hud-prompt, #fact { animation: none !important; }
 }
 body.in-movie #announce, body.in-movie #sightings, body.in-movie #popup { visibility: hidden !important; }
+/* 🔮 Halloween Shard 掣（側邊盒）+ 🎃 Halloween 世界 HUD（火車倒數、Soul Dust） */
+#side-box .side-shard { background: linear-gradient(180deg, #b388ff, #6a1b9a); border-color: #4a148c; box-shadow: 0 4px 0 #4a148c; margin-top: 6px; }
+#hw-train-hud, #hw-dust-hud { position: fixed; left: 50%; transform: translateX(-50%); z-index: 6; font-weight: 800; font-size: 15px; padding: 6px 14px; pointer-events: none; background: linear-gradient(180deg, #2a1640, #160b24); color: #e1bee7; border: 3px solid #7c4dff; border-radius: 999px; }
+#hw-train-hud { top: auto; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+#hw-train-hud.live { color: #b2ff59; border-color: #76ff03; }
+#hw-dust-hud { top: auto; bottom: calc(112px + env(safe-area-inset-bottom, 0px)); color: #fff59d; border-color: #ffab00; }
+body.in-movie #hw-train-hud, body.in-movie #hw-dust-hud { visibility: hidden; }
+body.mobile #hw-train-hud { bottom: auto; top: calc(96px + env(safe-area-inset-top, 0px)); font-size: 12px; }
+body.mobile #hw-dust-hud { bottom: auto; top: calc(126px + env(safe-area-inset-top, 0px)); font-size: 12px; }

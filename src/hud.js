@@ -7,7 +7,7 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { ANIMALS, HALLOWEEN_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, sizeText } from './data/animals.js';
+import { ANIMALS, HALLOWEEN_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
@@ -20,7 +20,7 @@ import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGE
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
 // 變異標籤（可以疊：🔥 FIRE x4 + 🌑 ECLIPSE x6）
-const mutationTags = (p) => mutationList(p).map((m) => (m === 'fire' ? `<small class="fire-tag">🔥 FIRE x${FIRE_MONEY}</small>` : `<small class="fire-tag eclipse-tag">🌑 ECLIPSE x${ECLIPSE_MONEY}</small>`)).join('');
+const mutationTags = (p) => mutationList(p).map((m) => (m === 'fire' ? `<small class="fire-tag">🔥 FIRE x${FIRE_MONEY}</small>` : m === 'eclipse' ? `<small class="fire-tag eclipse-tag">🌑 ECLIPSE x${ECLIPSE_MONEY}</small>` : `<small class="fire-tag ${m}-tag">${mutationInfo(m).emoji} ${mutationInfo(m).name} x${mutationInfo(m).money}</small>`)).join('');
 
 // 畫面中間下面嘅提示（例如「[E] Borrow Giant Panda」），null 就收埋
 export function setPrompt(html) {
@@ -235,6 +235,8 @@ function renderHotbar() {
 
 // ================= 面板（My Stats／Animal Index） =================
 
+// 其他檔案加嘅面板（🎃 Halloween：吸塵機舖、Halloween 雕像）：extraPanels[kind] = [標題, html(), 收埋掣]
+export const extraPanels = {};
 let openPanelKind = null;
 export const panelKind = () => openPanelKind;
 export const isPanelOpen = () => openPanelKind !== null;
@@ -251,6 +253,7 @@ export function openPanel(kind) {
     shop: ['🛍️ Skin Shop', shopHtml, 'E'],
     portal: ['🌀 The Portal', portalHtml, 'E'],
     admin: ['🔐 SECRET RANGER CONTROL PANEL', adminHtml, 'E'],
+    ...extraPanels,
   };
   const [title, html, key] = panels[kind];
   $('panel-title').textContent = title;
