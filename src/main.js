@@ -1769,6 +1769,7 @@ renderer.setAnimationLoop((timestamp) => {
   if (inMovie) thirdPerson.avatar.g.visible = false;
   updateLabGuide(camera, time, state.labUnlocked && !state.labVisited && !inMovie);
   document.body.classList.toggle('in-movie', inMovie); // 播緊片：收埋稀有動物通知（唔好遮住畫面）
+  document.body.classList.toggle('in-halloween', inHalloween(camera.position.x, camera.position.z)); // 🎃 Halloween 世界：收埋教學、正常世界嘅夜晚倒數
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || hwEggs?.carryModel() || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,

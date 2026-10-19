@@ -317,3 +317,4 @@ body.in-movie #announce, body.in-movie #sightings, body.in-movie #popup { visibi
 body.in-movie #hw-train-hud, body.in-movie #hw-dust-hud { visibility: hidden; }
 body.mobile #hw-train-hud { bottom: auto; top: calc(96px + env(safe-area-inset-top, 0px)); font-size: 12px; }
 body.mobile #hw-dust-hud { bottom: auto; top: calc(126px + env(safe-area-inset-top, 0px)); font-size: 12px; }
+body.in-halloween #tutorial, body.in-halloween #tutorial-arrow, body.in-halloween #hud-timer, body.in-halloween #sightings { display: none !important; }
