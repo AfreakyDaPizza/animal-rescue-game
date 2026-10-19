@@ -15,6 +15,9 @@ const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣
 // Speed 數值 → 每秒行幾多格
 // 用 log：Speed 每加倍，就快 3 格／秒。咁 Speed 去到幾百萬都唔會快到飛出畫面。
 //   100 → 6、200 → 9、400 → 12、1,000 → 16、2,000,000 → 49
+// 慢行模式（M 掣，小朋友 2026-10-19：朋友玩太快會頭暈）：最快只係普通行路速度
+export const moveOpts = { slow: false };
+export const SLOW_WALK_SPEED = 7;
 export function walkSpeed(speed) {
   return 6 + 3 * Math.log2(Math.max(speed, 100) / 100);
 }
@@ -160,7 +163,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
     const len = Math.hypot(f, s); // 斜行唔好快過直行
     // 喺半空都保持跑步速度（小朋友老師話：跑跑下跳起會慢咗好多，2026-10-18 取消咗半空限速）
-    const speed = walkSpeed(state.speed);
+    const speed = moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed);
     const step = speed * dt * mag;
     // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
     const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));

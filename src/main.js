@@ -13,7 +13,7 @@ import { buildStatueButton, pressStatueButton, updateStatueButton, nearStatueBut
 import { createCrazyButton, crazyInteraction, updateCrazy, refillCrazy, pressCrazy } from './crazyButton.js'; // 🤪 秘密沙灘嘅瘋狂寵物掣
 import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
-import { createPlayer, updatePlayer, teleportPlayer, jumpHeight, jumpVelocity } from './player.js';
+import { createPlayer, updatePlayer, teleportPlayer, jumpHeight, jumpVelocity, moveOpts } from './player.js';
 import { showDeviceChooser, setupMobile } from './mobile.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
@@ -449,7 +449,7 @@ document.getElementById('start-button').addEventListener('click', () => {
 
 // 開／關聲（M 掣或者右上角個掣）
 const muteButton = document.getElementById('mute-button');
-const showMute = () => (muteButton.innerHTML = `${isMuted() ? '🔇' : '🔊'} <kbd>M</kbd>`);
+const showMute = () => (muteButton.innerHTML = `${isMuted() ? '🔇' : '🔊'} <kbd>N</kbd>`);
 showMute();
 muteButton.addEventListener('click', () => {
   toggleMute();
@@ -539,10 +539,15 @@ window.addEventListener('keydown', (e) => {
     startScreen.hidden = false;
     save();
   }
-  if (e.code === 'KeyM') {
+  if (e.code === 'KeyN') { // 🔊 聲（以前係 M）
     unlockAudio();
     toggleMute();
     showMute();
+  }
+  if (e.code === 'KeyM') { // 🐢 慢行模式：朋友玩太快會頭暈
+    moveOpts.slow = !moveOpts.slow;
+    play('click');
+    popup(moveOpts.slow ? '🐢 Slow walk ON (press M again to run fast)' : '⚡ Slow walk OFF - full speed!');
   }
   if (isPaused()) return;
   if (e.code === 'KeyE') interact();

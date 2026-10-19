@@ -44,7 +44,8 @@ No time to reach the beach? The button behind the **golden rhino statue** (near 
 | T | ⏱️ Machine Timers |
 | H | Hide or show pets |
 | G | Graphics quality |
-| M | Sound on or off |
+| M | 🐢 Slow walk on or off (if friends get dizzy) |
+| N | Sound on or off |
 | Mouse wheel | Zoom the camera |
 | Esc | Pause |
 
