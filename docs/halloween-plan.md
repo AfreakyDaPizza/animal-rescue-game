@@ -83,3 +83,19 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Hooks for the next helpers (`src/halloweenShape.js`):
   - **Positions:** `HW_BIOMES[i].rect / bossHome / eggZone / entrance`, `EGG_SLOTS`, `TRAIN_BOARD`, `TRAIN_STOP`, `TRACK_X`, `GHOST_WORLD`, `GHOST_ARRIVE`, `GHOST_TRAIN_STOP`, `STATUE_OF_HALLOWEEN`, `VACUUM_SHOP`, `FISH_SPOT`, `ROD_SHOP`, `DOCK`, `RUINS`, `RUINS_SAFE_R`.
   - **Checks:** `inHalloween`, `inGhostWorld`, `inSafeZone`, `hwZoneAt`, `hwBiomeIndexAt`.
+
+## ✅ Built: eggs + no-mercy bosses (src/halloweenEggs.js)
+- 3 eggs lie in each biome (rarer ones deeper). Each has a rarity-coloured ring, a light beam, a soft glow and a bob/wobble. A new egg appears 40 s after one is taken.
+- E grabs an egg:
+  - the fog closes in and turns dark red;
+  - a glowing red arrow on the ground plus a HUD pill point you to the Spawn Ruins;
+  - the egg's boss chases you after a 3 s head start;
+  - NO MERCY: every biome you run through wakes its boss too.
+- Caught: the egg goes back to its spot and you're thrown back to the Spawn Ruins. Reaching the safe zone rescues the egg into state.hwEggs.
+- Boss moves:
+  - Pumpkin Tyrant ground-pounds;
+  - Hollow Wraith teleport-hops (never closer than 10 m);
+  - Bone Drake fly-dashes.
+- Egg Graveyard (8 slots): E places your rarest egg, then a countdown runs (even offline). E hatches it with a crack/flash and the pet pops out into the backpack. It's added to the Index with a reward.
+- Numbers in balance.js: HALLOWEEN_BOSS_SPEED, HALLOWEEN_BOSS_SIZE, HALLOWEEN_HEAD_START, HALLOWEEN_EGGS_PER_BIOME, HALLOWEEN_EGG_RESPAWN, HALLOWEEN_FOG_NEAR/FAR.
+- For fishing: addEgg(name, rarity) from halloweenEggs.js puts an egg in the backpack.

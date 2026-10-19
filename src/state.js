@@ -47,6 +47,8 @@ const DEFAULTS = {
   soulDust: 0, // 💀 Halloween：捉鬼得嘅 Soul Dust
   hwShards: 0, // 🔮 Halloween Shard（可以疊）
   vacuumLevel: 0, // 🧹 Ghost Vacuum 等級（0 = 未有，1–5）
+  hwEggs: [], // 🥚 Halloween 蛋（救返嚟、未放落蛋墳場）：{ name, rarity }
+  hwSlots: [null, null, null, null, null, null, null, null], // 🪦 蛋墳場 8 個位：{ name, rarity, start } 或者 null
   halloweenEarly: false, // 🔐 秘密控制台：提早開 Halloween 世界（小朋友 2026-10-19）
   adminUsed: false, // 🔐 用過秘密控制台改嘢（已經備份咗真存檔）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）

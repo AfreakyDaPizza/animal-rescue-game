@@ -8,7 +8,7 @@ import { addCollider, addPlatform, bakeStatic, noiseTexture } from './world.js';
 import { makeSign, dynamicSign, THEMES } from './signs.js';
 import { seededRandom } from './spawnRoll.js';
 import { state } from './state.js';
-import { HALLOWEEN_OPEN_DATE } from './data/balance.js';
+import { HALLOWEEN_OPEN_DATE, HALLOWEEN_FOG_NEAR, HALLOWEEN_FOG_FAR } from './data/balance.js';
 import {
   HW_X, RUINS, RUINS_SAFE_R, HW_PORTAL, HW_BIOMES, MANOR, MANOR_GATE_Z, EGG_GRAVEYARD, EGG_SLOTS, STATION, STATION_PLATFORM, TRACK_X, TRAIN_BOARD,
   STATION_SIGN, GHOST_WORLD, GHOST_TRAIN_STOP, STATUE_OF_HALLOWEEN, VACUUM_SHOP, LAKE, LAKE_WATER, LAKE_SHORE, DOCK, FISH_SPOT, ROD_SHOP,
@@ -921,6 +921,7 @@ const SKY_BOTTOM = C(0x5a0d1e);
 const _fog = new THREE.Color();
 const _bg = new THREE.Color();
 const _flashC = C(0xd1c4e9);
+const _bloodFog = C(0x2a0006); // 拎住蛋嘅暗紅霧
 const SUN_RED = C(0xff7a5c);
 let fogNear = 70;
 let fogFar = 220;
@@ -960,9 +961,13 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
   skyUniforms.sunAmt.value *= 1 - k;
   skyUniforms.moonAmt.value *= 1 - k;
   // 霧：顏色 + 好近（慢慢變）
-  fogNear += (zone[1] - fogNear) * Math.min(1, dt * 1.2);
-  fogFar += (zone[2] - fogFar) * Math.min(1, dt * 1.2);
-  _fog.setHex(zone[0]).lerp(_flashC, flash * 0.35);
+  // 🥚 拎住蛋：霧收埋（halloween.closeFog 0–1，由 halloweenEggs.js 控制），變暗紅色
+  const cf = halloween.closeFog || 0;
+  const wantNear = THREE.MathUtils.lerp(zone[1], HALLOWEEN_FOG_NEAR, cf);
+  const wantFar = THREE.MathUtils.lerp(zone[2], HALLOWEEN_FOG_FAR, cf);
+  fogNear += (wantNear - fogNear) * Math.min(1, dt * (cf > 0.05 ? 4 : 1.2));
+  fogFar += (wantFar - fogFar) * Math.min(1, dt * (cf > 0.05 ? 4 : 1.2));
+  _fog.setHex(zone[0]).lerp(_bloodFog, cf * 0.85).lerp(_flashC, flash * 0.35);
   scene.fog.color.lerp(_fog, k);
   if (!halloween.noFog) { // （noFog：測試影相用）
     scene.fog.near = THREE.MathUtils.lerp(scene.fog.near, fogNear, k);
