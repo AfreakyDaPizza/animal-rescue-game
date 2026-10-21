@@ -51,6 +51,8 @@ function mat(key, make) {
   return mats.get(key);
 }
 const stdMat = (map, extra = {}) => new THREE.MeshStandardMaterial({ map, roughness: 0.92, ...extra });
+// 自己發少少光嘅地磚（光同紋理一樣顏色：淺色／水晶嗰啲磚最光）
+const glowMat = (map, k) => stdMat(map, { emissive: 0xffffff, emissiveMap: map, emissiveIntensity: k, roughness: 0.6 });
 
 // 平放嘅方塊（頂面 y = top，厚 h），UV 用世界座標（unit 米一格紋理）
 function slab(root, material, cx, cz, w, d, top, h, rotY = 0, unit = 1) {
@@ -473,9 +475,43 @@ export function roundPad(root, x, z, r, style) {
       ),
     );
   else if (style === 'steel') m = mat('steel', () => stdMat(steelTexture(), { metalness: 0.35, roughness: 0.55 }));
+  else if (style === 'meteor')
+    // ☄️ Meteoric Shop（Issue #10）：深藍星空石 + 一圈發光藍水晶磚 + 白色星星
+    m = mat('meteor', () =>
+      glowMat(
+        radialTexture(512, [
+          { r1: 0, r2: 0.28, tones: [0x1a237e, 0x283593], n: 6 },
+          { r1: 0.28, r2: 0.36, tones: [0x4fc3f7, 0x29b6f6, 0x81d4fa], n: 24 },
+          { r1: 0.36, r2: 0.62, tones: [0x1e2a5a, 0x22306a, 0x1b2550], n: 20, offset: 0.5 },
+          { r1: 0.62, r2: 0.82, tones: [0x283593, 0x303f9f, 0x26328a], n: 30 },
+          { r1: 0.82, r2: 0.9, tones: [0x00e5ff, 0x40c4ff, 0x18ffff], n: 40 },
+          { r1: 0.9, r2: 1, tones: [0x121a40, 0x162050], n: 48 },
+        ], '#0b1030', (ctx, s) => {
+          for (let i = 0; i < 5; i++) {
+            const a = (i / 5) * Math.PI * 2 + 0.3;
+            star(ctx, s / 2 + Math.cos(a) * s * 0.245, s / 2 + Math.sin(a) * s * 0.245, s * 0.03, '#e1f5fe', '#4fc3f7');
+          }
+          star(ctx, s / 2, s / 2, s * 0.07, '#b3e5fc', '#0288d1');
+        }),
+        0.35,
+      ),
+    );
+  else if (style === 'fuse')
+    // 🧪 Fuse Machine（Issue #10 醒目啲）：中間鋼板、一圈發光綠色、外面黃黑警告間條
+    m = mat('fuse', () =>
+      glowMat(
+        radialTexture(512, [
+          { r1: 0, r2: 0.62, tones: [0x78909c, 0x6f8591, 0x83969f], n: 10 },
+          { r1: 0.62, r2: 0.7, tones: [0x76ff03, 0x64dd17], n: 32 },
+          { r1: 0.7, r2: 0.86, tones: [0x37474f, 0x3e5059], n: 24, offset: 0.5 },
+          { r1: 0.86, r2: 1, tones: [0xffd600, 0x212121], n: 40 },
+        ], '#263238'),
+        0.2,
+      ),
+    );
   else m = mat('sand', () => stdMat(sandTexture(), { roughness: 1 }));
   // 石框（下一層，闊少少）
-  const frameColor = style === 'library' ? 0x4527a0 : style === 'steel' ? 0x546e7a : 0xbcaaa4;
+  const frameColor = style === 'library' ? 0x4527a0 : style === 'steel' || style === 'fuse' ? 0x546e7a : style === 'meteor' ? 0x1a237e : 0xbcaaa4;
   const frame = mat('rframe' + frameColor, () => stdMat(settTexture(frameColor, shade(frameColor, -0.15), 77)));
   const fg = new THREE.CylinderGeometry(r + 0.35, r + 0.35, 0.06, 64);
   fg.translate(x, 0.03, z);
@@ -485,7 +521,7 @@ export function roundPad(root, x, z, r, style) {
   root.add(f);
   const pg = new THREE.CylinderGeometry(r, r, 0.02, 64);
   pg.translate(x, 0.07, z);
-  if (style !== 'library') worldUV(pg, style === 'steel' ? 2 : 3);
+  if (!['library', 'meteor', 'fuse'].includes(style)) worldUV(pg, style === 'steel' ? 2 : 3); // 放射紋理成個圓一張，唔使 worldUV
   const p = new THREE.Mesh(pg, m);
   p.receiveShadow = true;
   root.add(p);

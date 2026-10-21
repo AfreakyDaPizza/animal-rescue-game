@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { HUB, PLOT } from './hubShape.js';
+import { HUB, PLOT, LIBRARY, METEOR_SHOP, LIBRARY_WALK_X } from './hubShape.js';
 import { GYM_PORTAL } from './labShape.js';
 import { addCollider } from './world.js';
 import { buildAnimalModel } from './animalModels.js';
@@ -252,7 +252,9 @@ export function standUp(owner, x, z, faceAngle) {
 // 3 個入料艙（後面）+ 1 個出貨艙（前面，面向噴水池）；fuseMachine.showResult(名) 播溶合動畫
 // 2026-10-18 Hub 重新排位：搬咗去 Breeding Lab 右邊（同繁殖機一齊做 Machine 區），前面面向繁殖機（-x）
 export const FUSE_MACHINE = { x: 26, z: 40 };
-export const fuseMachine = { spot: { x: FUSE_MACHINE.x - 3.6, z: FUSE_MACHINE.z }, showResult: null };
+// Issue #10（小朋友：Fuse Machine 要醒目啲）：部機大 1.3 倍、頂有光柱 + 轉圈光環、高高嘅大牌、地台四角有燈柱
+const FUSE_SCALE = 1.3;
+export const fuseMachine = { spot: { x: FUSE_MACHINE.x - 3.6 * FUSE_SCALE, z: FUSE_MACHINE.z }, showResult: null };
 function buildComingSoon(rootScene, liveScene) {
   // 喺噴水池右邊，面向噴水池（本地 -z → 世界 -x）
   const x = 0;
@@ -262,6 +264,7 @@ function buildComingSoon(rootScene, liveScene) {
   for (const g of [root, live]) {
     g.position.set(FUSE_MACHINE.x, 0, FUSE_MACHINE.z);
     g.rotation.y = Math.PI / 2;
+    g.scale.setScalar(FUSE_SCALE);
   }
   rootScene.add(root);
   liveScene.add(live);
@@ -324,7 +327,8 @@ function buildComingSoon(rootScene, liveScene) {
   sign.mesh.position.set(x, 3.2, z - 2.05);
   sign.mesh.rotation.y = Math.PI;
   live.add(sign.mesh);
-  addCollider(FUSE_MACHINE.x, FUSE_MACHINE.z + 0, 2.6);
+  addCollider(FUSE_MACHINE.x, FUSE_MACHINE.z + 0, 2.6 * FUSE_SCALE);
+  const beacon = buildFuseBeacon(rootScene, liveScene);
 
   // 溶合動畫：入料艙閃、光柱、新寵物喺出貨艙轉
   let fx = null;
@@ -342,6 +346,7 @@ function buildComingSoon(rootScene, liveScene) {
     const isOpen = isFuseOpen();
     closed.visible = !isOpen;
     open.visible = isOpen;
+    beacon(time, isOpen, fx ? fx.t : -1);
     if (!isOpen) {
       lamp.material.emissiveIntensity = Math.sin(time * 5) > 0 ? 2.5 : 0.2;
       const days = daysUntilOpen();
@@ -372,6 +377,87 @@ function buildComingSoon(rootScene, liveScene) {
         beam.material.opacity = 0;
       }
     }
+  };
+}
+
+// 🧪 Fuse Machine 嘅「醒目」裝飾（Issue #10）：成個 Hub 都望到
+//   - 頂上一條光柱 + 兩個轉圈光環（開咗 = 綠色；未開 = 橙色）
+//   - 高高嘅大牌（雙面，面向 Hub 中間）
+//   - 地台四角四支燈柱（頂有發光波波）+ 一盞綠燈照住部機
+// 回傳 update(time, isOpen, fuseT)：fuseT ≥ 0 = 播緊溶合動畫（光柱閃到最勁）
+function buildFuseBeacon(rootScene, liveScene) {
+  const { x, z } = FUSE_MACHINE;
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  liveScene.add(g);
+  const additive = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  // 光柱（由部機頂一直射上天）
+  const beamMat = additive(0x76ff03, 0.22);
+  const beam = add(g, new THREE.CylinderGeometry(0.55, 0.9, 26, 20, 1, true), beamMat, 0, 6.8 + 13, 0, false);
+  const coreMat = additive(0xccff90, 0.5);
+  const core = add(g, new THREE.CylinderGeometry(0.16, 0.16, 26, 10, 1, true), coreMat, 0, 6.8 + 13, 0, false);
+  // 兩個光環（上下郁）
+  const rings = [0, 1].map(() => {
+    const r = add(g, new THREE.TorusGeometry(1.5, 0.07, 8, 40), additive(0x76ff03, 0.8), 0, 8, 0, false);
+    r.rotation.x = Math.PI / 2;
+    return r;
+  });
+  // 四支燈柱
+  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xb2ff59, emissive: 0x76ff03, emissiveIntensity: 2.5 });
+  const pole = mat(0x37474f, { metalness: 0.6, roughness: 0.4 });
+  const stripe = mat(0xffd600, { emissive: 0x332b00 });
+  const bulbs = [];
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    const px = Math.cos(a) * 4.3;
+    const pz = Math.sin(a) * 4.3;
+    add(rootScene, new THREE.CylinderGeometry(0.16, 0.2, 2.2, 10), pole, x + px, 1.1, z + pz);
+    add(rootScene, new THREE.CylinderGeometry(0.21, 0.21, 0.25, 10), stripe, x + px, 0.6, z + pz);
+    add(rootScene, new THREE.CylinderGeometry(0.21, 0.21, 0.25, 10), stripe, x + px, 1.5, z + pz);
+    bulbs.push(add(g, new THREE.SphereGeometry(0.3, 14, 10), bulbMat, px, 2.45, pz, false));
+    addCollider(x + px, z + pz, 0.3);
+  }
+  const lamp = new THREE.PointLight(0x76ff03, 14, 13, 1.5);
+  lamp.position.set(-2.5, 4, 0);
+  g.add(lamp);
+  // 高高嘅大牌：兩條柱 + 牌，喺部機後面（離 Hub 中間遠嗰邊），面向 Hub 中間
+  const signTheme = { top: '#76ff03', bottom: '#2e7d32', border: '#0b3d0b', text: '#ffffff' };
+  const big = dynamicSign(6.2, 1.9);
+  const signG = new THREE.Group();
+  const away = Math.atan2(x - HUB.cx, z - HUB.cz); // 由 Hub 中間望過嚟：牌喺部機後面
+  signG.position.set(x + Math.sin(away) * 4.2, 0, z + Math.cos(away) * 4.2);
+  signG.rotation.y = Math.atan2(HUB.cx - signG.position.x, HUB.cz - signG.position.z);
+  liveScene.add(signG);
+  big.mesh.position.y = 9.6;
+  signG.add(big.mesh);
+  for (const sx of [-2.9, 2.9]) add(signG, rbox(0.3, 10.6, 0.3), pole, sx, 5.3, -0.06);
+  add(signG, rbox(6.6, 0.3, 0.4), stripe, 0, 10.7, -0.06);
+  addCollider(signG.position.x + Math.cos(signG.rotation.y) * 2.9, signG.position.z - Math.sin(signG.rotation.y) * 2.9, 0.3);
+  addCollider(signG.position.x - Math.cos(signG.rotation.y) * 2.9, signG.position.z + Math.sin(signG.rotation.y) * 2.9, 0.3);
+  const GREEN = new THREE.Color(0x76ff03);
+  const ORANGE = new THREE.Color(0xff9100);
+  return (time, isOpen, fuseT) => {
+    const c = isOpen ? GREEN : ORANGE;
+    beamMat.color.copy(c);
+    rings.forEach((r) => r.material.color.copy(c));
+    bulbMat.color.copy(c);
+    bulbMat.emissive.copy(c);
+    lamp.color.copy(c);
+    const fusing = fuseT >= 0 && fuseT < 2;
+    beamMat.opacity = fusing ? 0.5 + Math.sin(fuseT * 30) * 0.15 : 0.16 + Math.sin(time * 2) * 0.06;
+    coreMat.opacity = fusing ? 0.9 : 0.35 + Math.sin(time * 3) * 0.12;
+    beam.rotation.y = time * 0.5;
+    rings.forEach((r, i) => {
+      const k = (time * 0.25 + i * 0.5) % 1;
+      r.position.y = 6.5 + k * 12;
+      r.scale.setScalar(1 + k * 0.6);
+      r.material.opacity = 0.8 * (1 - k);
+    });
+    bulbs.forEach((b, i) => (b.scale.setScalar(1 + Math.max(0, Math.sin(time * 4 - i * 1.57)) * 0.25)));
+    bulbMat.emissiveIntensity = 2 + Math.sin(time * 4) * 0.8;
+    big.draw(isOpen ? signTheme : THEMES.orange, isOpen
+      ? [{ text: '🧪 FUSE MACHINE', size: 0.5 }, { text: 'Fuse 3 pets into 1 NEW pet!', size: 0.24, color: '#f4ff81' }]
+      : [{ text: '🧪 FUSE MACHINE', size: 0.5 }, { text: `Opens ${openDateText()}`, size: 0.24, color: '#fff59d' }]);
   };
 }
 
@@ -600,7 +686,8 @@ export function buildHubPark(root, live) {
   centralPlaza(root, cx, cz, 9.4); // 傳送門周圍嘅圓形石板廣場
   pathStrip(root, 0, cz + 7, 0, cz + r, 5);
   pathStrip(root, -29, 10.5, 27, 10.5, 3); // 上面一條：Training Zone ── 入口 ── Shop Street
-  pathStrip(root, -20, cz, -7, cz, 3.5); // 去 Magic Library
+  pathStrip(root, LIBRARY_WALK_X, cz, -7, cz, 3.5); // 去 Magic Library + ☄️ Meteoric Shop（Issue #10：兩間都貼住左邊圍牆）
+  pathStrip(root, LIBRARY_WALK_X, LIBRARY.z - 4.5, LIBRARY_WALK_X, METEOR_SHOP.z + 3.5, 3.2); // 兩間門口前面嘅直路
   pathStrip(root, 7, cz, PLOT.minX, cz, 3.5); // 去地塊閘口
   pathStrip(root, -27, 36, 27, 36, 3); // 繁殖機 + Fuse Machine 前面
 
@@ -608,9 +695,10 @@ export function buildHubPark(root, live) {
   tilePad(root, -19.5, 7.5, 20, 12, 'training'); // Training Zone（膠地）
   tilePad(root, 0, 4.2, 10, 7.4, 'entrance'); // 入口廣場（雲石）
   tilePad(root, 17.3, 5.2, 18, 7.6, 'shop'); // Shop Street（藍白格仔）
-  roundPad(root, -25, 25, 6.6, 'library'); // Magic Library（紫色星星）
+  roundPad(root, LIBRARY.x, LIBRARY.z, 6.0, 'library'); // Magic Library（紫色星星）
+  roundPad(root, METEOR_SHOP.x, METEOR_SHOP.z, 5.6, 'meteor'); // ☄️ Meteoric Shop（深藍星空 + 隕石水晶）
   tilePad(root, 0, 40, 40, 6, 'breeding'); // Breeding Lab（粉紅菱形）
-  roundPad(root, FUSE_MACHINE.x, FUSE_MACHINE.z, 4.2, 'steel'); // Fuse Machine（鋼板）
+  roundPad(root, FUSE_MACHINE.x, FUSE_MACHINE.z, 4.8, 'fuse'); // Fuse Machine（鋼板 + 黃黑警告邊 + 綠色化學圈；Issue #10 要醒目啲）
 
   // 區域牌
   zoneSign(live, -19.5, 14.6, '🏃 TRAINING ZONE', THEMES.orange);
@@ -661,6 +749,8 @@ export function buildHubPark(root, live) {
     if (Math.abs(tx) < 7) continue; // 大門
     if (Math.hypot(tx - HAMMOCK.x, tz - HAMMOCK.z) < 6) continue;
     if (Math.hypot(tx - 14, tz - 51.5) < 7) continue; // 遊樂場
+    if (Math.hypot(tx - METEOR_SHOP.x, tz - METEOR_SHOP.z) < 7) continue; // ☄️ Meteoric Shop
+    if (Math.hypot(tx - FUSE_MACHINE.x, tz - FUSE_MACHINE.z) < 7) continue; // 🧪 Fuse Machine（留位俾光柱同大牌）
     tree(root, tx, tz, 0.85 + ((i * 37) % 10) / 25, i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0);
   }
 

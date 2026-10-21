@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { short } from './format.js';
-import { PLOT } from './hubShape.js';
+import { PLOT, LIBRARY } from './hubShape.js';
 import { addCollider, bakeStatic } from './world.js';
 import { fencePost, fenceRails, archX } from './fences.js'; // 🪵 靚啲嘅圍欄
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
@@ -1628,7 +1628,8 @@ export function createHub(scene) {
   onPlot.slice(plotSlots(state.plotLevel)).forEach((p) => (p.onPlot = false));
   state.pets.filter((p) => p.onPlot).forEach((p) => addPetToPlot(plot, scene, p));
   // 魔法圖書館（Index）喺噴水池左邊，面向噴水池
-  const library = buildMagicLibrary(scene, -25, 25, Math.PI / 2);
+  // 2026-10-21 Issue #10：背脊貼住左邊圍牆（慳位），隔籬係 ☄️ Meteoric Shop（meteorShop.js）
+  const library = buildMagicLibrary(scene, LIBRARY.x, LIBRARY.z, Math.PI / 2);
   const kiosk = library.spot;
   applyPlotSkin({ plot });
 

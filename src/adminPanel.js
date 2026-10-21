@@ -6,7 +6,7 @@
 import { state, save } from './state.js';
 import { short } from './format.js';
 import { play } from './sound.js';
-import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
+import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
 import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
@@ -123,7 +123,7 @@ function futureHtml() {
 }
 
 // ---------- 🐾 Pets ----------
-const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
+const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
 // 預覽：例如「🙃 GIANT x10 🔥🌑 Mythic Celestial Sunlion」
 const previewText = () => {
   const muts = MUTATIONS.filter((m) => pick.mutations.includes(m)).map((m) => mutationInfo(m).emoji).join('');
@@ -131,11 +131,12 @@ const previewText = () => {
 };
 const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
 const GROUPS = [
-  ['all', 'All', () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS]],
+  ['all', 'All', () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS]],
   ['normal', '🌳 Animals', () => ANIMALS],
   ['fuse', '🧪 Fuse', () => FUSE_PETS],
   ['halloween', '🎃 Halloween', () => HALLOWEEN_PETS],
   ['chest', '🧟 Chest', () => CHEST_PETS],
+  ['meteor', '☄️ Meteoric', () => METEOR_PETS],
 ];
 const matches = (a) => !search || a.name.toLowerCase().includes(search.toLowerCase());
 
