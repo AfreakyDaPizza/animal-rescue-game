@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { short } from './format.js';
 import { biomeFloorTexture } from './biomeArt.js';
+import { buildHubGrass } from './hubFloor.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { decorateBiome } from './biomes.js';
 import { buildHubPark } from './hubPark.js';
@@ -200,27 +201,9 @@ function kingdomHost(scene) {
   return kHost;
 }
 
-// 圓形 Hub 地板（頂嗰截 z < 0 切走）
+// 圓形 Hub 地板（頂嗰截 z < 0 切走）：Issue #8 重做，有紋理 + 大範圍深淺，喺 hubFloor.js
 function addHubFloor(scene) {
-  const shape = new THREE.Shape();
-  const a0 = Math.asin(-HUB.cz / HUB.r);
-  const a1 = Math.PI - a0;
-  // Shape 喺 XY 平面，之後轉落地：y = -z
-  for (let i = 0; i <= 64; i++) {
-    const a = a0 + ((a1 - a0) * i) / 64;
-    const x = HUB.cx + Math.cos(a) * HUB.r;
-    const z = HUB.cz + Math.sin(a) * HUB.r;
-    if (i === 0) shape.moveTo(x, -z);
-    else shape.lineTo(x, -z);
-  }
-  shape.closePath();
-  const floor = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape, 1),
-    new THREE.MeshStandardMaterial({ map: noiseTexture(0x7fb069, 0.08, 0.25, 0.25) }),
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  scene.add(floor);
+  buildHubGrass(scene, HUB);
 }
 
 // 圍牆裝飾（小朋友 2026-10-19：要型啲）：頂邊石、城垛、每隔幾段一條粗柱（柱頂石球）、

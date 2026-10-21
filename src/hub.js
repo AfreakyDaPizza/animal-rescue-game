@@ -20,6 +20,7 @@ import { state } from './state.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
 import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation } from './data/animals.js';
 import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
+import { plotGroundTexture } from './hubFloor.js'; // 🐾 地塊地面紋理（Issue #8）
 
 const INTERACT_DISTANCE = 2.8;
 const fmt = short; // K／M／B／T（src/format.js）
@@ -1325,7 +1326,7 @@ function buildPlot(realScene) {
   const scene = new THREE.Group(); // 圍欄同草地先放埋一齊，最後焊埋做幾件（畫得快啲）
   const { minX, maxX, minZ, maxZ, gateZ, gateWidth } = PLOT;
   // 草地
-  const grassMat = new THREE.MeshStandardMaterial({ color: 0x66bb6a }); // 皮膚會改佢顏色
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x66bb6a, map: plotGroundTexture(maxX - minX, maxZ - minZ), roughness: 0.95 }); // 皮膚會改佢顏色（紋理係灰白色，跟住染色；Issue #8）
   const grass = new THREE.Mesh(new THREE.BoxGeometry(maxX - minX, 0.06, maxZ - minZ), grassMat);
   grass.position.set((minX + maxX) / 2, 0.03, (minZ + maxZ) / 2);
   grass.receiveShadow = true;
