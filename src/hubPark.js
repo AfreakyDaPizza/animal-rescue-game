@@ -15,6 +15,7 @@ import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { buildOwner } from './owner.js';
 import { shimmerTexture } from './ambience.js';
 import { fenceLine } from './fences.js'; // 🪵 前院白色木欄
+import { pathStrip, centralPlaza, tilePad, roundPad } from './hubFloor.js';
 
 // 位置（開場動畫都會用）
 export const FOUNTAIN = { x: HUB.cx, z: HUB.cz };
@@ -64,20 +65,7 @@ function tree(root, x, z, s = 1, kind = 0) {
   if (kind === 2) for (const [dx, dz] of [[1.2, 1.0], [-1.0, 1.3], [0.4, -1.4]]) add(root, new THREE.BoxGeometry(0.3 * s, 0.3 * s, 0.3 * s), mat(0xff7043), x + dx * s, 4.2 * s, z + dz * s); // 生果
 }
 
-// 平面嘅路（圓環／長條），貼地
-const pathMat = mat(0xcfc3a8);
-const pathEdge = mat(0xa1957c);
-function pathStrip(root, x1, z1, x2, z2, width) {
-  const len = Math.hypot(x2 - x1, z2 - z1);
-  const m = add(root, new THREE.BoxGeometry(width, 0.05, len), pathMat, (x1 + x2) / 2, 0.025, (z1 + z2) / 2, false);
-  m.rotation.y = Math.atan2(x2 - x1, z2 - z1);
-}
-function pathRing(root, x, z, r1, r2) {
-  const ring = add(root, new THREE.RingGeometry(r1, r2, 48), pathMat, x, 0.03, z, false);
-  ring.rotation.x = -Math.PI / 2;
-  const edge = add(root, new THREE.RingGeometry(r2, r2 + 0.25, 48), pathEdge, x, 0.035, z, false);
-  edge.rotation.x = -Math.PI / 2;
-}
+// 路、中間廣場、區域地磚：Issue #8 重做咗，喺 hubFloor.js（有紋理、石邊、唔會閃）
 
 // ---------- 噴水池（會噴水） ----------
 function buildFountain(root, live) {
@@ -394,8 +382,7 @@ function buildPlayground(root) {
   const red = mat(0xe53935);
   const blue = mat(0x1e88e5);
   const yellow = mat(0xfdd835);
-  const sand = add(root, new THREE.CylinderGeometry(5.2, 5.2, 0.06, 32), mat(0xf3d9a4), x, 0.03, z, false);
-  sand.receiveShadow = true;
+  roundPad(root, x, z, 5.2, 'sand'); // 沙池（有紋理 + 石框）
   add(root, rbox(1.6, 2.4, 1.6), blue, x - 3.5, 1.2, z - 1); // 滑梯台
   add(root, new THREE.BoxGeometry(1.2, 0.12, 4), yellow, x - 3.5, 1.3, z + 1.4).rotation.x = -0.55;
   for (const s of [-1, 1]) add(root, rbox(0.15, 3, 0.15), red, x + 1.5 + s * 1.6, 1.5, z - 2);
@@ -512,19 +499,7 @@ function buildBirds(live) {
   };
 }
 
-// ---------- 區域：彩色地磚 + 牌 + 矮樹籬（等 Hub 睇落整齊） ----------
-function tilePad(root, x, z, w, d, color, edge) {
-  add(root, new THREE.BoxGeometry(w + 0.5, 0.04, d + 0.5), mat(edge), x, 0.012, z, false);
-  add(root, new THREE.BoxGeometry(w, 0.05, d), mat(color), x, 0.02, z, false);
-  // 地磚線
-  const line = mat(edge);
-  for (let i = 1; i < Math.floor(w / 2); i++) add(root, new THREE.BoxGeometry(0.06, 0.055, d), line, x - w / 2 + i * 2, 0.022, z, false);
-  for (let i = 1; i < Math.floor(d / 2); i++) add(root, new THREE.BoxGeometry(w, 0.055, 0.06), line, x, 0.022, z - d / 2 + i * 2, false);
-}
-function roundPad(root, x, z, r, color, edge) {
-  add(root, new THREE.CylinderGeometry(r + 0.3, r + 0.3, 0.04, 40), mat(edge), x, 0.012, z, false);
-  add(root, new THREE.CylinderGeometry(r, r, 0.05, 40), mat(color), x, 0.02, z, false);
-}
+// ---------- 區域牌 + 矮樹籬（等 Hub 睇落整齊；地磚喺 hubFloor.js） ----------
 // 區域牌：兩條柱 + 牌，面向 (fx, fz)
 // 🌼 花圃（2026-10-18 present 前：出世點周圍靚啲）：兩個 InstancedMesh（莖 + 花），行得穿、唔加碰撞
 function flowerBeds(live) {
@@ -622,7 +597,7 @@ export function buildHubPark(root, live) {
 
   // 路：十字形 + 噴水池圓環 + 去跑步機／地塊嘅橫路 + 繁殖機前面嘅橫路
   pathStrip(root, 0, 0, 0, cz - 7, 5);
-  pathRing(root, cx, cz, 6.2, 9);
+  centralPlaza(root, cx, cz, 9.4); // 傳送門周圍嘅圓形石板廣場
   pathStrip(root, 0, cz + 7, 0, cz + r, 5);
   pathStrip(root, -29, 10.5, 27, 10.5, 3); // 上面一條：Training Zone ── 入口 ── Shop Street
   pathStrip(root, -20, cz, -7, cz, 3.5); // 去 Magic Library
@@ -630,12 +605,12 @@ export function buildHubPark(root, live) {
   pathStrip(root, -27, 36, 27, 36, 3); // 繁殖機 + Fuse Machine 前面
 
   // 區域地磚
-  tilePad(root, -19.5, 7.5, 20, 12, 0xffe0b2, 0xffb74d); // Training Zone
-  tilePad(root, 0, 4.2, 10, 7.4, 0xeeeeee, 0xbdbdbd); // 入口廣場
-  tilePad(root, 17.3, 5.2, 18, 7.6, 0xe1f5fe, 0x4fc3f7); // Shop Street
-  roundPad(root, -25, 25, 6.6, 0xd1c4e9, 0x9575cd); // Magic Library
-  tilePad(root, 0, 40, 40, 6, 0xf8bbd0, 0xf06292); // Breeding Lab
-  roundPad(root, FUSE_MACHINE.x, FUSE_MACHINE.z, 4.2, 0xcfd8dc, 0x90a4ae); // Fuse Machine
+  tilePad(root, -19.5, 7.5, 20, 12, 'training'); // Training Zone（膠地）
+  tilePad(root, 0, 4.2, 10, 7.4, 'entrance'); // 入口廣場（雲石）
+  tilePad(root, 17.3, 5.2, 18, 7.6, 'shop'); // Shop Street（藍白格仔）
+  roundPad(root, -25, 25, 6.6, 'library'); // Magic Library（紫色星星）
+  tilePad(root, 0, 40, 40, 6, 'breeding'); // Breeding Lab（粉紅菱形）
+  roundPad(root, FUSE_MACHINE.x, FUSE_MACHINE.z, 4.2, 'steel'); // Fuse Machine（鋼板）
 
   // 區域牌
   zoneSign(live, -19.5, 14.6, '🏃 TRAINING ZONE', THEMES.orange);
