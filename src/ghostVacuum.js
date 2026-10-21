@@ -594,7 +594,7 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
       // 唔好疊住上面嘅活動橫額：條 bar 最高只可以去到橫額下面
       if (nBar === 1) {
         const ban = document.getElementById('event-banner');
-        const r = ban && ban.offsetParent ? ban.getBoundingClientRect() : null;
+        const r = ban && ban.getClientRects().length ? ban.getBoundingClientRect() : null; // fixed 元素冇 offsetParent，用 getClientRects 判斷有冇顯示
         barMinY = r && r.height ? r.bottom + 44 : 44;
       }
       const sy = Math.max(barMinY, ((1 - head.y) / 2) * innerHeight);
