@@ -69,11 +69,13 @@ export const BEACH_LOCAL = { minX: 24, maxX: 64, minZ: 63, maxZ: 100 };
 export const BENCH_LOCAL = { x: 50, z: 72 }; // 坐低睇流星（面向 +x 個海）
 export const STRANGER_LOCAL = { x: 59.5, z: 94 }; // 神秘人
 export const BEACH_PORTAL_LOCAL = { x: 28, z: 81.5 }; // 返去公園嘅傳送門
+export const BEACH_PIER_LOCAL = { minX: 55, maxX: 83, minZ: 79.6, maxZ: 83.4 }; // Issue #9：木碼頭（行得出去海上面；塊板闊 2.8，兩邊留返公仔闊度）
 const W = (p) => ({ ...p, x: p.x + BEACH_OFFSET });
 export const BEACH = { ...BEACH_LOCAL, minX: BEACH_LOCAL.minX + BEACH_OFFSET, maxX: BEACH_LOCAL.maxX + BEACH_OFFSET };
 export const BENCH = W(BENCH_LOCAL);
 export const STRANGER = W(STRANGER_LOCAL);
 export const BEACH_PORTAL = W(BEACH_PORTAL_LOCAL);
+export const BEACH_PIER = { ...BEACH_PIER_LOCAL, minX: BEACH_PIER_LOCAL.minX + BEACH_OFFSET, maxX: BEACH_PIER_LOCAL.maxX + BEACH_OFFSET };
 export const BEACH_ARRIVE = { x: BEACH.minX + 8, z: 81.5 }; // 去到沙灘企喺邊
 
 // ---- 💪 GYM（小朋友 2026-10-18）：實驗室爆炸之後，實驗室冇咗，Gym 喺原位出現；GYM_OPEN_DATE 先開門 ----
