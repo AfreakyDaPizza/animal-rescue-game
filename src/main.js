@@ -42,6 +42,7 @@ import { questEvent, claimQuest, PET_TOKENS } from './quests.js';
 import { RANGER_SKINS, PET_SKINS, OLD_HUB_EXPANSION_COSTS, applyPetSkin, animateSkins } from './skins.js';
 import { updateEvents, forceEvent, boost } from './events.js';
 import { createEclipse, updateEclipse, applyEclipseSky, playEclipseIntro, STRIKE_RADIUS } from './eclipse.js';
+import { createMeteorEvent, updateMeteor, applyMeteorSky, meteorShake } from './meteorEvent.js'; // ☄️ Issue #10 METEORIC
 import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
 import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS, MAX_TRAINING_LEVEL, MACHINE_LEVELS, PLOT_MAX_UPGRADES } from './data/balance.js';
@@ -141,6 +142,7 @@ let echo = null; // 🐕 Echo 嘅 Zombified Chest 舖（同 hwWorld 一齊起）
 labStatus.gone = !!state.labBossDefeated; // 舊存檔：打贏咗 Boss = 實驗室已經爆咗
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const eclipse = createEclipse(scene); // Eclipse 日蝕活動（天上嘅日蝕、DNA 激光）
+const meteor = createMeteorEvent(scene); // ☄️ METEORIC：隕石撞落嚟、執水晶、天上流星
 const hub = createHub(scene);
 // 舊存檔：Enchanted Sunlion 改咗名做 Celestial Sunlion
 {
@@ -1724,6 +1726,7 @@ renderer.setAnimationLoop((timestamp) => {
   updateStatueButton(statueBtn, dt);
   if (!frozen) updateCrazy(crazy, dt, rescue, () => rescue.wild.forEach((w) => (w.crazy = false))); // 完咗：唔再補；剩低嗰啲留到下次入夜
   updateEclipse(eclipse, frozen ? 0 : dt, time, { active: boost.eclipse, playing: !isPaused(), camera, pickTarget: eclipseTarget, onStrike: eclipseStrike, onWarn: () => play('alarm') });
+  updateMeteor(meteor, frozen ? 0 : dt, time, { camPos: camera.position, feetY: player.feetY, quality: quality.level, playing: !isPaused() && !movie.active && !intro.active, bosses });
 
   hub.night = dayNight.isNight; // 夜晚繁殖機 10 倍速
   if (isPaused()) {
@@ -1847,6 +1850,7 @@ renderer.setAnimationLoop((timestamp) => {
     handleEvents(); // 要喺 updateDayNight 之後：活動同入夜同一刻開始（整點／半點），活動嘅動物先唔會俾入夜 spawnAll 蓋咗
     applyBeachSky(scene, sky.uniforms, hemi, sun); // 秘密沙灘：星空
     applyEclipseSky(eclipse, scene, sky.uniforms, hemi, sun); // Eclipse：成個地圖變日蝕色
+    applyMeteorSky(meteor, scene, sky.uniforms); // ☄️ METEORIC：天空帶藍紫色
     updateHud(dayNight, location);
     updateSideBoxes(dt);
   }
@@ -1939,8 +1943,11 @@ renderer.setAnimationLoop((timestamp) => {
   sun.position.set(pos.x + 15, 30, pos.z + 8);
   sun.target.position.set(pos.x, 0, pos.z);
 
+  const quake = inMovie ? null : meteorShake(meteor); // ☄️ 隕石撞落地：震下畫面
+  if (quake) viewCam.position.add(quake);
   if (quality.bloom) composer.render();
   else renderer.render(scene, viewCam);
+  if (quake) viewCam.position.sub(quake);
   autoQuality(dt);
   if (!booted) {
     booted = true;
@@ -2012,3 +2019,4 @@ const labDebug = {
 };
 
 if (import.meta.env.DEV) window.game = { inventory, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game.meteor = meteor; // ☄️ 測試：game.forceEvent('meteor')、game.meteor

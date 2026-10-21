@@ -56,6 +56,7 @@ const DEFAULTS = {
   gears: [], // ⚙️ Gears（Issue #10）：[{ type: 'halloweenShard' }, { type: 'meteoricShard' }…]，種類見 src/data/gears.js
   hotbar: [null, null, null, null, null, null, null, null, null, null], // 🎒 由背包拖落快捷欄嘅嘢：每格一個 key（'pet:uid'、'res:uid'、'gear:type'）或者 null
   candyCorn: 0, // 🌽 Halloween：釣魚得嘅 Candy Corn（買魚竿、寶箱舖用）
+  meteorCrystals: 0, // ☄️ METEORIC 活動執到嘅 Meteoric Crystals（Issue #10；每粒 × state.crystalMultiplier）
 };
 
 export const state = load();

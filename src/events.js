@@ -11,12 +11,14 @@ export const EVENTS = [
   // 小朋友 2026-10-17：Troll Frenzy（好稀有嘅寵物，但 Boss 快 1,000,000 倍）同 Eclipse（日蝕：繁殖機 x20、日蝕激光）
   { id: 'troll', emoji: '🤡', name: 'TROLL FRENZY', desc: 'CRAZY rare pets everywhere... but every Boss is 1,000,000x FASTER! Good luck! 🤡', duration: 60 },
   // 小朋友 2026-10-18：刪走 Eclipse 活動（已經有 🌑 Eclipse 變異嘅寵物照樣保留 x6）
+  // Issue #10 小朋友 2026-10-21：METEORIC（隕石雨）—— 比其他活動少啲機會（大約每 6–7 次一次），見 eventForSlot
+  { id: 'meteor', emoji: '☄️', name: 'METEORIC', desc: 'Blue meteors crashed! Grab the glowing ☄️ Meteoric Crystals!', duration: 300 },
   // { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180 },
 ];
 // （秘密拉桿同 BIG PET FRENZY：2026-10-15 小朋友叫刪走）
 
 // 而家生效嘅加成（其他檔案讀呢度）
-export const boost = { size: 1, money: 1, train: 1, bossSpeed: 1, machine: 1, eclipse: false };
+export const boost = { size: 1, money: 1, train: 1, bossSpeed: 1, machine: 1, eclipse: false, meteor: false };
 
 // 測試用：game.forceEvent('frenzy') 即刻開始一個活動
 let forced = null;
@@ -24,11 +26,24 @@ export function forceEvent(id) {
   forced = { ev: EVENTS.find((e) => e.id === id), start: Date.now() };
 }
 
+// ☄️ METEORIC：另外擲一次「固定隨機」骰仔（18%，上一格係 METEORIC 就唔會再嚟）→ 實際大約 15%（每 6–7 個時段一次）
+// 其他 5 個活動：同以前一樣嘅揀法（所以以前嘅時間表冇變，只係有啲時段變咗 METEORIC）
+export const METEOR_CHANCE = 0.18;
+function meteorRoll(n) {
+  let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+const isMeteorSlot = (slot) => meteorRoll(slot) < METEOR_CHANCE && !(meteorRoll(slot - 1) < METEOR_CHANCE);
 function eventForSlot(slot) {
-  const pick = (n) => ((Math.imul(n, 2654435761) >>> 0) >>> 7) % EVENTS.length;
+  if (isMeteorSlot(slot)) return EVENTS.find((e) => e.id === 'meteor');
+  const others = EVENTS.filter((e) => e.id !== 'meteor');
+  const pick = (n) => ((Math.imul(n, 2654435761) >>> 0) >>> 7) % others.length;
   let i = pick(slot);
-  if (i === pick(slot - 1)) i = (i + 1) % EVENTS.length; // 唔好連續兩次一樣
-  return EVENTS[i];
+  if (i === pick(slot - 1)) i = (i + 1) % others.length; // 唔好連續兩次一樣
+  return others[i];
 }
 
 // 而家嘅活動狀態：{ ev, active, left（仲有幾多秒）, next（下一個幾耐之後）, nextAt（下一個幾點開始）}
@@ -67,6 +82,7 @@ export function updateEvents() {
   boost.bossSpeed = s.active && s.ev.id === 'troll' ? 1000000 : 1; // Troll Frenzy：Boss Speed ×1,000,000
   boost.machine = s.active && s.ev.id === 'eclipse' ? 20 : 1; // Eclipse：繁殖機 ×20
   boost.eclipse = s.active && s.ev.id === 'eclipse';
+  boost.meteor = s.active && s.ev.id === 'meteor'; // ☄️ METEORIC（meteorEvent.js）
   if (s.active && s.ev.id === 'giant' && !out.started) {
     const tick = Math.floor(s.into / 30);
     if (tick !== lastTick) {
