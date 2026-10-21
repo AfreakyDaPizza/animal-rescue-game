@@ -8,7 +8,7 @@ import { addCollider, bakeStatic } from './world.js';
 import { fencePost, fenceRails, archX } from './fences.js'; // 🪵 靚啲嘅圍欄
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
-import { buildMagicLibrary, buildSellStall } from './hubBuildings.js';
+import { buildMagicLibrary, buildSellStall, buildSaveStall } from './hubBuildings.js';
 import { addFireAura } from './fireAura.js';
 import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
 import { fuseMachine } from './hubPark.js';
@@ -1657,13 +1657,15 @@ export function createHub(scene) {
   // ---- 皮膚商店攤位（間條帳篷 + 櫃枱 + 公仔模特兒）----
   // 入口前面（小朋友 2026-10-15）：右邊皮膚商店、左邊賣寵物攤位，面向中間條路
   // 2026-10-18：搬去右上 🛍️ Shop Street，兩個攤位排排企、面向噴水池（+z）
-  const shopSpot = buildSkinShop(scene, 12.5, 4.8, Math.PI);
-  const sellStall = buildSellStall(scene, 22, 4.8, 0);
+  // 2026-10-21：加 💾 Save Stall（Issue #8），三個攤位排排企
+  const shopSpot = buildSkinShop(scene, 10.6, 4.8, Math.PI);
+  const sellStall = buildSellStall(scene, 17.3, 4.8, 0);
+  const saveStall = buildSaveStall(scene, 24, 4.8, 0);
 
   // 「MY PETS」牌：2026-10-18 小朋友叫刪走（改用右邊 🐾 掣，入面有「All my pets」）
   const petsBoardSpot = null;
 
-  const hub = { scene, stations, machines, plot, kiosk, sellSpot: sellStall.spot, animators: [library.update, sellStall.update], petsBoardSpot, plotUpgradeSpot, machineUpgradeSpot, shopSpot, moneyTimer: 0, trainTimer: 0 };
+  const hub = { scene, stations, machines, plot, kiosk, sellSpot: sellStall.spot, saveSpot: saveStall.spot, animators: [library.update, sellStall.update, saveStall.update], petsBoardSpot, plotUpgradeSpot, machineUpgradeSpot, shopSpot, moneyTimer: 0, trainTimer: 0 };
   applyMachineLevel(hub);
   return hub;
 }
@@ -1957,6 +1959,10 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   // 賣寵物攤位
   const se = near(hub.sellSpot.x, hub.sellSpot.z);
   if (se < INTERACT_DISTANCE + 0.8) options.push({ dist: se, prompt: '<kbd>E</kbd> Open the Sell Stall 💰', action: actions.openSell });
+
+  // 💾 存檔攤位
+  const sv = near(hub.saveSpot.x, hub.saveSpot.z);
+  if (sv < INTERACT_DISTANCE + 0.8) options.push({ dist: sv, prompt: '<kbd>E</kbd> 💾 Save your progress', action: actions.saveProgress });
 
   // MY PETS 牌
 

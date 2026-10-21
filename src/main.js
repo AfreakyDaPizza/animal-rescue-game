@@ -22,6 +22,7 @@ import {
 } from './hud.js';
 import { initSideBoxes, toggleSideBox, updateSideBoxes, sideBoxOpen } from './sideBoxes.js'; // 右邊中間：🐾 地塊寵物、⏱️ 繁殖機時間（小朋友 2026-10-18）
 import { state, save, SAVE_KEY } from './state.js';
+import { account, uploadSave } from './account.js';
 import { setAdminActions } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import {
   createRescue, spawnAnimal, nearestAnimal, borrow, deliver, loseAnimal, setHolding, updateRescue,
@@ -688,6 +689,15 @@ const hubActions = {
   openIndex: () => togglePanel('index'),
   openPets: () => togglePanel('pets'),
   openSell: () => togglePanel('sell'),
+  saveProgress() {
+    save();
+    play('coin');
+    if (!account.enabled) return popup('💾 Saved on this computer!');
+    popup('☁️ Saving to your account...');
+    uploadSave(true)
+      .then(() => popup(`✅ Progress saved, ${account.name}! You can play on any computer now.`))
+      .catch(() => popup('📡 No internet right now. Saved on this computer, will save online later!'));
+  },
   openFuse: () => togglePanel('fuse'),
   openShop: () => togglePanel('shop'),
   upgradeMachines() {

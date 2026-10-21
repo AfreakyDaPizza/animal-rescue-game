@@ -257,3 +257,31 @@ body.mobile #panel-title { font-size: 20px; padding: 10px 50px; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .start-bg { display: none; }
 }
+
+/* ---- 🔐 登入畫面 + 帳號（account.js，Issue #8） ---- */
+#login { z-index: 60; background: linear-gradient(180deg, #0d47a1 0%, #00695c 60%, #1b5e20 100%); }
+.login-tabs { display: flex; gap: 8px; justify-content: center; margin: 4px 0 12px; }
+#login .login-tabs button {
+  flex: 1; padding: 9px 10px; font-size: 17px; border-radius: 12px; cursor: pointer;
+  background: #e8f5e9; border: 3px solid #a5d6a7; color: #2e7d32; box-shadow: 0 3px 0 #a5d6a7;
+}
+#login .login-tabs button.on { background: #ffd54f; border-color: #f9a825; color: #5d4037; box-shadow: 0 3px 0 #f9a825; }
+.login-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.login-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; color: #1b5e20; }
+.login-form input {
+  padding: 10px 12px; font-size: 18px; font-family: inherit; border-radius: 12px;
+  border: 3px solid #a5d6a7; background: #fff; color: #263238; outline: none;
+}
+.login-form input:focus { border-color: #43a047; box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.25); }
+.login-note { margin: 0; padding: 8px 10px; font-size: 14px; background: #fff3e0; border: 2px dashed #ffb74d; border-radius: 12px; color: #5d4037; }
+.login-error { margin: 0; padding: 8px 10px; font-size: 15px; font-weight: 700; background: #ffebee; border: 2px solid #ef9a9a; border-radius: 12px; color: #c62828; }
+.login-form .play-button { align-self: center; font-size: 24px; padding: 12px 36px; }
+.login-form .play-button:disabled { filter: grayscale(0.5); animation: none; }
+#login .login-offline { margin-top: 12px; background: none; border: none; color: #546e7a; text-decoration: underline; cursor: pointer; font-size: 14px; }
+.account-badge { margin: 12px 0 0; padding: 6px 10px; font-size: 14px; background: #e3f2fd; border-radius: 12px; color: #0d47a1; }
+#start .account-badge button { margin-left: 6px; padding: 3px 10px; font-size: 13px; border-radius: 8px; background: #fff; border: 2px solid #90caf9; color: #0d47a1; cursor: pointer; }
+#login .login-tabs button, #login .login-offline, #start .account-badge button { text-shadow: none; font-weight: 700; }
+#login .login-tabs button:hover { background: #c8e6c9; transform: translateY(-1px); }
+#login .login-tabs button.on:hover { background: #ffe082; }
+#login .login-offline, #login .login-offline:hover { box-shadow: none; border-radius: 0; background: none; transform: none; }
+#start .account-badge button:hover { background: #e3f2fd; }

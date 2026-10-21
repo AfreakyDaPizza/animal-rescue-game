@@ -70,6 +70,7 @@ function load() {
 
 export function save() {
   try {
+    state.savedAt = Date.now(); // 帳號系統（account.js）比較雲端同本機邊份新
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   } catch {
     // 瀏覽器唔俾存（例如無痕模式）都照玩得，只係唔記得進度

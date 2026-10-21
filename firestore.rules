@@ -1,0 +1,11 @@
+rules_version = '2';
+// 🔐 Animal Rescue 帳號存檔：每個玩家只可以讀寫自己嗰份（saves/{uid}）
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /saves/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.data is string && request.resource.data.data.size() < 900000;
+    }
+  }
+}

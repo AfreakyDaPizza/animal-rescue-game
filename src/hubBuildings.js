@@ -217,3 +217,48 @@ export function buildSellStall(scene, x, z, rotY) {
     },
   };
 }
+
+// ================= 💾 存檔攤位（Issue #8：Save your progress stall）=================
+// 藍白間條帳篷 + 櫃枱上一部發光電腦 + 頭頂轉緊嘅雲；撳 E 即刻存上帳號（account.js）
+export function buildSaveStall(scene, x, z, rotY) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+  const wood = mat(0x8d6e63);
+  add(g, rbox(4.2, 1.1, 1.2), mat(0x1565c0), 0, 0.55, 0.6); // 藍色櫃枱
+  add(g, rbox(4.3, 0.12, 1.3), mat(0xe3f2fd), 0, 1.15, 0.6);
+  for (const s of [-1, 1]) for (const zz of [-1.4, 1.1]) add(g, rbox(0.18, 3.2, 0.18), wood, s * 2.0, 1.6, zz);
+  for (let i = 0; i < 7; i++) {
+    add(g, new THREE.BoxGeometry(0.62, 0.12, 2.9), mat(i % 2 ? 0xffffff : 0x1e88e5), -1.86 + i * 0.62, 3.25, -0.15).rotation.x = 0.18;
+    add(g, new THREE.ConeGeometry(0.3, 0.35, 3), mat(i % 2 ? 0xffffff : 0x1e88e5), -1.86 + i * 0.62, 2.95, 1.2).rotation.x = Math.PI;
+  }
+  // 櫃枱上面：電腦（發光螢幕）+ 一疊磁碟
+  add(g, rbox(1.3, 0.85, 0.12), mat(0x263238), -0.8, 1.75, 0.45);
+  add(g, new THREE.PlaneGeometry(1.1, 0.65), glow(0x4fc3f7, 1.2), -0.8, 1.75, 0.52, false);
+  add(g, new THREE.BoxGeometry(0.15, 0.3, 0.15), mat(0x455a64), -0.8, 1.32, 0.45);
+  add(g, new THREE.BoxGeometry(0.9, 0.04, 0.35), mat(0x37474f), -0.8, 1.23, 0.85);
+  const disks = [0xff7043, 0x66bb6a, 0xffca28];
+  disks.forEach((c, i) => {
+    add(g, new THREE.BoxGeometry(0.45, 0.06, 0.45), mat(c), 0.9, 1.25 + i * 0.07, 0.6).rotation.y = i * 0.3;
+  });
+  // 頭頂一朵發光雲（☁️ = 存上網），上下浮
+  const cloud = new THREE.Group();
+  for (const [cx, cy, r] of [[0, 0, 0.42], [-0.42, -0.08, 0.3], [0.42, -0.08, 0.32], [0.18, 0.2, 0.3]]) add(cloud, new THREE.SphereGeometry(r, 14, 10), glow(0xe1f5fe, 0.6), cx, cy, 0, false);
+  const arrow = add(cloud, new THREE.ConeGeometry(0.18, 0.3, 4), glow(0x29b6f6, 1.5), 0, -0.05, 0.35, false);
+  arrow.rotation.x = Math.PI; // 箭咀指向雲 = 上載
+  cloud.position.set(0, 4.5, 1.0);
+  g.add(cloud);
+  const sign = makeSign([{ text: '💾 SAVE STALL', size: 0.42 }, { text: 'Save your progress!', size: 0.22 }], 3.6, 1.1, THEMES.blue);
+  sign.position.set(0, 3.5, 1.35);
+  g.add(sign);
+  addCollider(x, z, 2.2);
+  const [sx, sz] = toWorld(x, z, rotY, 0, 2.4);
+  return {
+    spot: { x: sx, z: sz },
+    update(dt, time) {
+      cloud.position.y = 4.5 + Math.sin(time * 1.6) * 0.18;
+      cloud.rotation.y = Math.sin(time * 0.8) * 0.4;
+    },
+  };
+}
