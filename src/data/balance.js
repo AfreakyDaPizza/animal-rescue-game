@@ -252,6 +252,9 @@ export const HALLOWEEN_OPEN_DATE = '2026-10-21';
 export const HALLOWEEN_BOSS_SPEED = [1000000000, 3000000000, 10000000000];
 export const HALLOWEEN_BOSS_SIZE = 3; // how big the bosses are (3 = like the Royal Guardian)
 export const HALLOWEEN_HEAD_START = 3; // seconds before the egg's boss starts chasing you
+// Wild Halloween eggs in the 3 spooky biomes (kid, Issue #9): Legendary, Mythic and Eternal eggs are this many times as likely
+// (0.5 = half as likely; the chance they lose goes to Common/Rare/Epic). Fishing odds don't use this.
+export const HALLOWEEN_WILD_TOP_RARITY_MULT = 0.5;
 export const HALLOWEEN_EGGS_PER_BIOME = 3; // how many eggs lie in each Halloween biome
 export const HALLOWEEN_EGG_RESPAWN = 40; // seconds until a new egg appears after one is taken
 export const HALLOWEEN_FOG_NEAR = 3; // when you carry an egg, the fog closes in to this (smaller = scarier)

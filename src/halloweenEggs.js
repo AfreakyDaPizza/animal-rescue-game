@@ -145,7 +145,7 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     group.scale.setScalar(HALLOWEEN_BOSS_SIZE);
     const speed = HALLOWEEN_BOSS_SPEED[bi];
     const label = makeLabel([{ text: `BOSS: ${b.boss}`, color: '#ff5252' }, { text: `${short(speed)} Speed · NO MERCY`, color: '#ffeb3b' }], 1.1);
-    label.position.y = bi === 1 ? 4.2 : 4.8;
+    label.position.y = (rig.g.userData.height || 4.4) + 0.4; // 牌喺 Boss 頭頂（跟模型高度）
     group.add(label);
     const home = new THREE.Vector3(b.bossHome.x, 0, b.bossHome.z);
     group.position.copy(home);
@@ -515,6 +515,7 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
       }
       b.special = Math.max(0, b.special - dt * 1.2);
       const ud = b.rig.g.userData;
+      ud.setMood?.(b.mode === 'chase'); // 追緊就變兇（眼更光、伸爪），啱啱開始追會吼
       if (b.index === 0) ud.pound?.(d < 14 ? Math.sin(Math.min(1, 1 - b.special) * Math.PI) : 0); // Pumpkin Tyrant：近就搥地
       if (b.index === 1) ud.flicker?.(b.special > 0.6 ? (1 - b.special) / 0.4 : b.special / 0.6); // Hollow Wraith：閃一閃
       if (b.index === 2) ud.fly?.(b.mode === 'chase' ? 0.4 + b.special * 0.6 : 0); // Bone Drake：飛
