@@ -99,3 +99,17 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Egg Graveyard (8 slots): E places your rarest egg, then a countdown runs (even offline). E hatches it with a crack/flash and the pet pops out into the backpack. It's added to the Index with a reward.
 - Numbers in balance.js: HALLOWEEN_BOSS_SPEED, HALLOWEEN_BOSS_SIZE, HALLOWEEN_HEAD_START, HALLOWEEN_EGGS_PER_BIOME, HALLOWEEN_EGG_RESPAWN, HALLOWEEN_FOG_NEAR/FAR.
 - For fishing: addEgg(name, rarity) from halloweenEggs.js puts an egg in the backpack.
+
+## ✅ Built: 🐕 Echo + 🧟 Zombified Chest (Issue #8, 2026-10-21)
+- **Echo** is a cute zombie dog (green fur, glowing green eyes, purple stitches, a bandaged leg and a taped floppy ear, wagging tail). He stands on the counter of his little stall in the north-east of the Spawn Ruins, so you see him as soon as you arrive. He looks at you, tilts his head and does a happy hop now and then.
+- Press **E** at the stall to open the shop: your 🍬 Candy Corn, the chest price and what's inside (with chances).
+- **Zombified Chest** costs **500 Candy Corn** (`ZOMBIE_CHEST_COST`). What's inside (`ZOMBIE_CHEST_DROPS` in balance.js):
+  - Candy Corn (Common) 51%. The kid hasn't said how much, so for now it's a random **250–750** (`ZOMBIE_CHEST_CANDY`).
+  - Hollow Bat (Rare) 24%
+  - Scarecrow (Epic) 18%
+  - Pumpkin Golem (Legendary) 6%
+  - Soul Phantom (Mythic) 1%
+- **Opening animation:** the chest drops from the sky, shakes harder and harder and glows in the rarity colour, then bursts open with a flash and a light beam. Your prize rises out with big text. Legendary is bigger. **Mythic** is extra big: the screen goes dark, the chest floats, rainbow rings spin, the text is rainbow and the camera circles around.
+- The chest gives the **pet straight into your backpack** (no egg to hatch), like a pet that just hatched. The 4 chest pets only come from the chest (no eggs, no fishing). In the Index they have their own "🧟 Zombified Chest" part. They earn money like Abandoned Manor pets (biome 9).
+- Code: `src/echoShop.js` (Echo, stall, shop, animation), `src/echoPetModels.js` (the 4 pet models), `src/data/echoChest.js` (pet data + chest roll).
+- Testing (dev console): `game.candy(5000)` gives Candy Corn; `game.echo.open('Soul Phantom')` plays the animation with that prize (free).

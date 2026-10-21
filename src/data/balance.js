@@ -282,6 +282,20 @@ export const GHOST_MAX_SOULS = 12;
 export const PHANTOM_EXPRESS_EVERY_MINUTES = 60;
 export const PHANTOM_EXPRESS_STAY_MINUTES = 30;
 
+// ---- 🐕 ECHO'S ZOMBIFIED CHEST (kid, Issue #8): Echo the dog sells it at the Spawn Ruins ----
+// How much one Zombified Chest costs (in 🍬 Candy Corn)
+export const ZOMBIE_CHEST_COST = 500;
+// If you win Candy Corn from the chest, you get a random amount between these 2 numbers
+export const ZOMBIE_CHEST_CANDY = [250, 750];
+// What can come out of the chest, and the % chance of each (they should add up to 100)
+export const ZOMBIE_CHEST_DROPS = [
+  { name: 'Candy Corn', rarity: 'Common', chance: 51 },
+  { name: 'Hollow Bat', rarity: 'Rare', chance: 24 },
+  { name: 'Scarecrow', rarity: 'Epic', chance: 18 },
+  { name: 'Pumpkin Golem', rarity: 'Legendary', chance: 6 },
+  { name: 'Soul Phantom', rarity: 'Mythic', chance: 1 },
+];
+
 // ---- 🧹 GHOST VACUUM (buy and upgrade at the Vacuum Shop in the Ghost World, with Soul Dust) ----
 // cost = Soul Dust to buy that level · power = how fast it catches (2 = twice as fast)
 // range = how far it reaches (metres) · cone = how wide the beam is (degrees)
