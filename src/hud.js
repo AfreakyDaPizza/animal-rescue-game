@@ -307,7 +307,7 @@ export function renderHotbar() {
     ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - press E or click to pick a pet to mutate!`
     : it
     ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
-    : items.some(Boolean) ? '' : 'Rescued animals and pets go here · press ` for your Inventory';
+    : items.some(Boolean) ? '' : (document.body.classList.contains('mobile') ? 'Rescued animals and pets go here · tap 🎒 for your Inventory' : 'Rescued animals and pets go here · press ` for your Inventory');
 }
 
 // ================= 面板（My Stats／Animal Index） =================
