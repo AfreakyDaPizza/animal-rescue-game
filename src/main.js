@@ -69,13 +69,16 @@ import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOp
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
 import { createFishing, fishingInteraction, updateFishing, breakRod, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋）
 import { setRodShopActions } from './rodShop.js';
-import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky, showLoading, loading } from './halloweenWorld.js'; // 🎃 Halloween 世界
+import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { FOUNTAIN } from './hubPark.js';
+import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
+
+startBoot(); // 第一次開網頁嘅載入畫面：JS 載完 → 換真動物知識；起好第一格畫面就淡出
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 之後畫質系統會再調
@@ -1183,14 +1186,15 @@ async function enterHalloween() {
   if (hwTravelling || rescue.carrying) return;
   hwTravelling = true;
   play('portal');
-  await showLoading(hwWorld ? '🎃 Entering the Halloween World...' : '🎃 Building the Halloween World...', async (progress) => {
+  const ok = await showLoading(hwWorld ? '🎃 Entering the Halloween World...' : '🎃 Building the Halloween World...', async (progress) => {
     if (!hwWorld) hwWorld = await buildHalloween(scene, progress);
     if (!hwEggs) hwEggs = createHalloweenEggs(scene, camera, { teleport: (x, z) => { teleportPlayer(player, x, z); camera.rotation.set(0, 0, 0, 'YXZ'); } });
     teleportPlayer(player, HW_ARRIVE.x, HW_ARRIVE.z);
     camera.rotation.set(0, HW_ARRIVE.rotY, 0, 'YXZ');
     halloween.sky = 1; // 一出現就係恐怖天空（唔使慢慢變）
-  });
+  }, 1.8, { theme: 'halloween', title: 'Halloween World' });
   hwTravelling = false;
+  if (!ok) return; // 出錯：載入畫面已經彈咗出錯卡
   play('spooky');
   announce('🎃 Welcome to the HALLOWEEN WORLD! 👻');
   setTimeout(() => popup('⭕ The Spawn Ruins are a SAFE ZONE. Bosses cannot come in!'), 2500);
@@ -1199,12 +1203,13 @@ async function leaveHalloween() {
   if (hwTravelling) return;
   hwTravelling = true;
   play('portal');
-  await showLoading('🌀 Going back to the Hub...', async () => {
+  const ok = await showLoading('🌀 Going back to the Hub...', async () => {
     teleportPlayer(player, FOUNTAIN.x, FOUNTAIN.z - 8);
     camera.rotation.set(0, 0, 0, 'YXZ');
     halloween.sky = 0;
-  }, 1.2);
+  }, 1.2, { theme: 'nature', kicker: 'Going back to', title: 'Animal Rescue Park' });
   hwTravelling = false;
+  if (!ok) return;
   breakRod(fishing, fishUI); // 🎣 返普通世界：魚竿斷（小朋友規定）
   announce('🏡 Back at the Animal Rescue Park!');
 }
@@ -1550,6 +1555,7 @@ let wasGym = null;
 let lastStep = 0;
 let lastLocation = null;
 
+let booted = false; // 第一格畫好先收起第一次嘅載入畫面
 renderer.setAnimationLoop((timestamp) => {
   timer.update(timestamp);
   const dt = Math.min(timer.getDelta(), 0.1); // 卡機都唔好一下飛太遠
@@ -1834,6 +1840,10 @@ renderer.setAnimationLoop((timestamp) => {
   if (quality.bloom) composer.render();
   else renderer.render(scene, viewCam);
   autoQuality(dt);
+  if (!booted) {
+    booted = true;
+    requestAnimationFrame(() => finishBoot()); // 第一格（編譯 shader 最慢）畫完先淡出
+  }
 });
 
 // 開發用：喺瀏覽器 console 打 game 可以睇／改嘢
