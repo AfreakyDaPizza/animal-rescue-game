@@ -104,3 +104,11 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - The 3 bosses were redrawn (`src/halloweenBosses.js`): Pumpkin Tyrant (carved pumpkin king, crown, fire, vine arms, cape, sceptre), Hollow Wraith (tattered fading cloak, hollow hood with glowing eyes, chains, soul lantern, ghost wisps), Bone Drake (skeleton dragon, green soul-fire in chest/mouth/eyes, bone wings that fold and flap).
 - They get angry while chasing and roar when the chase starts (`userData.setMood`, called from `halloweenEggs.js`).
 - Wild Halloween eggs: Legendary, Mythic and Eternal are half as likely (`HALLOWEEN_WILD_TOP_RARITY_MULT = 0.5` in balance.js). The lost chance goes to Common/Rare/Epic. Fishing odds are not changed.
+
+## ✅ Built: nicer Ghost Vacuum + hearts (Issue #9, src/ghostVacuum.js)
+- **Sucking looks cool now:** a spinning swirl beam comes out of the vacuum's nozzle. Rings and sparkles get pulled in. Glowing dots stream from the ghost into the nozzle. The vacuum shakes, glows and hums, and the hum gets higher as the ghost gets closer to caught.
+- **A ghost in the beam stays still.** It stops floating around. It stretches toward the nozzle, wobbles and glows. It turns its face to you.
+- **A progress bar** floats over the ghost ("Wraith Soul 54%"). It fills while you suck and slowly drains if the ghost slips out of the beam. Stronger ghosts still take longer.
+- **Caught:** the ghost shrinks with a "whoosh", then goes POP. Soul Dust bursts out and gets sucked back into the vacuum.
+- **Orbs don't take Soul Dust any more.** You have **5 ❤️** in the Ghost World. An orb hit takes 1 heart, the screen flashes red, and you get 1.2 s of safety. You get 1 heart back after 10 s without a hit. At 0 hearts you're **knocked out** and wake up at the Ghost World train stop with full hearts (plus 3 s of safety).
+- Numbers in balance.js: GHOST_HEARTS = 5, GHOST_HEART_REGEN = 10, GHOST_HIT_SAFE = 1.2.

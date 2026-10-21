@@ -275,8 +275,14 @@ export const HALLOWEEN_SOULS = [
 // Soul orb attacks: how fast they fly (smaller = easier to dodge) and how long the warning glow lasts before they fire
 export const HALLOWEEN_SOUL_ORB_SPEED = 6;
 export const HALLOWEEN_SOUL_ORB_WARNING = 0.9;
-// When a soul orb hits you, you drop this much Soul Dust (never below 0)
-export const SOUL_ORB_HIT_DUST = 10;
+// ❤️ Hearts in the Ghost World (Issue #9: an orb takes a heart, NOT your Soul Dust)
+// GHOST_HEARTS = how many hearts you have · a soul orb hit takes 1 heart
+// GHOST_HEART_REGEN = seconds without getting hit to get 1 heart back
+// GHOST_HIT_SAFE = seconds after a hit when orbs can't hit you again
+// At 0 hearts you're knocked out and wake up at the Ghost World train stop with full hearts
+export const GHOST_HEARTS = 5;
+export const GHOST_HEART_REGEN = 10;
+export const GHOST_HIT_SAFE = 1.2;
 // How many ghosts float around the Ghost World at the same time
 export const GHOST_MAX_SOULS = 12;
 
