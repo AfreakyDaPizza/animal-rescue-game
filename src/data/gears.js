@@ -29,6 +29,14 @@ export const GEARS = {
     mutate: (pet) => (hasMutation(pet, 'meteoric') ? null : 'meteoric'),
     canUse: (pet) => !hasMutation(pet, 'meteoric'),
   },
+  // 🌌 Astral Reroll：Meteoric Chest 1% 開到；揀一隻寵物 → 🌌 Astral（加落去，唔會洗走其他變異）
+  astralReroll: {
+    name: 'Astral Reroll', emoji: '🌌', color: '#ea80fc', rarity: 'Mythic',
+    desc: () => `Pick a pet: it becomes 🌌 ASTRAL x${mutationInfo('astral').money}!`,
+    where: 'Open a ☄️ Meteoric Chest (1% chance)',
+    mutate: (pet) => (hasMutation(pet, 'astral') ? null : 'astral'),
+    canUse: (pet) => !hasMutation(pet, 'astral'),
+  },
 };
 
 export const gearInfo = (type) => GEARS[type] || { name: type, emoji: '❓', color: '#90a4ae', rarity: 'Common', desc: () => 'A mystery gear!', mutate: () => null, canUse: () => false };
