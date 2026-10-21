@@ -2,6 +2,8 @@
 // biome：7 = 🎃 Pumpkin Graveyard、8 = 👻 Hollow Sprites、9 = 🏚️ Abandoned Manor（數字俾錢／時間表用；hw 係 Halloween 世界嘅生態區）
 // hatchSeconds：蛋要孵幾耐（小朋友定）；rarity 固定
 
+import { HALLOWEEN_WILD_TOP_RARITY_MULT } from './balance.js';
+
 const SPOOKY = 'Halloween pet (not a real animal!)';
 
 export const HALLOWEEN_BIOMES = [
@@ -55,10 +57,24 @@ export const HALLOWEEN_EGG_WEIGHT = { Common: 40, Rare: 25, Epic: 15, Legendary:
 
 export const halloweenPetsIn = (hw) => HALLOWEEN_PETS.filter((p) => p.hw === hw);
 
-// 抽一隻（rand 0–1）：hw = 邊個 Halloween 生態區
-export function rollHalloweenEgg(hw, rand = Math.random()) {
+// 野生蛋（3 個生態區地上嗰啲）每隻嘅比重：Legendary／Mythic／Eternal 真正機會 × HALLOWEEN_WILD_TOP_RARITY_MULT（小朋友 Issue #9：減半）
+// 佢哋少咗嘅機會按比例分返俾 Common／Rare／Epic（總數唔變，所以 % 啱啱好係一半）
+// 釣魚（rodShop.js）照用 HALLOWEEN_EGG_WEIGHT，唔受影響
+const TOP_RARITIES = new Set(['Legendary', 'Mythic', 'Eternal']);
+export function wildEggWeights(hw) {
   const pool = halloweenPetsIn(hw);
-  const total = pool.reduce((n, p) => n + HALLOWEEN_EGG_WEIGHT[p.rarity], 0);
+  let top = 0;
+  let low = 0;
+  for (const p of pool) (TOP_RARITIES.has(p.rarity) ? (top += HALLOWEEN_EGG_WEIGHT[p.rarity]) : (low += HALLOWEEN_EGG_WEIGHT[p.rarity]));
+  const m = HALLOWEEN_WILD_TOP_RARITY_MULT;
+  const k = low > 0 ? (low + top * (1 - m)) / low : 1; // 低稀有度放大幾多先補得返
+  return pool.map((p) => ({ pet: p, w: HALLOWEEN_EGG_WEIGHT[p.rarity] * (TOP_RARITIES.has(p.rarity) ? (low > 0 ? m : 1) : k) }));
+}
+
+// 抽一隻野生蛋（rand 0–1）：hw = 邊個 Halloween 生態區
+export function rollHalloweenEgg(hw, rand = Math.random()) {
+  const list = wildEggWeights(hw);
+  const total = list.reduce((n, e) => n + e.w, 0);
   let roll = rand * total;
-  return pool.find((p) => (roll -= HALLOWEEN_EGG_WEIGHT[p.rarity]) < 0) || pool[0];
+  return (list.find((e) => (roll -= e.w) < 0) || list[0]).pet;
 }

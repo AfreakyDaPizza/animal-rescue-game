@@ -99,3 +99,8 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Egg Graveyard (8 slots): E places your rarest egg, then a countdown runs (even offline). E hatches it with a crack/flash and the pet pops out into the backpack. It's added to the Index with a reward.
 - Numbers in balance.js: HALLOWEEN_BOSS_SPEED, HALLOWEEN_BOSS_SIZE, HALLOWEEN_HEAD_START, HALLOWEEN_EGGS_PER_BIOME, HALLOWEEN_EGG_RESPAWN, HALLOWEEN_FOG_NEAR/FAR.
 - For fishing: addEgg(name, rarity) from halloweenEggs.js puts an egg in the backpack.
+
+## ✅ Issue #9 (2026-10-21)
+- The 3 bosses were redrawn (`src/halloweenBosses.js`): Pumpkin Tyrant (carved pumpkin king, crown, fire, vine arms, cape, sceptre), Hollow Wraith (tattered fading cloak, hollow hood with glowing eyes, chains, soul lantern, ghost wisps), Bone Drake (skeleton dragon, green soul-fire in chest/mouth/eyes, bone wings that fold and flap).
+- They get angry while chasing and roar when the chase starts (`userData.setMood`, called from `halloweenEggs.js`).
+- Wild Halloween eggs: Legendary, Mythic and Eternal are half as likely (`HALLOWEEN_WILD_TOP_RARITY_MULT = 0.5` in balance.js). The lost chance goes to Common/Rare/Epic. Fishing odds are not changed.
