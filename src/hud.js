@@ -16,12 +16,13 @@ import { fuseChances } from './fuse.js';
 import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
 import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import { rodShopHtml } from './rodShop.js'; // 🎣 Halloween 魚竿舖
+import { gearInfo, gearStacks } from './data/gears.js'; // ⚙️ 背包 Gears（Issue #10）
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
 // 變異標籤（可以疊：🔥 FIRE x4 + 🌑 ECLIPSE x6）
-const mutationTags = (p) => mutationList(p).map((m) => (m === 'fire' ? `<small class="fire-tag">🔥 FIRE x${FIRE_MONEY}</small>` : m === 'eclipse' ? `<small class="fire-tag eclipse-tag">🌑 ECLIPSE x${ECLIPSE_MONEY}</small>` : `<small class="fire-tag ${m}-tag">${mutationInfo(m).emoji} ${mutationInfo(m).name} x${mutationInfo(m).money}</small>`)).join('');
+export const mutationTags = (p) => mutationList(p).map((m) => (m === 'fire' ? `<small class="fire-tag">🔥 FIRE x${FIRE_MONEY}</small>` : m === 'eclipse' ? `<small class="fire-tag eclipse-tag">🌑 ECLIPSE x${ECLIPSE_MONEY}</small>` : `<small class="fire-tag ${m}-tag">${mutationInfo(m).emoji} ${mutationInfo(m).name} x${mutationInfo(m).money}</small>`)).join('');
 
 // 畫面中間下面嘅提示（例如「[E] Borrow Giant Panda」），null 就收埋
 export function setPrompt(html) {
@@ -187,14 +188,74 @@ export const HAMMER_ITEM = { kind: 'tool', item: { name: 'Hammer', tool: true } 
 // 球棒（Issue #4）：Boss 戰 Phase 1、2 先有，喺第一格
 export const BAT_ITEM = { kind: 'tool', item: { name: 'Bat', tool: true, bat: true } };
 export const toolFlags = { bat: false };
-export function hotbarItems() {
-  return [
-    ...(toolFlags.bat ? [BAT_ITEM] : []),
-    ...(state.hasHammer && !state.labBossDefeated ? [HAMMER_ITEM] : []), // 實驗室冇咗：鎚仔冇用，唔再放快捷欄
-    ...state.borrowed.map((item) => ({ kind: 'rescued', item })),
-    ...state.pets.filter((p) => !p.onPlot).map((item) => ({ kind: 'pet', item })),
-  ].slice(0, SLOTS);
+// 🎒 背包（Issue #10）：可以由背包拖嘢落快捷欄（state.hotbar 記住每格放咗乜）
+// 每樣嘢一個 key：寵物 'pet:uid'、救返嚟嘅動物 'res:uid'、Gear 'gear:type'（同種 Gear 疊埋一格）
+// 冇拖過嘅格仔：好似以前咁，自動放救返嚟嘅動物同背包寵物
+let uidN = 0;
+export function uidOf(item) {
+  if (!item.uid) item.uid = `${Date.now().toString(36)}${(uidN++).toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+  return item.uid;
 }
+export const gearItem = (type, count) => ({ kind: 'gear', key: `gear:${type}`, item: { name: gearInfo(type).name, gear: type, count, rarity: gearInfo(type).rarity } });
+// 背包入面可以放上快捷欄嘅嘢（地塊上面嘅寵物唔得：佢哋喺地塊做緊嘢）
+export function hotbarPool() {
+  return [
+    ...state.borrowed.map((item) => ({ kind: 'rescued', key: `res:${uidOf(item)}`, item })),
+    ...state.pets.filter((p) => !p.onPlot).map((item) => ({ kind: 'pet', key: `pet:${uidOf(item)}`, item })),
+  ];
+}
+const toolItems = () => [
+  ...(toolFlags.bat ? [BAT_ITEM] : []),
+  ...(state.hasHammer && !state.labBossDefeated ? [HAMMER_ITEM] : []), // 實驗室冇咗：鎚仔冇用，唔再放快捷欄
+];
+export const hotbarToolCount = () => toolItems().length;
+// 10 格（空格 = null）
+export function hotbarItems() {
+  const slots = Array(SLOTS).fill(null);
+  const tools = toolItems();
+  tools.forEach((t, i) => (slots[i] = t));
+  const pool = hotbarPool();
+  const byKey = new Map(pool.map((e) => [e.key, e]));
+  for (const { type, count } of gearStacks()) byKey.set(`gear:${type}`, gearItem(type, count));
+  const used = new Set();
+  const pins = state.hotbar || [];
+  for (let i = tools.length; i < SLOTS; i++) {
+    const e = byKey.get(pins[i]);
+    if (e && !used.has(e.key)) {
+      slots[i] = e;
+      used.add(e.key);
+    }
+  }
+  const rest = pool.filter((e) => !used.has(e.key));
+  for (let i = tools.length; i < SLOTS && rest.length; i++) if (!slots[i]) slots[i] = rest.shift();
+  return slots;
+}
+// 將 key 放入第 i 格（原本有拖過嘢嘅格仔就同佢調位）
+export function assignHotbar(i, key) {
+  if (i < hotbarToolCount() || i >= SLOTS) return false;
+  const items = hotbarItems();
+  const hb = (state.hotbar = Array.from({ length: SLOTS }, (_, j) => state.hotbar?.[j] ?? null));
+  const from = hb.indexOf(key);
+  const fromShown = items.findIndex((e) => e?.key === key);
+  const displaced = items[i]?.key;
+  for (let j = 0; j < SLOTS; j++) if (hb[j] === key) hb[j] = null;
+  if (displaced && displaced !== key && (from >= 0 || fromShown >= 0)) hb[from >= 0 ? from : fromShown] = displaced; // 調位
+  else if (hb[i] && hb[i] !== key) hb[i] = null;
+  hb[i] = key;
+  save();
+  renderHotbar();
+  return true;
+}
+// 拎走第 i 格（Gear 會離開快捷欄；動物會自動排返入空格）
+export function clearHotbar(i) {
+  if (!state.hotbar) return;
+  const key = hotbarItems()[i]?.key;
+  state.hotbar = state.hotbar.map((k) => (k === key ? null : k));
+  save();
+  renderHotbar();
+}
+// 背包（inventory.js）可以攔住撳格仔（例如揀咗張卡，撳格仔 = 放落去）
+export const hotbarHooks = { onSlotClick: null };
 
 export function selectedHotbarItem() {
   return hotbarItems()[selected] || null;
@@ -206,10 +267,11 @@ export function selectSlot(i) {
 }
 export const scrollHotbar = (direction) => selectSlot(selected + direction);
 
+const slotIcon = (it) => (it.kind === 'tool' ? (it.item.bat ? '🏏' : '🔨') : it.kind === 'gear' ? gearInfo(it.item.gear).emoji : findAnimal(it.item.name)?.emoji || '❓');
 let lastHotbar = '';
-function renderHotbar() {
+export function renderHotbar() {
   const items = hotbarItems();
-  const key = selected + JSON.stringify(items.map((x) => x.kind + x.item.name));
+  const key = selected + JSON.stringify(items.map((x) => x && x.kind + x.item.name + (x.item.count || '') + (x.item.mutation || '')));
   if (key === lastHotbar) return;
   lastHotbar = key;
 
@@ -219,9 +281,13 @@ function renderHotbar() {
     const it = items[i];
     const slot = document.createElement('div');
     slot.className = `slot ${it ? it.kind : ''} ${i === selected ? 'selected' : ''}`;
-    if (it && i !== selected) slot.style.borderColor = it.kind === 'tool' ? '#ffd600' : rarityInfo(it.item.rarity).color; // 邊框顏色 = 稀有度
-    slot.innerHTML = `<span class="num">${(i + 1) % 10}</span>${it ? (it.kind === 'tool' ? (it.item.bat ? '🏏' : '🔨') : findAnimal(it.item.name).emoji) : ''}`;
-    slot.addEventListener('click', () => selectSlot(i));
+    slot.dataset.i = i;
+    if (it && i !== selected) slot.style.borderColor = it.kind === 'tool' ? '#ffd600' : it.kind === 'gear' ? gearInfo(it.item.gear).color : rarityInfo(it.item.rarity).color; // 邊框顏色 = 稀有度
+    slot.innerHTML = `<span class="num">${(i + 1) % 10}</span>${it ? slotIcon(it) : ''}${it?.kind === 'gear' && it.item.count > 1 ? `<span class="count">x${it.item.count}</span>` : ''}`;
+    slot.addEventListener('click', () => {
+      if (hotbarHooks.onSlotClick?.(i)) return;
+      selectSlot(i);
+    });
     bar.appendChild(slot);
   }
   const it = items[selected];
@@ -229,9 +295,11 @@ function renderHotbar() {
     ? '🏏 Bat - get close to the Scientist and press E or click to SMACK him!'
     : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
+    : it?.kind === 'gear'
+    ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - press E or click to pick a pet to mutate!`
     : it
     ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
-    : items.length ? '' : 'Rescued animals and pets go here';
+    : items.some(Boolean) ? '' : 'Rescued animals and pets go here · press ` for your Inventory';
 }
 
 // ================= 面板（My Stats／Animal Index） =================

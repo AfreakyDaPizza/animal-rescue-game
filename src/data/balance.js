@@ -72,6 +72,8 @@ export const FIRE_MONEY = 4; // 🔥 FIRE pets earn this many times more money
 export const ECLIPSE_MONEY = 6; // 🌑 ECLIPSE pets (hit by an Eclipse laser) earn this many times more money
 export const SPECTRAL_MONEY = 4; // 👻 SPECTRAL pets (from a Halloween Shard) earn this many times more money
 export const PHANTOM_MONEY = 5; // 🟣 PHANTOM pets (from a Halloween Shard) earn this many times more money
+export const METEORIC_MONEY = 5; // ☄️ METEORIC pets (from a Meteoric Shard) earn this many times more money
+export const ASTRAL_MONEY = 8; // 🌌 ASTRAL pets earn this many times more money
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
 export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000, 2000000, 3000000, 5000000]; // last 3 = Halloween
@@ -340,7 +342,7 @@ export const GHOST_VACUUM = [
 // ---- 🔮 HALLOWEEN SHARDS (Statue of Halloween) ----
 // One shard costs this much Soul Dust
 export const HALLOWEEN_SHARD_COST = 400;
-// When you use a shard, each pet on your Plot has this % chance to get hit
+// (Not used any more: since Issue #10 the shard ALWAYS works on the pet you pick in your Inventory)
 export const SHARD_HIT_CHANCE = 25;
-// A pet that gets hit becomes 🟣 PHANTOM this % of the time, otherwise 👻 SPECTRAL
+// The pet becomes 🟣 PHANTOM this % of the time, otherwise 👻 SPECTRAL
 export const SHARD_PHANTOM_CHANCE = 50;

@@ -1,7 +1,7 @@
 // 50 隻瀕危動物（原稿 30 隻 + 小朋友加嘅每區 2 隻 + Biome 6 嘅 10 隻）（原稿：docs/design-prompt.md）
 // biome：0 = Biome 1 … 4 = Biome 5
 // status：IUCN 紅色名錄保育狀況（2026 年資料，有啲物種係「整體唔算瀕危，但部分族群好危險」）
-import { petMoney, FIRE_MONEY, ECLIPSE_MONEY, SPECTRAL_MONEY, PHANTOM_MONEY } from './balance.js';
+import { petMoney, FIRE_MONEY, ECLIPSE_MONEY, SPECTRAL_MONEY, PHANTOM_MONEY, METEORIC_MONEY, ASTRAL_MONEY } from './balance.js';
 import { HALLOWEEN_PETS } from './halloween.js'; // 🎃 Halloween 蛋寵物（唔喺 ANIMALS：唔會喺普通生態區出）
 export { HALLOWEEN_PETS };
 import { CHEST_PETS } from './echoChest.js'; // 🐕 Echo 嘅 Zombified Chest 寵物（淨係箱度開到）
@@ -190,12 +190,15 @@ export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
 // ---- 變異（可以疊：🔥 Fire + 🌑 Eclipse，小朋友 2026-10-18）----
 // 存法：item.mutation 係字串，'fire'、'eclipse' 或者 'fire+eclipse'（舊存檔照用得）
 // 🎃 Halloween（Halloween Shard）：👻 Spectral ×4、🟣 Phantom ×5
-export const MUTATIONS = ['fire', 'eclipse', 'spectral', 'phantom'];
+// ☄️ Meteoric ×5（Meteoric Shard）、🌌 Astral ×8（Meteoric Chest）（小朋友 Issue #10）
+export const MUTATIONS = ['fire', 'eclipse', 'spectral', 'phantom', 'meteoric', 'astral'];
 const MUTATION_INFO = {
   fire: { emoji: '🔥', name: 'FIRE', color: '#ff6d00', money: FIRE_MONEY },
   eclipse: { emoji: '🌑', name: 'ECLIPSE', color: '#ea80fc', money: ECLIPSE_MONEY },
   spectral: { emoji: '👻', name: 'SPECTRAL', color: '#84ffff', money: SPECTRAL_MONEY },
   phantom: { emoji: '🟣', name: 'PHANTOM', color: '#b388ff', money: PHANTOM_MONEY },
+  meteoric: { emoji: '☄️', name: 'METEORIC', color: '#40c4ff', money: METEORIC_MONEY },
+  astral: { emoji: '🌌', name: 'ASTRAL', color: '#b388ff', money: ASTRAL_MONEY },
 };
 export const mutationInfo = (m) => MUTATION_INFO[m];
 export const mutationList = (x) => {
@@ -205,6 +208,13 @@ export const mutationList = (x) => {
 export const hasMutation = (x, m) => mutationList(x).includes(m);
 export const joinMutations = (list) => MUTATIONS.filter((m) => list.includes(m)).join('+') || null; // 固定次序：fire+eclipse
 export const addMutation = (x, m) => joinMutations([...mutationList(x), m]);
+// 俾一隻寵物加一個變異（其他檔案用：Shard、Meteoric Chest…）；replace = 清走舊變異先（reroll）
+// 淨係改資料：之後記得 save()，地塊／手上嘅模型要 refresh（inventory.js 嘅 mutatePet 會幫你做晒）
+export function applyMutation(pet, id, { replace = false } = {}) {
+  if (!MUTATION_INFO[id]) return pet;
+  pet.mutation = replace ? id : addMutation(pet, id);
+  return pet;
+}
 export const mutationMoneyMulti = (x) => mutationList(x).reduce((k, m) => k * (MUTATION_INFO[m].money || 1), 1);
 export const mutationEmoji = (x) => mutationList(x).map((m) => MUTATION_INFO[m].emoji).join('');
 export const mutationText = (x) => mutationList(x).map((m) => `${MUTATION_INFO[m].emoji} ${MUTATION_INFO[m].name}`).join(' ');

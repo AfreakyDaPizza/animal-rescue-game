@@ -10,6 +10,13 @@ const eclipseMats = [[0x1a0033, 0x4a148c], [0x4a148c, 0xaa00ff], [0x12001f, 0x6a
 // 🎃 Halloween Shard 變異：👻 Spectral = 透明青色鬼火 + 一層閃下閃下嘅鬼影；🟣 Phantom = 深紫色煙團圍住轉
 const spectralMats = [0x84ffff, 0xb2ebf2, 0x18ffff].map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.6, transparent: true, opacity: 0.45, depthWrite: false }));
 const phantomMats = [[0x1a0026, 0x6200ea], [0x311b92, 0x7c4dff], [0x12001f, 0x4a148c]].map(([c, e]) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 0.9, transparent: true, opacity: 0.7, depthWrite: false }));
+// ☄️ Meteoric（Meteoric Shard）：藍色發光火 + 一層藍光 + 三粒細隕石圍住飛；🌌 Astral：紫色星星繞圈（好似銀河）+ 一層星空紫光 + 斜斜嘅光環
+// （顏色要深啲、唔好太光：太光會俾畫面調色變到白白黃黃）
+const meteoricMats = [[0x0d47a1, 0x2962ff], [0x01579b, 0x0091ea], [0x1a237e, 0x304ffe]].map(([c, e]) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.3, transparent: true, opacity: 0.85, depthWrite: false }));
+const astralMats = [[0x4a148c, 0xd500f9], [0x311b92, 0x7c4dff], [0x880e4f, 0xf50057]].map(([c, e]) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.5, transparent: true, opacity: 0.95, depthWrite: false }));
+const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a237e, emissive: 0x2962ff, emissiveIntensity: 1.1, roughness: 0.6, flatShading: true });
+const rockGeo = new THREE.DodecahedronGeometry(0.2, 0);
+const starGeo = new THREE.OctahedronGeometry(0.15, 0);
 const smokeGeo = new THREE.SphereGeometry(0.3, 10, 8);
 const coronaMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
 const flameGeo = new THREE.ConeGeometry(0.22, 0.8, 6);
@@ -23,6 +30,8 @@ export function addFireAura(model, kind = 'fire') {
   const eclipse = kind === 'eclipse';
   const spectral = kind === 'spectral';
   const phantom = kind === 'phantom';
+  const meteoric = kind === 'meteoric';
+  const astral = kind === 'astral';
   model.updateMatrixWorld(true);
   const world = new THREE.Box3().setFromObject(model);
   if (world.isEmpty()) return;
@@ -36,7 +45,7 @@ export function addFireAura(model, kind = 'fire') {
   const flames = [];
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2;
-    const f = new THREE.Mesh(phantom ? smokeGeo : flameGeo, (spectral ? spectralMats : phantom ? phantomMats : eclipse ? eclipseMats : flameMats)[i % 3]);
+    const f = new THREE.Mesh(phantom ? smokeGeo : astral ? starGeo : flameGeo, (spectral ? spectralMats : phantom ? phantomMats : eclipse ? eclipseMats : meteoric ? meteoricMats : astral ? astralMats : flameMats)[i % 3]);
     f.position.set(center.x + Math.cos(a) * r, box.min.y + 0.3 * s, center.z + Math.sin(a) * r);
     f.scale.setScalar(s);
     f.castShadow = false;
@@ -47,7 +56,7 @@ export function addFireAura(model, kind = 'fire') {
   const pos = new Float32Array(N * 3);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const embers = new THREE.Points(geo, new THREE.PointsMaterial({ color: spectral ? 0xe0ffff : phantom ? 0xb388ff : eclipse ? 0xe1bee7 : 0xffab40, size: 0.14 * s, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const embers = new THREE.Points(geo, new THREE.PointsMaterial({ color: spectral ? 0xe0ffff : phantom ? 0xb388ff : meteoric ? 0x2979ff : astral ? 0xd500f9 : eclipse ? 0xe1bee7 : 0xffab40, size: 0.14 * s, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   // Eclipse：頭頂一圈白色日冕（好似日蝕個光環）
   let corona = null;
   if (eclipse) {
@@ -56,21 +65,36 @@ export function addFireAura(model, kind = 'fire') {
     corona.rotation.x = Math.PI / 2;
     g.add(corona);
   }
-  // Spectral：成隻寵物包住一層半透明青色鬼影（閃下閃下）
+  // Spectral：成隻寵物包住一層半透明青色鬼影（閃下閃下）；Meteoric：藍光；Astral：紫光
   let shell = null;
-  if (spectral) {
-    shell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0x84ffff, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  if (spectral || meteoric || astral) {
+    shell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: meteoric ? 0x1565c0 : astral ? 0x6200ea : 0x84ffff, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     shell.position.copy(center);
     shell.scale.set(Math.max(0.5, size.x * 0.62), Math.max(0.5, size.y * 0.6), Math.max(0.5, size.z * 0.62));
     shell.castShadow = false;
     g.add(shell);
+  }
+  // Meteoric：三粒發光細隕石；Astral：斜斜一圈星環
+  const rocks = [];
+  if (meteoric) for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(rockGeo, rockMat);
+    m.scale.setScalar(s);
+    g.add(m);
+    rocks.push(m);
+  }
+  let halo = null;
+  if (astral) {
+    halo = new THREE.Mesh(new THREE.TorusGeometry(r * 1.05, 0.06 * s, 8, 48), new THREE.MeshBasicMaterial({ color: 0xaa00ff, transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.position.copy(center);
+    halo.rotation.set(Math.PI / 2 - 0.45, 0, 0.3);
+    g.add(halo);
   }
   embers.frustumCulled = false;
   g.add(embers);
   model.add(g);
   model.userData.fireAura = g;
   model.userData.fireAuras[kind] = g;
-  auras.add({ g, flames, pos, geo, r, s, center, minY: box.min.y, height: size.y, corona, shell, shellScale: shell?.scale.clone(), phantom });
+  auras.add({ g, flames, pos, geo, r, s, center, minY: box.min.y, height: size.y, corona, shell, shellScale: shell?.scale.clone(), phantom, orbit: astral, rocks, halo, glow: meteoric || astral });
 }
 
 // 寵物仲喺唔喺場景（拎走咗就唔郁）
@@ -93,9 +117,23 @@ export function animateFireAuras(time) {
         f.position.set(a.center.x + Math.cos(k) * a.r, a.minY + a.height * (0.25 + 0.5 * ((Math.sin(time * 0.9 + phase) + 1) / 2)), a.center.z + Math.sin(k) * a.r);
         f.scale.setScalar(a.s * (1.1 + Math.sin(time * 2 + i) * 0.35));
       });
+    } else if (a.orbit) {
+      // 🌌 星星：斜斜一圈慢慢轉（似銀河），一閃一閃
+      a.flames.forEach(({ f, a: ang, phase }, i) => {
+        const k = ang + time * 0.9;
+        f.position.set(a.center.x + Math.cos(k) * a.r, a.center.y + Math.sin(k) * a.r * 0.45 + Math.sin(time * 1.3 + phase) * 0.1 * a.s, a.center.z + Math.sin(k) * a.r * 0.85);
+        f.rotation.y = time * 3 + i;
+        f.scale.setScalar(a.s * (0.7 + Math.abs(Math.sin(time * 4 + phase)) * 0.8));
+      });
     } else for (const { f, phase } of a.flames) f.scale.set(a.s, a.s * (0.8 + Math.abs(Math.sin(time * 6 + phase)) * 0.7), a.s);
+    a.rocks.forEach((m, i) => {
+      const k = time * 1.6 + (i / 3) * Math.PI * 2;
+      m.position.set(a.center.x + Math.cos(k) * a.r * 1.1, a.center.y + Math.sin(k * 2) * a.height * 0.25, a.center.z + Math.sin(k) * a.r * 1.1);
+      m.rotation.set(time * 2 + i, time * 3, 0);
+    });
+    if (a.halo) a.halo.rotation.z = time * 0.8;
     if (a.shell) {
-      a.shell.material.opacity = 0.1 + Math.abs(Math.sin(time * 2.2)) * 0.14;
+      a.shell.material.opacity = (a.glow ? 0.14 : 0.1) + Math.abs(Math.sin(time * 2.2)) * 0.14;
       a.shell.scale.copy(a.shellScale).multiplyScalar(1 + Math.sin(time * 3) * 0.04);
     }
     for (let i = 0; i < a.pos.length / 3; i++) {
