@@ -351,7 +351,7 @@ body.in-halloween #tutorial, body.in-halloween #tutorial-arrow, body.in-hallowee
 #hw-candy-hud { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(188px + env(safe-area-inset-bottom, 0px)); z-index: 6; font-weight: 800; font-size: 15px; padding: 6px 14px; pointer-events: none; background: linear-gradient(180deg, #4a2a05, #241302); color: #ffe082; border: 3px solid #ff9100; border-radius: 999px; white-space: nowrap; }
 #hw-candy-hud.bump { animation: candy-bump 0.5s ease-out; }
 @keyframes candy-bump { 0% { transform: translateX(-50%) scale(1); } 35% { transform: translateX(-50%) scale(1.25); filter: brightness(1.6); } 100% { transform: translateX(-50%) scale(1); } }
-body.in-movie #hw-candy-hud, body.fishing #hw-train-hud, body.fishing #hw-dust-hud { visibility: hidden; }
+body.in-movie #hw-candy-hud, body.fishing #hw-train-hud, body.fishing #hw-dust-hud, body.fishing #event-banner { visibility: hidden; } /* 釣魚時收埋活動橫額，唔好疊住收線提示 */
 body.mobile #hw-candy-hud { bottom: auto; top: calc(156px + env(safe-area-inset-top, 0px)); font-size: 12px; }
 
 #fish-ui { position: fixed; inset: 0; pointer-events: none; z-index: 7; font-family: 'Fredoka', 'Trebuchet MS', sans-serif; }
