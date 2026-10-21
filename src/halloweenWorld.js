@@ -246,7 +246,7 @@ export const PATHS = {
   spine3: [[X, -239], [X + 4, -252], [X + 5, -266], [X + 1, -282], [X, -298], [X, -314], [X, -323]],
   east: [[X + 17, 0], [X + 26, 1.5], [X + 34, -0.5], [X + 41, 0]],
   west: [[X - 17, 0], [X - 26, 2], [X - 35, 0.5], [X - 43.5, 0]],
-  rod: [[X - 27, 1.5], [X - 28.5, -6], [X - 28, -15]],
+  rod: [[X - 27, 1.5], [X - 28.5, 6], [X - 29.5, 10]], // 魚竿舖 2026-10-21 搬咗去碼頭南邊（ROD_SHOP z = 10）
   south: [[X, 16], [X, 26], [X + 0.6, 38], [X - 0.6, 48], [X, 62]],
 };
 
@@ -789,10 +789,7 @@ export async function buildHalloween(scene, progress = () => {}) {
     add(shop, box(0.36, 0.45, 0.36), glow(0xffd54f, 2.2), 0, 3.15, 1.3, false);
     lightPool(root, ROD_SHOP.x + 2, ROD_SHOP.z, 4, 0xffd54f, 0.3);
     addCollider(ROD_SHOP.x, ROD_SHOP.z, 2.4);
-    const sign = makeSign([{ text: '🎣 ROD SHOP', size: 0.4 }, { text: 'Fish for Halloween eggs!', size: 0.2 }], 4, 1.1, THEMES.blue);
-    sign.position.set(ROD_SHOP.x + 1.3, 4.4, ROD_SHOP.z);
-    sign.rotation.y = Math.PI / 2;
-    live.add(sign);
+    // 招牌由 fishing.js 起（發光嗰個），呢度唔再起多個
     // 蘆葦（水邊）+ 水上蓮葉蠟燭
     for (let i = 0; i < 90; i++) {
       const z = w.minZ + rand() * (w.maxZ - w.minZ);
