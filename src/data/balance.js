@@ -142,6 +142,9 @@ export const FISHING_CANDY_PILES = [
 ];
 // ⚡ Power bar: one trip up and down takes this many seconds
 export const FISHING_POWER_PERIOD = 1.4;
+// 🎯 Aiming (Issue #10): the bobber lands where you look. The power bar sets how FAR you can throw:
+// empty bar = up to `min` metres, full bar = up to `max` metres (aim closer and it lands right where you look)
+export const FISHING_CAST_RANGE = { min: 6, max: 22 };
 // ⚡ A full power bar adds this much luck (rarer eggs) and Candy Corn ×1.4 (an empty bar ×0.6)
 export const FISHING_POWER_LUCK = 0.25;
 // 🎣 Reeling: the meter starts at `start`; each press adds `gain` (+5% for every better rod);

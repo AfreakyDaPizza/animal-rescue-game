@@ -274,7 +274,7 @@ applyQuality();
 
 const thirdPerson = createThirdPerson(scene, camera); // 拎住寵物時用第三身
 // 🎣 Halloween 釣魚：魚竿舖、力度條拋竿、狂撳收線、釣蛋同 🌽 Candy Corn（src/fishing.js）
-const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar });
+const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar, view: thirdPerson.view }); // view：第三身準星瞄準用（Issue #10）
 const fishUI = { play: (n) => play(n), popup: (t) => popup(t), announce: (t) => announce(t), save: () => save(), flash: () => flashScreen() };
 setRodShopActions({ buy: (i) => buyRod(i, fishUI) });
 if (!Number.isInteger(state.rod)) state.rod = 0; // 舊存檔（以前魚竿會斷，係 null）：每個人都有免費 Twig Rod

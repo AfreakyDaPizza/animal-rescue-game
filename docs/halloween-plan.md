@@ -127,6 +127,11 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Rod prices (🌽): 0, 30, 65, 125, 200, 350, 550, 900, 1500, 2500, 4000, 6000, 10000, 15000, 25000 (about 2.5 hours of fishing for all 15). All numbers in balance.js (`FISHING_*`).
 - "Fishing stall not here": the Rod Shop was at z −20, which is exactly inside the tall cliff wall on the south edge of the Pumpkin Graveyard, so it was buried in rock. It moved to `ROD_SHOP = { x: HW_X − 32, z: 10 }` (just south of the dock), with its glowing sign, light beam, pumpkin-lamp path from the ruins, plus a new "🎣 FISH HERE!" sign and a blue beam at the end of the dock.
 
+## ✅ Built: 🎯 aim your cast + the line really connects (Issue #10, 2026-10-21; src/fishing.js)
+- **The fishing line now starts exactly at the rod tip** (first person and third person, every rod, even while it bends). Why it didn't before: in third person the arm holding the rod was moved *after* the line was drawn, so the line used the tip of a rod hanging down by your side (about 3 metres away). Now the rod is posed first, and the line is placed again right before each picture is drawn, so it can never fall behind.
+- **You choose where to fish:** while the ⚡ power bar goes up and down, a glowing 🎯 ring on the water (plus a dotted arc) shows where the bobber will land: the middle of your screen. The power bar sets how far you can throw: empty bar = 6 m, full bar = 22 m (`FISHING_CAST_RANGE` in balance.js). Aim closer and it lands right where you look.
+- Look at land or the dock → the ring turns **orange** and moves to the nearest water. You can fish from anywhere on the dock or along the lake shore, not only the end of the dock. Phones: drag the screen to aim, tap USE.
+
 ## ✅ Built: 🐕 Echo + 🧟 Zombified Chest (Issue #8, 2026-10-21)
 - **Echo** is a cute zombie dog (green fur, glowing green eyes, purple stitches, a bandaged leg and a taped floppy ear, wagging tail). He stands on the counter of his little stall in the north-east of the Spawn Ruins, so you see him as soon as you arrive. He looks at you, tilts his head and does a happy hop now and then.
 - Press **E** at the stall to open the shop: your 🍬 Candy Corn, the chest price and what's inside (with chances).

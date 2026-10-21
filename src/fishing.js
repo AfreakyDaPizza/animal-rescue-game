@@ -9,7 +9,7 @@
 // 魚竿：每個人都有免費 Twig Rod；用 Candy Corn 喺魚竿舖升級（rodShop.js），會存低，返普通世界都唔會斷
 import * as THREE from 'three';
 import { state } from './state.js';
-import { FISHING_BITE_WINDOW, FISHING_POWER_PERIOD, FISHING_REEL, FISHING_REEL_WEIGHT, rarityInfo } from './data/balance.js';
+import { FISHING_BITE_WINDOW, FISHING_CAST_RANGE, FISHING_POWER_PERIOD, FISHING_REEL, FISHING_REEL_WEIGHT, rarityInfo } from './data/balance.js';
 import { buildHalloweenEgg } from './halloweenPets.js';
 import { ROD_SHOP, FISH_SPOT, DOCK, LAKE_WATER, LAKE_SHORE, LAKE, RUINS } from './halloweenShape.js';
 import { addEgg } from './halloweenEggs.js';
@@ -298,7 +298,7 @@ function buildDecor(scene) {
   beam.position.set(ROD_SHOP.x, 15, ROD_SHOP.z);
   root.add(beam);
   // 🎣 碼頭入口：「FISH HERE」牌 + 碼頭尾一條藍色光柱
-  const fishSign = signBoard([['🎣 FISH HERE!', 64, '#80deea', 0.4], ['Walk to the end of the dock · press E', 24, '#fff3e0', 0.8]], 4, 1.2, '#00e5ff');
+  const fishSign = signBoard([['🎣 FISH HERE!', 64, '#80deea', 0.4], ['Dock or shore · aim at the water · press E', 22, '#fff3e0', 0.8]], 4, 1.2, '#00e5ff');
   fishSign.position.set(DOCK.maxX + 1.2, 2.6, DOCK.maxZ + 1.4);
   fishSign.rotation.y = Math.PI / 2;
   root.add(fishSign);
@@ -435,9 +435,9 @@ function showBigCatch(fishing, { kicker, title, sub, color, eternal }) {
 }
 
 // ---------- 主體 ----------
-export function createFishing({ scene, camera, avatar }) {
+export function createFishing({ scene, camera, avatar, view = null }) {
   const fishing = {
-    scene, camera, avatar,
+    scene, camera, avatar, view, third: false, aim: { point: new THREE.Vector3(), ok: true, why: '' },
     phase: 'idle', t: 0, waitLeft: 0, castFrom: null, target: new THREE.Vector3(), launch: new THREE.Vector3(),
     power: 0, progress: 0, catch: null, weight: 1, kick: 0, tugIn: 1.5, cool: 0, nibbleIn: 2, nibble: 0, splashIn: 0, ringIn: 0,
     decor: null, handRod: null, avatarRod: null, rodIndex: -1,
@@ -472,7 +472,31 @@ export function createFishing({ scene, camera, avatar }) {
   scene.add(bang);
   const splash = makeSplash(scene);
   const rings = makeRings(scene);
-  Object.assign(fishing, { bob, bobBody, line, lineGeo, LINE_N, bang, splash, rings, dom: buildUi() });
+  // 每次畫畫面之前（矩陣已經更新好）先擺魚絲：就算其他程式喺 updateFishing 之後再郁過公仔／鏡頭，條線都唔會甩（Issue #10）
+  const before = scene.onBeforeRender;
+  scene.onBeforeRender = function (...args) {
+    before.apply(this, args);
+    if (line.visible && fishing.handRod) drawLine(fishing);
+  };
+  // 🎯 瞄準記號（Issue #10）：撳緊力度條嗰陣，水面一個圈話你知會落喺邊 + 一條虛線弧
+  const marker = new THREE.Group();
+  // depthTest: false = 隔住公仔（第三身準星喺公仔後面）都見到
+  const markMat = new THREE.MeshBasicMaterial({ color: 0x18ffff, transparent: true, opacity: 0.85, depthWrite: false, depthTest: false, side: THREE.DoubleSide, fog: false });
+  const markRing = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.8, 40).rotateX(-Math.PI / 2), markMat);
+  const markOuter = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.13, 40).rotateX(-Math.PI / 2), markMat);
+  const markDot = new THREE.Mesh(new THREE.CircleGeometry(0.16, 16).rotateX(-Math.PI / 2), markMat);
+  marker.add(markRing, markOuter, markDot);
+  marker.traverse((o) => (o.renderOrder = 20));
+  marker.visible = false;
+  scene.add(marker);
+  const ARC_N = 26;
+  const arcGeo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(ARC_N * 3), 3));
+  const arc = new THREE.Points(arcGeo, new THREE.PointsMaterial({ color: 0xb2ffff, size: 0.13, transparent: true, opacity: 0.8, depthWrite: false, depthTest: false, fog: false }));
+  arc.frustumCulled = false;
+  arc.visible = false;
+  arc.renderOrder = 20;
+  scene.add(arc);
+  Object.assign(fishing, { bob, bobBody, glowDot, line, lineGeo, LINE_N, bang, splash, rings, marker, markMat, markOuter, arc, arcGeo, ARC_N, dom: buildUi() });
   // 試大獎動畫（console：game.fishing.testBig()）
   fishing.testBig = (o = { kicker: '✨ MYTHIC CATCH! ✨', title: 'Ghost Reaper egg!', sub: 'You fished up a MYTHIC egg 🥚', color: '#ff4081' }) => showBigCatch(fishing, o);
   return fishing;
@@ -505,26 +529,69 @@ function syncRodModels(fishing) {
   fishing.avatarRod = av;
 }
 
-// 喺邊度釣得：碼頭（尾段）或者岸邊近水
+// 喺邊度釣得：成條碼頭，或者成條湖邊（近水嗰幾米）都得（Issue #10）
 export function canFishAt(x, z) {
-  const onDock = x >= DOCK.minX - 0.5 && x <= DOCK.maxX && z >= DOCK.minZ - 0.6 && z <= DOCK.maxZ + 0.6;
-  const onShore = x >= LAKE_SHORE.minX - 0.5 && x <= LAKE_SHORE.minX + 3.2 && z >= LAKE_SHORE.minZ && z <= LAKE_SHORE.maxZ;
+  const onDock = x >= DOCK.minX - 0.5 && x <= DOCK.maxX + 0.5 && z >= DOCK.minZ - 0.6 && z <= DOCK.maxZ + 0.6;
+  const onShore = x >= LAKE_SHORE.minX - 0.5 && x <= LAKE_SHORE.minX + 4.5 && z >= LAKE_SHORE.minZ && z <= LAKE_SHORE.maxZ;
   return onDock || onShore;
 }
 
-// 拋去邊：前面 dist 米（夾返喺水入面，唔好拋落碼頭）
-function castTarget(fishing, pos, dist) {
-  const fwd = new THREE.Vector3();
-  fishing.camera.getWorldDirection(fwd);
-  fwd.y = 0;
-  if (fwd.lengthSq() < 0.01) fwd.set(-1, 0, 0);
-  fwd.normalize();
-  if (fwd.x > -0.3) fwd.set(-1, 0, fwd.z * 0.5).normalize(); // 水喺 -x 嗰邊
-  const t = new THREE.Vector3(pos.x + fwd.x * dist, WATER_Y, pos.z + fwd.z * dist);
-  t.x = THREE.MathUtils.clamp(t.x, LAKE_WATER.minX + 2, LAKE_WATER.maxX - 1.5);
-  t.z = THREE.MathUtils.clamp(t.z, LAKE_WATER.minZ + 2, LAKE_WATER.maxZ - 2);
-  if (t.x > DOCK.minX - 0.5 && Math.abs(t.z) < DOCK.maxZ + 0.8) t.z = (t.z >= 0 ? 1 : -1) * (DOCK.maxZ + 1.6);
-  return t;
+// 力度 → 最遠拋到幾遠（米）
+export const castRange = (power) => FISHING_CAST_RANGE.min + (FISHING_CAST_RANGE.max - FISHING_CAST_RANGE.min) * power;
+
+// 最近嘅「拋得落」水面點：喺湖入面（唔好太埋邊／蘆葦），唔好落喺碼頭上面
+const DOCK_GAP = 0.9;
+function clampToWater(v) {
+  const W = LAKE_WATER;
+  v.x = THREE.MathUtils.clamp(v.x, W.minX + 1.5, W.maxX - 1.4);
+  v.z = THREE.MathUtils.clamp(v.z, W.minZ + 1.5, W.maxZ - 1.5);
+  if (v.x > DOCK.minX - DOCK_GAP && Math.abs(v.z) < DOCK.maxZ + DOCK_GAP) {
+    // 喺碼頭上面：推去最近嗰邊（左／右／碼頭尾前面）
+    const side = DOCK.maxZ + DOCK_GAP - Math.abs(v.z);
+    const front = v.x - (DOCK.minX - DOCK_GAP);
+    if (front < side) v.x = DOCK.minX - DOCK_GAP;
+    else v.z = (v.z >= 0 ? 1 : -1) * (DOCK.maxZ + DOCK_GAP);
+  }
+  v.y = WATER_Y;
+  return v;
+}
+
+// 🎯 瞄準（Issue #10）：準星（畫面正中）條射線打落水面 → 浮標落點
+// 太遠 → 縮返去力度夠到嘅位；望住地／碼頭 → 搵最近嘅水面
+const _o = new THREE.Vector3();
+const _d = new THREE.Vector3();
+function aimPoint(fishing, pos, power) {
+  const cam = fishing.third && fishing.view ? fishing.view : fishing.camera;
+  cam.updateWorldMatrix(true, false);
+  cam.getWorldPosition(_o);
+  cam.getWorldDirection(_d);
+  const flat = new THREE.Vector3(_d.x, 0, _d.z);
+  if (flat.lengthSq() < 1e-4) flat.set(-1, 0, 0);
+  flat.normalize();
+  const range = castRange(power);
+  const hit = new THREE.Vector3();
+  if (_d.y < -0.01) hit.copy(_o).addScaledVector(_d, (WATER_Y - _o.y) / _d.y);
+  else hit.set(pos.x + flat.x * 999, WATER_Y, pos.z + flat.z * 999); // 望天：拋到最遠
+  // 由玩家量：太近推遠少少，太遠縮返
+  const v = new THREE.Vector3(hit.x - pos.x, 0, hit.z - pos.z);
+  let d = v.length();
+  if (d < 1e-3) v.copy(flat), (d = 1);
+  v.divideScalar(d);
+  if (v.dot(flat) < 0) v.copy(flat), (d = 2.5); // 第三身望好低：射線打中公仔後面 → 當你向前拋近近
+  const want = THREE.MathUtils.clamp(d, 2.5, range);
+  const raw = new THREE.Vector3(pos.x + v.x * want, WATER_Y, pos.z + v.z * want);
+  const p = clampToWater(raw.clone());
+  const far = d > range + 0.01;
+  const land = p.distanceTo(raw) >= 0.3;
+  if (Math.hypot(p.x - pos.x, p.z - pos.z) > range + 1.5) {
+    // 望住相反方向（背住個湖）：夾完都太遠 → 拋落離你最近嘅水面
+    clampToWater(p.set(pos.x - 4, WATER_Y, pos.z));
+    if (Math.hypot(p.x - pos.x, p.z - pos.z) < 2.5) clampToWater(p.set(pos.x - 6, WATER_Y, pos.z));
+  }
+  fishing.aim.point.copy(p);
+  fishing.aim.ok = !land; // false = 望住地：幫你搵最近嘅水（記號變橙色）；太遠 = 縮返去力度夠到嘅位（仍然藍色）
+  fishing.aim.why = land ? 'land' : far ? 'far' : '';
+  return fishing.aim;
 }
 
 // E 掣提示（main.js currentInteraction 用）；fish: true = 釣魚動作（滑鼠左掣都用得）
@@ -532,7 +599,7 @@ export function fishingInteraction(fishing, pos, { openShop, ui }) {
   const act = (prompt, action) => ({ prompt, action, fish: true });
   const busy = () => {}; // 拋緊／飛緊：撳都唔做嘢（狂撳唔會打亂）
   switch (fishing.phase) {
-    case 'power': return act(`⚡ ${key()} CAST! Stop the bar HIGH for more luck`, () => cast(fishing, pos, ui));
+    case 'power': return act(`🎯 Aim at the water · ${key()} CAST! Stop the bar HIGH to throw farther`, () => cast(fishing, pos, ui));
     case 'cast': return act('🎣 Casting...', busy);
     case 'wait': return act('🎣 Waiting for a bite... watch the bobber!', () => fishing.t > 1.2 && cancel(fishing, ui, '🎣 You reeled in... nothing. Wait for the ❗ next time!'));
     case 'bite': return act(`❗ ${key()} HOOK IT NOW!`, () => hook(fishing, ui));
@@ -543,7 +610,7 @@ export function fishingInteraction(fishing, pos, { openShop, ui }) {
   if (Math.hypot(pos.x - ROD_SHOP.x - 2.6, pos.z - ROD_SHOP.z) < 3.4) return { prompt: '<kbd>E</kbd> 🎣 Talk to Skeleton Sam (Rod Shop · upgrade with 🌽)', action: openShop };
   if (!canFishAt(pos.x, pos.z)) return null;
   if (fishing.cool > 0) return act(`🎣 ${currentRod().name}`, busy);
-  return act(`${key()} 🎣 Fish with your ${currentRod().name}`, () => startPower(fishing, pos, ui));
+  return act(`${key()} 🎣 Fish with your ${currentRod().name} (aim at the water)`, () => startPower(fishing, pos, ui));
 }
 // 滑鼠左掣（main.js mousedown）：只係做釣魚動作，唔開舖
 export function fishingPress(fishing, pos, ui) {
@@ -568,7 +635,7 @@ function cast(fishing, pos, ui) {
   fishing.phase = 'cast';
   fishing.t = 0;
   fishing.castFrom = { x: pos.x, z: pos.z };
-  fishing.target.copy(castTarget(fishing, pos, 5 + fishing.power * 8));
+  fishing.target.copy(aimPoint(fishing, pos, fishing.power).point); // 🎯 落喺你瞄住嘅位（Issue #10）
   // 等幾耐：竿決定，力度高少少快啲
   fishing.waitLeft = (rod.bite[0] + Math.random() * (rod.bite[1] - rod.bite[0])) * (1 - fishing.power * 0.15);
   fishing.nibbleIn = 1.5 + Math.random() * 2;
@@ -677,6 +744,7 @@ function finishCatch(fishing, ui) {
 
 // 每格畫面（main.js：喺 updateThirdPerson 之後叫，咁先可以改手臂動作）
 export function updateFishing(fishing, dt, time, { inside, pos, third, ui, paused = false }) {
+  fishing.third = !!third;
   if (inside && !fishing.decor) fishing.decor = buildDecor(fishing.scene);
   syncRodModels(fishing);
   const d = fishing.dom;
@@ -740,6 +808,7 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
   fishing.t += dt;
   const bob = fishing.bob;
   const tipNow = () => rodTip(fishing, third);
+  let fly = null; // 拋緊：浮標飛到幾成（0–1）
 
   if (fishing.phase === 'power') {
     // ⚡ 力度條上上落落；竿慢慢向後拉
@@ -765,31 +834,7 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
       swing = 0.45 - s * 0.8 + Math.max(0, k - 0.3) * 0.45; // 揮過頭，再返嚟
       bend = 0.45 * Math.sin(s * Math.PI) - 0.1 * Math.sin(k * Math.PI * 3) * (1 - k);
       armX = -0.8 + s * 2.3 - k * 0.5;
-      if (!bob.visible) {
-        bob.visible = true;
-        fishing.launch.copy(tipNow());
-      }
-      // 二次貝茲：竿頭 → 高高嘅中間 → 落水位
-      const from = fishing.launch;
-      const to = fishing.target;
-      const dist = Math.hypot(to.x - from.x, to.z - from.z);
-      const ctrl = new THREE.Vector3((from.x + to.x) / 2, Math.max(from.y, to.y) + 1.5 + dist * 0.35, (from.z + to.z) / 2);
-      const u = k;
-      bob.position.set(
-        (1 - u) ** 2 * from.x + 2 * (1 - u) * u * ctrl.x + u * u * to.x,
-        (1 - u) ** 2 * from.y + 2 * (1 - u) * u * ctrl.y + u * u * to.y,
-        (1 - u) ** 2 * from.z + 2 * (1 - u) * u * ctrl.z + u * u * to.z,
-      );
-      fishing.bobBody.rotation.x += dt * 9; // 喺空中轉
-      if (k >= 1) {
-        fishing.phase = 'wait';
-        fishing.t = 0;
-        fishing.bobBody.rotation.set(0, 0, 0);
-        fishing.splash.emit(to, 30, 2.2, 4.5);
-        fishing.rings.spawn(to, 3.5, 1.3, 0.7);
-        fishing.rings.spawn(to, 2, 0.9, 0.6);
-        ui.play('plop');
-      }
+      fly = k; // 浮標飛：等擺好竿先計（竿頭要用今格嘅位）
     }
   } else if (fishing.phase === 'wait') {
     // 浮標輕輕浮下浮下；有時魚仔試吓咬（細細下一沉）
@@ -854,7 +899,7 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
     toward.normalize();
     const zig = Math.sin(time * 3.1) * 1.4 * (1 - pr) + Math.sin(time * 7.3) * 0.25;
     bob.position.copy(fishing.target).addScaledVector(toward, reach * pr * 0.85).addScaledVector(side, zig);
-    bob.position.x = THREE.MathUtils.clamp(bob.position.x, LAKE_WATER.minX + 1, LAKE_WATER.maxX - 0.3);
+    clampToWater(bob.position); // 唔好拉咗上岸／碼頭
     bob.position.y = WATER_Y - 0.12 + Math.sin(time * 14) * 0.05;
     fishing.bobBody.rotation.set(Math.sin(time * 10) * 0.4, 0, Math.cos(time * 9) * 0.4);
     fishing.ringIn -= dt;
@@ -885,6 +930,9 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
     if (k >= 1) finishCatch(fishing, ui);
   }
 
+  // ---- 先擺好竿（第三身手臂、第一身竿、彎），之後先計竿頭位 → 條線一定由竿頭出（Issue #10）----
+  // 以前：第三身手臂喺畫完條線之後先擺，條線用咗手臂垂低時嘅竿頭（updateThirdPerson 每格將手臂歸零），所以接唔到
+  if (armX !== null && showRod) arm.rotation.set(armX, 0, -0.1); // 第三身：左手拎竿（Minecraft 式直手）
   // 第一身：成支竿嘅動作 + 彎
   if (fishing.handRod) {
     const h = fishing.handRod;
@@ -896,6 +944,48 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
     bendRod(r, r.userData.bendNow * (r === fishing.handRod?.userData.rod ? 0.7 : 1));
   }
 
+  // 浮標一條弧線飛出去（竿頭 → 高高嘅中間 → 落水位）
+  if (fly !== null) {
+    if (!bob.visible) {
+      bob.visible = true;
+      fishing.launch.copy(tipNow());
+    }
+    arcPoint(fishing.launch, fishing.target, fly, bob.position);
+    fishing.bobBody.rotation.x += dt * 9; // 喺空中轉
+    if (fly >= 1) {
+      const to = fishing.target;
+      fishing.phase = 'wait';
+      fishing.t = 0;
+      fishing.bobBody.rotation.set(0, 0, 0);
+      fishing.splash.emit(to, 30, 2.2, 4.5);
+      fishing.rings.spawn(to, 3.5, 1.3, 0.7);
+      fishing.rings.spawn(to, 2, 0.9, 0.6);
+      ui.play('plop');
+    }
+  }
+
+  // 🎯 瞄準記號 + 虛線弧（撳緊力度條嗰陣）
+  const aiming = fishing.phase === 'power';
+  fishing.marker.visible = fishing.arc.visible = aiming;
+  if (aiming) {
+    const aim = aimPoint(fishing, pos, fishing.power);
+    const m = fishing.marker;
+    m.position.set(aim.point.x, WATER_Y + 0.05, aim.point.z);
+    m.rotation.y = time * 1.5;
+    m.scale.setScalar(1 + Math.sin(time * 6) * 0.06);
+    fishing.markOuter.scale.setScalar(0.9 + ((time * 1.2) % 1) * 0.5);
+    fishing.markMat.color.setHex(aim.ok ? (fishing.power >= 0.9 ? 0xffd740 : 0x18ffff) : 0xff9100); // 橙色 = 望住地／碼頭，幫你搵咗最近嘅水
+    const from = tipNow();
+    const ap = fishing.arcGeo.attributes.position;
+    const tmp = new THREE.Vector3();
+    const N = fishing.ARC_N;
+    for (let i = 0; i < N; i++) {
+      arcPoint(from, aim.point, (i + ((time * 1.5) % 1)) / N, tmp); // 一點點向前行
+      ap.setXYZ(i, tmp.x, tmp.y, tmp.z);
+    }
+    ap.needsUpdate = true;
+  }
+
   // 🎛️ 力度條、收線條（釣緊魚：收埋火車／Soul Dust 嗰兩粒，唔好遮住提示）
   document.body.classList.toggle('fishing', inside && fishing.phase !== 'idle');
   const showPower = fishing.phase === 'power';
@@ -904,7 +994,8 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
   $('fish-reel').hidden = !showReel;
   if (showPower) {
     d.ui.querySelector('.fp-needle').style.bottom = `${fishing.power * 100}%`;
-    d.ui.querySelector('.fp-hint').textContent = `${pressWord()} to cast!`;
+    const why = fishing.aim.why === 'land' ? '🎯 Aim at the WATER!' : fishing.aim.why === 'far' ? '⚡ Stop the bar higher to throw farther' : `🎯 ${mobile() ? 'Drag to aim' : 'Look to aim'}`;
+    d.ui.querySelector('.fp-hint').textContent = `${why} · ${pressWord()} to cast!`;
     d.ui.querySelector('.fp-track').classList.toggle('hot', fishing.power >= 0.9);
   }
   if (showReel) {
@@ -916,42 +1007,56 @@ export function updateFishing(fishing, dt, time, { inside, pos, third, ui, pause
     d.ui.querySelector('#fish-reel').classList.toggle('danger', pr < 0.2);
   }
 
-  // 魚絲：竿頭 → 浮標，中間垂低（等緊魚：鬆啲；收線：拉直）
-  const lineOn = bob.visible && ['cast', 'wait', 'bite', 'reel'].includes(fishing.phase);
-  fishing.line.visible = lineOn;
-  if (lineOn) {
-    const tip = tipNow();
-    const end = bob.position.clone();
-    end.y += 0.34;
-    const dist = tip.distanceTo(end);
-    const sag = fishing.phase === 'cast' ? 0.15 : fishing.phase === 'wait' ? 0.12 * dist : fishing.phase === 'bite' ? 0.05 * dist : 0.01 * dist;
-    const mid = tip.clone().lerp(end, 0.5);
-    mid.y -= sag * 2;
-    const p = fishing.lineGeo.attributes.position;
-    const N = fishing.LINE_N;
-    const tremble = fishing.phase === 'reel' ? 0.02 : 0;
-    for (let i = 0; i < N; i++) {
-      const u = i / (N - 1);
-      let x = (1 - u) ** 2 * tip.x + 2 * (1 - u) * u * mid.x + u * u * end.x;
-      let y = (1 - u) ** 2 * tip.y + 2 * (1 - u) * u * mid.y + u * u * end.y;
-      const z = (1 - u) ** 2 * tip.z + 2 * (1 - u) * u * mid.z + u * u * end.z;
-      y = Math.max(y, WATER_Y + 0.02);
-      x += Math.sin(u * Math.PI) * Math.sin(time * 60 + u * 10) * tremble;
-      p.setXYZ(i, x, y, z);
-    }
-    p.needsUpdate = true;
-  }
+  // 魚絲：真正畫係喺 scene.onBeforeRender（drawLine），咁就一定用到畫面嗰一刻嘅竿頭位
+  fishing.line.visible = bob.visible && ['cast', 'wait', 'bite', 'reel'].includes(fishing.phase);
+  fishing.time = time;
+  if (fishing.line.visible) drawLine(fishing); // 呢度都畫一次（冇 render 嘅時候都啱）
   if (fishing.phase !== 'bite') fishing.bang.visible = false;
-  // 第三身：左手拎竿（Minecraft 式直手）
-  if (armX !== null && showRod) arm.rotation.set(armX, 0, -0.1);
 }
 
-function rodTip(fishing, third) {
+// 魚絲：竿頭 → 浮標天線頂，中間垂低（等緊魚：鬆啲；收線：拉直）
+// Issue #10：條線一定要由「畫出嚟嗰支竿」嘅竿頭出：第一身 = 鏡頭前面嗰支（掛喺 camera），第三身 = 公仔手上嗰支
+const _tip = new THREE.Vector3();
+const _end = new THREE.Vector3();
+const _mid = new THREE.Vector3();
+function drawLine(fishing) {
+  const tip = rodTip(fishing, fishing.third, _tip);
+  const end = fishing.glowDot.getWorldPosition(_end); // 浮標天線頂
+  const dist = tip.distanceTo(end);
+  const ph = fishing.phase;
+  const sag = ph === 'cast' ? 0.15 : ph === 'wait' ? 0.12 * dist : ph === 'bite' ? 0.05 * dist : 0.01 * dist;
+  const mid = _mid.copy(tip).lerp(end, 0.5);
+  mid.y -= sag * 2;
+  const p = fishing.lineGeo.attributes.position;
+  const N = fishing.LINE_N;
+  const tremble = ph === 'reel' ? 0.02 : 0;
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1);
+    let x = (1 - u) ** 2 * tip.x + 2 * (1 - u) * u * mid.x + u * u * end.x;
+    let y = (1 - u) ** 2 * tip.y + 2 * (1 - u) * u * mid.y + u * u * end.y;
+    const z = (1 - u) ** 2 * tip.z + 2 * (1 - u) * u * mid.z + u * u * end.z;
+    if (i > 0) y = Math.max(y, WATER_Y + 0.02); // 第一點一定係竿頭
+    x += Math.sin(u * Math.PI) * Math.sin(fishing.time * 60 + u * 10) * tremble;
+    p.setXYZ(i, x, y, z);
+  }
+  p.needsUpdate = true;
+}
+
+// 二次貝茲弧：from → 高高嘅中間 → to（拋竿同瞄準虛線用同一條）
+function arcPoint(from, to, u, out) {
+  const dist = Math.hypot(to.x - from.x, to.z - from.z);
+  const cx = (from.x + to.x) / 2;
+  const cy = Math.max(from.y, to.y) + 1.5 + dist * 0.35;
+  const cz = (from.z + to.z) / 2;
+  const a = (1 - u) ** 2, b = 2 * (1 - u) * u, c = u * u;
+  return out.set(a * from.x + b * cx + c * to.x, a * from.y + b * cy + c * to.y, a * from.z + b * cz + c * to.z);
+}
+
+function rodTip(fishing, third, out = new THREE.Vector3()) {
   const holder = third ? fishing.avatarRod : fishing.handRod;
   const r = holder?.userData.rod;
-  if (!r) return fishing.camera.position.clone();
-  r.updateWorldMatrix(true, true);
-  return r.userData.tip.getWorldPosition(new THREE.Vector3());
+  if (!r) return out.copy(fishing.camera.position);
+  return r.userData.tip.getWorldPosition(out); // getWorldPosition 會由上到下更新晒（手臂、彎竿都計埋）
 }
 
 // 返普通世界：收線（魚竿會留低，Issue #8 #9：唔再斷）
