@@ -93,7 +93,7 @@ export const LAKE_WATER = { minX: HW_X - 90, maxX: HW_X - 44, minZ: -34, maxZ: 3
 export const LAKE_SHORE = { minX: HW_X - 44, maxX: HW_X - 20, minZ: -30, maxZ: 30 }; // 岸邊（行得）
 export const DOCK = { minX: HW_X - 68, maxX: HW_X - 43, minZ: -2.2, maxZ: 2.2, top: 0.4 }; // 木碼頭（行出水面）
 export const FISH_SPOT = { x: HW_X - 66, z: 0 }; // 碼頭尾：釣魚位
-export const ROD_SHOP = { x: HW_X - 30, z: -20 }; // 魚竿舖（15 支）
+export const ROD_SHOP = { x: HW_X - 32, z: 10 }; // 魚竿舖（15 支）：碼頭南邊。以前喺 z -20，啱啱好埋咗喺 Biome 1 南邊嘅懸崖石入面（Issue #9 "fishing stall not here"）
 
 // ---------- 行得嘅範圍（world.js isWalkable 用）----------
 // 普通世界嘅 Boss／障礙物／夜晚閘都唔理 Halloween 世界

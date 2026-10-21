@@ -112,3 +112,12 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - **Caught:** the ghost shrinks with a "whoosh", then goes POP. Soul Dust bursts out and gets sucked back into the vacuum.
 - **Orbs don't take Soul Dust any more.** You have **5 ❤️** in the Ghost World. An orb hit takes 1 heart, the screen flashes red, and you get 1.2 s of safety. You get 1 heart back after 10 s without a hit. At 0 hearts you're **knocked out** and wake up at the Ghost World train stop with full hearts (plus 3 s of safety).
 - Numbers in balance.js: GHOST_HEARTS = 5, GHOST_HEART_REGEN = 10, GHOST_HIT_SAFE = 1.2.
+
+## ✅ Built: fishing v2 + 🌽 Candy Corn (Issues #8 #9, 2026-10-21; src/fishing.js, src/rodShop.js)
+- The kid changed the rod rule: everybody has a **free Twig Rod**. Better rods cost **🌽 Candy Corn** and you **keep** them (saved in `state.rod`). Rods don't break any more.
+- New currency `state.candyCorn` (also for the chest shop). A 🌽 pill shows in the HUD anywhere in the Halloween world.
+- How fishing works now: E / click / USE at the dock or shore → ⚡ power bar goes up and down → press to cast (higher = farther cast, rarer eggs, more candy corn) → wait for the ❗ → press to hook → SPAM E / click / USE to fill the reel meter (it drains if you stop, the fish tugs back) → catch!
+- What you catch: 60% 🌽 Candy Corn, 40% Halloween egg. Candy piles: Handful 70%, Big Pile 24%, CANDY MOUNTAIN 6% (more likely with a high cast). Rarer eggs and big piles are heavier, so you have to press more.
+- BIG CATCH animation (flash, spinning rays, confetti, big text, fanfare) for Mythic/Eternal eggs and CANDY MOUNTAIN. Test it in the console: `game.fishing.testBig()`.
+- Rod prices (🌽): 0, 30, 65, 125, 200, 350, 550, 900, 1500, 2500, 4000, 6000, 10000, 15000, 25000 (about 2.5 hours of fishing for all 15). All numbers in balance.js (`FISHING_*`).
+- "Fishing stall not here": the Rod Shop was at z −20, which is exactly inside the tall cliff wall on the south edge of the Pumpkin Graveyard, so it was buried in rock. It moved to `ROD_SHOP = { x: HW_X − 32, z: 10 }` (just south of the dock), with its glowing sign, light beam, pumpkin-lamp path from the ruins, plus a new "🎣 FISH HERE!" sign and a blue beam at the end of the dock.

@@ -346,3 +346,59 @@ body.in-movie #hw-hearts, body.in-movie #hw-suck-bars { visibility: hidden; }
 body.mobile #hw-hearts { bottom: auto; top: calc(156px + env(safe-area-inset-top, 0px)); }
 body.mobile #hw-hearts .h { font-size: 18px; }
 body.in-halloween #tutorial, body.in-halloween #tutorial-arrow, body.in-halloween #hud-timer, body.in-halloween #sightings { display: none !important; }
+
+/* 🎣 Halloween 釣魚（Issue #8 #9）：🌽 Candy Corn HUD、力度條、收線條、大獎動畫 */
+#hw-candy-hud { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(188px + env(safe-area-inset-bottom, 0px)); z-index: 6; font-weight: 800; font-size: 15px; padding: 6px 14px; pointer-events: none; background: linear-gradient(180deg, #4a2a05, #241302); color: #ffe082; border: 3px solid #ff9100; border-radius: 999px; white-space: nowrap; }
+#hw-candy-hud.bump { animation: candy-bump 0.5s ease-out; }
+@keyframes candy-bump { 0% { transform: translateX(-50%) scale(1); } 35% { transform: translateX(-50%) scale(1.25); filter: brightness(1.6); } 100% { transform: translateX(-50%) scale(1); } }
+body.in-movie #hw-candy-hud, body.fishing #hw-train-hud, body.fishing #hw-dust-hud { visibility: hidden; }
+body.mobile #hw-candy-hud { bottom: auto; top: calc(156px + env(safe-area-inset-top, 0px)); font-size: 12px; }
+
+#fish-ui { position: fixed; inset: 0; pointer-events: none; z-index: 7; font-family: 'Fredoka', 'Trebuchet MS', sans-serif; }
+#fish-power { position: absolute; right: calc(50% - 300px); top: 54%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-weight: 800; text-shadow: 0 2px 0 #000; }
+#fish-power .fp-title { font-size: 18px; letter-spacing: 1px; }
+#fish-power .fp-track { position: relative; width: 34px; height: min(230px, 36vh); border: 4px solid #fff; border-radius: 18px; background: linear-gradient(0deg, #d50000 0%, #ff6d00 30%, #ffd600 55%, #76ff03 80%, #00e5ff 90%, #ffffff 100%); box-shadow: 0 0 0 3px #000, 0 6px 18px rgba(0, 0, 0, 0.6); }
+#fish-power .fp-track.hot { box-shadow: 0 0 0 3px #000, 0 0 26px 8px #18ffff; }
+#fish-power .fp-perfect { position: absolute; left: 0; right: 0; top: 0; height: 10%; border-bottom: 3px dashed #000; font-size: 0; }
+#fish-power .fp-perfect::after { content: 'PERFECT'; position: absolute; left: 44px; top: -4px; font-size: 13px; color: #18ffff; }
+#fish-power .fp-needle { position: absolute; left: -16px; right: -16px; height: 8px; margin-bottom: -4px; background: #fff; border: 3px solid #000; border-radius: 6px; box-shadow: 0 0 10px #fff; }
+#fish-power .fp-hint, #fish-reel .fr-hint { font-size: 15px; background: rgba(0, 0, 0, 0.55); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+#fish-reel { position: absolute; left: 50%; top: 11%; transform: translateX(-50%); width: min(420px, 70vw); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-weight: 800; text-shadow: 0 2px 0 #000; }
+#fish-reel .fr-title { font-size: 26px; color: #ffe082; animation: reel-pulse 0.4s ease-in-out infinite alternate; }
+@keyframes reel-pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+#fish-reel .fr-track { position: relative; width: 100%; height: 30px; border: 4px solid #fff; border-radius: 999px; background: rgba(10, 30, 40, 0.75); box-shadow: 0 0 0 3px #000, 0 6px 18px rgba(0, 0, 0, 0.5); }
+#fish-reel .fr-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, #00b8d4, #64ffda, #b2ff59); transition: width 0.08s linear; }
+#fish-reel.danger .fr-fill { background: linear-gradient(90deg, #d50000, #ff6d00); }
+#fish-reel .fr-fish { position: absolute; top: 50%; transform: translate(-50%, -50%) scaleX(-1); font-size: 30px; transition: left 0.08s linear; }
+#fish-reel.kick .fr-fish { transform: translate(-50%, -62%) scaleX(-1) rotate(-15deg); }
+#fish-reel .fr-goal { position: absolute; right: -8px; top: 50%; transform: translate(50%, -50%); font-size: 26px; }
+#fish-reel.kick .fr-track { box-shadow: 0 0 0 3px #000, 0 0 18px 4px #64ffda; }
+#fish-perfect { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 3px 0 #000, 0 0 12px rgba(0, 0, 0, 0.6); white-space: nowrap; animation: perfect-pop 1.4s ease-out forwards; }
+#fish-perfect.great { color: #b2ff59; }
+#fish-perfect.perfect { color: #18ffff; font-size: 38px; text-shadow: 0 3px 0 #000, 0 0 22px #18ffff; }
+@keyframes perfect-pop { 0% { transform: translateX(-50%) scale(0.4); opacity: 0; } 15% { transform: translateX(-50%) scale(1.15); opacity: 1; } 30% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { transform: translateX(-50%) translateY(-30px); opacity: 0; } }
+body.mobile #fish-power { left: 185px; right: auto; top: 52%; }
+body.mobile #fish-power .fp-track { height: min(150px, 34vh); }
+body.mobile #fish-reel { top: 20%; }
+
+#fish-big { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; display: flex; align-items: center; justify-content: center; --fb: #ffab00; }
+#fish-big .fb-flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+#fish-big .fb-rays { position: absolute; left: 50%; top: 45%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax; opacity: 0; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--fb) 55%, transparent) 0deg 9deg, transparent 9deg 22deg); -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.6) 18%, transparent 40%); mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.6) 18%, transparent 40%); }
+#fish-big .fb-confetti { position: absolute; inset: 0; }
+#fish-big .fb-confetti i { position: absolute; top: -30px; width: 10px; height: 16px; border-radius: 2px; opacity: 0; font-style: normal; }
+#fish-big .fb-confetti i.emoji { width: auto; height: auto; font-size: 26px; }
+#fish-big .fb-text { position: relative; text-align: center; font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-weight: 900; color: #fff; opacity: 0; text-shadow: 0 4px 0 #000, 0 0 30px var(--fb); -webkit-text-stroke: 2px rgba(0, 0, 0, 0.6); padding: 0 16px; }
+#fish-big .fb-kicker { font-size: clamp(20px, 4vw, 34px); color: var(--fb); }
+#fish-big .fb-title { font-size: clamp(36px, 9vw, 86px); line-height: 1.05; }
+#fish-big .fb-sub { font-size: clamp(16px, 3vw, 26px); color: #fffde7; margin-top: 6px; }
+#fish-big.on .fb-flash { animation: fb-flash 0.7s ease-out; }
+#fish-big.on .fb-rays { animation: fb-rays 3.8s ease-out forwards, fb-spin 6s linear infinite; }
+#fish-big.on .fb-text { animation: fb-text 3.8s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
+#fish-big.on .fb-confetti i { animation-name: fb-fall; animation-timing-function: cubic-bezier(0.3, 0.6, 0.6, 1); animation-fill-mode: forwards; }
+@keyframes fb-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+@keyframes fb-rays { 0% { opacity: 0; transform: scale(0.3); } 12% { opacity: 1; transform: scale(1); } 80% { opacity: 0.9; } 100% { opacity: 0; } }
+@keyframes fb-spin { to { rotate: 360deg; } }
+@keyframes fb-text { 0% { opacity: 0; transform: scale(0.2) rotate(-8deg); } 14% { opacity: 1; transform: scale(1.15) rotate(3deg); } 24% { transform: scale(1) rotate(0); } 85% { opacity: 1; transform: scale(1.04); } 100% { opacity: 0; transform: scale(1.2) translateY(-20px); } }
+@keyframes fb-fall { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0.9; transform: translate(var(--x), 105vh) rotate(var(--r)); } }
+@media (prefers-reduced-motion: reduce) { #fish-big.on .fb-rays { animation: fb-rays 3.8s ease-out forwards; } }
+#fish-big[hidden], #fish-power[hidden], #fish-reel[hidden], #fish-perfect[hidden], #hw-candy-hud[hidden] { display: none; }
