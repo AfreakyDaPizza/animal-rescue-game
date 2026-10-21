@@ -259,7 +259,7 @@ body.mobile #panel-title { font-size: 20px; padding: 10px 50px; }
 }
 
 /* ---- 🔐 登入畫面 + 帳號（account.js，Issue #8） ---- */
-#login { z-index: 60; background: linear-gradient(180deg, #0d47a1 0%, #00695c 60%, #1b5e20 100%); }
+#login { z-index: 9500; background: linear-gradient(180deg, #0d47a1 0%, #00695c 60%, #1b5e20 100%); }
 .login-tabs { display: flex; gap: 8px; justify-content: center; margin: 4px 0 12px; }
 #login .login-tabs button {
   flex: 1; padding: 9px 10px; font-size: 17px; border-radius: 12px; cursor: pointer;
