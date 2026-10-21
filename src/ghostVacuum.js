@@ -583,6 +583,7 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
 
     // ---- 進度條（喺俾吸緊／啱啱甩咗嘅鬼頭頂）----
     let nBar = 0;
+    let barMinY = 44;
     for (const s of souls) {
       if (s.caught >= 0 || s.p < 0.01) continue;
       head.copy(s.g.position).y += s.g.userData.mid + s.g.userData.height * 0.55 + 0.35;
@@ -590,7 +591,14 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
       if (head.z > 1 || Math.abs(head.x) > 1.1 || Math.abs(head.y) > 1.1) continue;
       const b = bar(nBar++);
       b.el.hidden = false;
-      b.el.style.transform = `translate(${((head.x + 1) / 2) * innerWidth}px, ${((1 - head.y) / 2) * innerHeight}px) translate(-50%, -100%)`;
+      // 唔好疊住上面嘅活動橫額：條 bar 最高只可以去到橫額下面
+      if (nBar === 1) {
+        const ban = document.getElementById('event-banner');
+        const r = ban && ban.offsetParent ? ban.getBoundingClientRect() : null;
+        barMinY = r && r.height ? r.bottom + 44 : 44;
+      }
+      const sy = Math.max(barMinY, ((1 - head.y) / 2) * innerHeight);
+      b.el.style.transform = `translate(${((head.x + 1) / 2) * innerWidth}px, ${sy}px) translate(-50%, -100%)`;
       const pct = Math.min(99, Math.floor(s.p * 100));
       const key = `${s.type.id}${pct}${targets.includes(s) ? 1 : 0}`;
       if (b.last !== key) {
