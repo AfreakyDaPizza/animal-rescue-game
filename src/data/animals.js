@@ -6,6 +6,8 @@ import { HALLOWEEN_PETS } from './halloween.js'; // 🎃 Halloween 蛋寵物（�
 export { HALLOWEEN_PETS };
 import { CHEST_PETS } from './echoChest.js'; // 🐕 Echo 嘅 Zombified Chest 寵物（淨係箱度開到）
 export { CHEST_PETS };
+import { METEOR_PETS, ARCADRAGON_MONEY } from './meteorShop.js'; // ☄️ Meteoric Shop 寵物（Issue #10：淨係 Meteoric Chest／直接買）
+export { METEOR_PETS };
 
 // emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
 // kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
@@ -169,7 +171,7 @@ export const animalsInBiome = (biome) => (biome >= 7 ? HALLOWEEN_PETS : ANIMALS)
 
 // 舊名（2026-10-17 小朋友改名）
 const OLD_NAMES = { 'Enchanted Sunlion': 'Celestial Sunlion' };
-export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name);
+export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {
@@ -213,7 +215,15 @@ export const mutationText = (x) => mutationList(x).map((m) => `${MUTATION_INFO[m
 export const sizeText = (sizeMul) => (!sizeMul || sizeMul === 1 ? '' : sizeMul < 1 ? `TINY x${sizeMul}` : `GIANT x${sizeMul}`);
 
 // 一隻救返嚟嘅動物／寵物每秒賺幾多（重量 × 生態區 × 稀有度）
-export const itemMoney = (item) => (item.money ?? petMoney(kgOf(item), item.biome, item.rarity)) * mutationMoneyMulti(item); // Fuse 寵物有自己定好嘅 money；🔥 Fire ×4、🌑 Eclipse ×6（可以疊）
+export const itemMoney = (item) => (item.money ?? fixedMoney(item) ?? petMoney(kgOf(item), item.biome, item.rarity)) * mutationMoneyMulti(item);
+// 🌌 Cosmic Arcadragon（Issue #10）：每隻自己有一個隨機 $/秒（5 億–10 億），第一次計就抽、存喺 item.money（之後唔變）
+// 咁樣邊度整出嚟都啱（商店買、控制面板、繁殖機生出嚟）
+function fixedMoney(item) {
+  if (item.name !== 'Cosmic Arcadragon') return undefined;
+  const [lo, hi] = ARCADRAGON_MONEY;
+  item.money = Math.round((lo + Math.random() * (hi - lo)) / 1e6) * 1e6;
+  return item.money;
+} // Fuse 寵物有自己定好嘅 money；🔥 Fire ×4、🌑 Eclipse ×6（可以疊）
 
 // 越重越大隻：同一種動物，最輕嗰隻 ×0.8，最重嗰隻 ×1.25（小朋友：大細要跟重量）
 export function kgScale(item) {

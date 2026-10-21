@@ -7,7 +7,7 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
+import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
@@ -557,6 +557,16 @@ function animalIndexHtml() {
   html += `<h3>🧟 Zombified Chest <span class="count">${chestGot}/${CHEST_PETS.length}${chestGot === CHEST_PETS.length ? ' ✅' : ''}</span></h3>
     <p class="reward">Buy a Zombified Chest from 🐕 Echo at the Spawn Ruins!</p><div class="cards">`;
   for (const a of CHEST_PETS) {
+    html += state.indexFound.includes(a.name)
+      ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+      : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
+  }
+  html += '</div>';
+  // ☄️ Meteoric Shop 寵物（Issue #10）
+  const metGot = METEOR_PETS.filter((a) => state.indexFound.includes(a.name)).length;
+  html += `<h3>☄️ Meteoric Shop <span class="count">${metGot}/${METEOR_PETS.length}${metGot === METEOR_PETS.length ? ' ✅' : ''}</span></h3>
+    <p class="reward">Open a Meteoric Chest (or buy the Cosmic Arcadragon) at the ☄️ Meteoric Shop next to the Magic Library!</p><div class="cards">`;
+  for (const a of METEOR_PETS) {
     html += state.indexFound.includes(a.name)
       ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
       : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;

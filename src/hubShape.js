@@ -7,3 +7,9 @@ export const HUB = { cx: 0, cz: CZ, r: R, minX: -R, maxX: R, minZ: 0, maxZ: CZ +
 
 // 🐾 地塊（2026-10-18 Hub 重新排位：搬咗去噴水池右邊 Pets Zone；閘口喺 minX 嗰邊、面向噴水池條路）
 export const PLOT = { minX: 14, maxX: 30, minZ: 16.5, maxZ: 31.5, gateZ: 24, gateWidth: 3 };
+
+// ✨ Magic Library（Issue #10：小朋友叫佢貼住圍牆，慳位）+ ☄️ Meteoric Shop（喺圖書館隔籬）
+// 兩間都喺 Hub 左邊、背脊貼住圍牆、面向 +x（Hub 中間）；前面有條直路連住兩個門口
+export const LIBRARY = { x: -31.2, z: 19.5 };
+export const METEOR_SHOP = { x: -31.0, z: 32.0 };
+export const LIBRARY_WALK_X = -25.6; // 兩間門口前面嗰條直路（x）

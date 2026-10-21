@@ -3,7 +3,7 @@
 // 第一次改嘢之前會備份真存檔（SAVE_KEY + '-backup'），可以一撳還原
 import { state } from './state.js';
 import { short } from './format.js';
-import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
+import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
 import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
@@ -68,7 +68,7 @@ function futureHtml() {
     ${s.gymPresent ? '' : '<p class="hint">The Gym is where the Lab is. Going there now skips the Mutated Scientist Poacher fight, and the Lab will be gone.</p>'}`;
 }
 
-const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
+const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
 // 預覽：例如「🙃 GIANT x10 🔥🌑 Mythic Celestial Sunlion」
 const previewText = () => {
   const muts = MUTATIONS.filter((m) => pick.mutations.includes(m)).map((m) => mutationInfo(m).emoji).join('');
@@ -77,7 +77,7 @@ const previewText = () => {
 const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
 
 function petsHtml() {
-  const all = [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS];
+  const all = [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS];
   const opt = (v, cur, label = v) => `<button data-admin="${v === cur ? 'noop' : 'set'}" data-k="__K__" data-v="${v}" class="${v === cur ? '' : 'grey'}">${label}</button>`;
   const choose = (k, vals, cur, labels) => vals.map((v, i) => opt(v, cur, labels?.[i]).replace('__K__', k)).join('');
   return `<p class="index-summary">Pick any pet and add it to your backpack.</p>
