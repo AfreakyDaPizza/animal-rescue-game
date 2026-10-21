@@ -211,11 +211,12 @@ export function createPhantomExpress({ scene, teleport, showLoading, popup, anno
     if (travelling || !trainStatus().boarding) return;
     travelling = true;
     play('whistle');
-    await showLoading('🚂 All aboard the PHANTOM EXPRESS...', async () => {
+    const ok = await showLoading('🚂 All aboard the PHANTOM EXPRESS...', async () => {
       teleport(GHOST_ARRIVE.x, GHOST_ARRIVE.z);
       faceTo(GHOST_ARRIVE.rotY);
-    }, 2.6);
+    }, 2.6, { theme: 'ghost', kicker: 'All aboard!', title: 'Ghost World' });
     travelling = false;
+    if (!ok) return;
     announce('👻 Welcome to the GHOST WORLD! Get a vacuum and catch the souls!');
     setTimeout(() => popup('🧹 Hold E (or the mouse button) to suck up ghosts. Stronger ghosts take longer!'), 2600);
   }
@@ -223,11 +224,12 @@ export function createPhantomExpress({ scene, teleport, showLoading, popup, anno
     if (travelling) return;
     travelling = true;
     play('whistle');
-    await showLoading(auto ? '🚂 The Phantom Express is leaving... back to the station!' : '🚂 Riding back to the station...', async () => {
+    const ok = await showLoading(auto ? '🚂 The Phantom Express is leaving... back to the station!' : '🚂 Riding back to the station...', async () => {
       teleport(TRAIN_BOARD.x - 6, TRAIN_BOARD.z);
       faceTo(Math.PI / 2); // 望住出生點（西邊）
-    }, 2);
+    }, 2, { theme: 'halloween', kicker: 'Next stop', title: 'Train Station' });
     travelling = false;
+    if (!ok) return;
     announce(auto ? '🚂 The ghost hunt is over! The Phantom Express comes back next hour.' : '🚂 Back at the Train Station!');
   }
 

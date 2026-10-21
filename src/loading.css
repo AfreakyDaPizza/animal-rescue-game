@@ -1,0 +1,279 @@
+/* =====================================================================
+   ⏳ 載入畫面（Issue #8：小朋友要「更好嘅載入畫面」）
+   一個 overlay（#loading-screen），data-theme 揀款：nature（普通世界）／halloween／ghost
+   卡嘅款跟開始畫面（米白卡、白粗邊、外圈、3D 底影、Fredoka 粗字黑邊）
+   index.html 一開就有（第一次載入用），之後 src/loading.js 重用佢
+   ===================================================================== */
+#loading-screen {
+  /* ---- 預設：nature（大自然） ---- */
+  --ls-sky: linear-gradient(180deg, #4fc3f7 0%, #81d4fa 38%, #aed581 72%, #558b2f 100%);
+  --ls-orb: radial-gradient(circle at 45% 45%, #fffde7 0%, #ffee58 45%, #ffb300 100%);
+  --ls-orb-glow: rgba(255, 213, 79, 0.75);
+  --ls-ground-1: #7cb342;
+  --ls-ground-2: #33691e;
+  --ls-card: linear-gradient(180deg, #fffef8 0%, #f1f8e9 100%);
+  --ls-ring: rgba(27, 94, 32, 0.65);
+  --ls-ink: #1b3a1f;
+  --ls-ink-soft: #3e5c41;
+  --ls-title: #ffd54f;
+  --ls-title-2: #69f0ae;
+  --ls-stroke: #0b2a12;
+  --ls-bar-ring: #1b5e20;
+  --ls-fill-a: #76ff03;
+  --ls-fill-b: #43a047;
+  --ls-tip-bg: #fff3e0;
+  --ls-tip-line: #ffb74d;
+  --ls-tip-head: #e65100;
+  --ls-icon-ring: conic-gradient(#76ff03, #ffd54f, #40c4ff, #ff80ab, #76ff03);
+  --ls-fog: rgba(255, 255, 255, 0);
+
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ls-sky);
+  font-family: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif; color: var(--ls-ink);
+  opacity: 0; transition: opacity 0.4s ease; pointer-events: all; overflow: hidden;
+  user-select: none;
+}
+#loading-screen[hidden] { display: none !important; }
+#loading-screen.show { opacity: 1; }
+
+/* ---- 🎃 Halloween：紫黑天空、橙色大月光、蝙蝠 ---- */
+#loading-screen[data-theme="halloween"] {
+  --ls-sky: radial-gradient(circle at 78% 18%, #6a1b4d 0%, #2a0a3a 38%, #12031c 70%, #050008 100%);
+  --ls-orb: radial-gradient(circle at 40% 38%, #fff3e0 0%, #ffcc80 40%, #ff7043 78%, #bf360c 100%);
+  --ls-orb-glow: rgba(255, 110, 64, 0.55);
+  --ls-ground-1: #2b0f3a;
+  --ls-ground-2: #13051c;
+  --ls-card: linear-gradient(180deg, #fff8ee 0%, #ffe0b2 100%);
+  --ls-ring: #e65100;
+  --ls-ink: #3e1a00;
+  --ls-ink-soft: #6d3b17;
+  --ls-title: #ff9800;
+  --ls-title-2: #ce93d8;
+  --ls-stroke: #2a0a00;
+  --ls-bar-ring: #bf360c;
+  --ls-fill-a: #ffb74d;
+  --ls-fill-b: #f57c00;
+  --ls-tip-bg: #f3e5f5;
+  --ls-tip-line: #ba68c8;
+  --ls-tip-head: #6a1b9a;
+  --ls-icon-ring: conic-gradient(#ff9800, #6a1b9a, #ff9800, #212121, #ff9800);
+  --ls-fog: rgba(186, 104, 200, 0.18);
+}
+/* ---- 👻 Ghost World：深藍綠、綠色鬼月、霧 ---- */
+#loading-screen[data-theme="ghost"] {
+  --ls-sky: linear-gradient(180deg, #02101c 0%, #0b2a3a 45%, #134e4a 80%, #0a2f2c 100%);
+  --ls-orb: radial-gradient(circle at 42% 40%, #f1fff9 0%, #b9f6ca 45%, #4db6ac 85%, #00695c 100%);
+  --ls-orb-glow: rgba(100, 255, 218, 0.45);
+  --ls-ground-1: #0f3b3a;
+  --ls-ground-2: #051a1c;
+  --ls-card: linear-gradient(180deg, #f4fffd 0%, #d4f5ee 100%);
+  --ls-ring: #00897b;
+  --ls-ink: #06312f;
+  --ls-ink-soft: #2c5d5a;
+  --ls-title: #a7ffeb;
+  --ls-title-2: #e1bee7;
+  --ls-stroke: #022321;
+  --ls-bar-ring: #00695c;
+  --ls-fill-a: #a7ffeb;
+  --ls-fill-b: #1de9b6;
+  --ls-tip-bg: #e0f7fa;
+  --ls-tip-line: #4dd0e1;
+  --ls-tip-head: #00695c;
+  --ls-icon-ring: conic-gradient(#64ffda, #e1bee7, #64ffda, #004d40, #64ffda);
+  --ls-fog: rgba(178, 255, 230, 0.16);
+}
+
+/* =================== 背景（會郁） =================== */
+#loading-screen .ls-bg { position: absolute; inset: 0; pointer-events: none; }
+/* 太陽光（淨係 nature）：慢慢轉 */
+#loading-screen .ls-rays {
+  position: absolute; left: 50%; top: 14%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.16) 0deg 8deg, rgba(255, 255, 255, 0) 8deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 55%); mask-image: radial-gradient(circle, #000 0%, transparent 55%);
+  animation: ls-spin 60s linear infinite;
+}
+#loading-screen:not([data-theme="nature"]) .ls-rays { display: none; }
+/* 太陽／月亮 */
+#loading-screen .ls-orb {
+  position: absolute; top: 9%; right: 12%; width: clamp(90px, 14vw, 160px); aspect-ratio: 1; border-radius: 50%;
+  background: var(--ls-orb); box-shadow: 0 0 60px 26px var(--ls-orb-glow), 0 0 140px 60px var(--ls-orb-glow);
+  animation: ls-orb 5s ease-in-out infinite;
+}
+#loading-screen[data-theme="nature"] .ls-orb { left: 50%; right: auto; top: 14%; transform: translate(-50%, -50%); width: clamp(110px, 16vw, 190px); animation: ls-sun 4s ease-in-out infinite; }
+/* 雲（nature）／霧（另外兩款） */
+#loading-screen .ls-cloud {
+  position: absolute; left: -40%; width: 40%; height: 18%; border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.55) 40%, rgba(255, 255, 255, 0) 70%);
+  animation: ls-drift-x var(--t, 40s) linear var(--d, 0s) infinite;
+}
+#loading-screen:not([data-theme="nature"]) .ls-cloud {
+  background: radial-gradient(ellipse at center, var(--ls-fog) 0%, var(--ls-fog) 35%, rgba(0, 0, 0, 0) 70%);
+  height: 30%; width: 70%; left: -70%; filter: blur(6px);
+}
+/* 地平線：兩層山 */
+#loading-screen .ls-ground {
+  position: absolute; left: -10%; right: -10%; bottom: -2%; height: 30%;
+  background:
+    radial-gradient(ellipse 30% 70% at 15% 100%, var(--ls-ground-2) 0 98%, transparent 100%),
+    radial-gradient(ellipse 35% 80% at 55% 100%, var(--ls-ground-2) 0 98%, transparent 100%),
+    radial-gradient(ellipse 30% 65% at 92% 100%, var(--ls-ground-2) 0 98%, transparent 100%),
+    radial-gradient(ellipse 40% 100% at 35% 100%, var(--ls-ground-1) 0 98%, transparent 100%),
+    radial-gradient(ellipse 40% 95% at 80% 100%, var(--ls-ground-1) 0 98%, transparent 100%);
+}
+/* 一路飄上去嘅 emoji（同開始畫面一樣） */
+#loading-screen .ls-floaters span {
+  position: absolute; left: var(--x); bottom: -80px; font-size: var(--s, 46px); opacity: 0;
+  filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.3));
+  animation: ls-float var(--t, 14s) linear var(--d, 0s) infinite;
+}
+#loading-screen[data-theme="ghost"] .ls-floaters span { filter: drop-shadow(0 0 12px rgba(167, 255, 235, 0.8)); }
+/* 橫飛過嘅嘢（蝴蝶／蝙蝠／鬼火車） */
+#loading-screen .ls-flyer {
+  position: absolute; left: 0; top: var(--y, 24%); font-size: var(--s, 40px);
+  animation: ls-fly var(--t, 7s) linear var(--d, 0s) infinite;
+}
+#loading-screen .ls-flyer i { display: inline-block; font-style: normal; animation: ls-flap 0.5s ease-in-out infinite alternate; }
+
+/* =================== 中間張卡 =================== */
+#loading-screen .ls-card {
+  position: relative; width: min(540px, calc(100vw - 32px)); padding: 22px 28px 20px; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+  background: var(--ls-card); border: 4px solid #fff; border-radius: 26px;
+  box-shadow: 0 0 0 4px var(--ls-ring), 0 12px 0 rgba(0, 0, 0, 0.25), 0 24px 60px rgba(0, 0, 0, 0.45);
+  transform: translateY(30px) scale(0.92); transition: transform 0.45s cubic-bezier(.2, 1.4, .4, 1);
+}
+#loading-screen.show .ls-card { transform: none; }
+
+/* 轉緊嘅圈 + 中間隻動物（跟住提示換） */
+#loading-screen .ls-icon { position: relative; width: 104px; height: 104px; margin-top: -70px; }
+#loading-screen .ls-ring {
+  position: absolute; inset: 0; border-radius: 50%; background: var(--ls-icon-ring);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%); mask: radial-gradient(circle, transparent 60%, #000 61%);
+  animation: ls-spin 1.4s linear infinite;
+}
+#loading-screen .ls-ring::after { /* 圈外面白邊 */
+  content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.9);
+}
+#loading-screen .ls-face {
+  position: absolute; inset: 12px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+  box-shadow: 0 0 0 3px var(--ls-ring), 0 5px 0 rgba(0, 0, 0, 0.25);
+}
+#loading-screen .ls-animal { font-size: 46px; line-height: 1; animation: ls-bob 1.1s ease-in-out infinite; }
+#loading-screen .ls-animal.swap { animation: ls-swap 0.45s cubic-bezier(.2, 1.4, .4, 1), ls-bob 1.1s ease-in-out 0.45s infinite; }
+#loading-screen .ls-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; animation: ls-spin 2.6s linear infinite reverse; }
+#loading-screen .ls-orbit span { position: absolute; font-size: 22px; transform: translate(-50%, -50%) translateY(-62px); }
+
+#loading-screen .ls-kicker {
+  margin-top: 2px; font-size: 15px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--ls-ink-soft);
+}
+#loading-screen .ls-title {
+  margin: -4px 0 2px; font-size: clamp(30px, 7vw, 50px); font-weight: 700; line-height: 1.02; letter-spacing: 2px;
+  color: var(--ls-title); -webkit-text-stroke: 7px var(--ls-stroke); paint-order: stroke fill;
+  filter: drop-shadow(0 5px 0 var(--ls-stroke)) drop-shadow(0 6px 4px rgba(0, 0, 0, 0.25));
+  transform: rotate(-2deg);
+}
+#loading-screen .ls-title span:nth-child(even) { color: var(--ls-title-2); }
+
+/* 進度條：白膠囊 + 會郁嘅斜紋 + 隻動物喺前面跑 */
+#loading-screen .ls-bar-wrap { position: relative; width: 100%; padding-top: 18px; }
+#loading-screen .ls-bar {
+  position: relative; height: 26px; border-radius: 999px; background: #fff; overflow: hidden;
+  border: 3px solid #fff; box-shadow: 0 0 0 3px var(--ls-bar-ring), inset 0 3px 0 rgba(0, 0, 0, 0.08), 0 4px 0 rgba(0, 0, 0, 0.2);
+}
+#loading-screen .ls-fill {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: repeating-linear-gradient(-45deg, var(--ls-fill-a) 0 14px, var(--ls-fill-b) 14px 28px);
+  background-size: 40px 40px; /* 28px × √2 = 斜紋一個循環 */
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.14), inset 0 5px 0 rgba(255, 255, 255, 0.45);
+  transform: translateX(calc((var(--p, 0) - 1) * 100%));
+  animation: ls-stripes 0.9s linear infinite;
+}
+/* translateX 嘅 % 係條 track 自己嘅闊度 → p × 100% 啱啱行到條尾 */
+#loading-screen .ls-rider-track { position: absolute; left: 12px; right: 12px; top: 0; height: 0; transform: translateX(calc(var(--p, 0) * 100%)); }
+#loading-screen .ls-rider { position: absolute; left: 0; top: -4px; font-size: 30px; transform: translateX(-50%); animation: ls-hop 0.42s ease-in-out infinite alternate; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.25)); }
+#loading-screen .ls-pct {
+  position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff;
+  -webkit-text-stroke: 4px var(--ls-stroke); paint-order: stroke fill; letter-spacing: 1px;
+}
+#loading-screen .ls-status { min-height: 1.3em; font-size: 17px; font-weight: 700; color: var(--ls-ink); }
+
+/* 提示／動物知識：每幾秒換 */
+#loading-screen .ls-tip {
+  width: 100%; box-sizing: border-box; min-height: 5.2em; padding: 10px 14px; border-radius: 14px;
+  background: var(--ls-tip-bg); border: 2px dashed var(--ls-tip-line); color: var(--ls-ink);
+  font-size: 15.5px; font-weight: 600; line-height: 1.35;
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  transition: opacity 0.35s, transform 0.35s;
+}
+#loading-screen .ls-tip.out { opacity: 0; transform: translateY(8px); }
+#loading-screen .ls-tip-head { font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ls-tip-head); }
+#loading-screen .ls-tip-text b { color: var(--ls-tip-head); }
+#loading-screen .ls-status-tag {
+  display: inline-block; margin-left: 4px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 800; color: #fff;
+  background: var(--tag, #43a047); vertical-align: 1px;
+}
+
+/* 第一次開遊戲：未知真實進度，條慢慢行（CSS 動畫，JS 未載完都郁到） */
+#loading-screen.boot .ls-fill, #loading-screen.boot .ls-rider-track { animation: ls-boot 9s cubic-bezier(.1, .7, .3, 1) forwards; }
+#loading-screen.boot .ls-fill { animation: ls-boot-fill 9s cubic-bezier(.1, .7, .3, 1) forwards, ls-stripes 0.9s linear infinite; }
+#loading-screen.boot .ls-pct { display: none; }
+
+/* =================== 出錯細卡 =================== */
+#loading-error {
+  position: fixed; left: 50%; top: 50%; z-index: 9100; width: min(420px, calc(100vw - 32px)); box-sizing: border-box;
+  transform: translate(-50%, -50%); padding: 20px 22px 18px; text-align: center;
+  font-family: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif; color: #4a0000;
+  background: linear-gradient(180deg, #fffef8 0%, #ffebee 100%); border: 4px solid #fff; border-radius: 22px;
+  box-shadow: 0 0 0 4px #c62828, 0 10px 0 rgba(0, 0, 0, 0.25), 0 20px 50px rgba(0, 0, 0, 0.45);
+  animation: ls-pop 0.4s cubic-bezier(.2, 1.4, .4, 1);
+}
+#loading-error h2 { margin: 0 0 6px; font-size: 28px; color: #ffd54f; -webkit-text-stroke: 6px #4a0000; paint-order: stroke fill; }
+#loading-error p { margin: 0 0 14px; font-weight: 700; font-size: 16px; }
+#loading-error button {
+  font: inherit; font-weight: 800; font-size: 18px; padding: 8px 30px; cursor: pointer; color: #fff; border-radius: 999px;
+  background: linear-gradient(180deg, #76ff03 0%, #43a047 55%, #2e7d32 100%); border: 3px solid #1b5e20;
+  box-shadow: 0 5px 0 #1b5e20; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+#loading-error button:active { transform: translateY(4px); box-shadow: 0 1px 0 #1b5e20; }
+
+/* =================== 動畫 =================== */
+@keyframes ls-spin { to { transform: rotate(360deg); } }
+@keyframes ls-orb { 50% { transform: translateY(-8px) scale(1.04); } }
+@keyframes ls-sun { 50% { transform: translate(-50%, -50%) scale(1.07); } }
+@keyframes ls-drift-x { to { transform: translateX(240vw); } }
+@keyframes ls-float {
+  0% { transform: translateY(0) rotate(-10deg); opacity: 0; }
+  10% { opacity: 0.75; }
+  50% { transform: translateY(-55vh) rotate(10deg); }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-115vh) rotate(-10deg); opacity: 0; }
+}
+@keyframes ls-fly {
+  0% { transform: translate(-12vw, 0); }
+  25% { transform: translate(22vw, -4vh); }
+  50% { transform: translate(52vw, 2vh); }
+  75% { transform: translate(82vw, -3vh); }
+  100% { transform: translate(112vw, 0); }
+}
+@keyframes ls-flap { to { transform: scaleY(0.7) translateY(-3px); } }
+@keyframes ls-bob { 50% { transform: translateY(-6px) rotate(5deg); } }
+@keyframes ls-swap { from { transform: scale(0.2) rotate(-90deg); opacity: 0; } }
+@keyframes ls-hop { to { transform: translateX(-50%) translateY(-5px) rotate(-8deg); } }
+@keyframes ls-stripes { to { background-position: 40px 0; } }
+@keyframes ls-boot { from { transform: translateX(0); } to { transform: translateX(88%); } }
+@keyframes ls-boot-fill { from { transform: translateX(-100%); } to { transform: translateX(-12%); } }
+@keyframes ls-pop { from { transform: translate(-50%, -50%) scale(0.85); opacity: 0; } }
+
+/* 細畫面／打橫手機 */
+@media (max-height: 560px) {
+  #loading-screen .ls-card { padding: 12px 18px 12px; gap: 6px; }
+  #loading-screen .ls-icon { width: 76px; height: 76px; margin-top: -44px; }
+  #loading-screen .ls-animal { font-size: 32px; }
+  #loading-screen .ls-orbit span { font-size: 16px; transform: translate(-50%, -50%) translateY(-46px); }
+  #loading-screen .ls-title { font-size: 30px; -webkit-text-stroke-width: 5px; }
+  #loading-screen .ls-tip { min-height: 0; font-size: 13px; padding: 6px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #loading-screen .ls-bg *, #loading-screen .ls-ring, #loading-screen .ls-orbit, #loading-screen .ls-animal, #loading-screen .ls-rider { animation: none !important; }
+}

@@ -16,8 +16,38 @@
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="stylesheet" href="/src/polish.css" />
     <link rel="stylesheet" href="/src/startstyle.css" />
+    <link rel="stylesheet" href="/src/loading.css" />
   </head>
   <body>
+    <!-- ⏳ 載入畫面（Issue #8）：一開網頁就見到，main.js 起好第一格畫面先淡出；之後去其他世界都係用佢（src/loading.js） -->
+    <div id="loading-screen" class="show boot" data-theme="nature" role="status" aria-live="polite">
+      <div class="ls-bg" aria-hidden="true">
+        <div class="ls-rays"></div>
+        <div class="ls-orb"></div>
+        <div class="ls-clouds"><div class="ls-cloud" style="top:12%;--t:46s;--d:-8s"></div><div class="ls-cloud" style="top:30%;--t:60s;--d:-34s"></div><div class="ls-cloud" style="top:52%;--t:52s;--d:-20s"></div></div>
+        <div class="ls-floaters">
+          <span style="--x:6%;--d:0s;--t:13s">🐼</span><span style="--x:20%;--d:-5s;--t:16s">🐘</span><span style="--x:34%;--d:-9s;--t:14s">🐢</span>
+          <span style="--x:70%;--d:-3s;--t:15s">🦏</span><span style="--x:84%;--d:-7s;--t:17s">🦜</span><span style="--x:94%;--d:-11s;--t:12s">🍃</span>
+        </div>
+        <div class="ls-flyers"><div class="ls-flyer" style="--y:30%;--t:9s"><i>🦋</i></div></div>
+        <div class="ls-ground"></div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-icon"><div class="ls-ring"></div><div class="ls-face"><span class="ls-animal">🐼</span></div><div class="ls-orbit"><span>🍃</span></div></div>
+        <div class="ls-kicker">Welcome to</div>
+        <div class="ls-title"><span>ANIMAL</span> <span>RESCUE</span></div>
+        <div class="ls-bar-wrap"><div class="ls-rider-track"><span class="ls-rider">🐾</span></div><div class="ls-bar"><div class="ls-fill"></div><div class="ls-pct">0%</div></div></div>
+        <div class="ls-status">Waking up the animals...</div>
+        <div class="ls-tip"><div class="ls-tip-head">🌍 Did you know?</div><div class="ls-tip-text">Giant pandas spend 10 to 16 hours a day eating bamboo.</div></div>
+      </div>
+    </div>
+    <script>
+      // 載咗好耐都未好（例如網絡慢／出錯）：話俾小朋友知可以重新載入，唔好淨係卡住
+      setTimeout(() => {
+        const ls = document.getElementById('loading-screen');
+        if (ls && ls.classList.contains('boot')) ls.querySelector('.ls-status').textContent = 'Still loading... if it gets stuck, refresh the page (F5).';
+      }, 25000);
+    </script>
     <!-- 上面：夜晚倒數 + 面板掣（數值搬咗去左下角，小朋友 2026-10-18） -->
     <div id="hud-timer" class="hud-box">☀️ Night in 5:00</div>
     <div id="event-banner" class="hud-box"></div>
