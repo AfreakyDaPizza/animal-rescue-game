@@ -11,6 +11,7 @@ import { ANIMALS_20 } from './animals20.js'; // 頭 20 隻嘅新設計
 import { ANIMALS_30 } from './animals30.js'; // 其餘 30 隻嘅新設計
 import { WORST_PETS } from './worstPets.js'; // 「最差 20 隻」11–20 號新款（優先）
 import { HALLOWEEN_MODELS } from './halloweenPets.js'; // 🎃 Halloween 蛋寵物
+import { ECHO_MODELS } from './echoPetModels.js'; // 🐕 Echo 嘅 Zombified Chest 寵物（Issue #8）
 import { FUSE_MODELS } from './fusePets.js'; // Fuse Machine 寵物（Issue #4）
 import { buildSkywhaleModel, buildSunlionModel, buildOctophantModel } from './enchantedModels.js'; // Biome 7 魔法動物
 import { buildKitsuneModel, buildGemDragonModel, buildDreadscaleModel, buildArmadilloModel, buildCitadelSnailModel } from './kingdomPets.js';
@@ -923,7 +924,7 @@ const MODELS = {
 };
 
 export function buildAnimalModel(animal) {
-  const g = (HALLOWEEN_MODELS[animal.name] || WORST_PETS[animal.name] || ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || ENCHANTED_MODELS[animal.name] || MODELS[animal.name] || fallback)();
+  const g = (HALLOWEEN_MODELS[animal.name] || ECHO_MODELS[animal.name] || WORST_PETS[animal.name] || ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || ENCHANTED_MODELS[animal.name] || MODELS[animal.name] || fallback)();
   g.userData.height *= g.scale.y;
   g.userData.move ??= 'walk';
   return g;

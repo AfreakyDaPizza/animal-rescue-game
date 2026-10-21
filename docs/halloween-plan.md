@@ -121,3 +121,17 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - BIG CATCH animation (flash, spinning rays, confetti, big text, fanfare) for Mythic/Eternal eggs and CANDY MOUNTAIN. Test it in the console: `game.fishing.testBig()`.
 - Rod prices (🌽): 0, 30, 65, 125, 200, 350, 550, 900, 1500, 2500, 4000, 6000, 10000, 15000, 25000 (about 2.5 hours of fishing for all 15). All numbers in balance.js (`FISHING_*`).
 - "Fishing stall not here": the Rod Shop was at z −20, which is exactly inside the tall cliff wall on the south edge of the Pumpkin Graveyard, so it was buried in rock. It moved to `ROD_SHOP = { x: HW_X − 32, z: 10 }` (just south of the dock), with its glowing sign, light beam, pumpkin-lamp path from the ruins, plus a new "🎣 FISH HERE!" sign and a blue beam at the end of the dock.
+
+## ✅ Built: 🐕 Echo + 🧟 Zombified Chest (Issue #8, 2026-10-21)
+- **Echo** is a cute zombie dog (green fur, glowing green eyes, purple stitches, a bandaged leg and a taped floppy ear, wagging tail). He stands on the counter of his little stall in the north-east of the Spawn Ruins, so you see him as soon as you arrive. He looks at you, tilts his head and does a happy hop now and then.
+- Press **E** at the stall to open the shop: your 🍬 Candy Corn, the chest price and what's inside (with chances).
+- **Zombified Chest** costs **500 Candy Corn** (`ZOMBIE_CHEST_COST`). What's inside (`ZOMBIE_CHEST_DROPS` in balance.js):
+  - Candy Corn (Common) 51%. The kid hasn't said how much, so for now it's a random **250–750** (`ZOMBIE_CHEST_CANDY`).
+  - Hollow Bat (Rare) 24%
+  - Scarecrow (Epic) 18%
+  - Pumpkin Golem (Legendary) 6%
+  - Soul Phantom (Mythic) 1%
+- **Opening animation:** the chest drops from the sky, shakes harder and harder and glows in the rarity colour, then bursts open with a flash and a light beam. Your prize rises out with big text. Legendary is bigger. **Mythic** is extra big: the screen goes dark, the chest floats, rainbow rings spin, the text is rainbow and the camera circles around.
+- The chest gives the **pet straight into your backpack** (no egg to hatch), like a pet that just hatched. The 4 chest pets only come from the chest (no eggs, no fishing). In the Index they have their own "🧟 Zombified Chest" part. They earn money like Abandoned Manor pets (biome 9).
+- Code: `src/echoShop.js` (Echo, stall, shop, animation), `src/echoPetModels.js` (the 4 pet models), `src/data/echoChest.js` (pet data + chest roll).
+- Testing (dev console): `game.candy(5000)` gives Candy Corn; `game.echo.open('Soul Phantom')` plays the animation with that prize (free).
