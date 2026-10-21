@@ -188,6 +188,30 @@ const SOUNDS = {
     noise(t, 0.35, { vol: 0.35, freq: 900, q: 0.8, type: 'bandpass' });
     tone(220, t, 0.25, { type: 'sine', vol: 0.18, slide: 0.5 });
   },
+  // 🎣 釣魚（Issue #8 #9）：拋竿「咻」、浮標落水「啵」、收線「嗒」、Candy Corn「叮叮」、大獎音樂
+  cast: (t) => {
+    noise(t, 0.3, { vol: 0.28, freq: 2200, q: 0.6, type: 'bandpass' });
+    tone(900, t, 0.25, { type: 'sine', vol: 0.06, slide: 0.4 });
+  },
+  plop: (t) => {
+    tone(420, t, 0.12, { type: 'sine', vol: 0.3, slide: 0.35 });
+    noise(t + 0.02, 0.25, { vol: 0.2, freq: 1100, q: 0.9, type: 'bandpass' });
+  },
+  reel: (t) => {
+    tone(1700 + Math.random() * 400, t, 0.035, { type: 'square', vol: 0.05 });
+    noise(t, 0.04, { vol: 0.08, freq: 3500, q: 1.5, type: 'bandpass' });
+  },
+  candy: (t) => {
+    arp(t, [1047, 1319, 1568], 0.05, { type: 'triangle', vol: 0.16 });
+    tone(2093, t + 0.18, 0.3, { type: 'sine', vol: 0.08 });
+  },
+  bigCatch: (t) => {
+    arp(t, [523, 659, 784, 1047], 0.09, { type: 'square', vol: 0.09 });
+    [523, 659, 784, 1047].forEach((f) => tone(f, t + 0.45, 1.3, { type: 'triangle', vol: 0.12 }));
+    arp(t + 0.5, [1568, 2093, 2637, 3136, 2637, 3136, 4186], 0.07, { type: 'sine', vol: 0.06 });
+    noise(t + 0.4, 1.2, { vol: 0.12, freq: 6000, type: 'highpass' });
+    tone(130, t + 0.4, 0.6, { type: 'sine', vol: 0.35, slide: 0.5 });
+  },
   solar: (t) => {
     arp(t, [784, 988, 1175, 1568, 1976], 0.06, { type: 'triangle', vol: 0.2 });
     noise(t, 0.9, { vol: 0.12, freq: 5000, type: 'highpass' });

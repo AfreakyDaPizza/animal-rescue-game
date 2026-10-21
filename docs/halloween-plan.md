@@ -99,3 +99,12 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Egg Graveyard (8 slots): E places your rarest egg, then a countdown runs (even offline). E hatches it with a crack/flash and the pet pops out into the backpack. It's added to the Index with a reward.
 - Numbers in balance.js: HALLOWEEN_BOSS_SPEED, HALLOWEEN_BOSS_SIZE, HALLOWEEN_HEAD_START, HALLOWEEN_EGGS_PER_BIOME, HALLOWEEN_EGG_RESPAWN, HALLOWEEN_FOG_NEAR/FAR.
 - For fishing: addEgg(name, rarity) from halloweenEggs.js puts an egg in the backpack.
+
+## ✅ Built: fishing v2 + 🌽 Candy Corn (Issues #8 #9, 2026-10-21; src/fishing.js, src/rodShop.js)
+- The kid changed the rod rule: everybody has a **free Twig Rod**. Better rods cost **🌽 Candy Corn** and you **keep** them (saved in `state.rod`). Rods don't break any more.
+- New currency `state.candyCorn` (also for the chest shop). A 🌽 pill shows in the HUD anywhere in the Halloween world.
+- How fishing works now: E / click / USE at the dock or shore → ⚡ power bar goes up and down → press to cast (higher = farther cast, rarer eggs, more candy corn) → wait for the ❗ → press to hook → SPAM E / click / USE to fill the reel meter (it drains if you stop, the fish tugs back) → catch!
+- What you catch: 60% 🌽 Candy Corn, 40% Halloween egg. Candy piles: Handful 70%, Big Pile 24%, CANDY MOUNTAIN 6% (more likely with a high cast). Rarer eggs and big piles are heavier, so you have to press more.
+- BIG CATCH animation (flash, spinning rays, confetti, big text, fanfare) for Mythic/Eternal eggs and CANDY MOUNTAIN. Test it in the console: `game.fishing.testBig()`.
+- Rod prices (🌽): 0, 30, 65, 125, 200, 350, 550, 900, 1500, 2500, 4000, 6000, 10000, 15000, 25000 (about 2.5 hours of fishing for all 15). All numbers in balance.js (`FISHING_*`).
+- "Fishing stall not here": the Rod Shop was at z −20, which is exactly inside the tall cliff wall on the south edge of the Pumpkin Graveyard, so it was buried in rock. It moved to `ROD_SHOP = { x: HW_X − 32, z: 10 }` (just south of the dock), with its glowing sign, light beam, pumpkin-lamp path from the ruins, plus a new "🎣 FISH HERE!" sign and a blue beam at the end of the dock.

@@ -67,7 +67,7 @@ import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText 
 import { inDiscord, startDiscord } from './discordActivity.js';
 import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText, setGymPresent } from './gym.js';
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
-import { createFishing, fishingInteraction, updateFishing, breakRod, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋）
+import { createFishing, fishingInteraction, fishingPress, fishingBusy, updateFishing, stopFishing, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋 + 🌽 Candy Corn）
 import { setRodShopActions } from './rodShop.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
@@ -264,14 +264,11 @@ function cycleQuality() {
 applyQuality();
 
 const thirdPerson = createThirdPerson(scene, camera); // 拎住寵物時用第三身
-// 🎣 Halloween 釣魚：魚竿舖、拋竿、釣蛋（src/fishing.js）
+// 🎣 Halloween 釣魚：魚竿舖、力度條拋竿、狂撳收線、釣蛋同 🌽 Candy Corn（src/fishing.js）
 const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar });
 const fishUI = { play: (n) => play(n), popup: (t) => popup(t), announce: (t) => announce(t), save: () => save(), flash: () => flashScreen() };
 setRodShopActions({ buy: (i) => buyRod(i, fishUI) });
-if (state.rod !== null && state.rod !== undefined) {
-  state.rod = null; // 重新載入 = 返咗普通世界：魚竿斷咗
-  setTimeout(() => popup('🎣 Your rod crumbled to dust... buy a new one next time!'), 4000);
-}
+if (!Number.isInteger(state.rod)) state.rod = 0; // 舊存檔（以前魚竿會斷，係 null）：每個人都有免費 Twig Rod
 // Issue #2：手上嘅鎚仔（第一身掛喺鏡頭；第三身掛喺公仔右手）
 const handHammer = hammerModel();
 handHammer.position.set(0.45, -0.45, -0.8);
@@ -606,7 +603,7 @@ window.addEventListener('keydown', (e) => {
     popup(moveOpts.slow ? '🐢 Slow walk ON (press M again to run fast)' : '⚡ Slow walk OFF - full speed!');
   }
   if (isPaused()) return;
-  if (e.code === 'KeyE') interact();
+  if (e.code === 'KeyE' && !(e.repeat && fishingBusy(fishing))) interact(); // 🎣 釣緊魚：長撳嘅自動重複唔算狂撳
   const digit = e.code.match(/^Digit(\d)$/);
   if (digit) {
     selectSlot((Number(digit[1]) + 9) % 10); // 1 = 第一格 … 0 = 第十格
@@ -1134,6 +1131,7 @@ function swingBat() {
 // 撳滑鼠左鍵（拎住鎚仔）都打得爛玻璃艙；拎住球棒就揮棒
 window.addEventListener('mousedown', (e) => {
   if (e.button !== 0 || isPaused() || !player.controls.isLocked) return;
+  if (halloween.inside && hwWorld && fishingPress(fishing, camera.position, fishUI)) return; // 🎣 click = 拋竿／上鈎／收線
   if (selectedHotbarItem()?.item.bat) {
     swingBat();
     return;
@@ -1210,7 +1208,7 @@ async function leaveHalloween() {
   }, 1.2, { theme: 'nature', kicker: 'Going back to', title: 'Animal Rescue Park' });
   hwTravelling = false;
   if (!ok) return;
-  breakRod(fishing, fishUI); // 🎣 返普通世界：魚竿斷（小朋友規定）
+  stopFishing(fishing); // 🎣 返普通世界：收線（魚竿留低，Issue #8 #9）
   announce('🏡 Back at the Animal Rescue Park!');
 }
 
@@ -1794,7 +1792,7 @@ renderer.setAnimationLoop((timestamp) => {
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
     time,
   });
-  if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
+  if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
   if (!inMovie && viewCam !== camera && !labStatus.gone && inLab(camera.position.x, camera.position.z)) {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
