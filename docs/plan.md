@@ -144,6 +144,7 @@ src/data/questions.js ← 野生動物問題
 - ✅ 秘密沙灘搬咗去好遠（`BEACH_OFFSET` 300，唔喺實驗室隔籬），打贏 Boss 先去到：實驗室傳送門 ↔ 沙灘綠色傳送門。
 - ✅ THE COLLAB：「I'm a ranger from another game!」（小朋友揀咗唔用朋友個名）。
 - ✅ Issue #9 秘密沙灘重新設計（「make it more cooler」）：沙紋理 + 濕沙岸邊、shader 海浪一湧一退、白泡同夜光浮游生物、月光倒影、大月亮、銀河 + 北極光、22 粒流星；棕櫚樹會擺（InstancedMesh）、Moonlight Pier 木碼頭行得出去（`BEACH_PIER`）、燈塔轉光、潮池（海星、發光海葵）、海龜 BB 由竇爬落海、蟹仔、螢火蟲、篝火有火星同暖光、木頭凳、火把。靜態裝飾用 `bakeStatic`。
+- ✅ Issue #10 METEORIC（2026-10-21）：長期裝飾 = Hub 圍牆頂同生態區山腳／山上發光藍隕石、水晶（`src/meteorDecor.js`，`bakeStatic`）+ 天上間中有藍色流星。新活動 ☄️ METEORIC（5 分鐘，大約每 6–7 個時段一次，`METEOR_CHANCE` 0.18 喺 `src/events.js`）：大藍隕石由東邊天劃過、撞落 Hub（2 個坑）同每個生態區（閃光、衝擊波、震、轟一聲、塵）→ 隕石坑、裂縫、碎石、好多顏色水晶；Boss 有裂痕＋藍水晶（`src/meteorBoss.js`）；執 ☄️ Meteoric Crystals（`state.meteorCrystals`，× `state.crystalMultiplier`），完咗全部消失（`src/meteorEvent.js`）。測試：`game.forceEvent('meteor')`。
 - ✅ 外面森林 + 巨型高樹邊界；生態區牆變高山，每區唔同（`src/biomeBorders.js`）。
 - ✅ 吊橋 7 米闊、跌唔落；新生態區閘門變神秘大寶庫門。
 - ✅ 新升級：Royal Kingdom 地塊（+2 位、×1.5 錢）；跑步機／學生桌 Lv16 Astral King's Kingdom；繁殖機 Lv5 Dragon's Lair（×0.4 時間、一次 2 隻、答問題加速、15% Fire 變異 ×4 錢，`src/fireAura.js`）。價錢係我揀：地塊 ≈ $1.75M、Lv16 ≈ $10.6M、Dragon's Lair $15M。

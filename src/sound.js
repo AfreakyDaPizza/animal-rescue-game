@@ -254,6 +254,28 @@ const SOUNDS = {
     arp(t, [523, 440, 349, 262], 0.16, { type: 'triangle', vol: 0.18 });
     tone(196, t + 0.7, 0.9, { type: 'sine', vol: 0.15, slide: 0.5 });
   },
+  // ☄️ METEORIC（Issue #10）：隕石「咻——」飛過天、轟一聲撞落地、遠處撞落嘅低沉隆隆聲、執到水晶「叮鈴」
+  meteorWhoosh: (t) => {
+    noise(t, 2.6, { vol: 0.32, freq: 700, q: 0.7, type: 'bandpass' });
+    tone(1400, t, 2.4, { type: 'sine', vol: 0.05, slide: 0.25 });
+    tone(90, t + 1.2, 1.6, { type: 'sawtooth', vol: 0.05, slide: 0.6 });
+  },
+  meteorBoom: (t) => {
+    noise(t, 1.8, { vol: 0.9, freq: 420 });
+    noise(t, 0.35, { vol: 0.5, freq: 2600, q: 0.5, type: 'bandpass' });
+    tone(70, t, 1.4, { type: 'sine', vol: 0.6, slide: 0.45 });
+    tone(140, t, 0.5, { type: 'square', vol: 0.12, slide: 0.3 });
+    arp(t + 0.25, [1568, 2093, 2637], 0.08, { type: 'triangle', vol: 0.05 }); // 水晶碎「叮叮」
+  },
+  meteorRumble: (t) => {
+    noise(t, 1.4, { vol: 0.35, freq: 220 });
+    tone(55, t, 1.2, { type: 'sine', vol: 0.25, slide: 0.6 });
+  },
+  crystal: (t) => {
+    arp(t, [1319, 1760, 2349, 2637], 0.05, { type: 'triangle', vol: 0.16 });
+    tone(3136, t + 0.2, 0.45, { type: 'sine', vol: 0.06 });
+    noise(t, 0.25, { vol: 0.06, freq: 6000, type: 'highpass' });
+  },
   // 🔮 Halloween Shard
   shard: (t) => {
     arp(t, [440, 523, 659, 831, 988], 0.09, { type: 'sine', vol: 0.2 });

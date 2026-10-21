@@ -54,6 +54,7 @@ const DEFAULTS = {
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
   rod: 0, // 🎣 你最好嗰支魚竿（FISHING_RODS 第幾支）；Twig Rod (0) 免費，用 Candy Corn 升級，會存低（Issue #8 #9）
   candyCorn: 0, // 🌽 Halloween：釣魚得嘅 Candy Corn（買魚竿、寶箱舖用）
+  meteorCrystals: 0, // ☄️ METEORIC 活動執到嘅 Meteoric Crystals（Issue #10；每粒 × state.crystalMultiplier）
 };
 
 export const state = load();

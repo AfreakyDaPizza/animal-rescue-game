@@ -35,7 +35,7 @@ export function howToPlayEmbed() {
       { name: '5. Reproduce Machine 🧬', value: 'Put your rescued animal in a pink **Reproduce Machine** (press **E**). When it says READY, collect your pet.' },
       { name: '6. Your Plot 💰', value: 'Put pets on your **Plot**. They earn money every second. Heavier and rarer pets earn more!' },
       { name: '7. Night 🌙', value: 'Every 5 minutes it turns night for 20 seconds. The Biomes lock and **new animals spawn**. Machines are 10x faster at night.' },
-      { name: '8. Events 🎉', value: 'Every 15 minutes (:00, :15, :30, :45) an event starts: Giant Pets, Rare Rush, Pet Frenzy, Training No Mercy or Troll Frenzy.' },
+      { name: '8. Events 🎉', value: 'Every 15 minutes (:00, :15, :30, :45) an event starts: Giant Pets, Rare Rush, Pet Frenzy, Training No Mercy, Troll Frenzy or (rarer) ☄️ METEORIC - collect the Meteoric Crystals!' },
       { name: '9. Ranger Gym 💪', value: 'After the Laboratory explodes, a **Gym** appears next to the yard (opens Saturday 31 October). **4X Treadmill** = Speed x4, **Trampoline** = Jump Power, **Brain Bench** = Speed + IQ, **Climbing Wall of Wisdom** = IQ x4. The portal outside goes to the Secret Beach!' },
       { name: 'Keys', value: '**P** stats · **I** Index · **Q** quests · **1-0** hotbar · mouse wheel = zoom' },
     ],

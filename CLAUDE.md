@@ -48,6 +48,7 @@
 - 2026-10-21：Issue #8：帳號系統（`src/account.js` + `src/boot.js` 入口；Firebase 用戶名＋密碼、假 email `@players.animal-rescue.invalid`；Firestore `saves/{uid}`，規則 `firestore.rules`；**`src/firebaseConfig.js` 未填 = 冇登入**，等家長開 Firebase 項目）、Shop Street 💾 Save Stall（`buildSaveStall`）、Hub 地板重做（`src/hubFloor.js`）、載入畫面模組（`src/loading.js`，主題 nature/halloween/ghost）。Candy Corn／墳場升級／Soul Town／送魚竿：等小朋友喺 Issue #8 答。
 
 - 2026-10-21（下晝）：Issue #9 + #8 答案：活動每 15 分鐘、Training No Mercy 60 秒；Halloween Boss 重做 + 野生 Legendary/Mythic/Eternal 機會 ×0.5（`HALLOWEEN_WILD_TOP_RARITY_MULT`）；吸塵機：漩渦光、進度條、被吸嘅鬼定住、光球扣 ❤️（`GHOST_HEARTS`）唔扣 Soul Dust；秘密沙灘重做（碼頭 `BEACH_PIER`、燈塔、海龜）；Halloween 地圖重做（`src/halloweenArt.js`）；釣魚 v2（`state.candyCorn` 🌽、免費 Twig Rod `state.rod`=0、魚竿用 Candy Corn 升級唔再斷、力度條 + 狂撳收線、大獎動畫；`ROD_SHOP` 搬去 z=10，以前埋咗喺石壁入面）；Echo 狗仔 + Zombified Chest 500 🌽（`src/echoShop.js`、`CHEST_PETS`，開到 Candy Corn 暫定 250–750 `ZOMBIE_CHEST_CANDY`）。未做：Discord bot 新功能、墳場升級、Soul Town（等小朋友答）。
+- 2026-10-21：Issue #10 ☄️ METEORIC 活動 + 長期隕石裝飾（`src/meteorEvent.js`／`meteorDecor.js`／`meteorBoss.js`／`meteorKit.js`；`state.meteorCrystals`；`boost.meteor`）。
 
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。

@@ -17,6 +17,7 @@ import { decorateBiome } from './biomes.js';
 import { buildHubPark } from './hubPark.js';
 import { boost } from './events.js';
 import { buildBiomeBorders } from './biomeBorders.js';
+import { buildMeteorDecor } from './meteorDecor.js'; // ☄️ Issue #10：Hub 圍牆頂同生態區山丘嘅發光隕石、水晶
 import { makeSign, dynamicSign, signOnPosts, THEMES } from './signs.js';
 import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
@@ -150,6 +151,7 @@ export function buildWorld(scene) {
   decorateWall(staticRoot, -HUB_TOP_HALF, 0, STEM.minX, 0, 0, 1, wallMaterial, 0);
   decorateWall(staticRoot, STEM.maxX, 0, HUB_TOP_HALF, 0, 0, 1, wallMaterial, 1);
   buildBiomeBorders(staticRoot);
+  buildMeteorDecor(staticRoot);
   const a0 = Math.asin(-HUB.cz / HUB.r); // 右上角（z = 0）嘅角度
   const a1 = Math.PI - a0; // 左上角
   const SEGMENTS = 60;
