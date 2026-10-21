@@ -599,7 +599,7 @@ export function fishingInteraction(fishing, pos, { openShop, ui }) {
   const act = (prompt, action) => ({ prompt, action, fish: true });
   const busy = () => {}; // 拋緊／飛緊：撳都唔做嘢（狂撳唔會打亂）
   switch (fishing.phase) {
-    case 'power': return act(`🎯 Aim at the water · ${key()} CAST! Stop the bar HIGH to throw farther`, () => cast(fishing, pos, ui));
+    case 'power': return act(`${key()} CAST! Stop the bar HIGH to throw farther`, () => cast(fishing, pos, ui));
     case 'cast': return act('🎣 Casting...', busy);
     case 'wait': return act('🎣 Waiting for a bite... watch the bobber!', () => fishing.t > 1.2 && cancel(fishing, ui, '🎣 You reeled in... nothing. Wait for the ❗ next time!'));
     case 'bite': return act(`❗ ${key()} HOOK IT NOW!`, () => hook(fishing, ui));

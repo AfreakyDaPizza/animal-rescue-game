@@ -355,14 +355,15 @@ body.in-movie #hw-candy-hud, body.fishing #hw-train-hud, body.fishing #hw-dust-h
 body.mobile #hw-candy-hud { bottom: auto; top: calc(156px + env(safe-area-inset-top, 0px)); font-size: 12px; }
 
 #fish-ui { position: fixed; inset: 0; pointer-events: none; z-index: 7; font-family: 'Fredoka', 'Trebuchet MS', sans-serif; }
-#fish-power { position: absolute; right: calc(50% - 300px); top: 54%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-weight: 800; text-shadow: 0 2px 0 #000; }
+#fish-power { position: absolute; right: max(12px, calc(50% - 300px)); top: 44%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-weight: 800; text-shadow: 0 2px 0 #000; }
 #fish-power .fp-title { font-size: 18px; letter-spacing: 1px; }
-#fish-power .fp-track { position: relative; width: 34px; height: min(230px, 36vh); border: 4px solid #fff; border-radius: 18px; background: linear-gradient(0deg, #d50000 0%, #ff6d00 30%, #ffd600 55%, #76ff03 80%, #00e5ff 90%, #ffffff 100%); box-shadow: 0 0 0 3px #000, 0 6px 18px rgba(0, 0, 0, 0.6); }
+#fish-power .fp-track { position: relative; width: 34px; height: min(230px, 30vh); border: 4px solid #fff; border-radius: 18px; background: linear-gradient(0deg, #d50000 0%, #ff6d00 30%, #ffd600 55%, #76ff03 80%, #00e5ff 90%, #ffffff 100%); box-shadow: 0 0 0 3px #000, 0 6px 18px rgba(0, 0, 0, 0.6); }
 #fish-power .fp-track.hot { box-shadow: 0 0 0 3px #000, 0 0 26px 8px #18ffff; }
 #fish-power .fp-perfect { position: absolute; left: 0; right: 0; top: 0; height: 10%; border-bottom: 3px dashed #000; font-size: 0; }
 #fish-power .fp-perfect::after { content: 'PERFECT'; position: absolute; left: 44px; top: -4px; font-size: 13px; color: #18ffff; }
 #fish-power .fp-needle { position: absolute; left: -16px; right: -16px; height: 8px; margin-bottom: -4px; background: #fff; border: 3px solid #000; border-radius: 6px; box-shadow: 0 0 10px #fff; }
 #fish-power .fp-hint, #fish-reel .fr-hint { font-size: 15px; background: rgba(0, 0, 0, 0.55); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+#fish-power .fp-hint { order: -1; } /* 瞄準提示放喺力度條上面，唔好壓住下面嘅 E 提示 */
 #fish-reel { position: absolute; left: 50%; top: 11%; transform: translateX(-50%); width: min(420px, 70vw); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-weight: 800; text-shadow: 0 2px 0 #000; }
 #fish-reel .fr-title { font-size: 26px; color: #ffe082; animation: reel-pulse 0.4s ease-in-out infinite alternate; }
 @keyframes reel-pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
@@ -402,3 +403,5 @@ body.mobile #fish-reel { top: 20%; }
 @keyframes fb-fall { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0.9; transform: translate(var(--x), 105vh) rotate(var(--r)); } }
 @media (prefers-reduced-motion: reduce) { #fish-big.on .fb-rays { animation: fb-rays 3.8s ease-out forwards; } }
 #fish-big[hidden], #fish-power[hidden], #fish-reel[hidden], #fish-perfect[hidden], #hw-candy-hud[hidden] { display: none; }
+/* ☄️ 隕石活動嘅水晶只喺普通世界出：喺 Halloween 世界收埋個水晶框 */
+body.in-halloween #meteor-hud, body.fishing #hw-egg-hint { visibility: hidden; } /* 釣魚時都收埋 Eggs 框，唔好遮住瞄準提示 */
