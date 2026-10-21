@@ -32,9 +32,14 @@
   - trade **400 souls** at the **Statue of Halloween** for a **🔮 Halloween Shard** (stackable).
 
 ## 🔮 Halloween Shard mutations
-- Use a shard on your Plot. Each pet has a **25% chance** to get hit.
-- A pet that gets hit becomes 50/50 **👻 Spectral (×4)** or **🌑 Phantom (×5)**.
-- **Animation:** the pets on the Plot disappear, the Halloween portal takes the chosen pet away, then sends it back with its mutation (like Steal an Egg's mutation mechanic).
+- ~~Use a shard on your Plot. Each pet has a **25% chance** to get hit.~~ Changed by Issue #10 (2026-10-21): the shard goes into your **🎒 Inventory** (press `` ` ``) as a **Gear**. Use it, then **pick one pet** in the Animals tab: it **always** works on that pet.
+- The pet becomes 50/50 **👻 Spectral (×4)** or **🌑 Phantom (×5)** (if it already has one, it gets the other).
+- **Animation** (when the pet you pick is on your Plot; a pet in your backpack sparkles in the Inventory instead): the pets on the Plot disappear, the Halloween portal takes the chosen pet away, then sends it back with its mutation (like Steal an Egg's mutation mechanic).
+
+## 🎒 Inventory (Issue #10, 2026-10-21)
+- Press `` ` `` (or the 🎒 button). 3 tabs: **Animals** (magical, Halloween, chest and Fuse pets), **Endangered Animals** (real animals: rescued ones and pets), **Gears** (🔮 Halloween Shard, ☄️ Meteoric Shard).
+- Drag a card onto the hotbar (on a phone: tap the card, then tap a slot). Drag a slot back up to take it off.
+- ☄️ **Meteoric Shard** → ☄️ METEORIC (×5, blue glow + little meteors). 🌌 **ASTRAL** (×8, purple stars) comes from the Meteoric Chest.
 
 ## 🎣 Fishing (the other side of the map)
 - **15 rods** to buy. A better rod gives a better chance of the best Halloween egg.

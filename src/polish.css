@@ -285,3 +285,47 @@ body.mobile #panel-title { font-size: 20px; padding: 10px 50px; }
 #login .login-tabs button.on:hover { background: #ffe082; }
 #login .login-offline, #login .login-offline:hover { box-shadow: none; border-radius: 0; background: none; transform: none; }
 #start .account-badge button:hover { background: #e3f2fd; }
+
+/* ===== 🎒 背包 Inventory（Issue #10）===== */
+#panel[data-kind="inventory"] #panel-title { background: linear-gradient(180deg, #8d6e63 0%, #4e342e 100%); border-bottom-color: #3e2723; }
+#panel[data-kind="inventory"] { align-items: flex-start; padding-top: max(12px, 2vh); }
+#panel[data-kind="inventory"] .card.wide { max-height: calc(100vh - 150px); }
+/* 背包開住：快捷欄浮喺面板上面，拖得落去 */
+body:has(#panel[data-kind="inventory"]:not([hidden])) #hotbar-wrap { z-index: 40; }
+body:has(#panel[data-kind="inventory"]:not([hidden])) #hotbar .slot { cursor: copy; }
+.slot.gear { background: linear-gradient(180deg, rgba(149, 117, 205, 0.9), rgba(69, 39, 160, 0.85)); }
+.slot .count { position: absolute; right: 3px; bottom: 1px; font-size: 11px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }
+.slot.drop-hover { transform: scale(1.22); border-color: #fff !important; box-shadow: 0 0 0 3px #66bb6a, 0 0 18px #b2ff59; }
+.inv-card { position: relative; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.inv-card.inv-drag { cursor: grab; }
+body.inv-dragging, body.inv-dragging * { cursor: grabbing !important; }
+.inv-card.inv-picked { box-shadow: 0 0 0 4px #ffd600, 0 0 18px rgba(255, 214, 0, 0.8); transform: translateY(-3px); }
+.inv-slot-num {
+  position: absolute; top: 6px; right: 6px; z-index: 1; min-width: 22px; height: 22px; border-radius: 999px; line-height: 22px;
+  background: #ffd600; color: #3e2723; font-weight: 900; font-size: 13px; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.inv-gear-emoji { font-size: 54px !important; line-height: 1.15; filter: drop-shadow(0 0 8px rgba(124, 77, 255, 0.6)); animation: inv-float 2.4s ease-in-out infinite; }
+.inv-gear p { font-size: 12px; }
+.inv-where { color: #8d6e63 !important; font-style: italic; }
+.inv-hint { margin: 2px 0 10px; font-size: 13px; color: #607d8b; }
+.inv-banner { margin: 2px 0 12px; padding: 8px 12px; border: 3px solid #ffd600; border-radius: 14px; background: #fffde7; font-weight: 700; color: #3e2723; }
+.inv-banner button { margin: 0 0 0 8px; padding: 4px 12px; font-size: 14px; }
+.inv-win { font-size: 20px; background: linear-gradient(90deg, #fff8e1, #f3e5f5, #e1f5fe); animation: inv-pop 0.7s ease-out; box-shadow: 0 0 18px var(--c); }
+.inv-mutate-banner { background: linear-gradient(90deg, #ede7f6, #e1f5fe); animation: inv-pulse 1.4s ease-in-out infinite; }
+.inv-card.inv-can-mutate { animation: inv-glow 1.2s ease-in-out infinite; cursor: pointer; }
+.inv-card.inv-no-mutate { opacity: 0.45; filter: grayscale(0.6); }
+.inv-card.inv-burst { animation: inv-pop 0.9s ease-out; box-shadow: 0 0 0 4px #fff, 0 0 30px 8px rgba(124, 77, 255, 0.8); z-index: 1; }
+.inv-sparks { position: absolute; left: 50%; top: 40%; width: 0; height: 0; pointer-events: none; }
+.inv-sparks span { position: absolute; left: -8px; top: -12px; font-size: 22px; color: var(--c); text-shadow: 0 0 8px var(--c); animation: inv-spark 2s ease-out forwards; }
+#inv-ghost {
+  position: fixed; z-index: 9999; pointer-events: none; transform: translate(-50%, -50%) rotate(-6deg);
+  width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; font-size: 44px;
+  border-radius: 16px; border: 3px solid #ffd600; background: rgba(255, 253, 245, 0.92); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+#inv-ghost img, #inv-ghost canvas { max-width: 64px; max-height: 64px; }
+#inv-ghost .emoji { font-size: 44px !important; animation: none; }
+@keyframes inv-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes inv-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 77, 255, 0.4); } 50% { box-shadow: 0 0 0 6px rgba(124, 77, 255, 0.15); } }
+@keyframes inv-glow { 0%, 100% { box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.3); } 50% { box-shadow: 0 0 0 4px #7c4dff, 0 0 20px rgba(124, 77, 255, 0.7); } }
+@keyframes inv-pop { 0% { transform: scale(1); } 30% { transform: scale(1.18) rotate(-3deg); } 60% { transform: scale(0.96) rotate(2deg); } 100% { transform: scale(1); } }
+@keyframes inv-spark { 0% { transform: rotate(var(--a)) translateY(0) scale(0.4); opacity: 1; } 100% { transform: rotate(var(--a)) translateY(-90px) scale(1.2); opacity: 0; } }

@@ -53,6 +53,8 @@ const DEFAULTS = {
   adminUsed: false, // 🔐 用過秘密控制台改嘢（已經備份咗真存檔）
   jumpPower: 0, // 💪 Gym 彈床練出嚟（每點跳高啲）
   rod: 0, // 🎣 你最好嗰支魚竿（FISHING_RODS 第幾支）；Twig Rod (0) 免費，用 Candy Corn 升級，會存低（Issue #8 #9）
+  gears: [], // ⚙️ Gears（Issue #10）：[{ type: 'halloweenShard' }, { type: 'meteoricShard' }…]，種類見 src/data/gears.js
+  hotbar: [null, null, null, null, null, null, null, null, null, null], // 🎒 由背包拖落快捷欄嘅嘢：每格一個 key（'pet:uid'、'res:uid'、'gear:type'）或者 null
   candyCorn: 0, // 🌽 Halloween：釣魚得嘅 Candy Corn（買魚竿、寶箱舖用）
 };
 

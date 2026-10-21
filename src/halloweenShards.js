@@ -1,12 +1,13 @@
 // 🗿 Statue of Halloween + 🔮 Halloween Shard（小朋友 Issue #6）
-// 雕像：400 Soul Dust 換 1 粒 Halloween Shard（可以疊）
-// 用 Shard（普通世界，🐾 側邊盒）：地塊上面每隻寵物有 25% 機會中；中咗就 50/50 變 👻 Spectral ×4 或者 🟣 Phantom ×5
-// 動畫（好似 Steal an Egg）：地塊啲寵物一下消失 → 地塊上面開個 Halloween 傳送門 → 中咗嗰幾隻俾吸上去 → 帶住新變異跌返落嚟 → 全部返嚟
+// 雕像：400 Soul Dust 換 1 粒 Halloween Shard（Issue #10：變做背包 ⚙️ Gears 入面嘅 gear，可以疊）
+// 用 Shard（Issue #10）：背包揀一隻寵物 → 一定中，50/50 變 👻 Spectral ×4 或者 🟣 Phantom ×5（src/data/gears.js）
+// 揀咗地塊上面嘅寵物就播動畫（好似 Steal an Egg）：地塊啲寵物一下消失 → 地塊上面開個 Halloween 傳送門 → 揀咗嗰隻俾吸上去 → 帶住新變異跌返落嚟 → 全部返嚟
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
-import { HALLOWEEN_SHARD_COST, SHARD_HIT_CHANCE, SHARD_PHANTOM_CHANCE } from './data/balance.js';
-import { addMutation, hasMutation, mutationInfo } from './data/animals.js';
+import { HALLOWEEN_SHARD_COST } from './data/balance.js';
+import { addMutation, mutationInfo } from './data/animals.js';
+import { addGear } from './data/gears.js';
 import { STATUE_OF_HALLOWEEN, inGhostWorld } from './halloweenShape.js';
 import { PLOT } from './hubShape.js';
 import { extraPanels, openPanel, panelKind } from './hud.js';
@@ -25,7 +26,7 @@ function statueHtml() {
     <div class="cards"><div class="card-animal" style="border-color:#b388ff">
       <div class="emoji">🔮</div><b>Halloween Shard</b>
       <small>Costs ${HALLOWEEN_SHARD_COST} 💀 Soul Dust</small>
-      <p>Use it on your Plot (🐾 button, B). Each pet has a ${SHARD_HIT_CHANCE}% chance to become 👻 SPECTRAL x${mutationInfo('spectral').money} or 🟣 PHANTOM x${mutationInfo('phantom').money}!</p>
+      <p>It goes into your 🎒 Inventory (press <kbd>\`</kbd>) as a Gear. Pick any pet: it becomes 👻 SPECTRAL x${mutationInfo('spectral').money} or 🟣 PHANTOM x${mutationInfo('phantom').money}!</p>
       <div class="card-buttons">
         <button data-hw="trade" data-n="1" class="${can >= 1 ? '' : 'grey'}">Trade 1 (${HALLOWEEN_SHARD_COST} 💀)</button>
         ${can >= 2 ? `<button data-hw="trade" data-n="${can}">Trade ALL ${can} (${short(can * HALLOWEEN_SHARD_COST)} 💀)</button>` : ''}
@@ -47,10 +48,10 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
     n = Math.min(n, most);
     if (n <= 0) return popup(`💀 You need ${HALLOWEEN_SHARD_COST} Soul Dust for a Halloween Shard!`);
     state.soulDust -= n * HALLOWEEN_SHARD_COST;
-    state.hwShards += n;
+    addGear('halloweenShard', n); // 🎒 入背包 Gears 分頁
     save();
     play('shard');
-    popup(`🔮 You got ${n} Halloween Shard${n > 1 ? 's' : ''}! Use it on your Plot with the 🐾 button (B).`);
+    popup(`🔮 You got ${n} Halloween Shard${n > 1 ? 's' : ''}! Open your 🎒 Inventory (\`) to use it on a pet.`);
   }
   $('panel-body').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-hw="trade"]');
@@ -65,26 +66,17 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
     return null;
   }
 
-  // ---------- 用 Shard（地塊動畫）----------
+  // ---------- 用 Shard（地塊動畫）：target = 背包揀咗嘅寵物（喺地塊上面），kind = 'spectral'／'phantom' ----------
+  // Shard 已經喺背包扣咗；回傳 false = 播唔到（背包會改用卡仔特效）
   let busy = false;
-  function useShard() {
+  function useShard(target, kind) {
     if (busy) return false;
-    if (state.hwShards <= 0) return popup('🔮 You have no Halloween Shards! Trade Soul Dust at the Statue of Halloween.'), false;
     if (hub.plot.pets.length !== state.pets.filter((p) => p.onPlot).length) refreshPlot(); // 地塊 3D 寵物同存檔對齊
     const entries = hub.plot.pets.slice();
-    if (!entries.length) return popup('🌿 Put some pets on your Plot first!'), false;
+    const mine = entries.find((e) => e.pet === target);
+    if (!mine) return false;
     busy = true;
-    state.hwShards -= 1;
-    // 擲骰：每隻 25%；中咗揀 Spectral／Phantom（已經有一樣就畀另一樣）
-    const hits = [];
-    for (const e of entries) {
-      if (Math.random() * 100 >= SHARD_HIT_CHANCE) continue;
-      let kind = Math.random() * 100 < SHARD_PHANTOM_CHANCE ? 'phantom' : 'spectral';
-      if (hasMutation(e.pet, kind)) kind = kind === 'phantom' ? 'spectral' : 'phantom';
-      if (hasMutation(e.pet, kind)) continue; // 兩樣都有晒：唔再加
-      hits.push({ e, pet: e.pet, kind });
-    }
-    save();
+    const hits = [{ e: mine, pet: target, kind }];
     const cx = (PLOT.minX + PLOT.maxX) / 2;
     const cz = (PLOT.minZ + PLOT.maxZ) / 2;
     const portalY = 9;
@@ -224,8 +216,8 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
         for (const p of puffs) scene.remove(p.m);
         busy = false;
         api.teleportBack?.();
-        if (hits.length) announce(resultText);
-        else popup('🔮 No luck this time... Try another Halloween Shard!');
+        if (hits.length) announce(`${resultText} (x${mutationInfo(kind).money} money)`);
+
       },
     });
     return true;

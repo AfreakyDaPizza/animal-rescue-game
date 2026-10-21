@@ -471,6 +471,8 @@ body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-t
 .card-animal .eclipse-tag { color: #aa00ff; }
 .card-animal .spectral-tag { color: #00acc1; }
 .card-animal .phantom-tag { color: #7e57c2; }
+.card-animal .meteoric-tag { color: #0091ea; }
+.card-animal .astral-tag { color: #8e24aa; }
 /* 🔐 Secret Ranger Control Panel */
 .admin-tabs { flex-wrap: wrap; }
 .admin-tabs button { padding: 6px 10px; font-size: 14px; }

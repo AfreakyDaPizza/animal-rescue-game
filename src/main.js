@@ -74,6 +74,7 @@ import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenS
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
+import { createInventory } from './inventory.js'; // 🎒 背包：Animals／Endangered Animals／Gears（Issue #10）
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { createEchoShop, giveCandyCorn } from './echoShop.js'; // 🐕 Echo 隻狗 + 🧟 Zombified Chest（Issue #8）
 import { FOUNTAIN } from './hubPark.js';
@@ -317,9 +318,10 @@ const shards = createShards({
   scene, camera, hub, popup, announce, play,
   refreshPlot: () => refreshPlotPets(hub),
 });
-function useHalloweenShard() {
-  if (inHalloween(camera.position.x, camera.position.z)) return popup('🔮 Go back to your Plot in the Hub to use a Halloween Shard!');
-  if (movie.active || shards.busy) return;
+// 🔮 背包揀咗地塊上面嘅寵物：播傳送門動畫（回傳 false = 背包自己用卡仔特效）
+function useHalloweenShard(pet, kind) {
+  if (inHalloween(camera.position.x, camera.position.z) || movie.active || shards.busy) return false;
+  if (panelKind()) closePanel();
   const back = { x: camera.position.x, z: camera.position.z, rot: camera.rotation.clone() };
   if (sideBoxOpen()) toggleSideBox(sideBoxOpen());
   player.controls.unlock();
@@ -328,8 +330,16 @@ function useHalloweenShard() {
     camera.rotation.copy(back.rot);
     resume();
   };
-  if (!shards.useShard()) resume();
+  if (shards.useShard(pet, kind)) return true;
+  resume();
+  return false;
 }
+const inventory = createInventory({
+  togglePanel: (kind) => togglePanel(kind), play,
+  refreshPlot: () => refreshPlotPets(hub),
+  portalMutate: (pet, kind) => useHalloweenShard(pet, kind),
+});
+document.getElementById('inventory-button').addEventListener('click', () => inventory.toggle());
 
 // 任務有進度：完成就提你去領代幣
 function quest(id, amount = 1) {
@@ -581,6 +591,7 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'Enter' || e.code === 'NumpadEnter') finishQuiz();
     return; // 問緊問題時其他掣唔做嘢（1–4 係揀答案）
   }
+  if (e.code === 'Backquote') inventory.toggle(); // 🎒 背包
   if (e.code === 'KeyP') togglePanel('stats');
   if (e.code === 'KeyI') togglePanel('index');
   if (e.code === 'KeyQ') togglePanel('quests');
@@ -765,7 +776,7 @@ setShopActions({
 let sideFreed = false;
 initSideBoxes({
   machineCount: hub.machines.length,
-  useShard: () => useHalloweenShard(), // 🔮
+  useShard: () => inventory.useGear('halloweenShard'), // 🔮 開背包揀寵物
   openAll() {
     toggleSideBox('pets');
     togglePanel('pets');
@@ -893,6 +904,9 @@ function currentInteraction() {
     if (batInRange(fight, pos)) return { prompt: '<kbd>E</kbd> / Click: SMACK him with your bat! 🏏', action: swingBat };
     return { prompt: '🏏 Get closer to the Scientist to hit him!' };
   }
+  // ⚙️ 快捷欄揀咗 Gear（例如 Shard）：E／撳滑鼠 = 開背包揀寵物
+  const gearSel = selectedHotbarItem();
+  if (gearSel?.kind === 'gear') return { prompt: `<kbd>E</kbd> / Click: use your ${gearSel.item.name} on a pet`, action: () => inventory.useGear(gearSel.item.gear) };
   const lab2 = labInteraction(pos);
   if (lab2) return lab2;
   const w = nearestAnimal(rescue);
@@ -1213,6 +1227,7 @@ window.addEventListener('mousedown', (e) => {
     swingBat();
     return;
   }
+  if (selectedHotbarItem()?.kind === 'gear') return inventory.useGear(selectedHotbarItem().item.gear); // ⚙️
   if (!holdingHammer()) return;
   const it = labInteraction(camera.position);
   if (it?.action && lab.pods.some((p) => !p.free && near(camera.position, p, 3.6))) it.action();
@@ -1843,7 +1858,7 @@ renderer.setAnimationLoop((timestamp) => {
   }
   const sel = selectedHotbarItem();
   const vacuumOut = state.vacuumLevel > 0 && inHalloween(camera.position.x, camera.position.z); // 🧹 Halloween 世界：手拎吸塵機，唔拎寵物
-  setHolding(rescue, sel?.kind === 'tool' || vacuumOut || hwEggs?.isCarrying() ? null : sel?.item.name ?? null, sel?.item.mutation ?? null, !!sel?.item.flipped);
+  setHolding(rescue, sel?.kind === 'tool' || sel?.kind === 'gear' || vacuumOut || hwEggs?.isCarrying() ? null : sel?.item.name ?? null, sel?.item.mutation ?? null, !!sel?.item.flipped);
   // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
   const showTool = sel?.kind === 'tool' && !rescue.carrying;
   const bat = !!sel?.item.bat;
@@ -1986,4 +2001,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { inventory, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
