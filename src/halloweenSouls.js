@@ -1,6 +1,7 @@
 // 👻 Halloween 6 種靈魂（小朋友 Issue #6 設計圖：scratchpad/hw_souls.png）— 用 Ghost Vacuum 吸
 // buildSoul(id) → group；每格叫 group.userData.update(t)
-//   group.userData.suck(p)   p 0→1：俾吸塵機吸緊（縮細、轉圈、拉長、變光），1 = 吸晒
+//   group.userData.suck(p, nozzle)  p 0→1：俾吸塵機吸緊（定住、向住吸塵機嘴拉長、震、縮細、變光），1 = 吸晒
+//   group.userData.pull(k, nozzle)  k 0→1：捉到之後「咻」一聲飛入吸塵機嘴
 //   group.userData.charge(k) k 0→1：準備攻擊（發光變大，提你要閃）
 // launchSoulOrb(scene, from, to, color) → 一粒慢慢飛向「發射嗰陣」目標位置嘅光球（好易閃），每格 orb.update(dt) 回傳 'flying' | 'done'
 // 數值（掉幾多 Soul Dust、要吸幾耐、幾常見、幾耐攻擊一次）喺 balance.js HALLOWEEN_SOULS
@@ -232,31 +233,67 @@ function poltergeist(body) {
 
 const BUILDERS = { small, wandering, phantom, wraith, ghoul, poltergeist };
 
+const tmpV = new THREE.Vector3();
 export function buildSoul(id) {
   const type = soulType(id) || SOUL_TYPES[0];
   const g = new THREE.Group();
-  const body = piv(g, 0, 0, 0); // 縮細／轉圈都喺 body 度做，唔影響 g 嘅位置
+  // aim：喺隻鬼個身中間，俾吸緊嗰陣 +z 指住吸塵機嘴，沿住 z 拉長（好似俾人吸住）
+  const aim = piv(g, 0, 0, 0);
+  const body = piv(aim, 0, 0, 0); // 縮細／轉圈都喺 body 度做，唔影響 g 嘅位置
   const spec = BUILDERS[type.id](body);
-  const telegraph = sph(g, 0.5, 0.5, 0.5, ADD(type.color, 0.0), 0, 0.7 + spec.height * 0.45, 0, true); // 攻擊前會亮
+  const mid = 0.7 + spec.height * 0.45;
+  aim.position.y = mid;
+  const telegraph = sph(g, 0.5, 0.5, 0.5, ADD(type.color, 0.0), 0, mid, 0, true); // 攻擊前會亮
   telegraph.castShadow = false;
+  const suckGlow = sph(aim, 0.7, 0.7, 0.7, ADD(type.color, 0), 0, 0, 0, true); // 俾吸緊：成隻發光
+  suckGlow.castShadow = false;
   const baseGlow = spec.glow.map((m) => m.emissiveIntensity);
   let suckP = 0;
   let chargeK = 0;
+  let pull = 0; // 0 → 1：最後一下「咻」入吸塵機（捉到之後）
+  const nozzle = new THREE.Vector3();
+  let hasNozzle = false;
   g.userData = {
-    type, height: spec.height, floating: true,
+    type, height: spec.height, floating: true, mid,
     update(t) {
-      body.position.y = 0.7 + Math.sin(t * 1.8 + type.weight) * 0.12; // 浮喺半空
+      body.position.y = 0.7 - mid + (suckP > 0 ? 0 : Math.sin(t * 1.8 + type.weight) * 0.12); // 浮喺半空（俾吸住就唔再浮）
       spec.update(t);
-      // 俾吸緊：縮細 + 轉 + 拉長 + 變光
-      const s = 1 - suckP * 0.85;
-      body.scale.set(s * (1 - suckP * 0.3), s * (1 + suckP * 0.6), s * (1 - suckP * 0.3));
-      body.rotation.y = suckP > 0 ? t * (4 + suckP * 16) : body.rotation.y * 0.9;
+      // 俾吸緊：轉身向住吸塵機嘴 → 拉長 + 震 + 縮細 + 變光
+      if (hasNozzle && (suckP > 0 || pull > 0)) {
+        aim.lookAt(tmpV.copy(nozzle));
+        const k = Math.min(1, suckP + pull);
+        const wob = Math.sin(t * 38) * 0.06 * k;
+        const shrink = 1 - suckP * 0.35 - pull * 0.6;
+        aim.scale.set(shrink * (1 - k * 0.32 + wob), shrink * (1 - k * 0.32 - wob), shrink * (1 + k * 1.1 + pull * 2.5));
+        aim.position.set(Math.sin(t * 47) * 0.05 * k, mid + Math.cos(t * 53) * 0.05 * k, 0); // 掙扎中震
+        body.rotation.z = Math.sin(t * 9) * 0.25 * k;
+      } else {
+        aim.quaternion.identity();
+        aim.scale.setScalar(1);
+        aim.position.set(0, mid, 0);
+        body.rotation.z *= 0.9;
+      }
+      body.rotation.y += ((suckP > 0 || pull > 0 ? Math.PI : 0) - body.rotation.y) * 0.15; // 俾吸住：塊面轉向你（掙扎緊）
+      suckGlow.material.opacity = Math.min(0.5, (suckP * 0.35 + pull * 0.4) * (0.8 + Math.sin(t * 30) * 0.2));
       spec.glow.forEach((m, i) => (m.emissiveIntensity = baseGlow[i] * (1 + suckP * 1.5 + chargeK)));
       telegraph.material.opacity = chargeK * (0.45 + Math.sin(t * 25) * 0.15);
       telegraph.scale.setScalar(0.3 + chargeK * 0.5);
     },
-    suck(p) {
+    // p 0→1：吸幾多；at：吸塵機嘴嘅世界座標（拉長嘅方向）
+    suck(p, at) {
       suckP = THREE.MathUtils.clamp(p, 0, 1);
+      if (at) {
+        nozzle.copy(at);
+        hasNozzle = true;
+      }
+    },
+    // 捉到之後「咻」入去：k 0→1
+    pull(k, at) {
+      pull = THREE.MathUtils.clamp(k, 0, 1);
+      if (at) {
+        nozzle.copy(at);
+        hasNozzle = true;
+      }
     },
     charge(k) {
       chargeK = THREE.MathUtils.clamp(k, 0, 1);

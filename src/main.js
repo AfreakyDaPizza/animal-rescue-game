@@ -303,7 +303,10 @@ const ghostHunt = createGhostHunt({
   scene, camera, avatar: thirdPerson.avatar, popup, announce, play,
   isFirstPerson: () => thirdPerson.zoom === 0,
   isBlocked: () => isPaused() || phantom.travelling || loading.active,
-  flash: () => flashScreen(),
+  respawn(x, z, rotY) { // ❤️ 冇晒心：送返 Ghost World 火車站
+    teleportPlayer(player, x, z);
+    faceTo(rotY);
+  },
   knockback(dir) {
     const p = camera.position;
     const x = p.x + dir.x * 2.5;
@@ -1825,7 +1828,7 @@ renderer.setAnimationLoop((timestamp) => {
   hubPortal.update(time, isHalloweenOpen());
   hwWorld?.update(dt, time, camera.position);
   phantom.update(dt, time, camera.position); // 🚂
-  ghostHunt.update(dt, time, { pos: camera.position, feetY: player.feetY, paused: isPaused() }); // 🧹👻
+  ghostHunt.update(dt, time, { pos: camera.position, feetY: player.feetY, paused: isPaused(), view: viewCam }); // 🧹👻
   shards.update(time, camera.position); // 🗿
   if (!frozen) hwEggs?.update(dt, time, { x: camera.position.x, z: camera.position.z, feetY: player.feetY }); // 🥚
   if (halloween.sky > 0.01) {

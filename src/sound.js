@@ -209,10 +209,26 @@ const SOUNDS = {
     noise(t, 0.3, { vol: 0.09, freq: 900, q: 0.8, type: 'bandpass' });
     tone(110, t, 0.3, { type: 'sawtooth', vol: 0.025 });
   },
-  // 👻 捉到鬼：吸入去「啵」一聲 + 閃閃
+  // 👻 捉到鬼：「咻」吸入去 +「啵」一聲 + 閃閃
   soulCatch: (t) => {
-    tone(300, t, 0.25, { type: 'sine', vol: 0.25, slide: 4 });
-    arp(t + 0.15, [880, 1175, 1568], 0.06, { type: 'triangle', vol: 0.14 });
+    noise(t, 0.3, { vol: 0.22, freq: 2400, q: 0.9, type: 'bandpass' });
+    tone(220, t, 0.28, { type: 'sine', vol: 0.25, slide: 5 });
+    tone(140, t + 0.28, 0.12, { type: 'square', vol: 0.12, slide: 0.4 }); // 啵
+    noise(t + 0.28, 0.12, { vol: 0.3, freq: 700 });
+    arp(t + 0.36, [880, 1175, 1568, 2093], 0.06, { type: 'triangle', vol: 0.14 });
+  },
+  // 💔 俾光球打中，跌一粒心
+  heartLost: (t) => {
+    tone(440, t, 0.18, { type: 'square', vol: 0.12, slide: 0.6 });
+    tone(330, t + 0.16, 0.3, { type: 'square', vol: 0.1, slide: 0.5 });
+    noise(t, 0.15, { vol: 0.25, freq: 500 });
+  },
+  // ❤️ 回返一粒心
+  heartBack: (t) => arp(t, [659, 988], 0.07, { type: 'sine', vol: 0.12 }),
+  // 💫 冇晒心：暈低
+  knockedOut: (t) => {
+    arp(t, [523, 440, 349, 262], 0.16, { type: 'triangle', vol: 0.18 });
+    tone(196, t + 0.7, 0.9, { type: 'sine', vol: 0.15, slide: 0.5 });
   },
   // 🔮 Halloween Shard
   shard: (t) => {
@@ -329,4 +345,57 @@ export function toggleMute() {
     // 記唔到就算
   }
   return muted;
+}
+
+// ================= 🧹 Ghost Vacuum 持續嘅吸塵聲 =================
+// vacuumHum(on, strain)：每格叫；on = 吸緊；strain 0→1 = 吸緊嗰隻鬼幾接近捉到（越高越尖聲）
+let hum = null;
+export function vacuumHum(on, strain = 0) {
+  if (!ctx && !on) return;
+  try {
+    ensure();
+    if (!hum) {
+      const len = ctx.sampleRate * 2;
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.2;
+      bp.frequency.value = 700;
+      const motor = ctx.createOscillator();
+      motor.type = 'sawtooth';
+      motor.frequency.value = 95;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 500;
+      const wobble = ctx.createOscillator(); // 「嗚嗚」聲
+      wobble.frequency.value = 7;
+      const wobbleGain = ctx.createGain();
+      wobbleGain.gain.value = 8;
+      wobble.connect(wobbleGain).connect(motor.frequency);
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const motorGain = ctx.createGain();
+      motorGain.gain.value = 0.35;
+      src.connect(bp).connect(gain);
+      motor.connect(lp).connect(motorGain).connect(gain);
+      gain.connect(sfxGain);
+      src.start();
+      motor.start();
+      wobble.start();
+      hum = { gain, bp, motor, lp };
+    }
+    const now = ctx.currentTime;
+    const k = Math.max(0, Math.min(1, strain));
+    hum.gain.gain.setTargetAtTime(on && !muted ? 0.09 + k * 0.05 : 0, now, on ? 0.05 : 0.12);
+    hum.bp.frequency.setTargetAtTime(650 + k * 2200, now, 0.08);
+    hum.motor.frequency.setTargetAtTime(90 + k * 160, now, 0.08);
+    hum.lp.frequency.setTargetAtTime(450 + k * 900, now, 0.08);
+  } catch {
+    // 瀏覽器唔俾出聲就算
+  }
 }

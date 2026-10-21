@@ -317,4 +317,32 @@ body.in-movie #announce, body.in-movie #sightings, body.in-movie #popup { visibi
 body.in-movie #hw-train-hud, body.in-movie #hw-dust-hud { visibility: hidden; }
 body.mobile #hw-train-hud { bottom: auto; top: calc(96px + env(safe-area-inset-top, 0px)); font-size: 12px; }
 body.mobile #hw-dust-hud { bottom: auto; top: calc(126px + env(safe-area-inset-top, 0px)); font-size: 12px; }
+/* ❤️ Ghost World 嘅心 + 俾光球打中閃紅 + 暈低畫面 + 🧹 吸鬼進度條（Issue #9） */
+#hw-hearts { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(190px + env(safe-area-inset-bottom, 0px)); z-index: 6; pointer-events: none; display: flex; gap: 4px; padding: 4px 12px; border-radius: 999px; background: linear-gradient(180deg, rgba(42, 22, 64, 0.85), rgba(22, 11, 36, 0.85)); border: 3px solid #ff5252; }
+#hw-hearts .h { font-size: 24px; line-height: 1; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5)); transition: transform 0.15s; }
+#hw-hearts .h.empty { opacity: 0.45; }
+#hw-hearts .h.filling { opacity: calc(0.35 + var(--regen, 0) * 0.65); transform: scale(calc(0.75 + var(--regen, 0) * 0.25)); }
+#hw-hearts .h.lost { animation: hw-heart-lost 0.5s ease-out; }
+@keyframes hw-heart-lost { 0% { transform: scale(1.8) rotate(-15deg); filter: drop-shadow(0 0 8px #ff1744); } 100% { transform: scale(1); } }
+#hw-hurt { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0) 45%, rgba(255, 23, 68, 0.55) 80%, rgba(183, 28, 28, 0.85) 100%); }
+#hw-hurt.on { animation: hw-hurt 0.8s ease-out; }
+@keyframes hw-hurt { 0% { opacity: 1; } 100% { opacity: 0; } }
+#hw-ko { position: fixed; inset: 0; z-index: 60; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(circle, #2a1640 0%, #08040e 75%); color: #fff; text-align: center; font-weight: 800; }
+#hw-ko.on { animation: hw-ko 2.6s ease-in-out forwards; }
+#hw-ko b { font-size: 44px; color: #ff8a80; -webkit-text-stroke: 2px #4a148c; paint-order: stroke fill; }
+#hw-ko span { font-size: 18px; color: #e1bee7; }
+#hw-ko .ko-stars { font-size: 64px; animation: hw-ko-spin 1s linear infinite; }
+@keyframes hw-ko { 0% { opacity: 0; } 20% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hw-ko-spin { to { transform: rotate(360deg); } }
+#hw-suck-bars { position: fixed; inset: 0; z-index: 20; pointer-events: none; overflow: hidden; }
+.hw-suck { position: absolute; left: 0; top: 0; --c: #b2ff59; display: flex; flex-direction: column; align-items: center; gap: 3px; will-change: transform; }
+.hw-suck b { font-size: 13px; color: #fff; white-space: nowrap; -webkit-text-stroke: 3px #160b24; paint-order: stroke fill; }
+.hw-suck .bar { width: 110px; height: 14px; border-radius: 999px; background: rgba(22, 11, 36, 0.85); border: 2px solid #fff; box-shadow: 0 0 10px var(--c); overflow: hidden; }
+.hw-suck .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--c), #fff); box-shadow: 0 0 8px var(--c) inset; }
+.hw-suck.almost .bar { animation: hw-suck-almost 0.25s ease-in-out infinite alternate; }
+.hw-suck.slipping { opacity: 0.6; }
+@keyframes hw-suck-almost { from { transform: scale(1); } to { transform: scale(1.12); } }
+body.in-movie #hw-hearts, body.in-movie #hw-suck-bars { visibility: hidden; }
+body.mobile #hw-hearts { bottom: auto; top: calc(156px + env(safe-area-inset-top, 0px)); }
+body.mobile #hw-hearts .h { font-size: 18px; }
 body.in-halloween #tutorial, body.in-halloween #tutorial-arrow, body.in-halloween #hud-timer, body.in-halloween #sightings { display: none !important; }

@@ -99,3 +99,11 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Egg Graveyard (8 slots): E places your rarest egg, then a countdown runs (even offline). E hatches it with a crack/flash and the pet pops out into the backpack. It's added to the Index with a reward.
 - Numbers in balance.js: HALLOWEEN_BOSS_SPEED, HALLOWEEN_BOSS_SIZE, HALLOWEEN_HEAD_START, HALLOWEEN_EGGS_PER_BIOME, HALLOWEEN_EGG_RESPAWN, HALLOWEEN_FOG_NEAR/FAR.
 - For fishing: addEgg(name, rarity) from halloweenEggs.js puts an egg in the backpack.
+
+## ✅ Built: nicer Ghost Vacuum + hearts (Issue #9, src/ghostVacuum.js)
+- **Sucking looks cool now:** a spinning swirl beam comes out of the vacuum's nozzle. Rings and sparkles get pulled in. Glowing dots stream from the ghost into the nozzle. The vacuum shakes, glows and hums, and the hum gets higher as the ghost gets closer to caught.
+- **A ghost in the beam stays still.** It stops floating around. It stretches toward the nozzle, wobbles and glows. It turns its face to you.
+- **A progress bar** floats over the ghost ("Wraith Soul 54%"). It fills while you suck and slowly drains if the ghost slips out of the beam. Stronger ghosts still take longer.
+- **Caught:** the ghost shrinks with a "whoosh", then goes POP. Soul Dust bursts out and gets sucked back into the vacuum.
+- **Orbs don't take Soul Dust any more.** You have **5 ❤️** in the Ghost World. An orb hit takes 1 heart, the screen flashes red, and you get 1.2 s of safety. You get 1 heart back after 10 s without a hit. At 0 hearts you're **knocked out** and wake up at the Ghost World train stop with full hearts (plus 3 s of safety).
+- Numbers in balance.js: GHOST_HEARTS = 5, GHOST_HEART_REGEN = 10, GHOST_HIT_SAFE = 1.2.
