@@ -1,13 +1,13 @@
-// 隨機活動：跟真實時鐘，每個整點同半點（例如 4:00、4:30）開始一個（小朋友 2026-10-11）
+// 隨機活動：跟真實時鐘，每 15 分鐘（:00、:15、:30、:45）開始一個（小朋友 2026-10-11；Issue #9 2026-10-21 由 30 分鐘改 15 分鐘）
 // 每次揀邊個活動係「固定隨機」：同一個時段，邊部電腦玩都係同一個活動
 
-const SLOT_MS = 30 * 60 * 1000;
+const SLOT_MS = 15 * 60 * 1000;
 
 export const EVENTS = [
   { id: 'giant', emoji: '🦣', name: 'GIANT PETS', desc: 'Wild animals are 3x BIGGER! New ones every 30 seconds', duration: 300 },
   { id: 'rare', emoji: '✨', name: 'RARE RUSH', desc: 'Only Legendary & Mythic animals spawn - hurry!', duration: 30 },
   { id: 'frenzy', emoji: '💰', name: 'PET FRENZY', desc: 'All pets on your Plot earn 10x money!', duration: 300 },
-  { id: 'training', emoji: '🏋️', name: 'TRAINING NO MERCY', desc: 'Treadmill & Student Table give 100x!', duration: 20 },
+  { id: 'training', emoji: '🏋️', name: 'TRAINING NO MERCY', desc: 'Treadmill & Student Table give 100x!', duration: 60 }, // Issue #9：20 秒 → 60 秒
   // 小朋友 2026-10-17：Troll Frenzy（好稀有嘅寵物，但 Boss 快 1,000,000 倍）同 Eclipse（日蝕：繁殖機 x20、日蝕激光）
   { id: 'troll', emoji: '🤡', name: 'TROLL FRENZY', desc: 'CRAZY rare pets everywhere... but every Boss is 1,000,000x FASTER! Good luck! 🤡', duration: 60 },
   // 小朋友 2026-10-18：刪走 Eclipse 活動（已經有 🌑 Eclipse 變異嘅寵物照樣保留 x6）
