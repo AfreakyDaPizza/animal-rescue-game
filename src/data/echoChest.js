@@ -1,4 +1,4 @@
-// 🐕 Echo 隻狗嘅 Zombified Chest（小朋友 Issue #8）：用 🍬 Candy Corn 買，開出 Candy Corn 或者 4 隻新 Halloween 寵物
+// 🐕 Echo 隻狗嘅 Zombified Chest（小朋友 Issue #8）：用 🌽 Candy Corn 買，開出 Candy Corn 或者 4 隻新 Halloween 寵物
 // 呢 4 隻寵物淨係喺箱度開到（唔喺蛋／釣魚度出），所以唔放入 HALLOWEEN_PETS（嗰個 list 俾蛋同魚竿抽）
 // biome 9 = 同 Abandoned Manor 一樣嘅底價（俾錢用）
 import { ZOMBIE_CHEST_DROPS, ZOMBIE_CHEST_CANDY } from './balance.js';

@@ -2,7 +2,7 @@
 // 「Spawn Ruins 開頭有隻叫 ECHO 嘅狗，用 Candy Corn 賣新嘅 ZOMBIFIED CHEST，500 Candy Corn 一個」
 //
 // - Echo：方塊風格、有少少殭屍味（縫線、發光綠眼、包紮）但好可愛嘅狗，企喺自己個小舖頭度，搖尾、歪頭、望住你
-// - 撳 E → 面板：見到你有幾多 🍬 Candy Corn、箱嘅價錢、開到乜嘢（機會率）
+// - 撳 E → 面板：見到你有幾多 🌽 Candy Corn、箱嘅價錢、開到乜嘢（機會率）
 // - 買 → 開箱動畫：箱由天跌落嚟 → 震 → 按稀有度發光 → 爆開 → 大字講你開到乜；Mythic 有特別大嘅動畫
 // - 開到寵物：直接入背囊（state.pets），同蛋墳場孵出嚟嘅一樣（唔使再孵）；開到 Candy Corn：加返落 state.candyCorn
 //
@@ -38,7 +38,7 @@ const STALL_ROT = Math.atan2(HW_X - ECHO_STALL.x, 4 - ECHO_STALL.z); // 舖頭�
 const FRONT = V(Math.sin(STALL_ROT), 0, Math.cos(STALL_ROT));
 const SIDE = V(Math.cos(STALL_ROT), 0, -Math.sin(STALL_ROT)); // 舖頭嘅右手面（由客人望過去係左）
 const SHOP_SPOT = { x: ECHO_STALL.x + FRONT.x * 2.6, z: ECHO_STALL.z + FRONT.z * 2.6 }; // 企喺度撳 E
-const CANDY = '🍬';
+const CANDY = '🌽'; // 同釣魚一致
 
 export const candyCornOf = () => state.candyCorn || 0;
 export function giveCandyCorn(n = 5000) {
