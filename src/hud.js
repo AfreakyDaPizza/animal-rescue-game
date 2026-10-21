@@ -15,7 +15,7 @@ import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachine
 import { fuseChances } from './fuse.js';
 import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
 import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
-import { rodShopHtml } from './rodShop.js'; // 🎣 Halloween 魚竿舖
+import { rodShopHtml, currentRod } from './rodShop.js'; // 🎣 Halloween 魚竿舖
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -81,6 +81,14 @@ export function updateHud(dayNight, location) {
   $('hud-jump').textContent = fmt(state.jumpPower || 0); // 💪 Gym 彈床：有 Jump Power 先顯示
   $('hud-jump-box').hidden = !state.jumpPower;
   $('hud-tokens').textContent = fmt(state.tokens);
+  // 🎃 Halloween 世界（Issue #10）：左下數值盒換做 Money / Speed / 🌽 Candy Corn / 💀 Souls；返普通世界就變返
+  if (document.body.classList.contains('in-halloween')) {
+    bumpStat('hud-candy', state.candyCorn || 0);
+    bumpStat('hud-souls', state.soulDust || 0);
+    const extra = `🎣 ${currentRod().name} · 🔮 ${state.hwShards || 0} Shards${state.vacuumLevel ? ` · 🧹 Lv ${state.vacuumLevel}` : ''}`;
+    const ex = $('hud-hw-extra');
+    if (ex.textContent !== extra) ex.textContent = extra;
+  }
   $('hud-location').textContent = location;
 
   const timer = $('hud-timer');

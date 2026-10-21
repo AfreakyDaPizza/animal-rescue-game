@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/src/polish.css" />
     <link rel="stylesheet" href="/src/startstyle.css" />
     <link rel="stylesheet" href="/src/loading.css" />
+    <link rel="stylesheet" href="/src/mobileui.css" />
   </head>
   <body>
     <!-- ⏳ 載入畫面（Issue #8）：一開網頁就見到，main.js 起好第一格畫面先淡出；之後去其他世界都係用佢（src/loading.js） -->
@@ -53,10 +54,10 @@
     <div id="event-banner" class="hud-box"></div>
     <div id="hud-buttons">
       <button id="mute-button" class="hud-box">🔊 <kbd>N</kbd></button>
-      <button id="hide-pets-button" class="hud-box">👁️ Pets <kbd>H</kbd></button>
-      <button id="quests-button" class="hud-box">📜 Quests <kbd>Q</kbd></button>
-      <button id="index-button" class="hud-box">📖 Index <kbd>I</kbd></button>
-      <button id="stats-button" class="hud-box">📋 My Stats <kbd>P</kbd></button>
+      <button id="hide-pets-button" class="hud-box" title="Hide pets">👁️ Pets <kbd>H</kbd></button>
+      <button id="quests-button" class="hud-box" title="Quests">📜 <span class="hb-label">Quests</span> <kbd>Q</kbd></button>
+      <button id="index-button" class="hud-box" title="Index">📖 <span class="hb-label">Index</span> <kbd>I</kbd></button>
+      <button id="stats-button" class="hud-box" title="My Stats">📋 <span class="hb-label">My Stats</span> <kbd>P</kbd></button>
     </div>
 
     <!-- 右邊中間：兩粒四方掣（🐾 地塊寵物、⏱️ 繁殖機時間）+ 細盒 -->
@@ -68,10 +69,14 @@
 
     <!-- 下面：數值（左下角）+ 位置 + 快捷欄 + 操作提示 -->
     <div id="hud-stats" class="hud-box">
-      <div class="stat-line">💰 <span class="label">Money :</span> <b id="hud-money">0</b></div>
-      <div class="stat-line">🧠 <span class="label">IQ :</span> <b id="hud-iq">100</b></div>
-      <div class="stat-line">⚡ <span class="label">Speed :</span> <b id="hud-speed">100</b></div>
-      <div class="stat-small"><span>🎟️ <b id="hud-tokens">0</b> Skin Tokens</span><span id="hud-jump-box" hidden> · 🦘 <b id="hud-jump">0</b> Jump</span></div>
+      <!-- 🎃 Halloween 世界（Issue #10）：IQ／Skin Tokens 收埋，換 🌽 Candy Corn + 💀 Souls（hud.js） -->
+      <div class="stat-line st-money">💰 <span class="label">Money :</span> <b id="hud-money">0</b></div>
+      <div class="stat-line st-iq hw-hide">🧠 <span class="label">IQ :</span> <b id="hud-iq">100</b></div>
+      <div class="stat-line st-speed">⚡ <span class="label">Speed :</span> <b id="hud-speed">100</b></div>
+      <div class="stat-line st-candy hw-only">🌽 <span class="label">Candy Corn :</span> <b id="hud-candy">0</b></div>
+      <div class="stat-line st-souls hw-only">💀 <span class="label">Souls :</span> <b id="hud-souls">0</b></div>
+      <div class="stat-small hw-hide"><span>🎟️ <b id="hud-tokens">0</b> Skin Tokens</span><span id="hud-jump-box" hidden> · 🦘 <b id="hud-jump">0</b> Jump</span></div>
+      <div class="stat-small hw-only" id="hud-hw-extra"></div>
     </div>
     <div id="hud-location" class="hud-box">Hub</div>
     <div id="hotbar-wrap">

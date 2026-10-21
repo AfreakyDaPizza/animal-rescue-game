@@ -76,7 +76,7 @@ export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
   // 搖桿
   const base = $('joy-base');
   const knob = $('joy-knob');
-  const R = 55; // 搖桿可以推幾遠（像素）
+  let R = 55; // 搖桿可以推幾遠（像素）：跟搖桿大細（mobileui.css 用 vmin 計，Issue #10）
   let joyId = null;
   let cx = 0;
   let cy = 0;
@@ -104,6 +104,7 @@ export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
     const r = base.getBoundingClientRect();
     cx = r.left + r.width / 2;
     cy = r.top + r.height / 2;
+    R = Math.max(36, r.width * 0.4);
     joyId = t.identifier;
     moveJoy(t);
   }, { passive: false });

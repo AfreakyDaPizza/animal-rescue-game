@@ -1,0 +1,172 @@
+/* =====================================================================
+   📱 手機 UI 整理（Issue #10，小朋友：「手機掣細啲、易啲控制」）
+   喺所有 CSS 最尾載入（index.html），蓋過 style.css／startstyle.css 舊嘅 body.mobile 規則
+   排法：
+     第 1 行（上）：左 = 數值盒；右 = 5 粒圖案掣（🔊 👁️ 📜 📖 📋，手機收埋字）
+     第 2 行：右 = ＋ － ⏸ 同 🐾 ⏱️（一樣大細，排埋一行）
+     下面：左 = 搖桿；右 = JUMP／USE；中間 = 快捷欄（打直手機：2 行 x 5 格）
+   掣嘅「樣」細咗，但係撳得到嘅範圍唔細過 40px（小朋友手指都撳得準）
+   ===================================================================== */
+
+/* ---------- 🎃 Halloween 數值盒（電腦 + 手機都用）：IQ／Skin Tokens 換 Candy Corn／Souls ---------- */
+#hud-stats .hw-only { display: none; }
+body.in-halloween #hud-stats .hw-only { display: block; }
+body.in-halloween #hud-stats .hw-hide { display: none; }
+#hud-stats .stat-line.st-candy b { color: #ffab40; }
+#hud-stats .stat-line.st-souls b { color: #b388ff; }
+#hud-stats .stat-line b.bump { display: inline-block; animation: stat-bump 0.35s ease-out; }
+/* 舊嘅 Candy Corn／Soul Dust 膠囊：資料已經搬咗入數值盒（魚竿名、Shards 喺細字），收埋唔好咁亂 */
+#hw-candy-hud, #hw-dust-hud { display: none !important; }
+body.in-halloween:not(.mobile) #hud-location { bottom: calc(var(--stats-bottom) + 182px); } /* 數值盒高咗一行，位置牌升高少少 */
+
+/* 開咗面板：Halloween 嘅蛋提示／箭咀唔好疊住張卡 */
+body:has(#panel:not([hidden])) #hw-egg-hint, body:has(#panel:not([hidden])) #hw-arrow-hud { visibility: hidden; }
+
+/* ---------- 共用尺寸 ---------- */
+body.mobile {
+  --m-edge: 8px;              /* 離畫面邊 */
+  --m-gap: 4px;               /* 掣之間 */
+  --m-btn: 40px;              /* 頂部細掣（亦係最細撳得到嘅範圍） */
+  --m-row2: calc(var(--m-edge) + var(--m-btn) + 8px + env(safe-area-inset-top, 0px)); /* 第 2 行嘅 top */
+  --m-joy: clamp(96px, 30vmin, 128px);   /* 搖桿大細跟畫面 */
+  --m-jump: clamp(60px, 18vmin, 72px);
+  --m-use: clamp(52px, 15vmin, 60px);
+  --m-slot: 40px;
+  --m-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---------- 第 1 行：數值盒（左上，細啲） ---------- */
+body.mobile #hud-stats {
+  top: calc(var(--m-edge) + env(safe-area-inset-top, 0px)); bottom: auto;
+  left: calc(var(--m-edge) + env(safe-area-inset-left, 0px));
+  font-size: 13px; line-height: 1.2; padding: 5px 10px; gap: 0; border-radius: 14px;
+  max-width: calc(100vw - 2 * var(--m-edge) - 5 * var(--m-btn) - 4 * var(--m-gap) - 8px);
+}
+body.mobile #hud-stats .stat-line b { -webkit-text-stroke-width: 3px; }
+body.mobile #hud-stats .stat-small { font-size: 10px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- 第 1 行：右上 5 粒圖案掣 ---------- */
+body.mobile #hud-buttons {
+  top: calc(var(--m-edge) + env(safe-area-inset-top, 0px)); right: calc(var(--m-edge) + env(safe-area-inset-right, 0px));
+  gap: var(--m-gap);
+}
+body.mobile #hud-buttons button.hud-box {
+  width: var(--m-btn); height: var(--m-btn); padding: 0; border-width: 2px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 19px; line-height: 1;
+}
+body.mobile #hud-buttons .hb-label, body.mobile #hud-buttons kbd { display: none; }
+
+/* ---------- 第 2 行：＋ － ⏸（最右）同 🐾 ⏱️ ---------- */
+body.mobile #touch-top { top: var(--m-row2); right: calc(var(--m-edge) + env(safe-area-inset-right, 0px)); gap: var(--m-gap); }
+body.mobile #touch-top button { width: var(--m-btn); height: var(--m-btn); border-width: 2px; border-radius: 12px; font-size: 19px; background: rgba(0, 0, 0, 0.45); }
+body.mobile #side-buttons {
+  top: var(--m-row2); right: calc(var(--m-edge) + 3 * var(--m-btn) + 3 * var(--m-gap) + env(safe-area-inset-right, 0px));
+  transform: none; flex-direction: row; gap: var(--m-gap); z-index: 21;
+}
+body.mobile .side-btn { width: var(--m-btn); height: var(--m-btn); font-size: 20px; border-width: 2px; border-radius: 12px; }
+
+/* ---------- 下面：搖桿 + JUMP／USE ---------- */
+body.mobile #joy-base {
+  left: calc(12px + env(safe-area-inset-left, 0px)); bottom: var(--m-joy-bottom, var(--m-bottom));
+  width: var(--m-joy); height: var(--m-joy); border-width: 2px; background: rgba(255, 255, 255, 0.14);
+}
+body.mobile #joy-knob { width: 44%; height: 44%; margin: -22% 0 0 -22%; }
+body.mobile #touch-buttons {
+  right: calc(12px + env(safe-area-inset-right, 0px)); bottom: var(--m-joy-bottom, var(--m-bottom)); gap: 10px;
+}
+body.mobile #t-jump { width: var(--m-jump); height: var(--m-jump); font-size: 15px; border-width: 2px; }
+body.mobile #t-use { width: var(--m-use); height: var(--m-use); font-size: 15px; border-width: 2px; margin-bottom: calc(var(--m-jump) * 0.6) !important; }
+/* 掣嘅撳得到範圍大過個樣少少（手指唔使撳得好準） */
+body.mobile #touch-ui button { position: relative; }
+body.mobile #touch-ui button::after { content: ''; position: absolute; inset: -6px; border-radius: inherit; }
+
+/* ---------- 快捷欄：手機細格 ---------- */
+body.mobile #hotbar-wrap { bottom: var(--m-bottom); gap: 2px; }
+body.mobile #hotbar { gap: var(--m-gap); }
+body.mobile .slot { box-sizing: border-box; width: var(--m-slot); height: var(--m-slot); font-size: 22px; border-width: 2px; border-radius: 10px; }
+body.mobile .slot .num { font-size: 9px; top: 0; left: 3px; }
+body.mobile .slot.selected { transform: scale(1.06); }
+body.mobile #hotbar-label { font-size: 12px; min-height: 15px; -webkit-text-stroke-width: 3px; max-width: calc(100vw - 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- 撳 E 提示、知識卡、抱住動物：唔好遮住掣 ---------- */
+body.mobile #hud-prompt {
+  font-size: 14px; padding: 6px 12px; white-space: normal; text-align: center;
+  max-width: calc(100vw - 2 * var(--m-joy) - 60px); bottom: calc(var(--m-bottom) + 70px);
+}
+body.mobile #fact { font-size: 14px; padding: 8px 12px; width: min(440px, calc(100vw - 24px)); bottom: calc(var(--m-bottom) + 110px); }
+body.mobile #hud-carry { top: calc(var(--m-row2) + 44px); font-size: 13px; padding: 5px 12px; }
+body.mobile #hud-timer { font-size: 14px; padding: 3px 12px; -webkit-text-stroke-width: 3px; }
+body.mobile #event-banner { font-size: 12px; padding: 3px 10px; max-width: min(360px, calc(100vw - 24px)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.mobile.in-halloween #event-banner { display: none; } /* 活動係普通世界嘅嘢，Halloween 世界唔使佔位 */
+body.mobile #sightings .sighting:nth-child(n+3) { display: none; }
+body.mobile .sighting { font-size: 11px; padding: 2px 8px; border-width: 2px; }
+
+body.mobile #announce { font-size: clamp(18px, 5.5vmin, 30px); } /* 大字公告：手機細啲，唔好遮晒成個畫面 */
+
+/* ---------- 細盒（🐾 ⏱️ 打開）：手機版 ---------- */
+body.mobile #side-box { animation: none; }
+
+/* ---------- 🎃 Halloween 世界 HUD（手機） ---------- */
+body.mobile #hw-train-hud { font-size: 12px; padding: 4px 10px; border-width: 2px; max-width: calc(100vw - 24px); white-space: nowrap; }
+body.mobile #hw-hearts { padding: 2px 10px; border-width: 2px; }
+body.mobile #hw-hearts .h { font-size: 16px; }
+body.mobile #hw-egg-hint { font-size: 12px; padding: 5px 10px; max-width: 210px; right: calc(var(--m-edge) + env(safe-area-inset-right, 0px)); }
+body.mobile #hw-arrow-hud { font-size: 14px; padding: 4px 12px; gap: 6px; }
+body.mobile #hw-arrow-hud .hw-arrow-icon { font-size: 20px; }
+
+/* =================== 打直手機（例如 390×844） =================== */
+@media (orientation: portrait) {
+  /* 搖桿同 JUMP／USE 喺快捷欄上面 */
+  body.mobile { --m-slot: 44px; --m-joy-bottom: calc(var(--m-bottom) + 2 * var(--m-slot) + 30px); }
+  /* 快捷欄：2 行 x 5 格（1–5、6–0），一行 10 格太窄撳唔準 */
+  body.mobile #hotbar { flex-wrap: wrap; justify-content: center; width: calc(5 * var(--m-slot) + 4 * var(--m-gap)); row-gap: 6px; }
+  body.mobile #hud-prompt { max-width: calc(100vw - 24px); bottom: calc(var(--m-joy-bottom) + var(--m-joy) + 12px); }
+  body.mobile #fact { bottom: calc(var(--m-joy-bottom) + var(--m-joy) + 12px); }
+  /* 第 3 行：左 = 位置；右 = 夜晚倒數 */
+  body.mobile #hud-location {
+    display: block; top: calc(var(--m-row2) + 50px); bottom: auto; left: calc(var(--m-edge) + env(safe-area-inset-left, 0px));
+    font-size: 12px; padding: 3px 10px; border-width: 2px; max-width: calc(50vw - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  body.mobile.in-halloween #hud-location { top: calc(var(--m-row2) + 62px); } /* Halloween 數值盒多一行 */
+  body.mobile #hud-timer { top: calc(var(--m-row2) + 50px); left: auto; right: calc(var(--m-edge) + env(safe-area-inset-right, 0px)); transform: none; animation: none; }
+  body.mobile #hud-timer .timer-extra { display: none; }
+  /* 第 4 行：活動、稀有動物、火車、心 */
+  body.mobile #event-banner { top: calc(var(--m-row2) + 88px); }
+  body.mobile #sightings { top: calc(var(--m-row2) + 124px); left: calc(var(--m-edge) + env(safe-area-inset-left, 0px)); right: auto; bottom: auto; gap: 4px; }
+  body.mobile #hud-carry { top: calc(var(--m-row2) + 124px); left: auto; right: calc(var(--m-edge) + env(safe-area-inset-right, 0px)); transform: none; max-width: 55vw; white-space: normal; }
+  body.mobile #hw-train-hud { top: calc(var(--m-row2) + 96px); bottom: auto; }
+  body.mobile #hw-hearts { top: calc(var(--m-row2) + 128px); bottom: auto; }
+  body.mobile #hw-egg-hint { top: calc(var(--m-row2) + 128px); }
+  body.mobile #hw-arrow-hud { top: calc(var(--m-row2) + 176px); }
+  /* 細盒：成闊，喺第 3 行下面、搖桿上面 */
+  body.mobile #side-box {
+    top: calc(var(--m-row2) + 50px); left: calc(var(--m-edge) + env(safe-area-inset-left, 0px)); right: calc(var(--m-edge) + env(safe-area-inset-right, 0px));
+    width: auto; min-width: 0; transform: none; max-height: calc(100vh - var(--m-row2) - 50px - var(--m-joy-bottom) - var(--m-joy) - 16px);
+  }
+  body.mobile #tutorial { top: calc(var(--m-row2) + 88px); width: min(320px, calc(100vw - 24px)); padding: 6px 10px; font-size: 13px; }
+}
+
+/* =================== 打橫手機（例如 844×390） =================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  body.mobile { --m-slot: 38px; }
+  body.mobile #hud-stats { font-size: 12px; padding: 4px 9px; }
+  /* 夜晚倒數：頂部中間（數值盒同掣之間） */
+  body.mobile #hud-timer { top: calc(var(--m-edge) + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); animation: none; }
+  body.mobile #hud-timer .timer-extra { display: none; }
+  body.mobile #event-banner { display: block; top: calc(var(--m-row2) - 4px); max-width: 40vw; }
+  body.mobile #event-banner:empty { display: none; }
+  body.mobile.in-halloween #event-banner { display: none; }
+  body.mobile #sightings { top: calc(var(--m-row2) + 34px); left: 50%; transform: translateX(-50%); right: auto; bottom: auto; flex-direction: row; gap: 4px; }
+  body.mobile #hud-carry { top: calc(var(--m-row2) + 34px); }
+  body.mobile #hw-train-hud { top: calc(var(--m-row2) - 4px); bottom: auto; }
+  body.mobile #hw-hearts { top: calc(var(--m-row2) + 32px); bottom: auto; }
+  body.mobile #hw-egg-hint { top: calc(var(--m-row2) + 48px); max-width: 190px; }
+  body.mobile #hw-arrow-hud { top: calc(var(--m-row2) + 32px); }
+  /* 細盒：中間，喺頂部同快捷欄之間 */
+  body.mobile #side-box {
+    top: calc(var(--m-row2) - 4px); left: 50%; right: auto; transform: translateX(-50%);
+    width: min(320px, 46vw); min-width: 0; max-height: calc(100vh - var(--m-row2) - var(--m-slot) - 40px);
+  }
+  body.mobile #tutorial { top: calc(var(--m-row2) + 34px); }
+  body.mobile #hud-location { display: none; }
+}

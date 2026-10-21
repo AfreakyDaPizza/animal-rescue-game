@@ -11,7 +11,7 @@ import { createAmbience, updateAmbience, setAmbienceQuality } from './ambience.j
 import { playFirstHatch } from './firstHatch.js'; // 🥚 第一隻寵物出世動畫（一次）
 import { buildStatueButton, pressStatueButton, updateStatueButton, nearStatueButton } from './statueButton.js'; // 🦏 犀牛像後面嘅掣
 import { createCrazyButton, crazyInteraction, updateCrazy, refillCrazy, pressCrazy } from './crazyButton.js'; // 🤪 秘密沙灘嘅瘋狂寵物掣
-import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea } from './world.js';
+import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea, BIOME_LENGTH } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
 import { createPlayer, updatePlayer, teleportPlayer, jumpHeight, jumpVelocity, moveOpts } from './player.js';
 import { showDeviceChooser, setupMobile } from './mobile.js';
@@ -70,7 +70,7 @@ import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './lab
 import { createFishing, fishingInteraction, fishingPress, fishingBusy, updateFishing, stopFishing, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋 + 🌽 Candy Corn）
 import { setRodShopActions } from './rodShop.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
-import { HW_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
+import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
@@ -548,7 +548,7 @@ try {
 }
 const hideBtn = document.getElementById('hide-pets-button');
 function showHideBtn() {
-  hideBtn.innerHTML = `${petsHidden ? '🙈 Pets hidden' : '👁️ Pets'} <kbd>H</kbd>`;
+  hideBtn.innerHTML = `${petsHidden ? '🙈 <span class="hb-label">Pets hidden</span>' : '👁️ <span class="hb-label">Pets</span>'} <kbd>H</kbd>`; // hb-label：手機收埋字，淨係見圖案
 }
 function toggleHidePets() {
   petsHidden = !petsHidden;
@@ -1099,6 +1099,76 @@ setAdminActions({
     save();
     play('coin');
     popup('💰 You are SUPER rich, fast, smart and bouncy!');
+  },
+  // 🔧 測試開關（Issue #10）：撳一下開／關
+  flags: () => [
+    { id: 'bigButton', label: '🧪👑 Fuse + Kingdom unlocked', on: !!state.bigButton },
+    { id: 'gymEarly', label: '💪 Gym open early', on: !!state.gymEarly },
+    { id: 'halloweenEarly', label: '🎃 Halloween open early', on: !!state.halloweenEarly },
+    { id: 'kingdomDebug', label: '👑 Kingdom gate open (test)', on: kingdomDebug, hint: 'Only for this visit' },
+    { id: 'tutorialDone', label: '🎓 Tutorial finished', on: !!state.tutorialDone },
+    { id: 'mute', label: '🔇 Sound muted', on: isMuted() },
+    { id: 'hidePets', label: '🙈 Pets hidden', on: petsHidden },
+  ],
+  toggleFlag(id) {
+    if (id === 'bigButton') state.bigButton = !state.bigButton;
+    else if (id === 'gymEarly') this.gymEarly(!state.gymEarly);
+    else if (id === 'halloweenEarly') this.halloweenEarly(!state.halloweenEarly);
+    else if (id === 'kingdomDebug') kingdomDebug = !kingdomDebug;
+    else if (id === 'tutorialDone') state.tutorialDone = !state.tutorialDone;
+    else if (id === 'mute') {
+      toggleMute();
+      showMute();
+    } else if (id === 'hidePets') toggleHidePets();
+    save();
+  },
+  // 🌍 傳送（Issue #10）：locked = 點解未去得
+  places: () => [
+    { id: 'hub', group: 'normal', emoji: '🏡', name: 'Hub' },
+    ...BIOMES.map((b, i) => ({ id: `biome${i}`, group: 'normal', emoji: ['🌳', '🌊', '🐦', '🧊', '📦', '⛰️', '👑'][i] || '🌿', name: b.name.replace(/^Biome \d+ - /, `${i + 1}. `), locked: i === 6 && !kingdom.open ? 'Unlock the Enchanted Kingdom first' : '' })),
+    { id: 'gym', group: 'secret', emoji: '💪', name: 'Ranger Gym', locked: gym.present ? '' : 'Use the Unlocks tab: Take me to the Gym' },
+    { id: 'beach', group: 'secret', emoji: '🏖️', name: 'Secret Beach', locked: beach.open ? '' : 'Beat the Lab boss first' },
+    { id: 'halloween', group: 'halloween', emoji: '🎃', name: 'Halloween World', locked: isHalloweenOpen() || state.halloweenEarly ? '' : 'Open Halloween early first (Unlocks tab)' },
+    { id: 'ghost', group: 'halloween', emoji: '👻', name: 'Ghost World', locked: isHalloweenOpen() || state.halloweenEarly ? '' : 'Open Halloween early first (Unlocks tab)' },
+  ],
+  async teleport(id) {
+    const place = this.places().find((p) => p.id === id);
+    if (!place) return;
+    if (place.locked) return popup(`🔒 ${place.locked}`);
+    if (rescue.carrying) return popup('🐾 Bring the animal you are carrying home first!');
+    togglePanel('admin');
+    const inHw = inHalloween(camera.position.x, camera.position.z);
+    if (id === 'halloween' || id === 'ghost') {
+      if (!inHw) await enterHalloween();
+      if (!inHalloween(camera.position.x, camera.position.z)) return; // 入唔到（例如載入出錯）
+      if (id === 'ghost') {
+        forceTrain(); // 有車先留得低（冇車會即刻送返火車站）
+        travel(GHOST_ARRIVE.x, GHOST_ARRIVE.z, GHOST_ARRIVE.rotY, '👻 The GHOST WORLD!');
+      } else travel(HW_ARRIVE.x, HW_ARRIVE.z, HW_ARRIVE.rotY, '🎃 The Halloween World!');
+      return;
+    }
+    if (inHw) {
+      halloween.sky = 0; // 返普通世界：天空變返正常、收魚竿
+      stopFishing(fishing);
+    }
+    if (id === 'beach') return goToBeach();
+    if (id === 'hub') return travel(FOUNTAIN.x, FOUNTAIN.z - 8, 0, '🏡 The Hub!');
+    if (id === 'gym') return travel(GYM_FRONT.x, GYM_FRONT.z, Math.PI, '💪 The Ranger Gym!');
+    const i = Number(id.slice(5));
+    if (dayNight.isNight) dayNight.offset += Math.ceil(dayNight.timeLeft * 1000) + 50; // 夜晚生態區落閘：直接跳去白天
+    if (i === 6) {
+      travel(0, KINGDOM_STAIRS.z - 6, 0, `👑 ${BIOMES[i].name}`);
+      player.feetY = KINGDOM_STAIRS.top;
+      return;
+    }
+    travel(0, -i * BIOME_LENGTH - 6, 0, `${place.emoji} ${BIOMES[i].name}`);
+  },
+  // 🌗 即刻夜晚／白天（改 dayNight.offset，同 game.dayNight 測試一樣）
+  skipTime(which) {
+    togglePanel('admin');
+    if (which === 'night' && !dayNight.isNight && camera.position.z < 0 && !inHalloween(camera.position.x, camera.position.z) && rescue.carrying) return popup('🐾 Bring your animal home first, or it runs away at night!');
+    if (which === 'night' && !dayNight.isNight) dayNight.offset += Math.ceil(dayNight.timeLeft * 1000) + 50;
+    if (which === 'day' && dayNight.isNight) dayNight.offset += Math.ceil(dayNight.timeLeft * 1000) + 50;
   },
   event(id) {
     togglePanel('admin');
@@ -1916,4 +1986,4 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };

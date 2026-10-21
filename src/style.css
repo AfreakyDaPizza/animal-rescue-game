@@ -479,6 +479,53 @@ body.mobile #hud-location { bottom: auto; top: calc(64px + env(safe-area-inset-t
 .admin-size #admin-size-num { min-width: 3.5em; font-weight: 800; }
 .admin-preview { margin: 6px 0; font-size: 16px; }
 .big-unlock { font-size: 17px; padding: 10px 18px; }
+/* Issue #10：控制台整靚：分頁黐住頂、每組一張白卡、貨幣一行一個、寵物搜尋、傳送格仔、開關 */
+.admin-tabs { position: sticky; top: -2px; z-index: 2; padding: 6px 0; margin: -6px 0 8px; background: var(--st-mint, #f1f8e9); }
+.admin-sec { margin: 10px 0; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.75); border: 2px solid rgba(27, 94, 32, 0.18); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08); }
+.admin-sec h3 { margin: 0 0 8px; font-size: 17px; color: #1b5e20; }
+.admin-sec p { margin: 4px 0; }
+.admin-sec .hint { margin: 6px 0 0; font-size: 13px; }
+.admin-sec .pet-actions { margin: 6px 0; }
+.admin-wrap { flex-wrap: wrap; }
+.admin .pet-actions button, .admin-grid button, .admin-cur-btns button { padding: 6px 12px; font-size: 14px; }
+.admin-cur { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 6px 0; border-top: 1px dashed rgba(27, 94, 32, 0.2); }
+.admin-cur:first-of-type { border-top: 0; }
+.admin-cur-name { display: flex; align-items: center; gap: 6px; flex: 0 0 270px; font-size: 15px; }
+.admin-cur-emoji { font-size: 22px; width: 28px; text-align: center; }
+.admin-cur-val { margin-left: auto; padding: 2px 10px; border-radius: 999px; background: #1b3a1f; color: #fff59d; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: center; }
+.admin-cur-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.admin-cur-btns button { margin: 0; }
+.admin-set { display: inline-flex; gap: 4px; align-items: center; }
+.admin input[type="search"], .admin-set input { font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 10px; border: 2px solid #a5d6a7; background: #fff; color: #1b3a1f; outline: none; }
+.admin-set input { width: 7.5em; }
+.admin input:focus { border-color: #43a047; box-shadow: 0 0 0 3px rgba(67, 160, 71, 0.25); }
+.admin input.bad { border-color: #e53935; animation: admin-shake 0.3s; }
+@keyframes admin-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin: 6px 0; }
+.admin-grid button { margin: 0; width: 100%; }
+.admin-table { overflow-x: auto; }
+.admin-flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.admin-flags .admin-flag { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 10px; font-size: 14px; text-align: left; background: linear-gradient(180deg, #eceff1, #cfd8dc); color: #263238; border-color: #90a4ae; box-shadow: 0 3px 0 #90a4ae; text-shadow: none; }
+.admin-flags .admin-flag small { margin-left: auto; font-weight: 800; opacity: 0.7; }
+.admin-flags .admin-flag.on { background: linear-gradient(180deg, #b9f6ca, #69f0ae); color: #1b3a1f; border-color: #2e7d32; box-shadow: 0 3px 0 #2e7d32; }
+.admin-switch { flex: none; position: relative; width: 34px; height: 18px; border-radius: 999px; background: #90a4ae; transition: background 0.15s; }
+.admin-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.admin-flag.on .admin-switch { background: #2e7d32; }
+.admin-flag.on .admin-switch::after { transform: translateX(16px); }
+.admin-pet-top { position: sticky; top: 44px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 14px; background: linear-gradient(180deg, #fff8e1, #ffe082); border: 2px solid #ffb300; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12); }
+.admin-pick { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.admin-pick .pet-pic { width: 56px; height: 48px; flex: none; border-radius: 10px; }
+.admin-pick small { display: block; font-size: 12px; opacity: 0.75; }
+.admin-pick b { font-size: 16px; }
+.admin-give { margin: 0; padding: 8px 16px; font-size: 16px; }
+.admin-search-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.admin-search-row input { flex: 1; min-width: 0; }
+.admin-search-row span { font-size: 13px; opacity: 0.75; white-space: nowrap; }
+.admin-cards .card-animal[hidden] { display: none; }
+body.mobile .admin-cur-name { flex: 1 1 100%; }
+body.mobile .admin .pet-actions button, body.mobile .admin-grid button, body.mobile .admin-cur-btns button { padding: 6px 10px; font-size: 13px; }
+body.mobile .admin-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+body.mobile .admin-tabs button { padding: 5px 8px; font-size: 12px; }
 
 /* ===== 小朋友 2026-10-18 新 UI ===== */
 :root { --stats-bottom: 12px; }
