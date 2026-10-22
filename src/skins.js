@@ -20,6 +20,8 @@ export const RANGER_SKINS = [
   { id: 'ice', name: 'Ice Guardian', cost: 150, shirt: 0x81d4fa, pants: 0x4fc3f7, skin: 0xe1f5fe, hat: 0xb3e5fc, shoes: 0x0288d1, metal: true, extra: 'ice' },
   { id: 'lava', name: 'Lava Knight', cost: 170, shirt: 0x212121, pants: 0x3e2723, skin: 0x424242, hat: 0x212121, shoes: 0xbf360c, metal: true, extra: 'lava' },
   { id: 'galaxy', name: 'Galaxy Explorer', cost: 200, shirt: 0x1a237e, pants: 0x0d1452, skin: 0xf5c99b, hat: 0x311b92, shoes: 0x7c4dff, extra: 'galaxy' },
+  // 小朋友 2026-10-22：🌠 Cosmic Meteor Ranger —— 淨係喺 ☄️ Meteoric Shop 用 💎 買（meteor: true，唔用 Skin Tokens）；深藍手套；落地好似 Spider-Man（cosmicLanding.js）
+  { id: 'cosmic', name: 'Cosmic Meteor Ranger', cost: 0, meteor: true, shirt: 0x172b72, pants: 0x0f1d55, skin: 0x1a2a6c, hat: 0x0d1b4a, shoes: 0x0b1030, extra: 'cosmic' },
 ];
 
 export const PET_SKINS = [

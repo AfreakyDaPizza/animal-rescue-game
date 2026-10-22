@@ -26,6 +26,7 @@ import {
 import { benchBarY, punchReach, rowSeatDz, ROW_POSE } from './gymPoses.js';
 import { state } from './state.js';
 import { boost } from './events.js';
+import { boostMult } from './boosts.js'; // ⚡ 2x IQ／2x Treadmill
 
 export const gym = {
   holder: null, // 成座 Gym（打贏實驗室 Boss 先見到）
@@ -844,7 +845,9 @@ export function trainInGym(st, dt) {
   if (timer < next) return [];
   timer = 0;
   next = st.every();
-  const gains = st.gain().map((g) => ({ ...g, amount: Math.max(1, Math.round(g.amount)) }));
+  // ⚡ Boosts：所有 IQ x2（2x IQ）；4X Treadmill 嘅 Speed x2（2x Treadmill）
+  const extra = (g) => (g.key === 'iq' ? boostMult('iq') : 1) * (g.key === 'speed' && st.kind === 'treadmill' ? boostMult('treadmill') : 1);
+  const gains = st.gain().map((g) => ({ ...g, amount: Math.max(1, Math.round(g.amount * extra(g))) }));
   for (const g of gains) state[g.key] = (state[g.key] || 0) + g.amount;
   return gains;
 }

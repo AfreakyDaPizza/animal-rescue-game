@@ -14,6 +14,7 @@ import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
 import { fuseMachine } from './hubPark.js';
 import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { boost } from './events.js';
+import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 買嘅加成
 import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
@@ -1605,7 +1606,7 @@ function randomPlotSpot() {
 
 export function moneyPerSecond() {
   // Pet Frenzy ×10；Royal Kingdom 地塊 ×1.5
-  return state.pets.filter((p) => p.onPlot).reduce((sum, p) => sum + itemMoney(p), 0) * boost.money * plotMoneyMulti(state.plotLevel);
+  return state.pets.filter((p) => p.onPlot).reduce((sum, p) => sum + itemMoney(p), 0) * boost.money * plotMoneyMulti(state.plotLevel) * boostMult('money'); // ⚡ Double Money boost
 }
 
 // ================= 圖鑑檯 =================
@@ -1688,7 +1689,8 @@ export function updateHub(hub, dt, time, px, pz) {
   hub.trainTimer = station ? hub.trainTimer + dt : 0;
   if (station && hub.trainTimer >= 1) {
     hub.trainTimer -= 1;
-    const amount = trainingGain(state[station.levelKey], station.statKey) * boost.train; // Training No Mercy ×100
+    const amount = trainingGain(state[station.levelKey], station.statKey) * boost.train // Training No Mercy ×100
+      * (station.kind === 'treadmill' ? boostMult('treadmill') : boostMult('table') * boostMult('iq')); // ⚡ 2x Treadmill／2x Student Table（× 2x IQ）
     state[station.statKey] += amount;
     result.trained = { station, amount };
     station.infernoBurstAt = time; // Inferno：練到嘢就爆一圈火

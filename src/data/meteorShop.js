@@ -21,6 +21,22 @@ export const MULTIPLIER_MAX = 10;
 export const multiplierBought = (mult = 1) => Math.round(((mult || 1) - 1) / MULTIPLIER_STEP);
 export const multiplierCost = (mult = 1) => Math.round(MULTIPLIER_BASE_COST * MULTIPLIER_COST_GROWTH ** multiplierBought(mult));
 
+// ---- ⚡ Boosts (kid 2026-10-22) ----
+// They count down with the real clock. Buy the same one again = MORE time (it adds on).
+// mult = how many times, minutes = how long, cost = Meteor Crystals
+//   speed: walk/run faster · money: all Plot pets make more money · treadmill: Treadmills give more Speed
+//   iq: ALL IQ you get · table: Student Table gives more IQ (2x IQ + 2x Student Table = x4!)
+export const BOOSTS = [
+  { id: 'speed', emoji: '⚡', name: '1.5x Speed', mult: 1.5, minutes: 5, cost: 50, text: 'Walk and run <b>1.5x faster</b>!' },
+  { id: 'money', emoji: '💰', name: 'Double Money', mult: 2, minutes: 10, cost: 120, text: 'All pets on your Plot make <b>2x money</b>!' },
+  { id: 'treadmill', emoji: '🏃', name: '2x Treadmill', mult: 2, minutes: 5, cost: 40, text: 'Treadmills give <b>2x Speed</b>!' },
+  { id: 'iq', emoji: '🧠', name: '2x IQ', mult: 2, minutes: 5, cost: 60, text: 'Get <b>2x IQ</b> from everything!' },
+  { id: 'table', emoji: '📚', name: '2x Student Table', mult: 2, minutes: 5, cost: 40, text: 'The Student Table gives <b>2x IQ</b>! With 2x IQ too it is <b>x4</b>!' },
+];
+
+// ---- 🌠 Cosmic Meteor Ranger skin (kid 2026-10-22): wear it in the Skin Shop; land from a jump like Spider-Man! ----
+export const COSMIC_SKIN_COST = 750;
+
 // ---- 🐉 Cosmic Arcadragon money ----
 // Each Cosmic Arcadragon gets its own random money per second between these 2 numbers (it keeps it forever)
 export const ARCADRAGON_MONEY = [500000000, 1000000000];

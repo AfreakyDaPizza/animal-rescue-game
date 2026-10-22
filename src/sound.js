@@ -270,6 +270,13 @@ const SOUNDS = {
     tone(140, t, 0.5, { type: 'square', vol: 0.12, slide: 0.3 });
     arp(t + 0.25, [1568, 2093, 2637], 0.08, { type: 'triangle', vol: 0.05 }); // 水晶碎「叮叮」
   },
+  // 🌠 Cosmic Meteor Ranger 落地：「嘭」一聲 + 水晶「嗡」
+  superLand: (t) => {
+    noise(t, 0.35, { vol: 0.5, freq: 260 });
+    tone(80, t, 0.4, { type: 'sine', vol: 0.45, slide: 0.45 });
+    tone(1320, t + 0.03, 0.5, { type: 'triangle', vol: 0.07, slide: 0.5 });
+    noise(t + 0.05, 0.4, { vol: 0.08, freq: 4000, type: 'highpass' });
+  },
   meteorRumble: (t) => {
     noise(t, 1.4, { vol: 0.35, freq: 220 });
     tone(55, t, 1.2, { type: 'sine', vol: 0.25, slide: 0.6 });

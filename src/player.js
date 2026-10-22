@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { isWalkable, groundAt, HUB } from './world.js';
 import { state } from './state.js';
 import { JUMP_POWER_HEIGHT, JUMP_POWER_MAX } from './data/balance.js';
+import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 嘅 1.5x Speed
 
 const RADIUS = 0.4;      // 玩家有幾闊（用嚟撞嘢）
 const EYE_HEIGHT = 1.6;  // 對眼有幾高
@@ -163,7 +164,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
     const len = Math.hypot(f, s); // 斜行唔好快過直行
     // 喺半空都保持跑步速度（小朋友老師話：跑跑下跳起會慢咗好多，2026-10-18 取消咗半空限速）
-    const speed = moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed);
+    const speed = (moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed)) * boostMult('speed'); // ⚡ 1.5x Speed boost
     const step = speed * dt * mag;
     // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
     const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));

@@ -215,7 +215,177 @@ export function buildAvatar() {
   const galaxyBody = make('galaxyBody', torso);
   box(galaxyBody, 0.6, 0.7, 0.3, 0x1a237e, 0, 1.4, 0.38);
   box(galaxyBody, 0.15, 0.15, 0.05, SG(0xffeb3b, 1.6), 0, 1.5, 0.55);
-  return { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge };
+  const cosmic = buildCosmic({ make, head, torso, arms, legs, SM, SG });
+  return { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge, cosmic };
+}
+
+// ---- 🌠 Cosmic Meteor Ranger（小朋友 2026-10-22）----
+// 深藍戰衣 + 發光藍色隕石裂紋、星空披風、膊頭水晶、發光面罩、一粒細隕石圍住你轉
+// 手腳嘅裂紋用 'cosmic_xxx'（applyRangerSkin 會一齊開／收）
+let capeTex = null;
+function starCapeTexture() {
+  if (capeTex) return capeTex;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, '#0d1b4a');
+  g.addColorStop(0.6, '#1a237e');
+  g.addColorStop(1, '#311b92');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 128);
+  for (let i = 0; i < 46; i++) {
+    ctx.fillStyle = ['#ffffff', '#80d8ff', '#b388ff'][i % 3];
+    const r = i % 7 === 0 ? 2 : 1;
+    ctx.fillRect((i * 37) % 64, (i * 53 + i * i) % 128, r, r);
+  }
+  capeTex = new THREE.CanvasTexture(c);
+  capeTex.colorSpace = THREE.SRGBColorSpace;
+  capeTex.magFilter = THREE.NearestFilter;
+  return capeTex;
+}
+function buildCosmic({ make, head, torso, arms, legs, SM, SG }) {
+  const crackMat = SG(0x00e5ff, 1.6); // 一齊閃（animateCosmic 改 emissiveIntensity）
+  const visorMat = SG(0x40c4ff, 2.2);
+  const crystMat = SM(0x80d8ff, { emissive: 0x00b0ff, emissiveIntensity: 1.1, roughness: 0.1, metalness: 0.3 });
+  const navy = SM(0x0d1b4a, { metalness: 0.5, roughness: 0.35 });
+  // 一條「之」字裂紋：幾段斜斜嘅細條
+  const crack = (parent, x, y, z, len, segs = 3, w = 0.035) => {
+    let cx = x;
+    let cy = y;
+    for (let i = 0; i < segs; i++) {
+      const ang = (i % 2 ? 0.5 : -0.45) + (i === 0 ? 0.2 : 0);
+      const l = len / segs;
+      const m = box(parent, w, l, 0.02, crackMat, cx + Math.sin(ang) * l * 0.5, cy - Math.cos(ang) * l * 0.5, z);
+      m.rotation.z = ang;
+      m.castShadow = false;
+      cx += Math.sin(ang) * l;
+      cy -= Math.cos(ang) * l;
+    }
+  };
+  const gem = (parent, r, x, y, z, sy = 1.6, rz = 0) => {
+    const c = new THREE.Mesh(new THREE.OctahedronGeometry(r), crystMat);
+    c.position.set(x, y, z);
+    c.scale.y = sy;
+    c.rotation.z = rz;
+    parent.add(c);
+    return c;
+  };
+  // 頭盔 + 發光面罩 + 頂上水晶
+  const helm = make('cosmic', head);
+  box(helm, 0.74, 0.74, 0.74, navy, 0, 0.03, 0);
+  box(helm, 0.62, 0.2, 0.04, visorMat, 0, 0.05, -0.375);
+  box(helm, 0.66, 0.05, 0.05, crackMat, 0, -0.1, -0.37);
+  for (const s of [-1, 1]) {
+    const side = new THREE.Group();
+    side.position.set(s * 0.375, 0, 0);
+    side.rotation.y = s * Math.PI / 2;
+    helm.add(side);
+    crack(side, 0.05, 0.3, 0.005, 0.55, 3, 0.03);
+  }
+  gem(helm, 0.1, 0, 0.5, 0.05, 2);
+  gem(helm, 0.06, -0.14, 0.45, 0.1, 1.6, 0.4);
+  gem(helm, 0.06, 0.14, 0.45, 0.1, 1.6, -0.4);
+  // 身：心口裂紋 + 隕石徽章 + 發光皮帶 + 膊頭水晶 + 星空披風 + 圍住轉嘅細隕石
+  const body = make('cosmicBody', torso);
+  crack(body, -0.2, 1.75, -0.24, 0.75, 4);
+  crack(body, 0.25, 1.7, -0.24, 0.6, 3);
+  crack(body, 0.05, 1.35, -0.24, 0.35, 2, 0.03);
+  const emblem = gem(body, 0.11, 0, 1.52, -0.27, 1.3);
+  emblem.rotation.y = Math.PI / 4;
+  box(body, 0.88, 0.06, 0.48, crackMat, 0, 1.02, 0).castShadow = false;
+  for (const s of [-1, 1]) {
+    gem(body, 0.12, s * 0.66, 2.12, 0, 1.8, s * -0.35);
+    gem(body, 0.08, s * 0.5, 2.05, 0.05, 1.5, s * -0.7);
+    gem(body, 0.07, s * 0.78, 2.02, -0.05, 1.4, s * -0.15);
+  }
+  const cape = new THREE.Group(); // 披風（喺膊頭吊落嚟，會飄）
+  cape.position.set(0, 1.86, 0.27);
+  body.add(cape);
+  const capeMat = new THREE.MeshStandardMaterial({ map: starCapeTexture(), emissive: 0xffffff, emissiveMap: starCapeTexture(), emissiveIntensity: 0.35, roughness: 0.6, side: THREE.DoubleSide });
+  const capeMesh = box(cape, 0.92, 1.55, 0.04, capeMat, 0, -0.78, 0);
+  const capeHem = box(cape, 0.94, 0.05, 0.06, crackMat, 0, -1.55, 0);
+  capeHem.castShadow = false;
+  box(cape, 0.96, 0.08, 0.1, navy, 0, -0.02, -0.02);
+  capeMesh.castShadow = true;
+  const orbit = new THREE.Group(); // 細隕石：圍住個身轉圈
+  orbit.position.y = 1.45;
+  body.add(orbit);
+  const rock = new THREE.Group();
+  rock.position.set(0.95, 0, 0);
+  orbit.add(rock);
+  const rockM = new THREE.Mesh(new THREE.DodecahedronGeometry(0.14), SM(0x283593, { roughness: 0.8, flatShading: true }));
+  rock.add(rockM);
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.09), SG(0x18ffff, 2.4));
+  core.position.set(0, 0.04, -0.06);
+  rock.add(core);
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0x40c4ff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.6, 10, 1, true), tailMat);
+  tail.rotation.x = Math.PI / 2; // 尾向後（轉圈嘅反方向），尖嘅一頭喺後面
+  tail.position.z = 0.32;
+  rock.add(tail);
+  // 手腳：裂紋 + 發光手套／靴邊
+  arms.forEach((sh, i) => {
+    const e = make(`cosmic_arm${i}`, sh);
+    crack(e, 0, -0.08, -0.175, 0.5, 2, 0.03);
+    box(e, 0.37, 0.07, 0.37, crackMat, 0, -0.66, 0).castShadow = false;
+    gem(e, 0.06, (i ? 1 : -1) * 0.18, -0.25, 0, 1.6, (i ? -1 : 1) * 0.6);
+  });
+  legs.forEach((hip, i) => {
+    const e = make(`cosmic_leg${i}`, hip);
+    crack(e, 0, -0.1, -0.195, 0.5, 2, 0.03);
+    box(e, 0.42, 0.06, 0.46, crackMat, 0, -0.72, -0.02).castShadow = false;
+  });
+  return { crackMat, visorMat, crystMat, capeMat, cape, orbit, rock, spin: rockM, core, tail };
+}
+
+// 🌠 每格：裂紋一閃一閃、細隕石轉圈、披風跟住郁（行／跑／半空飄後）
+function animateCosmic(avatar, t, a) {
+  const c = avatar.cosmic;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3.2);
+  c.crackMat.emissiveIntensity = 1.1 + pulse * 1.3;
+  c.visorMat.emissiveIntensity = 1.8 + Math.sin(t * 2.1) * 0.5;
+  c.crystMat.emissiveIntensity = 0.9 + Math.sin(t * 2.6 + 1) * 0.4;
+  c.capeMat.emissiveIntensity = 0.25 + pulse * 0.2;
+  c.orbit.rotation.y = t * 2.2;
+  c.orbit.position.y = 1.45 + Math.sin(t * 1.7) * 0.18;
+  c.spin.rotation.set(t * 3, t * 2, 0);
+  c.core.rotation.y = t * 4;
+  c.tail.scale.set(1, 0.85 + Math.sin(t * 12) * 0.15, 1);
+  // 披風：企定輕輕飄；行／跑向後揚；跳起飄高
+  const move = a ? a.move * (0.35 + a.run * 0.55) : 0;
+  const air = a ? a.air * 0.5 : 0;
+  c.cape.rotation.x = -(0.08 + move + air) + Math.sin(t * 2.3) * 0.05 + Math.sin(t * 9) * 0.03 * move;
+  c.cape.rotation.z = Math.sin(t * 1.4) * 0.04;
+}
+
+// 🦸 超級英雄落地（Spider-Man 款）：單膝跪地、右手撳地、左手向後揚、望住前面
+// land = { t（落地咗幾耐）, dur }；頭 0.06 秒落去，停住，最後 0.3 秒企返起身
+export const SUPER_LAND_HOLD = 0.55;
+export const SUPER_LAND_DUR = 0.85;
+function applySuperLand(avatar, land, held) {
+  const t = land.t;
+  const w = t < 0.06 ? t / 0.06 : t < SUPER_LAND_HOLD ? 1 : Math.max(0, 1 - (t - SUPER_LAND_HOLD) / (SUPER_LAND_DUR - SUPER_LAND_HOLD));
+  const k = w * w * (3 - 2 * w); // smoothstep
+  if (k <= 0) return;
+  const [L, R] = avatar.legs;
+  const [AL, AR] = avatar.arms;
+  const lerpRot = (o, x, y, z) => o.rotation.set(mix(o.rotation.x, x, k), mix(o.rotation.y, y, k), mix(o.rotation.z, z, k));
+  const drop = 0.55 * k;
+  avatar.g.position.y -= drop;
+  avatar.g.rotation.x = mix(avatar.g.rotation.x, 0, k);
+  lerpRot(L, 1.18, 0, -0.12); // 左腳向前踩地
+  lerpRot(R, -1.2, 0, 0.1); // 右膝跪地
+  // 上身向前傾（以髖關節 y=0.9 做軸）
+  const a = -0.75 * k;
+  avatar.torso.rotation.x = a;
+  avatar.torso.position.set(0, 0.9 - 0.9 * Math.cos(a), -0.9 * Math.sin(a));
+  if (!held) {
+    lerpRot(AR, 0.9, 0, -0.15); // 右手撳地
+    lerpRot(AL, -0.55, 0, -1.15); // 左手向後揚
+  }
+  lerpRot(avatar.head, -0.6, 0, 0); // 抬頭望前面
 }
 
 // 換護林員皮膚
@@ -226,10 +396,11 @@ export function applyRangerSkin(tp, skin) {
     mats[k].metalness = skin.metal ? 0.85 : 0;
     mats[k].roughness = skin.metal ? 0.25 : 0.55;
   }
-  for (const [name, e] of Object.entries(extras)) e.visible = name === skin.extra || name === `${skin.extra}Body` || (name === 'pack' && skin.extra === 'astronaut');
+  for (const [name, e] of Object.entries(extras)) e.visible = name === skin.extra || name === `${skin.extra}Body` || (!!skin.extra && name.startsWith(`${skin.extra}_`)) || (name === 'pack' && skin.extra === 'astronaut');
   hat.visible = !skin.extra || skin.extra === 'wings'; // 有自己頭飾嘅皮膚就收埋護林員帽
   badge.visible = skin.id === 'ranger';
   tp.rainbow = !!skin.rainbow;
+  tp.cosmic = skin.extra === 'cosmic'; // 🌠 動畫 + 超級英雄落地
 }
 
 export function createThirdPerson(scene, eye) {
@@ -451,7 +622,9 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded
     if (running) avatar.g.rotation.y = 0; // 向住跑步機前面
     applyLocomotion(avatar, anim, { feetY, held: !!held, t });
     tp.phase = anim.phase; // 頭頂寵物跟住步伐輕輕彈
+    if (tp.land) applySuperLand(avatar, tp.land, !!held); // 🦸 Cosmic Meteor Ranger 落地（cosmicLanding.js 設定 tp.land）
   }
+  if (tp.cosmic) animateCosmic(avatar, t, anim); // 🌠 披風、細隕石、裂紋閃
 
   // 鏡頭：喺公仔後面；寵物越大，退得越後，等你睇得晒
   eye.getWorldDirection(fwd);

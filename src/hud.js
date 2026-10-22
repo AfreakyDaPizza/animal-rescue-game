@@ -685,6 +685,7 @@ function shopHtml() {
       ${preview}<b>${name}</b>${extra}
       ${equipped ? '<span class="tag">✔ Wearing</span>'
         : owned ? `<button data-shop="${action}-equip" data-i="${i}">Equip</button>`
+        : action === 'ranger' && RANGER_SKINS[i]?.meteor ? '<span class="tag">☄️ Meteoric Shop 💎</span>' // 🌠 用 Meteor Crystals 先買得
         : `<button data-shop="${action}-buy" data-i="${i}" ${state.tokens < cost ? 'disabled' : ''}>Buy 🎟️ ${cost}</button>`}
     </div>`;
   if (shopTab === 'ranger') {
