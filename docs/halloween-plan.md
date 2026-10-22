@@ -89,6 +89,20 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
   - **Positions:** `HW_BIOMES[i].rect / bossHome / eggZone / entrance`, `EGG_SLOTS`, `TRAIN_BOARD`, `TRAIN_STOP`, `TRACK_X`, `GHOST_WORLD`, `GHOST_ARRIVE`, `GHOST_TRAIN_STOP`, `STATUE_OF_HALLOWEEN`, `VACUUM_SHOP`, `FISH_SPOT`, `ROD_SHOP`, `DOCK`, `RUINS`, `RUINS_SAFE_R`.
   - **Checks:** `inHalloween`, `inGhostWorld`, `inSafeZone`, `hwZoneAt`, `hwBiomeIndexAt`.
 
+## ✅ Built: abandoned Ghost Town + scarier music (2026-10-22)
+The kid asked: "make the ghost town more abandoned town vibe" and "make more scary music".
+- **Ghost World = an abandoned ghost town** (`src/ghostTown.js`, layout in `GHOST_TOWN` in `src/halloweenShape.js`):
+  - A cracked cobbled main street (train stop → Statue square → leaning clock-tower chapel with a stopped clock, 11:58) and a cross street.
+  - Crooked, boarded-up houses and shops with broken windows: SALOON (swinging "OLD SALOON" sign), HOTEL, GENERAL STORE ("WANTED: GHOSTS" poster), BARBER, BANK, BLACKSMITH, POST OFFICE, DEPOT. Some windows glow faint green with a little ghost peeking out.
+  - Broken street lamps (some flicker or go dark, some bent or fallen), a rusty water tower, broken picket fences around the island, dead trees, a small Boot Hill graveyard, abandoned carts, barrels, crates, cobwebs, crows (sitting on roofs and flying in circles), tumbleweeds rolling down the streets, fog drifting along the streets, lightning in the distance.
+  - A "WELCOME TO GHOST TOWN — Population: 0 ... just ghosts!" sign at the train stop.
+  - Houses are solid (`hwWalkable` checks `GHOST_TOWN.blocks`). Ghosts only appear and float in open space: streets, square, back yards (`ghostOpen` / `ghostPathClear`, used in `src/ghostVacuum.js`). The train stop, Statue of Halloween, vacuum shop and the knock-out respawn are unchanged.
+  - Fewer tumbleweeds / fog patches / flying crows at lower graphics quality (G key).
+- **Scarier music** (`src/sound.js`, all synthesised):
+  - 🎃 Halloween world (`'spooky'`): D minor lullaby on an old music box, soft pads, plucked bass, a low detuned drone, wind, and now and then an owl, a creaky door or a far-away bell.
+  - 👻 Ghost World (`'ghost'`): slower, diminished chords, a deeper drone with a spooky interval, an out-of-tune music box that sometimes "runs down", a soft heartbeat every bar, whispers (no words), creaks, crows and the clock-tower bell.
+  - Going in or out of these worlds, the music fades out and the new song fades in (about 1 s). Normal-world music is the same as before. Mute (N) still mutes everything.
+
 ## ✅ Built: eggs + no-mercy bosses (src/halloweenEggs.js)
 - 3 eggs lie in each biome (rarer ones deeper). Each has a rarity-coloured ring, a light beam, a soft glow and a bob/wobble. A new egg appears 40 s after one is taken.
 - E grabs an egg:

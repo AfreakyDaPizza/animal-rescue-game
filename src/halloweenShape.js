@@ -87,6 +87,47 @@ export const STATUE_OF_HALLOWEEN = { x: -2000, z: 0 }; // 用 400 Soul Dust 換 
 export const VACUUM_SHOP = { x: -1982, z: 32 }; // 吸塵機舖（升級 Lv1–5）
 export const GHOST_SPAWN_R = 48; // 鬼魂喺呢個半徑入面出現
 
+// 🏚️ 鬼鎮（小朋友 2026-10-22：「make the ghost town more abandoned town vibe」）
+// 一條南北大街（火車站 → 雕像廣場 → 北面鐘樓教堂）+ 一條東西橫街；兩邊係荒廢咗嘅屋／舖
+// 每間屋係一個長方形（行唔入），鬼魂只會喺街、廣場、後巷呢啲空地出現同飄（ghostOpen）
+// face：屋嘅正門向邊（'+x' 即係向東）；kind／sign 俾 ghostTown.js 起樣
+const gx = GHOST_WORLD.x, gz = GHOST_WORLD.z;
+const blk = (minX, maxX, minZ, maxZ, face, kind, sign = '') => ({ minX: gx + minX, maxX: gx + maxX, minZ: gz + minZ, maxZ: gz + maxZ, face, kind, sign });
+export const GHOST_TOWN = {
+  street: { halfW: 7, minZ: -44, maxZ: 46 }, // 大街（相對 GHOST_WORLD）
+  cross: { halfW: 6, minX: -52, maxX: 52 }, // 橫街（z = 0）
+  plazaR: 14, // 雕像廣場
+  blocks: [
+    blk(-21, -9, 13, 25, '+x', 'shop', 'SALOON'),
+    blk(-21, -9, -27, -15, '+x', 'tall', 'HOTEL'),
+    blk(-20, -9, -42, -31, '+x', 'shop', 'GENERAL STORE'),
+    blk(9, 19, 13, 23, '-x', 'house', 'BARBER'),
+    blk(9, 21, -27, -15, '-x', 'shop', 'BANK'),
+    blk(9, 18, -42, -32, '-x', 'house'),
+    blk(-7, 7, -54, -44, '+z', 'chapel'), // 斜斜嘅鐘樓（鐘停咗）
+    blk(-42, -28, -20, -8, '+z', 'house'),
+    blk(-42, -28, 8, 20, '-z', 'shop', 'BLACKSMITH'),
+    blk(28, 42, -20, -8, '+z', 'tall'),
+    blk(28, 42, 8, 20, '-z', 'shop', 'POST OFFICE'),
+    blk(-15, -10, 45, 51, '+x', 'shed', 'DEPOT'),
+  ],
+};
+const inBlock = (b, x, z, m) => x > b.minX - m && x < b.maxX + m && z > b.minZ - m && z < b.maxZ + m;
+// 呢個位係唔係鎮入面嘅空地（鬼魂可以喺度出現／飄）：喺島入面、唔喺屋入面、唔撞雕像
+export function ghostOpen(x, z, m = 1.5) {
+  if (Math.hypot(x - GHOST_WORLD.x, z - GHOST_WORLD.z) > GHOST_WORLD.r - 5) return false;
+  if (Math.hypot(x - STATUE_OF_HALLOWEEN.x, z - STATUE_OF_HALLOWEEN.z) < 6) return false;
+  return !GHOST_TOWN.blocks.some((b) => inBlock(b, x, z, m));
+}
+// 由 (x1, z1) 直飄去 (x2, z2) 會唔會穿過屋（揀鬼魂下一個目的地用）
+export function ghostPathClear(x1, z1, x2, z2) {
+  for (let i = 1; i <= 8; i++) {
+    const k = i / 8;
+    if (!ghostOpen(x1 + (x2 - x1) * k, z1 + (z2 - z1) * k, 1)) return false;
+  }
+  return true;
+}
+
 // 🎣 釣魚湖：出生點西邊
 export const LAKE = { minX: HW_X - 92, maxX: HW_X - 20, minZ: -36, maxZ: 36 }; // 成個湖區（包水）
 export const LAKE_WATER = { minX: HW_X - 90, maxX: HW_X - 44, minZ: -34, maxZ: 34 }; // 水（唔行得）
@@ -114,7 +155,7 @@ export const inSafeZone = (x, z) => Math.hypot(x - RUINS.x, z - RUINS.z) <= RUIN
 
 // 呢個點（連埋公仔闊度 radius）喺唔喺 Halloween 世界行得嘅地方？（撞嘢圈另外計）
 export function hwWalkable(x, z, radius) {
-  if (inGhostWorld(x, z)) return Math.hypot(x - GHOST_WORLD.x, z - GHOST_WORLD.z) <= GHOST_WORLD.r - radius;
+  if (inGhostWorld(x, z)) return Math.hypot(x - GHOST_WORLD.x, z - GHOST_WORLD.z) <= GHOST_WORLD.r - radius && !GHOST_TOWN.blocks.some((b) => inBlock(b, x, z, radius)); // 鬼鎮啲屋行唔入
   if (Math.hypot(x - RUINS.x, z - RUINS.z) <= RUINS.r - radius) return true;
   if (!inR(LAKE_SHORE, x, z, radius) && !inR(DOCK, x, z, 0) && x > LAKE_WATER.minX && x < LAKE_WATER.maxX && z > LAKE_WATER.minZ && z < LAKE_WATER.maxZ) return false; // 水
   return RECTS.some((r) => inR(r, x, z, r === DOCK ? 0.2 : radius));

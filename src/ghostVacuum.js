@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { state, save } from './state.js';
 import { GHOST_VACUUM, GHOST_MAX_SOULS, GHOST_HEARTS, GHOST_HEART_REGEN, GHOST_HIT_SAFE } from './data/balance.js';
 import { buildSoul, randomSoulType, rollSoulDust, launchSoulOrb } from './halloweenSouls.js';
-import { GHOST_WORLD, GHOST_SPAWN_R, STATUE_OF_HALLOWEEN, VACUUM_SHOP, GHOST_TRAIN_STOP, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
+import { GHOST_WORLD, GHOST_SPAWN_R, STATUE_OF_HALLOWEEN, VACUUM_SHOP, GHOST_TRAIN_STOP, GHOST_ARRIVE, inHalloween, inGhostWorld, ghostOpen, ghostPathClear } from './halloweenShape.js';
 import { vacuumHum } from './sound.js';
 import { extraPanels, openPanel, panelKind } from './hud.js';
 import { short } from './format.js';
@@ -366,12 +366,13 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
     const type = randomSoulType();
     let x;
     let z;
-    for (let tries = 0; tries < 12; tries++) {
+    for (let tries = 0; tries < 30; tries++) {
       const a = Math.random() * Math.PI * 2;
       const r = 12 + Math.random() * (GHOST_SPAWN_R - 14);
       x = GHOST_WORLD.x + Math.cos(a) * r;
       z = GHOST_WORLD.z + Math.sin(a) * r;
-      if (Math.hypot(x - playerPos.x, z - playerPos.z) > 10 && Math.hypot(x - GHOST_TRAIN_STOP.x, z - GHOST_TRAIN_STOP.z) > 8) break;
+      // 鬼鎮：只喺街／廣場／後巷呢啲空地出（唔好出喺屋入面）
+      if (ghostOpen(x, z) && Math.hypot(x - playerPos.x, z - playerPos.z) > 10 && Math.hypot(x - GHOST_TRAIN_STOP.x, z - GHOST_TRAIN_STOP.z) > 8) break;
     }
     const g = buildSoul(type.id);
     g.position.set(x, 0.8 + Math.random() * 1.6, z);
@@ -547,9 +548,15 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
           s.wait -= dt;
           if (s.wait <= 0) {
             s.wait = 2 + Math.random() * 3;
-            const a = Math.random() * Math.PI * 2;
-            const r = 8 + Math.random() * (GHOST_SPAWN_R - 10);
-            s.target.set(GHOST_WORLD.x + Math.cos(a) * r, 0.8 + Math.random() * 1.8, GHOST_WORLD.z + Math.sin(a) * r);
+            // 揀下一個目的地：要係空地，而且直飄過去唔會穿過鬼鎮啲屋（搵唔到就留喺度）
+            for (let tries = 0; tries < 10; tries++) {
+              const a = Math.random() * Math.PI * 2;
+              const r = 8 + Math.random() * (GHOST_SPAWN_R - 10);
+              const tx = GHOST_WORLD.x + Math.cos(a) * r, tz = GHOST_WORLD.z + Math.sin(a) * r;
+              if (!ghostOpen(tx, tz) || !ghostPathClear(g.position.x, g.position.z, tx, tz)) continue;
+              s.target.set(tx, 0.8 + Math.random() * 1.8, tz);
+              break;
+            }
           }
           g.position.lerp(s.target, Math.min(1, dt * 0.25));
         }
