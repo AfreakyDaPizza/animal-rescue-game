@@ -10,6 +10,7 @@ import { itemMoney, kgOf, formatKg, sizeText, mutationList, mutationEmoji } from
 import { rarityInfo, plotMoneyMulti, MACHINE_LEVELS } from './data/balance.js';
 import { moneyPerSecond, machineStatus, formatLeft } from './hub.js';
 import { boost } from './events.js';
+import { boostMult } from './boosts.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
@@ -63,7 +64,7 @@ function render(force) {
 
 function renderPets(force) {
   const box = $('side-box');
-  const multi = boost.money * plotMoneyMulti(state.plotLevel);
+  const multi = boost.money * plotMoneyMulti(state.plotLevel) * boostMult('money'); // ⚡ Double Money
   const pets = state.pets.map((p, i) => ({ p, i })).filter(({ p }) => p.onPlot);
   pets.sort((a, b) => itemMoney(b.p) - itemMoney(a.p));
   const sig = `pets|${pets.map(({ p, i }) => `${i}:${p.name}:${p.rarity}:${p.mutation || ''}`).join(',')}|${multi}|${state.hwShards}`;

@@ -79,6 +79,8 @@ import { createInventory } from './inventory.js'; // 🎒 背包：Animals／End
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { createEchoShop, giveCandyCorn } from './echoShop.js'; // 🐕 Echo 隻狗 + 🧟 Zombified Chest（Issue #8）
 import { createMeteorShop, giveCrystals, isMeteorOpen } from './meteorShop.js'; // ☄️ Meteoric Shop（Issue #10）
+import { startBoostChips } from './boosts.js'; // ⚡ Meteoric Shop 嘅 Boosts（左邊細 chip 倒數）
+import { createCosmicLanding, updateCosmicLanding } from './cosmicLanding.js'; // 🦸 Cosmic Meteor Ranger 超級英雄落地
 import { createMeteorBossSkins } from './meteorBossSkin.js'; // 🦹 Meteoric Boss Skin（Issue #10）
 import { FOUNTAIN } from './hubPark.js';
 import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
@@ -180,7 +182,7 @@ fight.onDefeat = () => {
 };
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
-const meteorShop = createMeteorShop({ scene, camera, openShop: () => togglePanel('meteor'), teleport: (x, z) => teleportPlayer(player, x, z), resume, popup, announce }); // ☄️ Hub 圖書館隔籬
+const meteorShop = createMeteorShop({ scene, camera, openShop: () => togglePanel('meteor'), teleport: (x, z) => teleportPlayer(player, x, z), resume, popup, announce, equipRanger: (skin) => applyRangerSkin(thirdPerson, skin) }); // ☄️ Hub 圖書館隔籬
 const player = createPlayer(camera, document.body);
 // Discord Activity：鎖唔到滑鼠，改用撳住滑鼠拖轉鏡頭；平時網頁版唔變（src/discordActivity.js）
 if (inDiscord()) {
@@ -273,6 +275,8 @@ function cycleQuality() {
 applyQuality();
 
 const thirdPerson = createThirdPerson(scene, camera); // 拎住寵物時用第三身
+const superLand = createCosmicLanding(scene); // 🦸
+startBoostChips();
 // 🎣 Halloween 釣魚：魚竿舖、力度條拋竿、狂撳收線、釣蛋同 🌽 Candy Corn（src/fishing.js）
 const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar, view: thirdPerson.view }); // view：第三身準星瞄準用（Issue #10）
 const fishUI = { play: (n) => play(n), popup: (t) => popup(t), announce: (t) => announce(t), save: () => save(), flash: () => flashScreen() };
@@ -759,6 +763,7 @@ setShopActions({
     };
     if (action === 'ranger-buy' || action === 'ranger-equip') {
       const skin = RANGER_SKINS[i];
+      if (skin.meteor && !state.ownedRanger.includes(skin.id)) return; // 🌠 Meteoric Shop 先買得
       if (action === 'ranger-buy' && !buy(skin.cost)) return;
       if (!state.ownedRanger.includes(skin.id)) state.ownedRanger.push(skin.id);
       state.rangerSkin = skin.id;
@@ -1759,6 +1764,8 @@ renderer.setAnimationLoop((timestamp) => {
       gym.bounce = 1;
       play('boing');
     }
+    // 🦸 Cosmic Meteor Ranger：落地單膝跪地 + 衝擊波（要喺彈床之後，彈床唔算落地）
+    updateCosmicLanding(superLand, dt, { player, camera, tp: thirdPerson, on: state.rangerSkin === 'cosmic', ready: !intro.active && !movie.active, play });
     const gymGains = trainInGym(gymStation, dt);
     if (gymGains.length) {
       quest('train', 1);

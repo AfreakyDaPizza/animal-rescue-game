@@ -31,6 +31,10 @@ import {
   MULTIPLIER_STEP, MULTIPLIER_MAX, multiplierCost, METEOR_CHEST_DROPS, chestPercent, rollMeteorChest,
 } from './data/meteorShop.js';
 import { findAnimal, randomKg, itemMoney } from './data/animals.js';
+import { BOOSTS, COSMIC_SKIN_COST } from './data/meteorShop.js';
+import { addBoost, boostLeft, formatLeft } from './boosts.js'; // ⚡ 有時限嘅加成
+import { buildAvatar, applyRangerSkin } from './thirdPerson.js';
+import { RANGER_SKINS } from './skins.js';
 import { buildAnimalModel } from './animalModels.js';
 import { METEOR_SHOP } from './hubShape.js';
 import { addCollider } from './world.js';
@@ -306,9 +310,41 @@ function shopHtml() {
       ${card({ id: 'dragon', pic: petPic('Cosmic Arcadragon', { rarity: 'Eternal' }), title: '🌌 Cosmic Arcadragon', price: ARCADRAGON_COST,
         text: `<b style="color:${rarityInfo('Eternal').color}">ETERNAL</b> pet! Makes <b>$${short(lo)}–$${short(hi)}</b> every second on your Plot!`, extra: dragons ? `<small>🐉 You have ${dragons}</small>` : '' })}
     </div>
+    ${extraCardsHtml()}
     <div class="echo-drops met-drops"><h3>🧰 What's inside the Meteoric Chest?</h3>${rows}</div>
     <p class="hint">☄️ Get Meteor Crystals when meteors fall! The Crystals Multiplier makes every crystal you pick up worth more.</p>`;
 }
+// ⚡ Boosts + 🌠 Cosmic Meteor Ranger 皮膚（小朋友 2026-10-22）
+export const cosmicSkin = () => RANGER_SKINS.find((r) => r.id === 'cosmic');
+function cosmicPicture() {
+  const a = buildAvatar();
+  applyRangerSkin({ avatar: a }, cosmicSkin());
+  a.g.rotation.y = 0.5;
+  return a.g;
+}
+function extraCardsHtml() {
+  const boosts = BOOSTS.map((b) => {
+    const left = boostLeft(b.id);
+    return card({
+      id: `boost:${b.id}`, price: b.cost, title: `${b.emoji} ${b.name}`,
+      pic: `<div class="met-boost-pic"><span>${b.emoji}</span><b>x${b.mult}</b><i>${b.minutes} min</i></div>`,
+      text: `${b.text} Lasts <b>${b.minutes} minutes</b>.`,
+      extra: left > 0 ? `<small>⏳ ON! ${formatLeft(left)} left · buy again for +${b.minutes} min</small>` : '',
+    });
+  }).join('');
+  const owned = state.ownedRanger?.includes('cosmic');
+  const wearing = state.rangerSkin === 'cosmic';
+  const skinCard = card({
+    id: 'cosmic', price: COSMIC_SKIN_COST, title: '🌠 Cosmic Meteor Ranger',
+    pic: img(picture('cosmicSkin', cosmicPicture, [-2.3, 2.1, -4.4], [0, 1.25, 0]), '🌠'),
+    owned: owned ? (wearing ? 'Wearing' : 'Owned') : false,
+    text: 'A glowing <b>cosmic ranger skin</b> with a star cape and a mini meteor! Jump and you <b>land like a superhero</b> 💥',
+    extra: owned && !wearing ? '<div class="pet-actions"><button data-meteor="cosmic-wear">Wear it</button></div>' : owned ? '<small>🎟️ Change skins in the Skin Shop</small>' : '',
+  });
+  return `<h3 class="met-h">⚡ Boosts</h3><div class="cards met-cards">${boosts}</div>
+    <h3 class="met-h">🌠 Ranger Skin</h3><div class="cards met-cards">${skinCard}</div>`;
+}
+
 extraPanels.meteor = ['☄️ Meteoric Shop', shopHtml, 'E'];
 
 const CSS = `
@@ -318,6 +354,12 @@ const CSS = `
 .met-card .met-img { width: 100%; max-width: 160px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 0 8px rgba(64,196,255,0.7)); }
 .met-card small { display: block; font-weight: 800; color: #0277bd; }
 .met-drops { margin-top: 12px; }
+.met-h { margin: 14px 0 6px; color: #1a237e; text-shadow: 0 0 8px rgba(64,196,255,0.6); }
+.met-boost-pic { position: relative; width: 120px; height: 96px; margin: 0 auto; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #3d5afe, #1a237e 70%); border: 2px solid #40c4ff; box-shadow: 0 0 14px rgba(64,196,255,0.6), inset 0 0 18px rgba(0,229,255,0.35); }
+.met-boost-pic span { font-size: 40px; line-height: 1; filter: drop-shadow(0 0 6px #80d8ff); }
+.met-boost-pic b { font-size: 22px; color: #fff; -webkit-text-stroke: 1px #0d1240; text-shadow: 0 0 8px #00e5ff; }
+.met-boost-pic i { position: absolute; top: 4px; right: 6px; font-size: 11px; font-style: normal; font-weight: 800; color: #80d8ff; }
 .echo-drop { display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin-bottom: 6px; border-radius: 12px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, #ffffff); }
 .echo-drop .pet-pic { width: 64px; height: 52px; flex: 0 0 64px; }
 .echo-drop .pet-pic .emoji { font-size: 30px; }
@@ -354,10 +396,10 @@ function ensureDom() {
 }
 
 // ======================== 主程式 ========================
-export function createMeteorShop({ scene, camera, openShop, teleport, resume, popup, announce }) {
+export function createMeteorShop({ scene, camera, openShop, teleport, resume, popup, announce, equipRanger }) {
   ensureDom();
   const shop = buildBuilding(scene);
-  const api = { busy: false };
+  const api = { busy: false, openShop: () => openShop() }; // openShop：測試用（game.meteorShop.openShop()）
 
   api.update = (dt, t) => {
     const s = shop;
@@ -419,6 +461,28 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
   // 買嘢（forced = 測試用：直接開某樣嘢，唔使水晶，例如 api.buy('chest', 'Meteor Dragon')）
   function buy(id, forced = null) {
     if (api.busy) return;
+    // ⚡ Boosts（有時限）
+    if (id.startsWith('boost:')) {
+      const b = BOOSTS.find((x) => `boost:${x.id}` === id);
+      if (!b || !spend(b.cost)) return;
+      const left = addBoost(b.id);
+      play('upgrade');
+      popup(`${b.emoji} ${b.name} is ON for ${formatLeft(left)}!`);
+      return refresh();
+    }
+    // 🌠 Cosmic Meteor Ranger 皮膚：買咗即刻着（Skin Shop 都換得返）
+    if (id === 'cosmic' || id === 'cosmic-wear') {
+      const owned = state.ownedRanger?.includes('cosmic');
+      if (id === 'cosmic' && (owned || !spend(COSMIC_SKIN_COST))) return;
+      if (id === 'cosmic-wear' && !owned) return;
+      if (!owned) state.ownedRanger = [...(state.ownedRanger || ['ranger']), 'cosmic'];
+      state.rangerSkin = 'cosmic';
+      equipRanger?.(cosmicSkin());
+      save();
+      play(owned ? 'crystal' : 'upgrade');
+      popup(owned ? '🌠 You are the Cosmic Meteor Ranger!' : '🌠 Cosmic Meteor Ranger unlocked! Jump and land like a superhero!');
+      return refresh();
+    }
     if (id === 'shard') {
       if (!spend(METEORIC_SHARD_COST)) return;
       state.gears = state.gears || [];
