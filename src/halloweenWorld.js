@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { addCollider, addPlatform, bakeStatic, noiseTexture } from './world.js';
+import { addCollider, addPlatform, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, THEMES } from './signs.js';
 import { seededRandom } from './spawnRoll.js';
 import { state } from './state.js';
@@ -14,7 +14,7 @@ import { HALLOWEEN_OPEN_DATE, HALLOWEEN_FOG_NEAR, HALLOWEEN_FOG_FAR } from './da
 import {
   HW_X, RUINS, RUINS_SAFE_R, HW_PORTAL, HW_BIOMES, MANOR, MANOR_GATE_Z, EGG_GRAVEYARD, EGG_SLOTS, STATION, STATION_PLATFORM, TRACK_X,
   GHOST_WORLD, GHOST_TRAIN_STOP, STATUE_OF_HALLOWEEN, VACUUM_SHOP, LAKE_WATER, LAKE_SHORE, DOCK, FISH_SPOT, ROD_SHOP,
-  hwZoneAt, inHalloween, inGhostWorld,
+  hwZoneAt, inHalloween,
 } from './halloweenShape.js';
 import {
   M, cone, grp, tiledBox, canvasTex, seeded, plankTex, shingleTex, brickTex, pathTex, glowTex,
@@ -22,6 +22,7 @@ import {
   pumpkin as artPumpkin, vine, tombstone, ironFence, lanternPost, deadTree, crypt, scarecrow, twistedTree, shroomCluster, giantShroom,
   mistLayer, wispCloud,
 } from './halloweenArt.js';
+import { buildGhostTown } from './ghostTown.js';
 
 
 // ---------- 狀態 ----------
@@ -831,23 +832,17 @@ export async function buildHalloween(scene, progress = () => {}) {
   });
 
   // ---- 👻 Ghost World（坐火車先去到）----
-  let ghostRing = null;
+  // 2026-10-22 小朋友：「make the ghost town more abandoned town vibe」→ 成個鬼鎮喺 ghostTown.js 起
+  // （泥地、裂石仔街、爛屋、鐘樓、水塔、街燈、柵欄、枯樹……）；呢度淨係留返島嘅底、雕像、吸塵機舖、火車站
+  let ghostTown = null;
   region((root) => {
     const G = GHOST_WORLD;
     add(root, cyl(G.r, G.r - 4, 3, 48), mat(0x2a1f3d, { flatShading: true }), G.x, -1.5, G.z, false);
-    add(root, cyl(G.r - 1, G.r - 1, 0.2, 48), new THREE.MeshStandardMaterial({ map: noiseTexture(0x2f2448, 0.2, 12, 12), roughness: 0.95 }), G.x, -0.1, G.z, false);
     for (let i = 0; i < 18; i++) {
       const a = (i / 18) * Math.PI * 2;
       add(root, box(10, 8 + rand() * 10, 10), mat(0x1c1529, { flatShading: true }), G.x + Math.cos(a) * (G.r - 8), -8, G.z + Math.sin(a) * (G.r - 8)).rotation.y = a;
     }
-    for (let i = 0; i < 28; i++) {
-      const a = (i / 28) * Math.PI * 2;
-      const x = G.x + Math.cos(a) * (G.r - 1.5);
-      const z = G.z + Math.sin(a) * (G.r - 1.5);
-      if (Math.hypot(x - GHOST_TRAIN_STOP.x, z - GHOST_TRAIN_STOP.z) < 10) continue;
-      add(root, box(2.2, 1.5 + rand() * 4, 2.2), mat(0x3b2d52, { flatShading: true }), x, 1, z).rotation.y = a;
-      if (i % 3 === 0) add(root, geo('crystal', () => new THREE.OctahedronGeometry(0.6)), glow(i % 2 ? 0x69f0ae : 0xb388ff, 1.8), x, 3.6, z, false).scale.y = 1.8;
-    }
+    ghostTown = buildGhostTown(root, live);
     const S = STATUE_OF_HALLOWEEN;
     const stone = mat(0x5a5068);
     add(root, cyl(4.4, 5, 1, 8), mat(0x3a3048), S.x, 0.5, S.z);
@@ -876,8 +871,6 @@ export async function buildHalloween(scene, progress = () => {}) {
     const P = GHOST_TRAIN_STOP;
     add(root, box(16, 0.4, 5), mat(0x3e3227), P.x, 0.2, P.z + 2);
     for (const dx of [-0.75, 0.75]) add(root, box(60, 0.18, 0.15), mat(0x6d6d78, { metalness: 0.7 }), P.x, 0.2, P.z + 6.5 + dx, false);
-    ghostRing = add(live, geo('ghostRing', () => new THREE.RingGeometry(GHOST_WORLD.r * 0.55, GHOST_WORLD.r * 0.57, 6)), new THREE.MeshBasicMaterial({ color: 0xb388ff, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false }), G.x, 0.05, G.z, false);
-    ghostRing.rotation.x = -Math.PI / 2;
   });
 
   // ---- 細嘢：草、石（InstancedMesh）----
@@ -941,7 +934,7 @@ export async function buildHalloween(scene, progress = () => {}) {
     wispCloud(live, [b1.rect], 34, [0xffb74d, 0xffd54f], rand, { size: 0.5, y: [0.5, 3] }),
     wispCloud(live, [b3.rect], 22, [0xc58cff, 0xb388ff], rand, { size: 0.6, y: [1, 5] }),
     wispCloud(live, [LAKE_WATER, EGG_GRAVEYARD], 30, [0x9de8ff, 0xc58cff], rand, { size: 0.45, y: [0.3, 2.5] }),
-    wispCloud(live, [{ minX: GHOST_WORLD.x - 40, maxX: GHOST_WORLD.x + 40, minZ: GHOST_WORLD.z - 40, maxZ: GHOST_WORLD.z + 40 }], 40, [0xb388ff, 0x69f0ae], rand, { size: 0.9 }),
+    wispCloud(live, [{ minX: GHOST_WORLD.x - 40, maxX: GHOST_WORLD.x + 40, minZ: GHOST_WORLD.z - 40, maxZ: GHOST_WORLD.z + 40 }], 22, [0x9de8ff, 0xc8b8ff], rand, { size: 0.7 }), // 鬼鎮：少啲、淡啲（似塵埃／鬼火）
   ];
   const bats = makeBats(live, [
     [MANOR.x, MANOR.z, 8, 26, 9, 20, 16],
@@ -953,7 +946,7 @@ export async function buildHalloween(scene, progress = () => {}) {
   return {
     backPortal,
     nearBackPortal: (pos) => Math.hypot(pos.x - HW_PORTAL.x, pos.z - HW_PORTAL.z) < 3.4,
-    update(dt, t, camPos) {
+    update(dt, t, camPos, quality = 3) {
       const show = halloween.sky > 0.02;
       live.visible = show;
       moon.visible = show;
@@ -972,7 +965,7 @@ export async function buildHalloween(scene, progress = () => {}) {
       bats.update(t);
       for (const m of mists) m.update(t);
       if (waterMat) waterMat.emissiveIntensity = 0.55 + Math.sin(t * 1.3) * 0.12;
-      if (ghostRing) ghostRing.rotation.z = t * 0.15;
+      ghostTown?.update(dt, t, camPos, quality);
       // 月亮：喺北邊天上（大屋後面），跟住鏡頭
       tmp.set(0.25, 0.36, -0.9).normalize().multiplyScalar(330);
       moon.position.copy(camPos).add(tmp);
@@ -1428,7 +1421,7 @@ const ZONE_FOG = {
   'Egg Graveyard': [0x352a55, 20, 110],
   'Train Station': [0x30285a, 22, 125],
   'Fishing Lake': [0x2c2c56, 20, 115],
-  'Ghost World': [0x1d0f33, 12, 85],
+  'Ghost World': [0x221637, 14, 95], // 鬼鎮：遠少少都睇到啲屋（霧仍然好大）
 };
 const C = (h) => new THREE.Color(h);
 const SKY_TOP = C(0x0a0820);
@@ -1503,7 +1496,7 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
       halloween.nextFlash = 7 + Math.random() * 9;
       halloween.flash = 1;
       halloween.flashT = 0;
-      if (!inGhostWorld(camPos.x, camPos.z)) strike(camPos);
+      strike(camPos); // Ghost World 都有（遠處嘅閃電，照亮成個鬼鎮）
       setTimeout(() => playSound?.('thunder'), 250 + Math.random() * 500);
     }
   }

@@ -1841,7 +1841,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (labHit) onLabHit(labHit);
     const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
     if (bosses.some((b) => b.mode === 'chase') || labBattle) setMusicMood('boss');
-    else if (inHalloween(pos.x, pos.z)) setMusicMood('spooky'); // 🎃（Halloween 世界日夜都係呢首）
+    else if (inHalloween(pos.x, pos.z)) setMusicMood(inGhostWorld(pos.x, pos.z) ? 'ghost' : 'spooky'); // 🎃 Halloween 世界日夜都係呢首；👻 Ghost World 更恐怖嗰首
     else if (dayNight.isNight) setMusicMood('night');
     else setMusicMood(location === 'Hub' || location === 'Gym' ? 'hub' : 'biome');
     if (safeTime <= 0 && caught) onBossCatch(caught);
@@ -1945,7 +1945,7 @@ renderer.setAnimationLoop((timestamp) => {
   // 🎃 Halloween 世界：恐怖天空、好近嘅霧、行雷（要喺 updateAmbience 之後，唔係霧會俾佢蓋返）
   applyHalloweenSky({ scene, skyUniforms: sky.uniforms, hemi, sun, dt, camPos: camera.position, playSound: play });
   hubPortal.update(time, isHalloweenOpen());
-  hwWorld?.update(dt, time, camera.position);
+  hwWorld?.update(dt, time, camera.position, quality.level);
   phantom.update(dt, time, camera.position); // 🚂
   ghostHunt.update(dt, time, { pos: camera.position, feetY: player.feetY, paused: isPaused(), view: viewCam }); // 🧹👻
   shards.update(time, camera.position); // 🗿
