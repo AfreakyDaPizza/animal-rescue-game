@@ -414,9 +414,9 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
     hideBars();
   }
 
-  function update(dt, t, { pos, feetY, paused, view = camera }) {
+  function update(dt, t, { pos, feetY, paused, view = camera, hideTool = false }) {
     hookTouch();
-    const inside = inHalloween(pos.x, pos.z);
+    const inside = inHalloween(pos.x, pos.z) && !hideTool; // hideTool：🔫 拎住武器（Issue #11）就收埋吸塵機
     const ghost = inGhostWorld(pos.x, pos.z);
     // 吸塵機：喺 Halloween 世界先見到
     const fp = isFirstPerson();

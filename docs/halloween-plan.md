@@ -178,3 +178,27 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
 - A small tracker on the left (only in the Halloween world) shows your quest and a progress bar. When you finish one, a **QUEST COMPLETE!** card pops up with confetti: click **Claim** or press **Enter**.
 - Code: `src/questline.js` (counting + prizes, `state.echoQuests = { day, index, progress, claimed }`), `src/echoQuestStall.js` (stall, panel, tracker, card), Echo's model in `src/echoShop.js` (`buildEcho`).
 - Testing (dev console): `game.questline.open()` opens it early; `game.questline.finish()` finishes the current quest; `game.questline.jump(9)` goes to quest 10; `game.questline.track('ghostCatch', 5)`.
+
+## ✅ Built: 🐉 Pumpkin Reaper Dragon + 🔫 magic weapons (Issue #11, 2026-10-22)
+- **When:** every hour on the real clock at **:30** (the Phantom Express is at :00), so everybody sees it at the same time. A **red warning** shows 1 minute before: "⚠️ The PUMPKIN REAPER DRAGON awakens in the Abandoned Manor!". Then the dragon stays awake for **10 minutes** (a red pill shows the time left).
+- **Getting in:** the 🏚️ Abandoned Manor's front door glows red-orange (with a red beacon and a sign). Walk up the steps into the door (or press E) → loading screen → a **broken manor hall** (torn purple wallpaper, moonlit windows with torn curtains, broken roof beams, cracked pillars with green ghost-fire, candles, a fallen chandelier, crooked paintings with glowing eyes).
+- **No Soul Blaster yet?** You get one **free** when you walk in, and you keep it.
+- **Intro:** the floor shakes and cracks glow orange, then the dragon **bursts up through the floor** (planks fly everywhere) and roars.
+- **The dragon** stays in its hole in the middle and turns to face you. It has a glowing carved pumpkin head with dragon horns and a reaper hood, a giant scythe, torn bat wings, lava cracks on its chest and a purple-green fog aura. **10,000 HP.** Shooting the 🎃 head does ×1.5 damage.
+- **Attacks** (a new one every ~2.4 s, faster when it's ANGRY below half HP):
+  - 🌀 **Scythe throw:** it flies out in a boomerang loop and comes back. Move out of its path!
+  - 🔥 **Fire breath:** a red cone on the floor shows where it will breathe. Getting hit **flings you away**.
+  - 🎃 **Pumpkin bombs:** red circles on the floor show where they will land.
+  - 🐟 **Ghost fish** pop out of the floor, chase you and bite. Shoot them (300 HP each).
+- **Hearts:** you have 5 ❤️ (each hit takes 1, 1 comes back after 12 s with no hits). At 0 hearts you are thrown out of the manor; the dragon **keeps its lost HP** until its 10 minutes are over, so you can go back in and finish it. The 🚪 EXIT door at the back of the hall (press E) also takes you out.
+- **Win:** a big death animation (light beams burst out, explosions, it sinks back into the hole) → **🍬 +1 Soul Candy** (`state.soulCandy`, shown next to 🌽 Candy Corn in the stats box) → back to the Spawn Ruins. You can beat it once per hour.
+- **Numbers:** `REAPER_*` in balance.js (time, HP, hearts, bombs, fish, push, reward…).
+- **Control Panel:** 🎉 Events → "🐉 Summon Pumpkin Reaper Dragon" (5 s warning, then it wakes up); 💰 Give → 🍬 Soul Candy.
+- **Test in the console:** `game.reaper.spawn(seconds)`, `game.reaper.goto()`, `game.reaper.attack('scythe'|'fire'|'bombs'|'fish')`, `game.reaper.hurt(9000)`, `game.reaper.kill()`, `game.reaper.god = true`, `game.reaper.calm = true`.
+
+### 🔫 Weapons (src/weapons.js, numbers in src/data/weapons.js)
+- 💠 **Soul Blaster** (the kid's "AK-47", but magic): automatic, **100 damage**, 30-shot crystal magazine, 2 s reload, scope (×2.6 zoom).
+- 🍭 **Candy Pistol:** one click = one shot, 45 damage, 12 shots.
+- 🎯 **Spooky Slingshot:** hold to pull back, let go to fling a glowing pumpkin seed (40–300 damage), it falls a bit.
+- Controls: **left click** shoot (hold for the Soul Blaster), **right click** aim / scope, **R** reload (it also reloads by itself when empty). Phones: **FIRE / AIM / RELOAD** buttons.
+- Weapons only show up in the hotbar inside fight areas (the manor hall now, the Endless Tower next). Crosshair, ammo box, hit markers, damage numbers, muzzle flash, recoil and reload animation are built in.
