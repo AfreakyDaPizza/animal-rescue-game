@@ -74,6 +74,7 @@ export const SPECTRAL_MONEY = 4; // 👻 SPECTRAL pets (from a Halloween Shard) 
 export const PHANTOM_MONEY = 5; // 🟣 PHANTOM pets (from a Halloween Shard) earn this many times more money
 export const METEORIC_MONEY = 5; // ☄️ METEORIC pets (from a Meteoric Shard) earn this many times more money
 export const ASTRAL_MONEY = 8; // 🌌 ASTRAL pets earn this many times more money
+export const DEMONIC_MONEY = 10; // 😈 DEMONIC pets (Demonic Shard / Witch Tower) earn this many times more money
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
 export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000, 2000000, 3000000, 5000000]; // last 3 = Halloween
@@ -376,3 +377,19 @@ export const HALLOWEEN_SHARD_COST = 400;
 export const SHARD_HIT_CHANCE = 25;
 // The pet becomes 🟣 PHANTOM this % of the time, otherwise 👻 SPECTRAL
 export const SHARD_PHANTOM_CHANCE = 50;
+
+// ---- 😈 DEMONIC CHEST (kid, Issue #11): a reward from the endless Witch Tower ----
+// What can come out of the chest, and the chance of each.
+// The kid's list adds up to 105 (65 + 20 + 15 + 4.5 + 0.5), so the game shares them out of 105:
+// the REAL chance = chance / 105 (Imp 61.9%, Toro 19%, Demonic Whale 14.3%, Skeleton Horseman 4.3%, Lava Cerberus 0.48%)
+// Want exact numbers? Make them add up to 100 and they will be exactly what you type.
+export const DEMONIC_CHEST_DROPS = [
+  { name: 'Imp', rarity: 'Common', chance: 65 },
+  { name: 'Toro', rarity: 'Rare', chance: 20 },
+  { name: 'Demonic Whale', rarity: 'Epic', chance: 15 },
+  { name: 'Skeleton Horseman', rarity: 'Legendary', chance: 4.5 },
+  { name: 'Lava Cerberus', rarity: 'Mythic', chance: 0.5 },
+];
+// 😈 Witch Tower eggs: how long they take to hatch at the 🪦 Egg Graveyard (seconds)
+export const LAVA_BLOOM_HATCH = 1200; // Legendary egg (20 minutes)
+export const PUMPKGRIM_HATCH = 2400; // Mythic egg (40 minutes)

@@ -14,6 +14,11 @@ const phantomMats = [[0x1a0026, 0x6200ea], [0x311b92, 0x7c4dff], [0x12001f, 0x4a
 // （顏色要深啲、唔好太光：太光會俾畫面調色變到白白黃黃）
 const meteoricMats = [[0x0d47a1, 0x2962ff], [0x01579b, 0x0091ea], [0x1a237e, 0x304ffe]].map(([c, e]) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.3, transparent: true, opacity: 0.85, depthWrite: false }));
 const astralMats = [[0x4a148c, 0xd500f9], [0x311b92, 0x7c4dff], [0x880e4f, 0xf50057]].map(([c, e]) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.5, transparent: true, opacity: 0.95, depthWrite: false }));
+// 😈 Demonic（Witch Tower，Issue #11）：紅黑火（黑色火舌 + 紅色火舌交替）+ 一層深紅光 + 頭頂一對發光細角 + 地上一圈紅色光環
+const demonicMats = [[0x1a0505, 0x8e0000], [0x7f0000, 0xd50000], [0x260000, 0xff3d00]].map(([c, e]) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: 1.2, transparent: true, opacity: 0.92, depthWrite: false }));
+const hornMat = new THREE.MeshStandardMaterial({ color: 0x2b0a0a, emissive: 0xff1744, emissiveIntensity: 1.2, roughness: 0.4 });
+const hornTipMat = new THREE.MeshStandardMaterial({ color: 0xff6d00, emissive: 0xff3d00, emissiveIntensity: 2.4 });
+const hornGeo = new THREE.ConeGeometry(0.12, 0.42, 10);
 const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a237e, emissive: 0x2962ff, emissiveIntensity: 1.1, roughness: 0.6, flatShading: true });
 const rockGeo = new THREE.DodecahedronGeometry(0.2, 0);
 const starGeo = new THREE.OctahedronGeometry(0.15, 0);
@@ -32,6 +37,7 @@ export function addFireAura(model, kind = 'fire') {
   const phantom = kind === 'phantom';
   const meteoric = kind === 'meteoric';
   const astral = kind === 'astral';
+  const demonic = kind === 'demonic';
   model.updateMatrixWorld(true);
   const world = new THREE.Box3().setFromObject(model);
   if (world.isEmpty()) return;
@@ -45,7 +51,7 @@ export function addFireAura(model, kind = 'fire') {
   const flames = [];
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2;
-    const f = new THREE.Mesh(phantom ? smokeGeo : astral ? starGeo : flameGeo, (spectral ? spectralMats : phantom ? phantomMats : eclipse ? eclipseMats : meteoric ? meteoricMats : astral ? astralMats : flameMats)[i % 3]);
+    const f = new THREE.Mesh(phantom ? smokeGeo : astral ? starGeo : flameGeo, (spectral ? spectralMats : phantom ? phantomMats : eclipse ? eclipseMats : meteoric ? meteoricMats : astral ? astralMats : demonic ? demonicMats : flameMats)[i % 3]);
     f.position.set(center.x + Math.cos(a) * r, box.min.y + 0.3 * s, center.z + Math.sin(a) * r);
     f.scale.setScalar(s);
     f.castShadow = false;
@@ -56,7 +62,7 @@ export function addFireAura(model, kind = 'fire') {
   const pos = new Float32Array(N * 3);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const embers = new THREE.Points(geo, new THREE.PointsMaterial({ color: spectral ? 0xe0ffff : phantom ? 0xb388ff : meteoric ? 0x2979ff : astral ? 0xd500f9 : eclipse ? 0xe1bee7 : 0xffab40, size: 0.14 * s, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const embers = new THREE.Points(geo, new THREE.PointsMaterial({ color: spectral ? 0xe0ffff : phantom ? 0xb388ff : meteoric ? 0x2979ff : astral ? 0xd500f9 : eclipse ? 0xe1bee7 : demonic ? 0xff1744 : 0xffab40, size: 0.14 * s, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   // Eclipse：頭頂一圈白色日冕（好似日蝕個光環）
   let corona = null;
   if (eclipse) {
@@ -67,8 +73,8 @@ export function addFireAura(model, kind = 'fire') {
   }
   // Spectral：成隻寵物包住一層半透明青色鬼影（閃下閃下）；Meteoric：藍光；Astral：紫光
   let shell = null;
-  if (spectral || meteoric || astral) {
-    shell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: meteoric ? 0x1565c0 : astral ? 0x6200ea : 0x84ffff, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  if (spectral || meteoric || astral || demonic) {
+    shell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: meteoric ? 0x1565c0 : astral ? 0x6200ea : demonic ? 0xb71c1c : 0x84ffff, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     shell.position.copy(center);
     shell.scale.set(Math.max(0.5, size.x * 0.62), Math.max(0.5, size.y * 0.6), Math.max(0.5, size.z * 0.62));
     shell.castShadow = false;
@@ -89,12 +95,36 @@ export function addFireAura(model, kind = 'fire') {
     halo.rotation.set(Math.PI / 2 - 0.45, 0, 0.3);
     g.add(halo);
   }
+  // 😈 Demonic：頭頂一對細角（放喺最高點前面少少）+ 地上一圈紅光
+  const horns = [];
+  if (demonic) {
+    for (const side of [-1, 1]) {
+      const h = new THREE.Group();
+      h.position.set(center.x + side * Math.max(0.15, size.x * 0.18), box.max.y + 0.05 * s, center.z - size.z * 0.18);
+      h.rotation.z = side * -0.4;
+      const base = new THREE.Mesh(hornGeo, hornMat);
+      base.position.y = 0.2;
+      const tip = new THREE.Mesh(hornGeo, hornTipMat);
+      tip.scale.setScalar(0.55);
+      tip.position.set(side * 0.06, 0.44, 0);
+      tip.rotation.z = side * -0.5;
+      h.add(base, tip);
+      h.scale.setScalar(s * 0.8);
+      h.userData.y = h.position.y;
+      g.add(h);
+      horns.push(h);
+    }
+    halo = new THREE.Mesh(new THREE.RingGeometry(r * 0.85, r * 1.05, 40), new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    halo.position.set(center.x, box.min.y + 0.04, center.z);
+    halo.rotation.x = -Math.PI / 2;
+    g.add(halo);
+  }
   embers.frustumCulled = false;
   g.add(embers);
   model.add(g);
   model.userData.fireAura = g;
   model.userData.fireAuras[kind] = g;
-  auras.add({ g, flames, pos, geo, r, s, center, minY: box.min.y, height: size.y, corona, shell, shellScale: shell?.scale.clone(), phantom, orbit: astral, rocks, halo, glow: meteoric || astral });
+  auras.add({ g, flames, pos, geo, r, s, center, minY: box.min.y, height: size.y, corona, shell, shellScale: shell?.scale.clone(), phantom, orbit: astral, rocks, halo, glow: meteoric || astral || demonic, horns, demonic });
 }
 
 // 寵物仲喺唔喺場景（拎走咗就唔郁）
@@ -132,6 +162,10 @@ export function animateFireAuras(time) {
       m.rotation.set(time * 2 + i, time * 3, 0);
     });
     if (a.halo) a.halo.rotation.z = time * 0.8;
+    if (a.demonic) {
+      a.horns.forEach((h, i) => (h.position.y = h.userData.y + Math.sin(time * 2.4 + i) * 0.04 * a.s));
+      a.halo.material.opacity = 0.35 + Math.abs(Math.sin(time * 2.2)) * 0.3;
+    }
     if (a.shell) {
       a.shell.material.opacity = (a.glow ? 0.14 : 0.1) + Math.abs(Math.sin(time * 2.2)) * 0.14;
       a.shell.scale.copy(a.shellScale).multiplyScalar(1 + Math.sin(time * 3) * 0.04);

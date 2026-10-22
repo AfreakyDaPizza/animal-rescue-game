@@ -53,6 +53,14 @@ export const GEARS = {
     mutate: () => null,
     canUse: () => false,
   },
+  // 😈 Demonic Chest（小朋友 Issue #11）：Witch Tower 獎品；開出 5 隻 Demonic 寵物（機會率：balance.js DEMONIC_CHEST_DROPS）
+  demonicChest: {
+    name: 'Demonic Chest', emoji: '😈', color: '#ff3d00', rarity: 'Legendary', chest: true,
+    desc: () => 'Put it in your hotbar and click to open it! A NEW Demonic pet inside: Imp, Toro, Demonic Whale, Skeleton Horseman or the super rare Lava Cerberus!',
+    where: 'Win it in the 🧙 Witch Tower',
+    mutate: () => null,
+    canUse: () => false,
+  },
 };
 export const isChestGear = (type) => !!GEARS[type]?.chest;
 
@@ -61,14 +69,15 @@ export const isChestGear = (type) => !!GEARS[type]?.chest;
 // 點解每個變異一個 type（唔係一個 type + mutation 欄）：state.gears 仍然係 { type }，背包疊埋、快捷欄 key 'gear:<type>' 全部照用，唔使改舊存檔
 // ☄️ meteoric 同 🌌 astral 已經有 meteoricShard／astralReroll（mutation 欄），唔再整多一粒
 // 將來 MUTATIONS 加新變異 → 自動有新 Shard（樣用變異顏色，想要專屬樣喺 gearArt.js STYLES 加）
-const SHARD_RARITY = { fire: 'Epic', eclipse: 'Legendary', spectral: 'Epic', phantom: 'Legendary' };
+const SHARD_RARITY = { fire: 'Epic', eclipse: 'Legendary', spectral: 'Epic', phantom: 'Legendary', demonic: 'Mythic' };
+const SHARD_WHERE = { demonic: 'Win it in the 🧙 Witch Tower' }; // 😈 Demonic Shard（Issue #11）
 const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
 for (const m of MUTATIONS) {
   if (Object.values(GEARS).some((g) => g.mutation === m)) continue;
   GEARS[`shard_${m}`] = {
     name: `${niceName(m)} Shard`, emoji: mutationInfo(m).emoji, color: mutationInfo(m).color, rarity: SHARD_RARITY[m] || 'Epic', art: m, mutation: m,
     desc: () => `Pick a pet: it becomes ${mutationInfo(m).emoji} ${mutationInfo(m).name} x${mutationInfo(m).money}!`,
-    where: 'A super rare shard! (Ranger Control Panel)',
+    where: SHARD_WHERE[m] || 'A super rare shard! (Ranger Control Panel)',
     mutate: (pet) => (hasMutation(pet, m) ? null : m),
     canUse: (pet) => !hasMutation(pet, m),
   };
@@ -76,7 +85,7 @@ for (const m of MUTATIONS) {
 // 變異 → 用邊種 gear（例如 'fire' → 'shard_fire'，'meteoric' → 'meteoricShard'）
 export const mutationShardType = (m) => Object.keys(GEARS).find((t) => GEARS[t].mutation === m) || null;
 // 所有變異 Shard（有 mutate 嘅 gear，包括 🔮 Halloween Shard）
-export const isShardGear = (type) => !!GEARS[type]?.mutate;
+export const isShardGear = (type) => !!GEARS[type]?.mutate && !GEARS[type].chest; // 寶箱都有 mutate（return null），唔算 Shard
 
 export const gearInfo = (type) => GEARS[type] || { name: type, emoji: '❓', color: '#90a4ae', rarity: 'Common', desc: () => 'A mystery gear!', mutate: () => null, canUse: () => false };
 export const gearCount = (type) => (state.gears || []).filter((g) => g.type === type).length;

@@ -7,7 +7,7 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
+import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
@@ -87,6 +87,8 @@ export function updateHud(dayNight, location) {
   if (document.body.classList.contains('in-halloween')) {
     bumpStat('hud-candy', state.candyCorn || 0);
     bumpStat('hud-souls', state.soulDust || 0);
+    $('hud-skele-box').hidden = !state.skeleTokens; // ☠️ Witch Tower（Issue #11）：有先顯示
+    if (state.skeleTokens) bumpStat('hud-skele', state.skeleTokens);
     const extra = `🎣 ${currentRod().name} · 🔮 ${state.hwShards || 0} Shards${state.vacuumLevel ? ` · 🧹 Lv ${state.vacuumLevel}` : ''}`;
     const ex = $('hud-hw-extra');
     if (ex.textContent !== extra) ex.textContent = extra;
@@ -649,6 +651,21 @@ function animalIndexHtml() {
       : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
   }
   html += '</div>';
+  // 😈 Witch Tower 獎品寵物（Issue #11）：Demonic Chest + 2 隻蛋
+  for (const [title, list, how] of [
+    ['😈 Demonic Chest', DEMONIC_CHEST_PETS, 'Win a Demonic Chest in the 🧙 Witch Tower and open it from your hotbar!'],
+    ['🧙 Witch Tower Eggs', DEMONIC_EGG_PETS, 'Win a Lava Bloom or Pumpkgrim egg in the 🧙 Witch Tower and hatch it at the 🪦 Egg Graveyard!'],
+  ]) {
+    const got = list.filter((a) => state.indexFound.includes(a.name)).length;
+    html += `<h3>${title} <span class="count">${got}/${list.length}${got === list.length ? ' ✅' : ''}</span></h3>
+      <p class="reward">${how}</p><div class="cards">`;
+    for (const a of list) {
+      html += state.indexFound.includes(a.name)
+        ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
+    }
+    html += '</div>';
+  }
   return html;
 }
 
@@ -687,6 +704,7 @@ function shopHtml() {
       ${equipped ? '<span class="tag">✔ Wearing</span>'
         : owned ? `<button data-shop="${action}-equip" data-i="${i}">Equip</button>`
         : action === 'ranger' && RANGER_SKINS[i]?.meteor ? '<span class="tag">☄️ Meteoric Shop 💎</span>' // 🌠 用 Meteor Crystals 先買得
+        : action === 'ranger' && RANGER_SKINS[i]?.tower ? '<span class="tag">🧙 Witch Tower prize</span>' // 😈 Witch Tower 先攞得
         : `<button data-shop="${action}-buy" data-i="${i}" ${state.tokens < cost ? 'disabled' : ''}>Buy 🎟️ ${cost}</button>`}
     </div>`;
   if (shopTab === 'ranger') {

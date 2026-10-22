@@ -1,13 +1,15 @@
 // 50 隻瀕危動物（原稿 30 隻 + 小朋友加嘅每區 2 隻 + Biome 6 嘅 10 隻）（原稿：docs/design-prompt.md）
 // biome：0 = Biome 1 … 4 = Biome 5
 // status：IUCN 紅色名錄保育狀況（2026 年資料，有啲物種係「整體唔算瀕危，但部分族群好危險」）
-import { petMoney, FIRE_MONEY, ECLIPSE_MONEY, SPECTRAL_MONEY, PHANTOM_MONEY, METEORIC_MONEY, ASTRAL_MONEY } from './balance.js';
+import { petMoney, FIRE_MONEY, ECLIPSE_MONEY, SPECTRAL_MONEY, PHANTOM_MONEY, METEORIC_MONEY, ASTRAL_MONEY, DEMONIC_MONEY } from './balance.js';
 import { HALLOWEEN_PETS } from './halloween.js'; // 🎃 Halloween 蛋寵物（唔喺 ANIMALS：唔會喺普通生態區出）
 export { HALLOWEEN_PETS };
 import { CHEST_PETS } from './echoChest.js'; // 🐕 Echo 嘅 Zombified Chest 寵物（淨係箱度開到）
 export { CHEST_PETS };
 import { METEOR_PETS, ARCADRAGON_MONEY } from './meteorShop.js'; // ☄️ Meteoric Shop 寵物（Issue #10：淨係 Meteoric Chest／直接買）
 export { METEOR_PETS };
+import { DEMONIC_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS } from './demonic.js'; // 😈 Witch Tower 獎品寵物（Issue #11：Demonic Chest + 2 隻蛋）
+export { DEMONIC_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS };
 
 // emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
 // kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
@@ -171,7 +173,7 @@ export const animalsInBiome = (biome) => (biome >= 7 ? HALLOWEEN_PETS : ANIMALS)
 
 // 舊名（2026-10-17 小朋友改名）
 const OLD_NAMES = { 'Enchanted Sunlion': 'Celestial Sunlion' };
-export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name);
+export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {
@@ -193,7 +195,8 @@ export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
 // 存法：item.mutation 係字串，'fire'、'eclipse' 或者 'fire+eclipse'（舊存檔照用得）
 // 🎃 Halloween（Halloween Shard）：👻 Spectral ×4、🟣 Phantom ×5
 // ☄️ Meteoric ×5（Meteoric Shard）、🌌 Astral ×8（Meteoric Chest）（小朋友 Issue #10）
-export const MUTATIONS = ['fire', 'eclipse', 'spectral', 'phantom', 'meteoric', 'astral'];
+// 😈 Demonic ×10（Demonic Shard，Witch Tower 獎品，小朋友 Issue #11）
+export const MUTATIONS = ['fire', 'eclipse', 'spectral', 'phantom', 'meteoric', 'astral', 'demonic'];
 const MUTATION_INFO = {
   fire: { emoji: '🔥', name: 'FIRE', color: '#ff6d00', money: FIRE_MONEY },
   eclipse: { emoji: '🌑', name: 'ECLIPSE', color: '#ea80fc', money: ECLIPSE_MONEY },
@@ -201,6 +204,7 @@ const MUTATION_INFO = {
   phantom: { emoji: '🟣', name: 'PHANTOM', color: '#b388ff', money: PHANTOM_MONEY },
   meteoric: { emoji: '☄️', name: 'METEORIC', color: '#40c4ff', money: METEORIC_MONEY },
   astral: { emoji: '🌌', name: 'ASTRAL', color: '#b388ff', money: ASTRAL_MONEY },
+  demonic: { emoji: '😈', name: 'DEMONIC', color: '#ff1744', money: DEMONIC_MONEY },
 };
 export const mutationInfo = (m) => MUTATION_INFO[m];
 export const mutationList = (x) => {

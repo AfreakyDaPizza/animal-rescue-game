@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { poseGym, gymFirstPerson } from './gymPoses.js'; // 💪 Gym 動作
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { kgScale } from './data/animals.js';
+import { buildDemonicParts, animateDemonic } from './demonicRanger.js'; // 😈 Demonic Ranger（Issue #11）
 
 const MIN_ZOOM = 0; // 0 = 第一身
 const MAX_ZOOM = 20;
@@ -216,7 +217,8 @@ export function buildAvatar() {
   box(galaxyBody, 0.6, 0.7, 0.3, 0x1a237e, 0, 1.4, 0.38);
   box(galaxyBody, 0.15, 0.15, 0.05, SG(0xffeb3b, 1.6), 0, 1.5, 0.55);
   const cosmic = buildCosmic({ make, head, torso, arms, legs, SM, SG });
-  return { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge, cosmic };
+  const demonic = buildDemonicParts(make, { head, torso, arms, legs }); // 😈 角、翼、尾
+  return { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge, cosmic, demonic };
 }
 
 // ---- 🌠 Cosmic Meteor Ranger（小朋友 2026-10-22）----
@@ -401,6 +403,7 @@ export function applyRangerSkin(tp, skin) {
   badge.visible = skin.id === 'ranger';
   tp.rainbow = !!skin.rainbow;
   tp.cosmic = skin.extra === 'cosmic'; // 🌠 動畫 + 超級英雄落地
+  tp.demonic = skin.extra === 'demonic'; // 😈 飛 + 火噴射跳（demonicRanger.js）
 }
 
 export function createThirdPerson(scene, eye) {
@@ -625,6 +628,7 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded
     if (tp.land) applySuperLand(avatar, tp.land, !!held); // 🦸 Cosmic Meteor Ranger 落地（cosmicLanding.js 設定 tp.land）
   }
   if (tp.cosmic) animateCosmic(avatar, t, anim); // 🌠 披風、細隕石、裂紋閃
+  if (tp.demonic && !sitting && !gymStation) animateDemonic(avatar, t, anim, !!held); // 😈 行路 = 飛、拍翼
 
   // 鏡頭：喺公仔後面；寵物越大，退得越後，等你睇得晒
   eye.getWorldDirection(fwd);

@@ -58,6 +58,8 @@ const DEFAULTS = {
   candyCorn: 0, // 🌽 Halloween：釣魚得嘅 Candy Corn（買魚竿、寶箱舖用）
   echoQuests: null, // 🐾 Echo's Questline（2026-10-22）：{ day, index, progress, claimed }，每日午夜重新由第 1 個開始
   echoQuestsEarly: false, // 🔐 秘密控制台：提早開 Echo's Questline
+  skeleTokens: 0, // ☠️ Skele Tokens：🧙 Witch Tower 獎品貨幣（Issue #11；俾獎用 src/demonicRewards.js）
+  demonicBossSkin: false, // 😈 Demonic Boss Skin 解鎖咗未（Witch Tower 獎品；之後喺 Boss 隔籬撳 E 換，demonicBossSkin.js）
   meteorCrystals: 0, // ☄️ METEORIC 活動執到嘅 Meteoric Crystals（Issue #10；每粒 × state.crystalMultiplier）
 };
 
