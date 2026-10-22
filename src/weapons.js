@@ -179,7 +179,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   avatar.arms[1].add(tpRoot);
   tpRoot.position.set(0, -0.78, -0.12);
   tpRoot.rotation.x = -Math.PI / 2; // 槍管跟手臂方向（手臂舉向前）
-  tpRoot.scale.setScalar(1.25);
+  tpRoot.scale.setScalar(1.45); // Issue #12：大少少，第三身睇得清啲
   const models = {};
   function modelsOf(id) {
     if (!models[id]) {
@@ -188,10 +188,10 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       fp.visible = tp.visible = false;
       const def = WEAPONS[id];
       const fpFlash = muzzleFlash(def.color);
-      fpFlash.scale.setScalar(0.35);
+      fpFlash.scale.setScalar(0.35 * (fp.userData.flashScale ?? 1)); // flashScale：模型可以話閃光要細啲（例如 Slingshot）
       fp.userData.muzzle.add(fpFlash);
       const tpFlash = muzzleFlash(def.color);
-      tpFlash.scale.setScalar(0.5);
+      tpFlash.scale.setScalar(0.5 * (tp.userData.flashScale ?? 1));
       tp.userData.muzzle.add(tpFlash);
       fpRoot.add(fp);
       tpRoot.add(tp);
@@ -207,19 +207,60 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   const shots = []; // projectile
   const sparks = [];
   const sparkGeo = new THREE.PlaneGeometry(1, 1);
-  const tracerMats = {};
-  const tracerMat = (color) => (tracerMats[color] ||= new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   const sparkMats = {};
   const sparkMat = (color) => (sparkMats[color] ||= new THREE.MeshBasicMaterial({ map: glowTexture(), color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-  function tracer(from, to, color) {
+  // Issue #12：彈道 = 白色芯 + 彩色光暈 + 前面一嚿光頭（樣由模型 userData.tracer 決定）
+  const tracerCoreMats = {};
+  const tracerCoreMat = (color) => (tracerCoreMats[color] ||= new THREE.MeshBasicMaterial({ color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.65), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  const tracerGlowMats = {};
+  const tracerGlowMat = (color) => (tracerGlowMats[color] ||= new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  function tracer(from, to, color, style = {}) {
     const len = from.distanceTo(to);
-    const m = new THREE.Mesh(tracerGeo, tracerMat(color));
+    const m = new THREE.Group();
+    const core = new THREE.Mesh(tracerGeo, tracerCoreMat(color));
+    const glow = new THREE.Mesh(tracerGeo, tracerGlowMat(color));
+    glow.scale.set(3.2, 3.2, 1);
+    m.add(core, glow);
     m.position.copy(from);
     m.lookAt(to);
-    m.frustumCulled = false;
     scene.add(m);
-    // 一嚿光（長 3 米）由槍嘴飛去目標（好快）
-    tracers.push({ m, from: from.clone(), dir: to.clone().sub(from).normalize(), len, t: 0, speed: 260 });
+    const head = new THREE.Mesh(sparkGeo, sparkMat(color));
+    head.frustumCulled = false;
+    head.scale.setScalar(style.head ?? 0.45);
+    scene.add(head);
+    m.traverse((o) => (o.frustumCulled = false));
+    // 一嚿光（長 length 米）由槍嘴飛去目標（好快）
+    tracers.push({ m, head, from: from.clone(), dir: to.clone().sub(from).normalize(), len, t: 0, speed: style.speed ?? 260, width: style.width ?? 0.03, length: style.length ?? 4, size: style.head ?? 0.45 });
+  }
+  // Issue #12：射嘢時由彈殼位噴出細能量粒／糖果碎（Candy Pistol 係彩色糖碎）
+  const shellGeo = new THREE.CapsuleGeometry(0.5, 0.6, 3, 8); // 細細粒膠囊形
+  const shells = [];
+  const shellMats = {};
+  const shellMat = (color) => (shellMats[color] ||= new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.2, roughness: 0.3 }));
+  const ejectW = new THREE.Vector3();
+  function ejectShells(model, view, third) {
+    const u = model.userData;
+    if (!u.eject || !u.shell) return;
+    u.eject.getWorldPosition(ejectW);
+    const right = tmpV.set(1, 0, 0).applyQuaternion(view.quaternion);
+    const sc = third ? 1.6 : 0.3; // 第一身：模型縮細咗，粒粒都要細
+    const n = u.shell.sprinkle ? 4 : 1;
+    for (let i = 0; i < n; i++) {
+      const col = u.shell.colors[Math.floor(Math.random() * u.shell.colors.length)];
+      const s = new THREE.Mesh(shellGeo, shellMat(col));
+      s.position.copy(ejectW);
+      s.scale.set(1, u.shell.sprinkle ? 2.2 : 1.4, 1).multiplyScalar(u.shell.size * sc);
+      s.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+      s.frustumCulled = false;
+      scene.add(s);
+      const v = right.clone().multiplyScalar(third ? 2.8 + Math.random() * 2.4 : 0.45 + Math.random() * 0.35);
+      v.y += third ? 2.1 + Math.random() * 1.8 : 0.4 + Math.random() * 0.35;
+      v.addScaledVector(new THREE.Vector3().randomDirection(), third ? 0.8 : 0.25);
+      const glow = new THREE.Mesh(sparkGeo, sparkMat(col)); // 光暈（永遠面向鏡頭）
+      glow.frustumCulled = false;
+      scene.add(glow);
+      shells.push({ s, glow, v, spin: new THREE.Vector3(Math.random() * 20 - 10, Math.random() * 20 - 10, Math.random() * 20 - 10), t: 0, life: 0.5 + Math.random() * 0.25, g: third ? 9 : 4, size: u.shell.size * sc * (third ? 2.5 : 1.8) });
+    }
   }
   function sparkBurst(p, color, n = 6, size = 0.5) {
     for (let i = 0; i < n; i++) {
@@ -348,6 +389,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   let charge = -1; // >=0 = Slingshot 拉緊（秒）
   let aimK = 0;
   let kick = 0; // 槍向後彈
+  let kickRoll = 0; // 後座力左右擰（隨機）
   let flashK = 0;
   let baseFov = camera.fov;
   let fovTouched = false;
@@ -411,14 +453,18 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       }
       // 第一身：光由槍嘴前面少少開始（太近鏡頭會好大條）
       if (!third) muzzleW.addScaledVector(tmpV.copy(end).sub(muzzleW).normalize(), Math.min(1.2, muzzleW.distanceTo(end) * 0.5));
-      tracer(muzzleW, end, def.color);
+      tracer(muzzleW, end, def.color, (third ? m.tp : m.fp).userData.tracer);
     }
     // 後座力：鏡頭向上彈少少（隨機左右）
     const rec = def.recoil * DEG * (1 - aimK * 0.5);
     camera.rotation.x = Math.min(1.45, camera.rotation.x + rec);
     camera.rotation.y += (Math.random() - 0.5) * rec * 0.6;
     kick = 1;
+    kickRoll = (Math.random() - 0.5) * 2;
     flashK = 1;
+    m.fp.userData.fire?.();
+    m.tp.userData.fire?.();
+    ejectShells(third ? m.tp : m.fp, view, third);
     play(def.id === 'soulBlaster' ? 'blasterShot' : def.id === 'candyPistol' ? 'pistolShot' : 'slingShot');
     for (const g of [m.fp, m.tp]) for (const mat of g.userData.glows) mat.emissiveIntensity = 5;
     api.onShot?.(def);
@@ -451,7 +497,8 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     const magOut = reloading > 0 ? Math.max(0, Math.sin(Math.min(1, rk * 1.4) * Math.PI)) : 0;
     for (const g of [m.fp, m.tp]) {
       const u = g.userData;
-      if (u.mag && u.magRest && !u.setPull) {
+      if (u.reload) u.reload(rk); // Issue #12：模型自己嘅換彈動畫（能量罐飛出去再塞返）
+      else if (u.mag && u.magRest && !u.setPull) {
         u.mag.position.copy(u.magRest);
         u.mag.position.y -= magOut * 0.35;
         u.mag.rotation.x = magOut * 0.6;
@@ -462,15 +509,20 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       for (const mat of u.glows) mat.emissiveIntensity += (2.2 - mat.emissiveIntensity) * Math.min(1, dt * 10);
     }
     // 第一身位置：腰射 ↔ 開鏡（槍去畫面中間）
-    const hip = { x: 0.26, y: -0.25, z: -0.62 };
-    const ads = { x: 0, y: (ud.aimY ?? -0.2) * 0.6, z: -0.45 };
+    const hip = ud.hip || { x: 0.26, y: -0.25, z: -0.62 };
+    const ads = { x: 0, y: (ud.aimY ?? -0.2) * 0.6, z: ud.adsZ ?? -0.45 }; // adsZ：瞄準鏡要貼近眼
     const bob = Math.sin(time * 1.6) * 0.006;
+    // 後座力：一下子彈後（kick²，快）再慢慢返；力度跟 recoil；開鏡時細啲
+    const kk = kick * kick * Math.min(1.6, 0.6 + def.recoil * 0.5) * (1 - aimK * 0.6);
+    const kxy = 1 - (1 - aimK) * (1 - aimK); // 開鏡：先移去畫面中間…
+    const kz = aimK * aimK; // …先至貼近隻眼（瞄準鏡唔會大嚿咁喺角落飛過）
+    // 換彈：槍擰側少少（彈匣嗰邊向住畫面中間），睇到能量罐飛出飛入
     fpRoot.position.set(
-      THREE.MathUtils.lerp(hip.x, ads.x, aimK),
-      THREE.MathUtils.lerp(hip.y, ads.y, aimK) + bob - dip * 0.12,
-      THREE.MathUtils.lerp(hip.z, ads.z, aimK) + kick * 0.06,
+      THREE.MathUtils.lerp(hip.x, ads.x, kxy) + kk * kickRoll * 0.008 - dip * 0.06,
+      THREE.MathUtils.lerp(hip.y, ads.y, kxy) + bob + dip * 0.03 + kk * 0.012,
+      THREE.MathUtils.lerp(hip.z, ads.z, kz) + kk * 0.07,
     );
-    fpRoot.rotation.set(kick * 0.12 - dip * 0.7, (1 - aimK) * 0.06, dip * 0.5);
+    fpRoot.rotation.set(kk * 0.16 - dip * 0.3 + Math.sin(rk * Math.PI * 2) * dip * 0.08, (1 - aimK) * 0.06 + dip * 0.35, -dip * 0.55 + kk * kickRoll * 0.06);
     fpRoot.scale.setScalar(0.3);
     m.fpFlash.userData.show(!third ? flashK : 0);
     m.tpFlash.userData.show(third ? flashK : 0);
@@ -594,11 +646,14 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       tr.t += dt;
       const raw = tr.t * tr.speed; // 光頭飛咗幾遠
       const head = Math.min(tr.len, raw);
-      const tail = Math.min(tr.len, Math.max(0, raw - 4)); // 光尾（光長 4 米）
+      const tail = Math.min(tr.len, Math.max(0, raw - tr.length)); // 光尾
       tr.m.position.copy(tr.from).addScaledVector(tr.dir, (head + tail) / 2);
-      tr.m.scale.set(0.03, 0.03, Math.max(0.01, head - tail));
-      if (raw - 4 >= tr.len) {
-        scene.remove(tr.m);
+      tr.m.scale.set(tr.width, tr.width, Math.max(0.01, head - tail));
+      tr.head.position.copy(tr.from).addScaledVector(tr.dir, head);
+      tr.head.quaternion.copy(view.quaternion);
+      tr.head.scale.setScalar(tr.size * (raw >= tr.len ? Math.max(0, 1 - (raw - tr.len) / tr.length) * 1.6 : 1));
+      if (raw - tr.length >= tr.len) {
+        scene.remove(tr.m, tr.head);
         tracers.splice(i, 1);
       }
     }
@@ -610,6 +665,16 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       sh.v.y -= sh.gravity * dt;
       sh.s.position.addScaledVector(sh.v, dt);
       sh.s.quaternion.copy(view.quaternion);
+      // Issue #12：飛行時留低一串發光尾巴
+      sh.trail = (sh.trail || 0) + dt;
+      if (sh.trail > 0.02) {
+        sh.trail = 0;
+        const tp = new THREE.Mesh(sparkGeo, sparkMat(sh.def.color));
+        tp.position.copy(sh.s.position);
+        tp.scale.setScalar(0.35 + Math.random() * 0.15);
+        scene.add(tp);
+        sparks.push({ s: tp, v: new THREE.Vector3().randomDirection().multiplyScalar(0.4), life: 0.3, t: 0, size: tp.scale.x });
+      }
       const step = sh.s.position.distanceTo(from);
       const dir = sh.s.position.clone().sub(from).normalize();
       const hit = rayHit(from, dir, step);
@@ -622,6 +687,23 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
         scene.remove(sh.s);
         sh.s.children[0].geometry.dispose();
         shots.splice(i, 1);
+      }
+    }
+    // 彈殼粒（Issue #12）
+    for (let i = shells.length - 1; i >= 0; i--) {
+      const sh = shells[i];
+      sh.t += dt;
+      sh.v.y -= sh.g * dt;
+      sh.s.position.addScaledVector(sh.v, dt);
+      sh.s.rotation.x += sh.spin.x * dt;
+      sh.s.rotation.y += sh.spin.y * dt;
+      sh.s.rotation.z += sh.spin.z * dt;
+      sh.glow.position.copy(sh.s.position);
+      sh.glow.quaternion.copy(view.quaternion);
+      sh.glow.scale.setScalar(sh.size * Math.max(0.01, 1 - sh.t / sh.life));
+      if (sh.t >= sh.life) {
+        scene.remove(sh.s, sh.glow);
+        shells.splice(i, 1);
       }
     }
     // 火花
