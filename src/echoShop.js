@@ -3,40 +3,37 @@
 //
 // - Echo：方塊風格嘅鬼魂狗（2026-10-22 小朋友改：半透明發淡青光、後面係條鬼尾、浮喺半空），企喺自己個小舖頭度，搖尾、歪頭、望住你
 // - 撳 E → 面板：見到你有幾多 🌽 Candy Corn、箱嘅價錢、開到乜嘢（機會率）
-// - 買 → 開箱動畫：箱由天跌落嚟 → 震 → 按稀有度發光 → 爆開 → 大字講你開到乜；Mythic 有特別大嘅動畫
-// - 開到寵物：直接入背囊（state.pets），同蛋墳場孵出嚟嘅一樣（唔使再孵）；開到 Candy Corn：加返落 state.candyCorn
+// - 買（小朋友 2026-10-22：可以一次過買 x1／x5／x10／x25／MAX）→ 箱入背包（Gear 'zombieChest'）
+//   放上快捷欄撳滑鼠／E 開（chests.js：開箱動畫、俾獎都喺嗰度）
 //
 // main.js 用法：
-//   const echo = createEchoShop({ scene, camera, openShop, teleport, resume, popup, announce }) // 第一次入 Halloween 世界先起
+//   const echo = createEchoShop({ scene, openShop, popup }) // 第一次入 Halloween 世界先起
 //   echo.update(dt, time, camera.position)  // 每格畫面（搖尾、望住你）
 //   echo.interaction(pos) → { prompt, action } | null
 //   giveCandyCorn(n)                        // 測試用（window.game.candy）
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
-import { ZOMBIE_CHEST_COST, ZOMBIE_CHEST_CANDY, ZOMBIE_CHEST_DROPS, INDEX_NEW_SPECIES_REWARD, rarityInfo } from './data/balance.js';
-import { rollZombieChest } from './data/echoChest.js';
-import { findAnimal, randomKg } from './data/animals.js';
-import { buildAnimalModel } from './animalModels.js';
+import { ZOMBIE_CHEST_COST, ZOMBIE_CHEST_CANDY, ZOMBIE_CHEST_DROPS, rarityInfo } from './data/balance.js';
+import { findAnimal } from './data/animals.js';
+import { addGear, gearCount } from './data/gears.js';
+import { bulkButtons, bulkCount } from './bulkBuy.js';
 import { HW_X, RUINS } from './halloweenShape.js';
 import { halloween } from './halloweenWorld.js';
-import { extraPanels, closePanel, panelKind } from './hud.js';
+import { extraPanels, panelKind, openPanel, renderHotbar } from './hud.js';
 import { petPic } from './animalPics.js';
 import { makeLabel, makeSign, THEMES } from './signs.js';
-import { playMovie, once, shake } from './movie.js';
 import { short } from './format.js';
 import { play } from './sound.js';
 import { V, M, GLOW, B, S, pivot, cone, cyl, torus, tube, limb, bigEyes, smile, stitches, blinkAt, pumpkin, carvedFace, candyCorn, outline } from './echoPetModels.js';
 
 const PI = Math.PI;
-const WHITE = new THREE.Color(0xffffff);
 const $ = (id) => document.getElementById(id);
 
 // 📍 舖頭位置：出生點東北面，面向你一到埗企嘅位（HW_ARRIVE）
 export const ECHO_STALL = { x: HW_X + 10, z: RUINS.z - 9 };
 const STALL_ROT = Math.atan2(HW_X - ECHO_STALL.x, 4 - ECHO_STALL.z); // 舖頭前面（local +z）望住出生點
 const FRONT = V(Math.sin(STALL_ROT), 0, Math.cos(STALL_ROT));
-const SIDE = V(Math.cos(STALL_ROT), 0, -Math.sin(STALL_ROT)); // 舖頭嘅右手面（由客人望過去係左）
 const SHOP_SPOT = { x: ECHO_STALL.x + FRONT.x * 2.6, z: ECHO_STALL.z + FRONT.z * 2.6 }; // 企喺度撳 E
 const CANDY = '🌽'; // 同釣魚一致
 
@@ -389,6 +386,7 @@ function shopHtml() {
   const cc = candyCornOf();
   const can = cc >= ZOMBIE_CHEST_COST;
   const pic = chestPicture();
+  const owned = gearCount('zombieChest');
   const rows = ZOMBIE_CHEST_DROPS.map((d) => {
     const r = rarityInfo(d.rarity);
     const color = r.color === '#cfd8dc' ? '#90a4ae' : r.color;
@@ -407,12 +405,13 @@ function shopHtml() {
         ${pic ? `<img class="echo-chest-img" src="${pic}" alt="">` : '<div class="emoji">🧰</div>'}
         <b>🧟 ZOMBIFIED CHEST</b>
         <span class="kg">${CANDY} ${ZOMBIE_CHEST_COST} Candy Corn</span>
-        <p>Open it to find Candy Corn or a NEW spooky pet!</p>
-        <div class="pet-actions"><button data-echo="buy" ${can ? '' : 'disabled class="grey"'}>${can ? `🧟 Open a chest (${ZOMBIE_CHEST_COST} ${CANDY})` : `Need ${short(ZOMBIE_CHEST_COST - cc)} more ${CANDY}`}</button></div>
+        <p>Open it to find Candy Corn or a NEW spooky pet! Chests go in your 🎒 - put them in your hotbar and click to open.</p>
+        ${owned ? `<span class="bulk-have">🎒 You have ${owned}</span>` : ''}
+        ${bulkButtons({ attr: 'data-echo="buy"', cost: ZOMBIE_CHEST_COST, have: cc, icon: CANDY })}
       </div>
       <div class="echo-drops"><h3>What's inside?</h3>${rows}</div>
     </div>
-    <p class="hint">🐕 Echo says: "Woof! I found these chests in the old manor. ${can ? 'Want to open one? Woof woof!' : 'Bring me Candy Corn - you can get it by fishing at the lake!'}"</p>`;
+    <p class="hint">🐕 Echo says: "Woof! I found these chests in the old manor. ${can ? 'Want some chests? Buy lots and open them all! Woof woof!' : 'Bring me Candy Corn - you can get it by fishing at the lake!'}"</p>`;
 }
 extraPanels.echo = ["🐕 Echo's Zombified Chest Shop", shopHtml, 'E'];
 
@@ -430,38 +429,21 @@ const CSS = `
 .echo-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
 .echo-bar div { height: 100%; background: var(--c); box-shadow: 0 0 8px var(--c); }
 .echo-pct { font-size: 22px; font-weight: 900; min-width: 52px; text-align: right; }
-#echo-reveal { position: fixed; left: 0; right: 0; top: 13vh; z-index: 40; text-align: center; pointer-events: none; font-family: "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif; opacity: 0; }
-#echo-reveal.show { animation: echo-pop 0.7s cubic-bezier(.2,1.6,.4,1) forwards; }
-#echo-reveal .er-rarity { font-size: clamp(24px, 4.6vw, 50px); font-weight: 900; color: var(--c); letter-spacing: 6px; -webkit-text-stroke: 2px rgba(0,0,0,0.6); text-shadow: 0 0 24px var(--c), 0 0 48px var(--c); }
-#echo-reveal .er-name { font-size: clamp(30px, 6.4vw, 70px); font-weight: 900; color: #fff; -webkit-text-stroke: 3px rgba(0,0,0,0.7); text-shadow: 0 6px 0 rgba(0,0,0,0.5), 0 0 30px var(--c); line-height: 1.05; }
-#echo-reveal .er-sub { margin-top: 8px; font-size: clamp(16px, 2.6vw, 26px); font-weight: 800; color: #fff; text-shadow: 0 2px 6px #000; }
-#echo-reveal.mythic .er-rarity { background: linear-gradient(90deg, #ff4081, #ffd740, #69f0ae, #40c4ff, #b388ff, #ff4081); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 0; text-shadow: none; filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 18px #ff4081); animation: echo-rainbow 1.2s linear infinite, echo-throb 0.5s ease-in-out infinite alternate; display: inline-block; }
-#echo-reveal.mythic .er-name { animation: echo-throb 0.6s ease-in-out infinite alternate; }
-#echo-flash { position: fixed; inset: 0; z-index: 39; pointer-events: none; background: #fff; opacity: 0; }
-#echo-flash.on { animation: echo-flash 0.9s ease-out; }
-#echo-dark { position: fixed; inset: 0; z-index: 30; pointer-events: none; background: radial-gradient(circle, transparent 30%, rgba(30,0,40,0.85) 100%); opacity: 0; transition: opacity 0.8s; }
-@keyframes echo-pop { 0% { opacity: 0; transform: scale(0.3); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes echo-rainbow { to { background-position: 300% 0; } }
-@keyframes echo-throb { from { transform: scale(1); } to { transform: scale(1.08); } }
-@keyframes echo-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
 `;
+let cssDone = false;
 function ensureDom() {
-  if ($('echo-reveal')) return;
+  if (cssDone) return;
+  cssDone = true;
   const st = document.createElement('style');
   st.textContent = CSS;
   document.head.appendChild(st);
-  for (const id of ['echo-reveal', 'echo-flash', 'echo-dark']) {
-    const d = document.createElement('div');
-    d.id = id;
-    document.body.appendChild(d);
-  }
 }
 
 // ======================== 主程式 ========================
-export function createEchoShop({ scene, camera, openShop, teleport, resume, popup, announce }) {
+export function createEchoShop({ scene, openShop, popup }) {
   ensureDom();
   const stall = buildStall(scene);
-  const api = { busy: false };
+  const api = {};
   const local = new THREE.Vector3();
   let excited = 0;
 
@@ -476,7 +458,6 @@ export function createEchoShop({ scene, camera, openShop, teleport, resume, popu
     stall.echo.animate(t, near ? local : null, dt, Math.min(1, excited));
     stall.lanterns.forEach((l, i) => (l.rotation.z = Math.sin(t * 1.4 + i * 2) * 0.08));
     stall.ring.material.opacity = 0.4 + Math.sin(t * 3) * 0.2;
-    stall.label.visible = !api.busy; // 開箱動畫：收埋名牌（佢永遠喺最前面，會遮住寵物）
     // 展示箱：輕輕搖 + 綠光閃
     const d = stall.display;
     const w = Math.max(0, Math.sin(t * 1.6)) ** 6;
@@ -487,318 +468,28 @@ export function createEchoShop({ scene, camera, openShop, teleport, resume, popu
   };
 
   api.interaction = (pos) => {
-    if (api.busy) return null;
     if (Math.hypot(pos.x - SHOP_SPOT.x, pos.z - SHOP_SPOT.z) > 2.6 && Math.hypot(pos.x - ECHO_STALL.x, pos.z - ECHO_STALL.z) > 2.8) return null;
     return { prompt: `<kbd>E</kbd> 🐕 Talk to Echo: buy a 🧟 Zombified Chest (${ZOMBIE_CHEST_COST} ${CANDY})`, action: () => { excited = 2; play('boing'); openShop(); } };
   };
 
-  // 買箱（forced = 測試用：直接指定開到乜，例如 'Soul Phantom'）
-  function buy(forced = null) {
-    if (api.busy) return;
-    if (!forced && candyCornOf() < ZOMBIE_CHEST_COST) return popup(`${CANDY} You need ${ZOMBIE_CHEST_COST} Candy Corn for a Zombified Chest!`);
-    if (!forced) state.candyCorn = candyCornOf() - ZOMBIE_CHEST_COST;
-    const drop = forced ? { ...ZOMBIE_CHEST_DROPS.find((d) => d.name === forced) } : rollZombieChest();
-    if (drop.name === 'Candy Corn' && !drop.candy) drop.candy = Math.round((ZOMBIE_CHEST_CANDY[0] + ZOMBIE_CHEST_CANDY[1]) / 2);
-    // 先俾獎（就算跳過動畫都唔會唔見）
-    let reward = 0;
-    if (drop.candy) {
-      state.candyCorn = candyCornOf() + drop.candy;
-    } else {
-      const info = findAnimal(drop.name);
-      state.pets.push({ name: drop.name, biome: info?.biome ?? 9, kg: info ? randomKg(info) : 1, rarity: drop.rarity, onPlot: false });
-      if (!state.indexFound.includes(drop.name)) {
-        state.indexFound.push(drop.name);
-        reward = INDEX_NEW_SPECIES_REWARD[info?.biome ?? 9] || 0;
-        state.money += reward;
-      }
-    }
+  // 買箱（一次過買 n 個；n = 'max' = 買得起幾多就幾多）→ 入背包
+  function buy(n = 1) {
+    const count = bulkCount(n, ZOMBIE_CHEST_COST, candyCornOf());
+    if (!count) return popup(`${CANDY} You need ${ZOMBIE_CHEST_COST} Candy Corn for a Zombified Chest!`);
+    state.candyCorn = candyCornOf() - count * ZOMBIE_CHEST_COST;
+    addGear('zombieChest', count);
     save();
-    if (panelKind() === 'echo') closePanel();
+    renderHotbar();
     excited = 3;
-    openAnimation(drop, reward);
+    play('coin');
+    popup(`+${count} Zombified Chest${count === 1 ? '' : 's'} added to your 🎒`);
+    if (panelKind() === 'echo') openPanel('echo'); // 更新數字
   }
   api.buy = buy;
   $('panel-body').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-echo="buy"]');
     if (!b || panelKind() !== 'echo') return;
-    buy();
+    buy(b.dataset.n);
   });
-
-  // ---------- 🎬 開箱動畫 ----------
-  function openAnimation(drop, reward) {
-    api.busy = true;
-    const back = { x: camera.position.x, z: camera.position.z, rot: camera.rotation.clone() };
-    const mythic = drop.rarity === 'Mythic';
-    const legendary = drop.rarity === 'Legendary';
-    const big = mythic || legendary;
-    const colorHex = drop.candy ? 0xffa000 : new THREE.Color(rarityInfo(drop.rarity).color).getHex();
-    const rc = new THREE.Color(colorHex);
-    const slime = new THREE.Color(0x76ff03);
-    const T = mythic ? 11 : legendary ? 9 : 7.5; // 全長
-    const TB = mythic ? 5.2 : legendary ? 3.8 : 3.0; // 幾時爆開
-    // 位置：舖頭前面空地
-    const P = V(ECHO_STALL.x + FRONT.x * 4.8, 0, ECHO_STALL.z + FRONT.z * 4.8);
-    const fx = new THREE.Group();
-    fx.position.copy(P);
-    fx.rotation.y = STALL_ROT + PI; // 箱前面（-z）望住舖頭外面（鏡頭嗰邊）
-    scene.add(fx);
-    const chest = buildZombieChest();
-    chest.g.scale.setScalar(1.4);
-    fx.add(chest.g);
-    const glow = new THREE.PointLight(0x76ff03, 0, 12, 1.5);
-    glow.position.set(0, 1.4, -0.8);
-    fx.add(glow);
-    // 地上光圈
-    const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.8, 48), ringMat);
-    ring.rotation.x = -PI / 2;
-    ring.position.y = 0.05;
-    fx.add(ring);
-    // 光柱
-    const beamMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.9, 40, 24, 1, true), beamMat);
-    beam.position.y = 20;
-    fx.add(beam);
-    // 爆開嘅閃光波波
-    const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
-    const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), flashMat);
-    flash.position.y = 1;
-    fx.add(flash);
-    // Mythic：幾個彩虹圈
-    const halos = mythic ? [0xff4081, 0xffd740, 0x40c4ff, 0xb388ff].map((c, i) => {
-      const m = new THREE.Mesh(new THREE.TorusGeometry(2.0 + i * 0.4, 0.05, 8, 64), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
-      m.position.y = 1.4;
-      fx.add(m);
-      return m;
-    }) : [];
-    // 粒子
-    const parts = [];
-    const partGeo = new THREE.OctahedronGeometry(0.09);
-    function burst(n, speed, colors, up = 4) {
-      for (let i = 0; i < n; i++) {
-        const c = colors[i % colors.length];
-        const m = new THREE.Mesh(partGeo, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
-        m.position.set(0, 1.0, 0);
-        fx.add(m);
-        const a = Math.random() * PI * 2;
-        const sp = speed * (0.4 + Math.random() * 0.8);
-        parts.push({ m, v: V(Math.cos(a) * sp, up * (0.5 + Math.random()), Math.sin(a) * sp), life: 1.4 + Math.random() * 0.8, t: 0, spin: Math.random() * 10 });
-      }
-    }
-    // 開出嚟嘅嘢（寵物模型／一堆 Candy Corn）
-    const prizeH = drop.candy ? 0.9 : mythic ? 2.4 : legendary ? 2.2 : 1.7; // 幾高（米）
-    const prize = new THREE.Group();
-    prize.visible = false;
-    fx.add(prize);
-    api.last = { fx, prize, chest }; // 測試用（console 睇得到）
-    let prizeAnim = null;
-    if (drop.candy) {
-      candyCorn(prize, 0.8, 0, 0.1, 0); // 底喺 0，頂大概 0.85 米
-      const small = [];
-      for (let i = 0; i < 14; i++) {
-        const c = candyCorn(fx, 0.12, 0, 0, 0);
-        c.visible = false;
-        const a = (i / 14) * PI * 2;
-        small.push({ c, v: V(Math.cos(a) * (1.2 + Math.random()), 4 + Math.random() * 2.5, Math.sin(a) * (1.2 + Math.random())), r: Math.random() * 6 });
-      }
-      prizeAnim = (k, dt) => {
-        for (const s of small) {
-          s.c.visible = true;
-          if (s.c.position.y <= 0.1 && s.v.y < 0) continue;
-          s.v.y -= 9.8 * dt;
-          s.c.position.addScaledVector(s.v, dt);
-          if (s.c.position.y < 0.1) s.c.position.y = 0.1;
-          s.c.rotation.set(s.r * k * 3, s.r, 0);
-        }
-      };
-    } else {
-      try {
-        const m = buildAnimalModel(findAnimal(drop.name));
-        const box = new THREE.Box3().setFromObject(m);
-        const h = prizeH;
-        m.scale.multiplyScalar(h / Math.max(0.01, box.max.y - box.min.y));
-        prize.add(m);
-        prizeAnim = (k, dt, t) => m.userData.animate?.(t, 0);
-      } catch (e) {
-        console.warn('chest prize model failed', e);
-        // 模型出錯：淨係顯示大字
-      }
-    }
-    // 大字
-    const reveal = $('echo-reveal');
-    const dark = $('echo-dark');
-    reveal.className = '';
-    reveal.style.setProperty('--c', drop.candy ? '#ffb300' : rarityInfo(drop.rarity).color);
-    const info = findAnimal(drop.name);
-    reveal.innerHTML = drop.candy
-      ? `<div class="er-rarity">COMMON</div><div class="er-name">+${short(drop.candy)} ${CANDY} CANDY CORN</div><div class="er-sub">Echo wags his tail. Try again for a pet!</div>`
-      : `<div class="er-rarity">${mythic ? '✨ MYTHIC ✨' : drop.rarity.toUpperCase()}</div><div class="er-name">${info?.emoji || ''} ${drop.name.toUpperCase()}!</div><div class="er-sub">${reward ? `NEW in your Index! +$${short(reward)} · ` : ''}It's in your backpack 🎒</div>`;
-    // 鏡頭：舖頭外面望住個箱，慢慢推近；Mythic 爆開之後圍住轉
-    const camAt = (dist, h, side = 0) => V(P.x + FRONT.x * dist + SIDE.x * side, h, P.z + FRONT.z * dist + SIDE.z * side); // 箱再出去（舖頭前面方向）
-    const cam = { p: camAt(7, 3.2, 1.4), l: V(P.x, 1.0, P.z) }; // 每格自己計（shots 用同一個）
-    const smooth = (k) => k * k * (3 - 2 * k);
-    const startY = 9;
-    let landed = false;
-    let burstDone = false;
-    play('swoosh');
-    if (mythic || legendary) setTimeout(() => play('drumroll'), 900);
-    playMovie(camera, {
-      length: T,
-      skipText: 'Click or press any key to skip ▶',
-      shots: [[0, T, cam, cam]],
-      captions: [
-        [0.2, '🧟 The Zombified Chest is coming...'],
-        [1.2, mythic ? '😱 The chest is going CRAZY...' : legendary ? '✨ Something shiny is inside...' : '🫨 It is shaking...'],
-        [TB + 0.3, ''],
-      ],
-      update(t, dt) {
-        // 1) 跌落嚟
-        const fall = Math.min(1, t / 0.7);
-        chest.g.position.y = startY * (1 - fall * fall);
-        if (!landed && fall >= 1) {
-          landed = true;
-          shake(0.35);
-          play('slam');
-          burst(12, 3, [0x76ff03, 0xb388ff], 1.5);
-        }
-        // 2) 震 + 發光（越嚟越勁，顏色由綠變稀有度色）
-        if (!burstDone) {
-          const k = THREE.MathUtils.clamp((t - 0.8) / (TB - 0.8), 0, 1);
-          const amp = 0.02 + k * k * (mythic ? 0.28 : 0.18);
-          const fr = 18 + k * 30;
-          chest.g.rotation.z = Math.sin(t * fr) * amp;
-          chest.g.rotation.x = Math.cos(t * fr * 0.8) * amp * 0.5;
-          if (mythic) chest.g.position.y += k * k * 1.2; // Mythic：浮上半空
-          chest.lid.rotation.x = Math.max(0, Math.sin(t * fr * 0.5)) * k * 0.25;
-          const c = slime.clone().lerp(rc, k);
-          chest.glowMat.color.copy(c);
-          chest.glowMat.emissive.copy(c);
-          chest.glowMat.emissiveIntensity = 2 + k * 4;
-          chest.innerGlow.material.color.copy(c);
-          chest.innerGlow.material.opacity = k;
-          glow.color.copy(c);
-          glow.intensity = k * (big ? 30 : 18);
-          ringMat.color.copy(c);
-          ringMat.opacity = k * 0.8;
-          ring.rotation.z = t * 2;
-          if (k > 0 && Math.random() < dt * (6 + k * 30)) burst(1, 1.5, [c.getHex()], 2.5);
-          if (mythic) {
-            dark.style.opacity = String(Math.min(1, k * 1.4));
-            halos.forEach((h, i) => {
-              h.material.opacity = k * 0.8;
-              h.rotation.set(t * (1 + i * 0.4), t * (0.7 + i * 0.3), 0);
-            });
-          }
-          if (t > 1 && once('rumble')) play('rumble');
-        }
-        // 3) 爆開！
-        if (!burstDone && t >= TB) {
-          burstDone = true;
-          shake(mythic ? 0.9 : big ? 0.6 : 0.4);
-          play('boom');
-          setTimeout(() => play(drop.candy ? 'coin' : big ? 'magic' : 'crystal'), 250);
-          setTimeout(() => play('rescue'), 700);
-          const f = $('echo-flash');
-          f.classList.remove('on');
-          void f.offsetWidth;
-          f.classList.add('on');
-          burst(mythic ? 70 : big ? 45 : 30, mythic ? 7 : 5, mythic ? [0xff4081, 0xffd740, 0x69f0ae, 0x40c4ff, 0xb388ff] : [colorHex, 0xffffff, 0x76ff03], 6);
-          prize.visible = true;
-          reveal.className = mythic ? 'show mythic' : 'show';
-          chest.g.rotation.set(0, 0, 0);
-        }
-        if (burstDone) {
-          const k = t - TB; // 爆咗幾耐
-          // 蓋飛走
-          chest.lid.rotation.x = Math.min(2.0, k * 9);
-          chest.lid.position.y = 0.62 + Math.min(1, k * 2) * 0.1;
-          flash.scale.setScalar(0.5 + k * (mythic ? 9 : 6));
-          flashMat.opacity = Math.max(0, 0.9 - k * 1.6);
-          beamMat.opacity = Math.max(0.05, Math.min(0.22, k * 2) - Math.max(0, k - 1) * 0.1) * (big ? 1 : 0.7);
-          beam.rotation.y = t;
-          ringMat.color.setHex(colorHex);
-          ringMat.opacity = 0.8;
-          // 爆完：燈變白啲、移去寵物前面（寵物照返自己嘅顏色，唔會俾稀有度色蓋晒）
-          glow.color.copy(rc).lerp(WHITE, 0.7);
-          glow.position.set(0, prize.position.y + prizeH * 0.6, -2.6);
-          glow.intensity = Math.max(5, 16 - k * 10) * (mythic ? 0.6 : 1);
-          chest.innerGlow.material.color.setHex(colorHex);
-          chest.glowMat.color.setHex(colorHex);
-          chest.glowMat.emissive.setHex(colorHex);
-          chest.glowMat.emissiveIntensity = 2;
-          // 寵物／Candy Corn 由箱度升上嚟、轉圈
-          if (mythic) chest.g.position.y = 1.2; // Mythic：箱繼續浮喺半空
-          const rise = Math.min(1, k / 0.8);
-          const ease = 1 - (1 - rise) ** 3;
-          const baseY = chest.g.position.y + 0.62 * chest.g.scale.y; // 箱頂
-          prize.position.y = baseY + ease * (drop.candy ? 0.6 : 0.3);
-          prize.scale.setScalar(Math.max(0.01, ease));
-          prize.rotation.y = rise < 1 ? (1 - ease) * PI * 4 : Math.sin(k * 1.4) * 0.4;
-          prizeAnim?.(k, dt, t);
-          if (mythic) {
-            dark.style.opacity = String(Math.max(0, 1 - k * 0.3));
-            halos.forEach((h, i) => {
-              h.material.opacity = 0.5;
-              h.scale.setScalar(1 + Math.min(1, k) * 0.4 + Math.sin(t * 3 + i) * 0.05);
-              h.position.y = prize.position.y + 1;
-              h.rotation.set(t * (1 + i * 0.4), t * (0.7 + i * 0.3), 0);
-            });
-            if (Math.random() < dt * 12) burst(2, 4, [0xff4081, 0xffd740, 0x69f0ae, 0x40c4ff, 0xb388ff], 5);
-          } else if (big && Math.random() < dt * 6) burst(1, 3, [colorHex, 0xffffff], 4);
-        }
-        // 🎥 鏡頭：爆開之前慢慢推近個箱；爆開之後退後少少，影晒成隻寵物（大字喺上面，寵物喺下半）
-        if (!burstDone) {
-          const s = smooth(Math.min(1, t / TB));
-          cam.p.copy(camAt(7 - 2.6 * s, 3.2 - 1.0 * s, 1.4 - 0.9 * s));
-          cam.l.set(P.x, chest.g.position.y + 0.9 + (1 - s) * 0.3, P.z);
-        } else {
-          const e = smooth(Math.min(1, (t - TB) / 1.2));
-          const center = prize.position.y + prizeH * 0.5;
-          const dist = 4.4 + (Math.max(3.8, prizeH * 1.3 + 1.4) - 4.4) * e;
-          const a = mythic ? Math.sin((t - TB) * 0.45) * 0.55 : 0.12 * e; // Mythic：左右慢慢擺
-          const dir = V(FRONT.x * Math.cos(a) + SIDE.x * Math.sin(a), 0, FRONT.z * Math.cos(a) + SIDE.z * Math.sin(a));
-          const want = V(P.x + dir.x * dist, 2.2 + (center + 0.4 - 2.2) * e, P.z + dir.z * dist);
-          cam.p.lerp(want, Math.min(1, dt * 6));
-          cam.l.lerp(V(P.x, center + 0.3 + prizeH * 0.2, P.z), Math.min(1, dt * 6)); // 望高少少：寵物喺畫面下半，上面留位俾大字
-        }
-        // 粒子
-        for (let i = parts.length - 1; i >= 0; i--) {
-          const p = parts[i];
-          p.t += dt;
-          p.v.y -= 6 * dt;
-          p.m.position.addScaledVector(p.v, dt);
-          p.m.rotation.set(p.t * p.spin, p.t * p.spin * 0.7, 0);
-          p.m.material.opacity = Math.max(0, 1 - p.t / p.life);
-          if (p.t > p.life) {
-            fx.remove(p.m);
-            p.m.material.dispose();
-            parts.splice(i, 1);
-          }
-        }
-        return null;
-      },
-      onDone() {
-        scene.remove(fx);
-        for (const o of [ring, beam, flash, ...halos]) { // 共用（cache）嘅形狀唔好 dispose；淨係 dispose 動畫自己整嘅
-          o.geometry.dispose();
-          o.material.dispose();
-        }
-        for (const p of parts) p.m.material.dispose();
-        partGeo.dispose();
-        reveal.className = '';
-        dark.style.opacity = '0';
-        api.busy = false;
-        teleport(back.x, back.z);
-        camera.rotation.copy(back.rot);
-        resume();
-        if (drop.candy) announce(`🧟 Zombified Chest: +${short(drop.candy)} ${CANDY} Candy Corn! (You have ${short(candyCornOf())})`);
-        else {
-          announce(`🧟 Zombified Chest: you got a ${drop.rarity.toUpperCase()} ${drop.name}! It's in your backpack - put it on your Plot in the Hub!`);
-          if (reward) setTimeout(() => popup(`📖 New Halloween pet in your Index! +$${short(reward)}`), 1200);
-        }
-      },
-    });
-  }
-  api.open = (name) => buy(name); // 測試：game.echo.open('Soul Phantom')
   return api;
 }

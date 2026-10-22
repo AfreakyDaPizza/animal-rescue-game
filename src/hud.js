@@ -304,7 +304,7 @@ export function renderHotbar() {
     : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
     : it?.kind === 'gear'
-    ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - press E or click to pick a pet to mutate!`
+    ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - ${gearInfo(it.item.gear).chest ? (document.body.classList.contains('mobile') ? 'tap USE to open one (tap lots!)' : 'click or press E to open one (spam it!)') : 'press E or click to pick a pet to mutate!'}`
     : it
     ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
     : items.some(Boolean) ? '' : (document.body.classList.contains('mobile') ? 'Rescued animals and pets go here · tap 🎒 for your Inventory' : 'Rescued animals and pets go here · press ` for your Inventory');

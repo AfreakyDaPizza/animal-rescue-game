@@ -1,6 +1,6 @@
 // ⚙️ Gears（小朋友 Issue #10）：背包「Gears」分頁入面嘅道具
 // 存法：state.gears = [{ type: 'halloweenShard' }, { type: 'meteoricShard' }, …]（同一種可以有好多粒，背包會疊埋顯示 ×N）
-// 其他檔案加 gear：state.gears.push({ type: 'meteoricShard' }); save();（或者用 addGear）
+// 其他檔案加 gear：addGear('zombieChest', 5); save();（寶箱、Shard 都一樣；或者 chests.js 嘅 giveChests 會順手存檔 + 彈提示）
 // mutate()：用嗰陣俾寵物邊個變異（null = 呢隻寵物用唔到，例如已經有晒）
 
 import { state } from '../state.js';
@@ -37,7 +37,24 @@ export const GEARS = {
     mutate: (pet) => (hasMutation(pet, 'astral') ? null : 'astral'),
     canUse: (pet) => !hasMutation(pet, 'astral'),
   },
+  // 🧰 寶箱（小朋友 2026-10-22）：買咗入背包，放上快捷欄，撳滑鼠／E 開（chests.js），唔係變異用
+  // chest: true = 背包「Use」／快捷欄 E 係開箱，唔係揀寵物
+  zombieChest: {
+    name: 'Zombified Chest', emoji: '🧟', color: '#76ff03', rarity: 'Epic', chest: true,
+    desc: () => 'Put it in your hotbar and click to open it! Candy Corn or a NEW spooky pet inside.',
+    where: "Buy it from 🐕 Echo in the Halloween World (500 🌽)",
+    mutate: () => null,
+    canUse: () => false,
+  },
+  meteorChest: {
+    name: 'Meteoric Chest', emoji: '🧰', color: '#40c4ff', rarity: 'Legendary', chest: true,
+    desc: () => 'Put it in your hotbar and click to open it! A NEW Meteoric pet or a super rare 🌌 Astral Reroll inside.',
+    where: 'Buy it at the ☄️ Meteoric Shop (100 💎)',
+    mutate: () => null,
+    canUse: () => false,
+  },
 };
+export const isChestGear = (type) => !!GEARS[type]?.chest;
 
 export const gearInfo = (type) => GEARS[type] || { name: type, emoji: '❓', color: '#90a4ae', rarity: 'Common', desc: () => 'A mystery gear!', mutate: () => null, canUse: () => false };
 export const gearCount = (type) => (state.gears || []).filter((g) => g.type === type).length;
