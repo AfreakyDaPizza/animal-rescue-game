@@ -214,3 +214,22 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
 - 🎯 **Spooky Slingshot:** hold to pull back, let go to fling a glowing pumpkin seed (40–300 damage), it falls a bit.
 - Controls: **left click** shoot (hold for the Soul Blaster), **right click** aim / scope, **R** reload (it also reloads by itself when empty). Phones: **FIRE / AIM / RELOAD** buttons.
 - Weapons only show up in the hotbar inside fight areas (the manor hall now, the Endless Tower next). Crosshair, ammo box, hit markers, damage numbers, muzzle flash, recoil and reload animation are built in.
+
+## ✅ Built: 🗼 Endless Witch Tower (Issue #11 + #12, 2026-10-22)
+- **Getting in:** talk to the 🧙‍♀️ Witch, walk to the 🗼 tower door (east of the castle courtyard) and press E → pick a mode:
+  🟢 **Easy** (weaker, slower enemies, smaller rewards) · 🟡 **Medium** · 🔴 **Hard** (tougher, faster enemies, hits hurt sooner, DOUBLE rewards and rarer drops). Your 🏆 best floor is kept for each mode (`state.towerBestByMode`, overall `state.towerBest`).
+- **Inside** (`src/towerShape.js` = map, far west at x -3200; `src/witchTower.js` = everything else): a round stone room with bubbling cauldrons, floating candles, bookshelves with potions, purple fire torches, spell circles, moonlit windows, a flying broom and a big **FLOOR N** sign. Every floor changes the fire colour.
+- **Weapons:** the Witch gives you all three (💠 Soul Blaster, 🍭 Candy Pistol, 🎯 Spooky Slingshot) the first time. Phones: FIRE / AIM / RELOAD.
+- **Enemies** come out of glowing portals in the floor:
+  - 🧟 **Zombies** (cute blocky ones, `src/towerModels.js`): Zombie (shambles and swipes), Speedy Zombie (floor 4+), Slime Zombie (floor 7+, throws green slime: a red circle shows where it lands), Big Zombie (floor 9+). Beaten = **POOF!** into candy sparkles.
+  - 😵 **Corrupted endangered animals** (floor 2+): dark purple with red glowing eyes and purple smoke. They scrape the floor (a red line shows where they will run) and CHARGE. They are never hurt: at 0 HP the corruption bursts off, they turn back to normal, "💚 Cured!" and run away happily.
+  - 👑 **Every 5 floors a MINI-BOSS:** the Zombie King (floor 5, 15, 25…: shockwaves you must JUMP over, calls zombie friends) or a GIANT corrupted animal (floor 10, 20, 30…: charges, stomps shockwaves, corrupts more animals). Cure the giant one too!
+- **Hearts:** 5 ❤️, one comes back after 10 s without getting hit, +1 for every floor you clear. From floor 20 (Hard: 13) hits take 2 ❤️.
+- **Between floors:** stand on the glowing ✨ magic circle in the middle (or press E) → the magic elevator flies you up to the next floor. Or walk to the 🚪 EXIT door (south) and press E to leave.
+- **Rewards** (`src/data/towerRewards.js`, change them there!): every floor puts a reward in your 🎒 **tower bag** (deeper floors = rarer lists: early = Candy Corn, Souls, Skele Tokens, money, Speed/IQ/Jump; floor 6+ = Zombified Chests, Demonic Chests, Halloween eggs, Soul Candy; floor 16+ = Lava Bloom eggs, Pumpkgrim eggs, Demonic Shards, the Demonic Ranger skin and (super rare) the Demonic Boss Skin). Every zombie poofed / animal cured / mini-boss beaten adds a bit more. **Milestone floors (5, 10, 15, 20, 25, 30, then every 5)** give a 🏆 big prize straight away.
+  - Leave by the door = you get the WHOLE bag. Knocked out (or run away mid-floor) = you keep half (`TOWER_KO_KEEP` in balance.js). 🏆 prizes are always yours.
+  - Eggs go to your egg bag: hatch them at the 🪦 Egg Graveyard.
+- **Results card:** floors cleared, zombies poofed, animals cured (and their names), best floor (NEW BEST!), all rewards → back to the Witch Castle courtyard. "Play again" any time!
+- **Numbers:** `TOWER_*` in balance.js — enemies on floor N = 3 + 0.8 × N (max 18, 8 at once); HP × (1 + 0.15 × (N − 1)); speed × (1 + 0.025 × (N − 1)) up to ×1.6; corrupted share 15% + 3% per floor (max 50%); mini-boss HP 5,000 (King) / 6,000 (Giant), +35% each time.
+- **Control Panel:** 🌍 Teleport → 🗼 Witch Tower: Easy / Medium / Hard, and "⏩ Jump to floor N" (no Witch / World 2 lock needed).
+- **Test in the console:** `game.tower.enter('hard', 1)`, `game.tower.floor(10)`, `game.tower.clear()`, `game.tower.god = true`, `game.tower.ko()`, `game.tower.leave()`, `game.tower.lift()`, `game.tower.spawn('brute')`, `game.tower.lineup()` (all zombie kinds in a row, for photos), `game.tower.state`.

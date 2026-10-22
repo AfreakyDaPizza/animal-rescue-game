@@ -66,6 +66,9 @@ const DEFAULTS = {
   soulCandy: 0, // 🍬 Soul Candy（Issue #11）：每打贏一次 Pumpkin Reaper Dragon 得 1 粒；5 粒開 Halloween World 2（Hell）
   world2Unlocked: false, // 🔥 喺 World Expedition 地圖用 5 粒 Soul Candy 開咗 Hell 未
   witchMet: false, // 🧙‍♀️ 同 Witch Castle 個女巫傾過偈未（傾完先開到 Witch Tower 道門）
+  towerBest: 0, // 🗼 Endless Witch Tower：最高打到第幾層（打完咗嘅層數）
+  towerBestByMode: { easy: 0, medium: 0, hard: 0 }, // 🗼 每個難度（Issue #12）最高層數
+  towerStats: { runs: 0, zombies: 0, cured: 0 }, // 🗼 總共：玩咗幾多次、打散咗幾多隻殭屍、救返幾多隻動物
 };
 
 export const state = load();

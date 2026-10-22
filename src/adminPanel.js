@@ -27,6 +27,7 @@ let spawnBiome = 0;
 let spawnRarity = 'Mythic';
 let search = ''; // 🔍 寵物搜尋（重畫都記住）
 let group = 'all'; // 寵物分類
+let towerFloor = 5; // 🗼 Witch Tower：跳去第幾層
 
 export function setAdminActions(a) {
   actions = a;
@@ -252,6 +253,8 @@ function worldHtml() {
     ${section('🏡 Hub and biomes', `<div class="admin-grid">${groupOf('normal')}</div>`)}
     ${section('✨ Secret places', `<div class="admin-grid">${groupOf('secret')}</div>`)}
     ${section('🎃 Halloween', `<div class="admin-grid">${groupOf('halloween')}</div>`, 'Going to the Ghost World also calls the Phantom Express, so you have 30 minutes there.')}
+    ${section('🗼 Witch Tower', `<div class="pet-actions admin-wrap">${['easy', 'medium', 'hard'].map((m) => `<button data-admin="towerGo" data-mode="${m}">${{ easy: '🟢 Easy', medium: '🟡 Medium', hard: '🔴 Hard' }[m]}</button>`).join('')}</div>
+      <div class="admin-search-row"><span>⏩ Start at floor</span><input id="admin-tower-floor" type="number" min="1" max="999" step="1" value="${towerFloor}" style="width:90px"><button data-admin="towerFloor">⏩ Jump to floor</button></div>`, 'Goes straight into the tower (no Witch or World 2 lock). Pick a mode, or type a floor and jump (in the tower it starts that floor now).')}
     ${section('🌗 Day and night', `<div class="pet-actions admin-wrap"><button data-admin="night">🌙 Make it night now</button><button data-admin="day">☀️ Make it day now</button></div>`)}`;
 }
 
@@ -347,6 +350,8 @@ $('panel-body').addEventListener('click', (e) => {
     case 'flag': actions.backup(); actions.toggleFlag(d.id); break;
     case 'gotoGym': actions.backup(); actions.gotoGym(); return; // 可能會重新載入
     case 'go': actions.teleport(d.id); return;
+    case 'towerGo': actions.tower(d.mode, 1); return; // 🗼
+    case 'towerFloor': towerFloor = Math.max(1, Math.floor(Number($('admin-tower-floor')?.value) || 1)); actions.tower('medium', towerFloor); return;
     case 'night': actions.skipTime('night'); return;
     case 'day': actions.skipTime('day'); return;
     case 'pick': pick.name = d.name; break;
