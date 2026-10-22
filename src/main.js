@@ -92,6 +92,9 @@ import { createCosmicLanding, updateCosmicLanding } from './cosmicLanding.js'; /
 import { createChests, giveChests } from './chests.js'; // 🧰 寶箱：買咗入背包，快捷欄撳滑鼠開（2026-10-22）
 import { isChestGear } from './data/gears.js';
 import { createMeteorBossSkins } from './meteorBossSkin.js'; // 🦹 Meteoric Boss Skin（Issue #10）
+import { createDemonicBossSkins } from './demonicBossSkin.js'; // 😈 Demonic Boss Skin（Issue #11：Witch Tower 獎品）
+import { createDemonicRanger, updateDemonicRanger } from './demonicRanger.js'; // 😈 Demonic Ranger：飛 + 火噴射跳
+import { setDemonicHooks } from './demonicRewards.js'; // 🧙 Witch Tower 獎品 API（giveReward）
 import { FOUNTAIN } from './hubPark.js';
 import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
 import { createWeapons } from './weapons.js'; // 🔫 魔法武器（Issue #11，之後 Endless Tower 都用）
@@ -190,6 +193,7 @@ if (state.hubLevel > 0) {
 const hazards = createHazards(scene);
 const bosses = createBosses(scene);
 const bossSkins = createMeteorBossSkins(bosses); // 🦹 Boss 隕石皮膚（買咗之後撳 E 換）
+const demonicBossSkins = createDemonicBossSkins(bosses); // 😈 Boss 惡魔皮膚（Witch Tower 解鎖咗之後撳 E 輪住換）
 const fight = createLabFight(scene); // Issue #2：實驗室 Boss（Mutated Scientist Poacher）
 fight.onDefeat = () => {
   state.labBossDefeated = true; // 打贏咗：存檔（F5 都唔會再出）
@@ -291,6 +295,7 @@ applyQuality();
 
 const thirdPerson = createThirdPerson(scene, camera); // 拎住寵物時用第三身
 const superLand = createCosmicLanding(scene); // 🦸
+const demonicFx = createDemonicRanger(scene); // 😈 火星尾巴 + 火噴射
 startBoostChips();
 // 🎣 Halloween 釣魚：魚竿舖、力度條拋竿、狂撳收線、釣蛋同 🌽 Candy Corn（src/fishing.js）
 const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar, view: thirdPerson.view }); // view：第三身準星瞄準用（Issue #10）
@@ -341,6 +346,7 @@ function holdShard(type) {
   }
 }
 applyRangerSkin(thirdPerson, RANGER_SKINS.find((s) => s.id === state.rangerSkin) || RANGER_SKINS[0]);
+setDemonicHooks({ equipRanger: (skin) => applyRangerSkin(thirdPerson, skin) }); // 🧙 Witch Tower 送皮膚即刻着
 // ---- 🎃 Halloween：Phantom Express、捉鬼、Halloween Shard ----
 const faceTo = (rotY) => camera.rotation.set(0, rotY, 0, 'YXZ');
 const phantom = createPhantomExpress({ scene, teleport: (x, z) => teleportPlayer(player, x, z), showLoading, popup, announce, play, faceTo });
@@ -812,7 +818,7 @@ setShopActions({
     };
     if (action === 'ranger-buy' || action === 'ranger-equip') {
       const skin = RANGER_SKINS[i];
-      if (skin.meteor && !state.ownedRanger.includes(skin.id)) return; // 🌠 Meteoric Shop 先買得
+      if ((skin.meteor || skin.tower) && !state.ownedRanger.includes(skin.id)) return; // 🌠 Meteoric Shop／😈 Witch Tower 先攞得
       if (action === 'ranger-buy' && !buy(skin.cost)) return;
       if (!state.ownedRanger.includes(skin.id)) state.ownedRanger.push(skin.id);
       state.rangerSkin = skin.id;
@@ -985,7 +991,7 @@ function currentInteraction() {
     if (rescue.carrying) return { prompt: '🙌 Your hands are full - take your animal to the Hub first' };
     return { prompt: `<kbd>E</kbd> Borrow ${w.animal.name} (${formatKg(w.kg)})`, action: () => borrowAnimal(w) };
   }
-  const skinAct = bossSkins.interaction(pos, rescue.carrying); // 🦹 Boss 隔籬：換隕石皮膚
+  const skinAct = demonicBossSkins.interaction(pos, rescue.carrying) || bossSkins.interaction(pos, rescue.carrying); // 🦹 Boss 隔籬：換隕石／惡魔皮膚
   if (skinAct) return skinAct;
   if (whereIs(pos.x, pos.z) !== 'Hub') return null;
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
@@ -1895,6 +1901,7 @@ renderer.setAnimationLoop((timestamp) => {
     }
     // 🦸 Cosmic Meteor Ranger：落地單膝跪地 + 衝擊波（要喺彈床之後，彈床唔算落地）
     updateCosmicLanding(superLand, dt, { player, camera, tp: thirdPerson, on: state.rangerSkin === 'cosmic', ready: !intro.active && !movie.active, play });
+    updateDemonicRanger(demonicFx, dt, { player, camera, tp: thirdPerson, on: state.rangerSkin === 'demonic', ready: !intro.active && !movie.active, play }); // 😈 要喺讀 player.jumped 之前
     const gymGains = trainInGym(gymStation, dt);
     if (gymGains.length) {
       quest('train', 1);
@@ -2086,6 +2093,7 @@ renderer.setAnimationLoop((timestamp) => {
   meteorShop.update(dt, time); // ☄️ 舖頭水晶閃、隕石火尾
   chests.update(dt, { pos: camera.position, yaw: camera.rotation.y, feetY: player.feetY, third: thirdPerson.zoom > 0, hidden: inMovie }); // 🧰 開箱動畫
   bossSkins.update(dt, time); // 🦹 隕石皮膚嘅細隕石轉圈
+  demonicBossSkins.update(dt, time); // 😈 火球、翼
   if (halloween.sky > 0.01) {
     stars.material.opacity *= 1 - halloween.sky; // 普通星星喺好遠，Halloween 有自己嘅
     stars2.material.opacity *= 1 - halloween.sky;
@@ -2170,6 +2178,6 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { reaper: reaper.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.meteor = meteor; // ☄️ 測試：game.forceEvent('meteor')、game.meteor

@@ -22,6 +22,8 @@ export const RANGER_SKINS = [
   { id: 'galaxy', name: 'Galaxy Explorer', cost: 200, shirt: 0x1a237e, pants: 0x0d1452, skin: 0xf5c99b, hat: 0x311b92, shoes: 0x7c4dff, extra: 'galaxy' },
   // 小朋友 2026-10-22：🌠 Cosmic Meteor Ranger —— 淨係喺 ☄️ Meteoric Shop 用 💎 買（meteor: true，唔用 Skin Tokens）；深藍手套；落地好似 Spider-Man（cosmicLanding.js）
   { id: 'cosmic', name: 'Cosmic Meteor Ranger', cost: 0, meteor: true, shirt: 0x172b72, pants: 0x0f1d55, skin: 0x1a2a6c, hat: 0x0d1b4a, shoes: 0x0b1030, extra: 'cosmic' },
+  // 小朋友 Issue #11：😈 Demonic Ranger —— 🧙 Witch Tower 獎品（tower: true，唔用 Skin Tokens 買）；行路會飛（細蝙蝠翼）、跳有火噴射（demonicRanger.js）
+  { id: 'demonic', name: 'Demonic Ranger', cost: 0, tower: true, shirt: 0x3a0d12, pants: 0x1f0a0d, skin: 0xc62828, hat: 0x1a0a0c, shoes: 0x0d0505, extra: 'demonic' },
 ];
 
 export const PET_SKINS = [

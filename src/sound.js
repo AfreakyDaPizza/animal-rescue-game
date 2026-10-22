@@ -286,6 +286,18 @@ const SOUNDS = {
     tone(3136, t + 0.2, 0.45, { type: 'sine', vol: 0.06 });
     noise(t, 0.25, { vol: 0.06, freq: 6000, type: 'highpass' });
   },
+  // 😈 Demonic Ranger 跳：「呼——」一嚿火噴射（Issue #11）
+  fireJet: (t) => {
+    noise(t, 0.45, { vol: 0.5, freq: 900, q: 0.6, type: 'bandpass' });
+    noise(t, 0.3, { vol: 0.3, freq: 300 });
+    tone(110, t, 0.35, { type: 'sawtooth', vol: 0.08, slide: 1.8 });
+  },
+  // 😈 Demonic 嘢（解鎖、Boss 皮膚）：低沉「嗡」+ 火聲 + 細細笑聲咁嘅琶音
+  demonic: (t) => {
+    tone(73, t, 0.9, { type: 'sawtooth', vol: 0.12, slide: 0.7 });
+    noise(t, 0.6, { vol: 0.25, freq: 700, q: 0.5, type: 'bandpass' });
+    arp(t + 0.25, [523, 494, 523, 659], 0.08, { type: 'square', vol: 0.06 });
+  },
   // 🔮 Halloween Shard
   shard: (t) => {
     arp(t, [440, 523, 659, 831, 988], 0.09, { type: 'sine', vol: 0.2 });

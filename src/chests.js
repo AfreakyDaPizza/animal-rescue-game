@@ -26,6 +26,8 @@ import { addGear, takeGear, gearCount, gearInfo } from './data/gears.js';
 import { buildAnimalModel } from './animalModels.js';
 import { buildZombieChest } from './echoShop.js';
 import { buildMeteorChest } from './meteorShop.js';
+import { buildDemonicChest } from './demonicPetModels.js'; // 😈 Witch Tower（Issue #11）
+import { rollDemonicChest, DEMONIC_CHEST_DROPS } from './data/demonic.js';
 import { makeLabel } from './signs.js';
 import { candyCorn } from './echoPetModels.js';
 import { play } from './sound.js';
@@ -57,8 +59,13 @@ export const CHEST_TYPES = {
     },
   },
   meteorChest: {
-    name: 'Meteoric Chest', build: buildMeteorChest, glow: 0x40c4ff, label: '☄️',
+    name: 'Meteoric Chest', build: buildMeteorChest, glow: 0x40c4ff, label: '☄️', debris: 0x1a2a6c, where: 'the ☄️ Meteoric Shop',
     roll: (forced) => (forced ? { ...METEOR_CHEST_DROPS.find((x) => x.name === forced) } : rollMeteorChest()),
+  },
+  // 😈 Demonic Chest（小朋友 Issue #11）：Witch Tower 獎品；機會率 balance.js DEMONIC_CHEST_DROPS（加埋 105 → 按比例計）
+  demonicChest: {
+    name: 'Demonic Chest', build: buildDemonicChest, glow: 0xff3d00, label: '😈', debris: 0x1a0f12, where: 'the 🧙 Witch Tower',
+    roll: (forced) => (forced ? { ...DEMONIC_CHEST_DROPS.find((x) => x.name === forced) } : rollDemonicChest()),
   },
 };
 
@@ -207,7 +214,7 @@ export function createChests(scene) {
     if (queue.length >= QUEUE_MAX) return false; // 撳太快：呢下唔算（箱仲喺度）
     if (!forced) {
       if (gearCount(type) <= 0) {
-        popup(`🧰 No ${gearInfo(type).name}s left! Buy more at ${type === 'meteorChest' ? 'the ☄️ Meteoric Shop' : '🐕 Echo'}.`);
+        popup(`🧰 No ${gearInfo(type).name}s left! Get more at ${CHEST_TYPES[type].where || '🐕 Echo'}.`);
         return false;
       }
       takeGear(type);
@@ -316,7 +323,12 @@ export function createChests(scene) {
       flashBall(at, 0xffffff, 0.9, 0.35);
       const rainbow = [0xff4081, 0xffd740, 0x69f0ae, 0x40c4ff, 0xb388ff];
       burst(at, it.big ? 90 : 60, it.big ? 6 : 4.5, it.big ? [hex, 0xffffff, ...rainbow] : [hex, 0xffffff, glowHex], 4, 1.6);
-      burst(at, 14, 3, [it.type === 'meteorChest' ? 0x1a2a6c : 0x51703f], 3, 2.4); // 箱碎
+      burst(at, 14, 3, [CHEST_TYPES[it.type].debris ?? 0x51703f], 3, 2.4); // 箱碎
+      if (it.type === 'demonicChest') {
+        // 😈 火爆：多一圈火星 + 橙色火球
+        burst(at, it.big ? 70 : 45, it.big ? 7 : 5.5, [0xff3d00, 0xff6d00, 0xffab00, 0xffd740], 5, 1.5);
+        flashBall(at, 0xff3d00, it.big ? 2.4 : 1.9, 0.9);
+      }
       screenFlash(colorOf(it.drop));
       lightK = 1;
       light.color.copy(it.color).lerp(new THREE.Color(0xffffff), 0.3);

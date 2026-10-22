@@ -4,6 +4,7 @@
 //   🌌 Astral：入面係星空 + 光環             🔥 Fire：橙紅水晶 + 火焰
 //   🌑 Eclipse：黑水晶 + 日蝕光圈            👻 Spectral：半透明青色 + 鬼仔 + 煙
 //   🟣 Phantom：紫羅蘭水晶 + 漩渦煙 + 新月
+//   😈 Demonic：紅黑水晶 + 頂上一對彎角 + 底下紅黑火 + 入面細惡魔笑臉（Issue #11）
 // 兩樣嘢：
 //   gearIcon(type)：2D canvas 畫 → data URL（背包卡、快捷欄、商店、控制台用）；畫一次就記住
 //   buildShardModel(type)：3D 水晶（快捷欄揀咗 Shard 時拎喺手）
@@ -23,6 +24,7 @@ const STYLES = {
   eclipse: { body: ['#9575cd', '#311b92', '#0b0420'], glow: '#ea80fc', accent: '#ffd740', motif: 'eclipse' },
   spectral: { body: ['#ffffff', '#84ffff', '#00838f'], glow: '#84ffff', accent: '#e0f7fa', motif: 'ghost', alpha: 0.78 },
   phantom: { body: ['#e1bee7', '#aa00ff', '#311b92'], glow: '#b388ff', accent: '#f3e5f5', motif: 'swirl' },
+  demonic: { body: ['#ff8a80', '#d50000', '#1a0505'], glow: '#ff1744', accent: '#ffab00', motif: 'demon' }, // 😈 Issue #11
 };
 
 // 呢個 Gear 用邊個樣（冇 = null → 用 emoji）
@@ -390,6 +392,57 @@ const MOTIFS = {
       c.restore();
     },
   },
+  demon: {
+    // 底下紅黑火 + 火星
+    back(c, st) {
+      for (const [x, w, h] of [[70, 46, 120], [128, 60, 150], [186, 46, 118], [100, 34, 90], [158, 34, 92]]) flame(c, x, 236, w, h, '#b71c1c', '#ff6d00');
+      for (const [x, w, h] of [[96, 22, 60], [128, 28, 80], [160, 22, 58]]) flame(c, x, 236, w, h, '#1a0505', '#3e0a0a');
+      const r = rng(31);
+      for (let i = 0; i < 10; i++) sparkle(c, 24 + r() * 208, 20 + r() * 150, 3 + r() * 5, i % 2 ? st.accent : '#ff5252');
+    },
+    // 細惡魔笑臉：兩粒發光眼 + 笑口 + 細牙
+    inside(c, st) {
+      c.save();
+      c.translate(0, 10);
+      c.shadowColor = st.accent;
+      c.shadowBlur = 12;
+      c.fillStyle = st.accent;
+      for (const s of [-1, 1]) poly(c, [[s * 4, -12], [s * 17, -16], [s * 15, -4], [s * 5, -4]], st.accent);
+      c.strokeStyle = st.accent;
+      c.lineWidth = 4;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.arc(0, 2, 14, 0.15 * Math.PI, 0.85 * Math.PI);
+      c.stroke();
+      poly(c, [[4, 15], [9, 14], [7, 22]], '#ffffff');
+      c.restore();
+    },
+    // 頂上一對彎角（深色 + 發光橙尖）
+    front(c, st) {
+      for (const s of [-1, 1]) {
+        c.save();
+        c.translate(128 + s * 26, 46);
+        c.scale(s, 1);
+        c.shadowColor = st.glow;
+        c.shadowBlur = 14;
+        c.beginPath();
+        c.moveTo(-10, 12);
+        c.quadraticCurveTo(-4, -18, 26, -40);
+        c.quadraticCurveTo(10, -10, 12, 14);
+        c.closePath();
+        const gr = c.createLinearGradient(0, 14, 26, -40);
+        gr.addColorStop(0, '#3e0a0a');
+        gr.addColorStop(0.6, '#7f0000');
+        gr.addColorStop(1, st.accent);
+        c.fillStyle = gr;
+        c.fill();
+        c.lineWidth = 3;
+        c.strokeStyle = '#1a0505';
+        c.stroke();
+        c.restore();
+      }
+    },
+  },
 };
 
 // 光環（橢圓）：from–to 角度（後半 / 前半分開畫，似圍住水晶）
@@ -522,6 +575,30 @@ export function buildShardModel(type) {
     pumpkin.scale.y = 0.8;
     pumpkin.position.set(0, 0.05, 0.24);
     spin.add(pumpkin);
+  }
+  if (st.motif === 'demon') {
+    // 😈 一對細彎角 + 底下紅火
+    const hornM = glowMaterial('#3e0a0a', '#ff1744', 0.6);
+    const tipM = glowMaterial('#ffab00', '#ff6d00', 2);
+    for (const s of [-1, 1]) {
+      const h = new THREE.Group();
+      h.position.set(s * 0.12, 0.5, 0);
+      h.rotation.z = s * -0.5;
+      const b = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.22, 8), hornM);
+      b.position.y = 0.1;
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 8), tipM);
+      tip.position.set(s * 0.04, 0.24, 0);
+      tip.rotation.z = s * -0.6;
+      h.add(b, tip);
+      spin.add(h);
+    }
+    const fire = glowMaterial('#d50000', '#ff1744', 1.6, 0.85);
+    for (let i = 0; i < 5; i++) {
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.3, 5), i % 2 ? fire : glowMaterial('#1a0505', '#3e0a0a', 0.6, 0.9));
+      const a = (i / 5) * TAU;
+      f.position.set(Math.cos(a) * 0.28, -0.35, Math.sin(a) * 0.28);
+      orbit.add(f);
+    }
   }
   g.userData.animate = (t) => {
     spin.rotation.y = t * 1.2;

@@ -8,13 +8,14 @@
 import { state, save, SAVE_KEY, autoBackups, restoreAutoBackup } from './state.js';
 import { short } from './format.js';
 import { play } from './sound.js';
-import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
+import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
 import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE, METEOR_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
 import { petPic } from './animalPics.js';
 import { GEARS, gearInfo, gearCount, addGear, takeGear, isShardGear, syncShardCount } from './data/gears.js';
 import { gearPic } from './gearArt.js';
+import { giveReward } from './demonicRewards.js'; // 🧙 Witch Tower 獎品（Issue #11）
 
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
@@ -68,6 +69,7 @@ const CURRENCIES = [
   { key: 'soulDust', emoji: '💀', name: 'Soul Dust (Souls)', max: 1e9, hw: true },
   { key: 'hwShards', emoji: '🔮', name: 'Halloween Shards', max: 999, steps: [1, 10, 100], hw: true },
   { key: 'soulCandy', emoji: '🍬', name: 'Soul Candy', max: 999, steps: [1, 5, 10], hw: true }, // 🔥 5 粒開 Halloween World 2（Issue #11）
+  { key: 'skeleTokens', emoji: '☠️', name: 'Skele Tokens', max: 1e9, hw: true }, // 🧙 Witch Tower（Issue #11）
   { key: 'meteorCrystals', emoji: '💎', name: 'Meteor Crystals', max: 1e9 },
 ];
 const STEPS = [100, 1e3, 1e6];
@@ -160,6 +162,12 @@ function gearsHtml() {
     ${section('🧰 Chests and more', others.length ? `<div class="cards admin-cards admin-gear-cards">${others.map(gearCard).join('')}</div>` : '<p class="hint">No chests yet. New gears show up here by themselves!</p>')}
     ${boosts.length ? section('⏱️ Boosts', boosts.map((b) => `<div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">${b.emoji}</span><b>${b.name}</b></div>
       <div class="admin-cur-btns">${BOOST_MINUTES.map((m) => `<button data-admin="boost" data-id="${b.id}" data-v="${m}">+${m} min</button>`).join('')}</div></div>`).join('')) : ''}
+    ${section('🧙 Witch Tower prizes', `<div class="pet-actions admin-wrap">
+      <button data-admin="tower" data-type="lavaBloomEgg">🌋 +1 Lava Bloom Egg</button>
+      <button data-admin="tower" data-type="pumpkgrimEgg">🎃 +1 Pumpkgrim Egg</button>
+      <button data-admin="tower" data-type="demonicSkin" class="${state.ownedRanger?.includes('demonic') ? 'grey' : ''}">${state.ownedRanger?.includes('demonic') ? '✔ ' : ''}😈 Demonic Ranger skin</button>
+      <button data-admin="tower" data-type="demonicBossSkin" class="${state.demonicBossSkin ? 'grey' : ''}">${state.demonicBossSkin ? '✔ ' : ''}😈 Demonic Boss skin</button>
+    </div>`, 'Eggs hatch at the 🪦 Egg Graveyard. Demonic Chests and the Demonic Shard are in the lists above.')}
     ${section('🗑️ Clear', `<div class="pet-actions">${confirmButton('clearGears', '🗑️ Remove ALL my gears')}</div>`)}`;
 }
 
@@ -192,7 +200,7 @@ function futureHtml() {
 }
 
 // ---------- 🐾 Pets ----------
-const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
+const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS, ...DEMONIC_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
 // 預覽：例如「🙃 GIANT x10 🔥🌑 Mythic Celestial Sunlion」
 const previewText = () => {
   const muts = MUTATIONS.filter((m) => pick.mutations.includes(m)).map((m) => mutationInfo(m).emoji).join('');
@@ -200,12 +208,13 @@ const previewText = () => {
 };
 const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
 const GROUPS = [
-  ['all', 'All', () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS]],
+  ['all', 'All', () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS, ...DEMONIC_PETS]],
   ['normal', '🌳 Animals', () => ANIMALS],
   ['fuse', '🧪 Fuse', () => FUSE_PETS],
   ['halloween', '🎃 Halloween', () => HALLOWEEN_PETS],
   ['chest', '🧟 Chest', () => CHEST_PETS],
   ['meteor', '☄️ Meteoric', () => METEOR_PETS],
+  ['demonic', '😈 Witch Tower', () => DEMONIC_PETS],
 ];
 const matches = (a) => !search || a.name.toLowerCase().includes(search.toLowerCase());
 
@@ -380,6 +389,7 @@ $('panel-body').addEventListener('click', (e) => {
       break;
     }
     case 'boost': actions.backup(); giveBoost(d.id, Number(d.v)); break;
+    case 'tower': actions.backup(); giveReward({ type: d.type }); break; // 🧙
   }
   rerender();
 });

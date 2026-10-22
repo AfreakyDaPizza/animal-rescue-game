@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { box, ball, pivot, slab, spike, material, BLACK } from './modelKit.js';
 import { seeded } from './animals20.js';
+import { buildDemonicEgg } from './demonicPetModels.js'; // 😈 Witch Tower 蛋（Lava Bloom、Pumpkgrim，Issue #11）
 
 const PI = Math.PI;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -211,6 +212,8 @@ const EGG_STYLE = {
 };
 
 export function buildHalloweenEgg(name, rarity) {
+  const demonic = buildDemonicEgg(name, rarity); // 😈 Witch Tower 蛋有自己個樣
+  if (demonic) return demonic;
   const st = EGG_STYLE[name] || { base: PUMPKIN, accent: PURPLE, pattern: 'spots', top: null };
   const g = new THREE.Group();
   const egg = pivot(g, 0, 0.62, 0);
