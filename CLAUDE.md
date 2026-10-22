@@ -58,6 +58,8 @@
 
 - 2026-10-22：Issue #11 + #12：🗼 Endless Witch Tower（`src/witchTower.js`；地圖 `src/towerShape.js` x -3200；殭屍模型 + 腐化外衣 `src/towerModels.js`；獎品／難度 `src/data/towerRewards.js`；數值 `TOWER_*` 喺 balance.js）。塔門 `setWitchTowerEntry` → 揀 Easy/Medium/Hard 面板（`extraPanels.tower`）；`state.towerBest`、`towerBestByMode`、`towerStats`；🎒 袋（離開 = 全部，暈低 = `TOWER_KO_KEEP`）、5 層一次里程碑即刻俾；控制台 Teleport 分頁有入塔 + 跳層；測試 `game.tower.*`。塔入面唔行雷（`halloweenWorld.js`）。
 
+- 2026-10-22（夜）：Issue #11/#12 全部上網：Pumpkin Reaper Dragon（`src/reaperBoss.js`，每個鐘 :30 醒 10 分鐘，鬼屋門口有倒數）、魔法武器（`src/weapons.js` API、`src/weaponModels.js`；家長同意改名：AK-47→Soul Blaster、手槍→Candy Pistol；被污染動物係「淨化」唔係殺）、World 2 Hell（`src/hellWorld.js`／`src/witchCastle.js`、`src/worldExpedition.js`，5 粒 `state.soulCandy` 解鎖）、無限女巫塔（`src/witchTower.js`，Easy/Medium/Hard，獎勵表 `src/data/towerRewards.js`）、惡魔獎勵（`src/demonicRewards.js`）、Index「✨ Special Pets」分頁、自動存檔每秒 + 5 份自動備份（控制面板 Safety）。小朋友 2026-10-22 唔見咗存檔（原因未知，問咗）。
+
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。
