@@ -58,6 +58,9 @@ const DEFAULTS = {
   candyCorn: 0, // 🌽 Halloween：釣魚得嘅 Candy Corn（買魚竿、寶箱舖用）
   echoQuests: null, // 🐾 Echo's Questline（2026-10-22）：{ day, index, progress, claimed }，每日午夜重新由第 1 個開始
   echoQuestsEarly: false, // 🔐 秘密控制台：提早開 Echo's Questline
+  soulCandy: 0, // 🍬 打贏 Pumpkin Reaper Dragon 得嘅 Soul Candy（Issue #11，每次 +1）
+  weapons: [], // 🔫 有咗嘅魔法武器 id（src/data/weapons.js），例如 ['soulBlaster']
+  reaperBeatenAt: 0, // 🐉 喺邊一場（開始時間，毫秒）打贏咗 Pumpkin Reaper Dragon（同一場唔可以再打）
   meteorCrystals: 0, // ☄️ METEORIC 活動執到嘅 Meteoric Crystals（Issue #10；每粒 × state.crystalMultiplier）
   soulCandy: 0, // 🍬 Soul Candy（Issue #11）：每打贏一次 Pumpkin Reaper Dragon 得 1 粒；5 粒開 Halloween World 2（Hell）
   world2Unlocked: false, // 🔥 喺 World Expedition 地圖用 5 粒 Soul Candy 開咗 Hell 未

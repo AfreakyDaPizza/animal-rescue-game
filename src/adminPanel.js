@@ -250,7 +250,7 @@ function worldHtml() {
 function eventsHtml() {
   const biomes = BIOMES.map((b, i) => [i, b.name]);
   return `${section('🎉 Start an event', `<div class="admin-grid">${EVENTS.map((e) => `<button data-admin="event" data-id="${e.id}" title="${(e.desc || '').replace(/"/g, '&quot;')}">${e.emoji} ${e.name}</button>`).join('')}</div>
-    <div class="admin-grid"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button><button data-admin="train">🚂 Phantom Express now</button></div>`, 'Each event runs for its normal time, then the clock events come back.')}
+    <div class="admin-grid"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button><button data-admin="train">🚂 Phantom Express now</button><button data-admin="reaper" class="sell">🐉 Summon Pumpkin Reaper Dragon</button></div>`, 'Each event runs for its normal time, then the clock events come back.')}
     ${section('✨ Spawn an animal', `<div class="pet-actions admin-wrap">${biomes.map(([i, n]) => `<button data-admin="biome" data-i="${i}" class="${i === spawnBiome ? '' : 'grey'}">${i + 1}. ${n.replace(/^Biome \d+ - /, '')}</button>`).join('')}</div>
     <div class="pet-actions admin-wrap">${RARITIES.map((r) => `<button data-admin="srarity" data-v="${r.name}" class="${r.name === spawnRarity ? '' : 'grey'}">${r.name}</button>`).join('')}</div>
     <div class="pet-actions"><button data-admin="spawn" class="sell">✨ Spawn it</button></div>`, 'Eternal animals only live in the Enchanted Kingdom (biome 7).')}`;
@@ -354,6 +354,7 @@ $('panel-body').addEventListener('click', (e) => {
     case 'event': actions.backup(); actions.event(d.id); return;
     case 'crazy': actions.crazy(); return;
     case 'train': actions.backup(); actions.train(); return;
+    case 'reaper': actions.reaper(); return; // 🐉
     case 'biome': spawnBiome = Number(d.i); break;
     case 'srarity': spawnRarity = d.v; break;
     case 'spawn': actions.spawn(spawnBiome, spawnRarity); return;

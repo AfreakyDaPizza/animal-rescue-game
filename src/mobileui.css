@@ -14,6 +14,7 @@ body.in-halloween #hud-stats .hw-only { display: block; }
 body.in-halloween #hud-stats .hw-hide { display: none; }
 #hud-stats .stat-line.st-candy b { color: #ffab40; }
 #hud-stats .stat-line.st-souls b { color: #b388ff; }
+#hud-stats .stat-line .st-soulcandy b { color: #ff6e9c; } /* 🍬 Soul Candy（Issue #11） */
 #hud-stats .stat-line b.bump { display: inline-block; animation: stat-bump 0.35s ease-out; }
 /* 舊嘅 Candy Corn／Soul Dust 膠囊：資料已經搬咗入數值盒（魚竿名、Shards 喺細字），收埋唔好咁亂 */
 #hw-candy-hud, #hw-dust-hud { display: none !important; }

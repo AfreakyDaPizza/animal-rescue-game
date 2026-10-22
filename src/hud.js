@@ -18,6 +18,7 @@ import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import { rodShopHtml, currentRod } from './rodShop.js'; // 🎣 Halloween 魚竿舖
 import { gearInfo, gearStacks } from './data/gears.js'; // ⚙️ 背包 Gears（Issue #10）
 import { gearIcon } from './gearArt.js'; // 💎 Shard 圖示（快捷欄）
+import { WEAPONS } from './data/weapons.js'; // 🔫 魔法武器（Issue #11）
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -86,6 +87,7 @@ export function updateHud(dayNight, location) {
   // 🎃 Halloween 世界（Issue #10）：左下數值盒換做 Money / Speed / 🌽 Candy Corn / 💀 Souls；返普通世界就變返
   if (document.body.classList.contains('in-halloween')) {
     bumpStat('hud-candy', state.candyCorn || 0);
+    bumpStat('hud-soulcandy', state.soulCandy || 0); // 🍬 Pumpkin Reaper Dragon（Issue #11）
     bumpStat('hud-souls', state.soulDust || 0);
     const extra = `🎣 ${currentRod().name} · 🔮 ${state.hwShards || 0} Shards${state.vacuumLevel ? ` · 🧹 Lv ${state.vacuumLevel}` : ''}`;
     const ex = $('hud-hw-extra');
@@ -198,7 +200,7 @@ let selected = 0;
 export const HAMMER_ITEM = { kind: 'tool', item: { name: 'Hammer', tool: true } };
 // 球棒（Issue #4）：Boss 戰 Phase 1、2 先有，喺第一格
 export const BAT_ITEM = { kind: 'tool', item: { name: 'Bat', tool: true, bat: true } };
-export const toolFlags = { bat: false };
+export const toolFlags = { bat: false, weapons: [] }; // weapons：🔫 戰鬥區（src/weapons.js setZone）入面有嘅武器 id
 // 🎒 背包（Issue #10）：可以由背包拖嘢落快捷欄（state.hotbar 記住每格放咗乜）
 // 每樣嘢一個 key：寵物 'pet:uid'、救返嚟嘅動物 'res:uid'、Gear 'gear:type'（同種 Gear 疊埋一格）
 // 冇拖過嘅格仔：好似以前咁，自動放救返嚟嘅動物同背包寵物
@@ -215,8 +217,10 @@ export function hotbarPool() {
     ...state.pets.filter((p) => !p.onPlot).map((item) => ({ kind: 'pet', key: `pet:${uidOf(item)}`, item })),
   ];
 }
+const weaponItem = (id) => ({ kind: 'tool', key: `weapon:${id}`, item: { name: WEAPONS[id].name, tool: true, weapon: id } }); // 🔫 Issue #11
 const toolItems = () => [
   ...(toolFlags.bat ? [BAT_ITEM] : []),
+  ...(toolFlags.weapons || []).map(weaponItem),
   ...(state.hasHammer && !state.labBossDefeated ? [HAMMER_ITEM] : []), // 實驗室冇咗：鎚仔冇用，唔再放快捷欄
 ];
 export const hotbarToolCount = () => toolItems().length;
@@ -278,7 +282,7 @@ export function selectSlot(i) {
 }
 export const scrollHotbar = (direction) => selectSlot(selected + direction);
 
-const slotIcon = (it) => (it.kind === 'tool' ? (it.item.bat ? '🏏' : '🔨') : it.kind === 'gear' ? gearIcon(it.item.gear, 'slot-gear') : findAnimal(it.item.name)?.emoji || '❓');
+const slotIcon = (it) => (it.kind === 'tool' ? (it.item.weapon ? WEAPONS[it.item.weapon].emoji : it.item.bat ? '🏏' : '🔨') : it.kind === 'gear' ? gearIcon(it.item.gear, 'slot-gear') : findAnimal(it.item.name)?.emoji || '❓');
 let lastHotbar = '';
 export function renderHotbar() {
   const items = hotbarItems();
@@ -302,7 +306,9 @@ export function renderHotbar() {
     bar.appendChild(slot);
   }
   const it = items[selected];
-  $('hotbar-label').textContent = it?.item.bat
+  $('hotbar-label').textContent = it?.item.weapon
+    ? `${WEAPONS[it.item.weapon].emoji} ${WEAPONS[it.item.weapon].name} - ${WEAPONS[it.item.weapon].desc}`
+    : it?.item.bat
     ? '🏏 Bat - get close to the Scientist and press E or click to SMACK him!'
     : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'

@@ -67,14 +67,16 @@ class MouseLook extends THREE.EventDispatcher {
     const dy = e.movementY || 0;
     if (Math.abs(dx) > MAX_MOUSE_JUMP || Math.abs(dy) > MAX_MOUSE_JUMP) return;
     this.euler.setFromQuaternion(this.camera.quaternion);
-    this.euler.y -= dx * MOUSE_SENSITIVITY;
-    this.euler.x -= dy * MOUSE_SENSITIVITY;
+    const sens = MOUSE_SENSITIVITY * (this.sensMul || 1); // sensMul：🔫 開鏡時慢啲（src/weapons.js）
+    this.euler.y -= dx * sens;
+    this.euler.x -= dy * sens;
     this.euler.x = Math.max(-1.45, Math.min(1.45, this.euler.x));
     this.euler.z = 0;
     this.camera.quaternion.setFromEuler(this.euler);
   }
   // 手機：手指拖動轉鏡頭（dx、dy 係像素）
   look(dx, dy, sensitivity = 0.005) {
+    sensitivity *= this.sensMul || 1;
     this.euler.setFromQuaternion(this.camera.quaternion);
     this.euler.y -= dx * sensitivity;
     this.euler.x -= dy * sensitivity;

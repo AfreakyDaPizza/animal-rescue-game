@@ -320,6 +320,30 @@ export const GHOST_MAX_SOULS = 12;
 export const PHANTOM_EXPRESS_EVERY_MINUTES = 60;
 export const PHANTOM_EXPRESS_STAY_MINUTES = 30;
 
+// ---- 🐉 PUMPKIN REAPER DRAGON (Issue #11): a boss inside the Abandoned Manor ----
+// It wakes up every REAPER_EVERY_MINUTES minutes on the real clock, at REAPER_AT_MINUTE past the hour
+// (30 = at :30, so it doesn't clash with the Phantom Express at :00). Everybody sees the same time.
+// A red warning shows REAPER_WARNING_SECONDS before. The manor door stays open for REAPER_WINDOW_MINUTES.
+export const REAPER_EVERY_MINUTES = 60;
+export const REAPER_AT_MINUTE = 30;
+export const REAPER_WINDOW_MINUTES = 10;
+export const REAPER_WARNING_SECONDS = 60;
+export const REAPER_HP = 10000; // the dragon's HP (the Soul Blaster does 100 per shot)
+export const REAPER_HEAD_MULT = 1.5; // hitting its pumpkin head does this many times more damage
+export const REAPER_HEARTS = 5; // your hearts in the fight (each hit takes 1)
+export const REAPER_HEART_REGEN = 12; // seconds without getting hit to get 1 heart back
+export const REAPER_HIT_SAFE = 1.3; // seconds after a hit when nothing can hit you again
+export const REAPER_ATTACK_GAP = 2.4; // seconds between attacks (it gets faster below half HP)
+export const REAPER_ENRAGE_GAP = 0.7; // below half HP: the gap is this many times as long (0.7 = 30% faster)
+export const REAPER_BOMBS = 4; // pumpkin bombs per throw (+1 when angry)
+export const REAPER_BOMB_RADIUS = 3.2; // how big the red circle is (metres)
+export const REAPER_FISH_PER_SUMMON = 3; // ghost fish that pop out of the floor each time (+1 when angry)
+export const REAPER_FISH_MAX = 6; // most ghost fish at the same time
+export const REAPER_FISH_HP = 300; // a ghost fish's HP (3 Soul Blaster shots)
+export const REAPER_FIRE_PUSH = 16; // how hard the fire breath flings you
+export const REAPER_KEEP_DAMAGE = true; // true = if you get knocked out, the dragon keeps its lost HP (until its time ends)
+export const REAPER_SOUL_CANDY = 1; // 🍬 Soul Candy for beating it
+
 // ---- 🐾 ECHO'S QUESTLINE (kid 2026-10-22): 10 daily quests in a row at Echo's Questline stall (Spawn Ruins) ----
 // The day the questline opens (year-month-day). Before this day the stall shows "Opens on 24 Oct".
 // The Secret Ranger Control Panel can open it early (state.echoQuestsEarly).

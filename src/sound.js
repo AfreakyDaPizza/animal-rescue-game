@@ -293,6 +293,11 @@ const SOUNDS = {
   },
 };
 
+// 其他檔案加自己嘅聲效（例如 src/weapons.js、src/reaperBoss.js）：addSounds({ name: (t, { tone, noise, arp }) => ... })
+export function addSounds(map) {
+  for (const [name, fn] of Object.entries(map)) SOUNDS[name] = (t) => fn(t, { tone, noise, arp });
+}
+
 export function play(name) {
   if (muted) return;
   try {
