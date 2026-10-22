@@ -558,10 +558,17 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
 
 // Index 面板有三個分頁：動物、跑步機、學生桌
 let indexTab = 'animals';
+// 有咗嘅寵物（例如控制面板俾嘅）都當「搵到」，唔會喺 Index 顯示 ???（唔俾新物種獎金）
+function syncOwnedToIndex() {
+  for (const p of [...(state.pets || []), ...(state.borrowed || [])]) if (p?.name && !state.indexFound.includes(p.name)) state.indexFound.push(p.name);
+}
+
 function indexHtml() {
   const tab = (id, label) => `<button data-tab="${id}" class="${indexTab === id ? 'active' : ''}">${label}</button>`;
-  const tabs = `<div class="tabs">${tab('animals', '🐾 Animals')}${tab('treadmill', '🏃 Treadmills')}${tab('table', '📚 Student Tables')}${tab('machines', '💗 Machines')}</div>`;
+  syncOwnedToIndex();
+  const tabs = `<div class="tabs">${tab('animals', '🐾 Animals')}${tab('special', '✨ Special Pets')}${tab('treadmill', '🏃 Treadmills')}${tab('table', '📚 Student Tables')}${tab('machines', '💗 Machines')}</div>`;
   if (indexTab === 'machines') return tabs + machineIndexHtml();
+  if (indexTab === 'special') return tabs + specialIndexHtml();
   return tabs + (indexTab === 'animals' ? animalIndexHtml() : tierIndexHtml(indexTab));
 }
 
@@ -625,6 +632,12 @@ function animalIndexHtml() {
     }
     html += '</div>';
   });
+  return html;
+}
+
+// ✨ 特別寵物（Halloween 蛋、寶箱、Meteoric Shop、Witch Tower）：自己一個分頁（小朋友 Issue #12：喺 Animals 最底搵唔到）
+function specialIndexHtml() {
+  let html = '';
   // 🎃 Halloween 寵物（由蛋孵出嚟）：自己一段
   html += `<h2 class="hw-index">🎃 Halloween Pets <span class="count">${HALLOWEEN_PETS.filter((a) => state.indexFound.includes(a.name)).length}/${HALLOWEEN_PETS.length}</span></h2>
     <p class="reward">Hatch them from eggs in the Halloween world!</p>`;

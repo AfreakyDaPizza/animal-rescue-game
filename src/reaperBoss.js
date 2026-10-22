@@ -1483,8 +1483,14 @@ export function createReaper(ctx) {
   function interaction(pos) {
     // 大廳出口：撳 E 先出（唔係行入去，因為俾火彈飛都可能撞到門口）
     if (R.inside && R.phase !== 'dying' && Math.hypot(pos.x - REAPER_EXIT.x, pos.z - REAPER_EXIT.z) < 3) return { prompt: '<kbd>E</kbd> 🚪 Run out of the manor (the dragon stays here)', action: () => leave('exit') };
-    if (!door.visible) return null;
     if (Math.hypot(pos.x - MANOR_DOOR.x, pos.z - MANOR_DOOR.z) > 3.6) return null;
+    if (!door.visible) {
+      // 未醒／打贏咗：話你知幾時醒（小朋友 Issue #12「Boss 冇出現」：佢每個鐘 :30 先醒 10 分鐘）
+      const st = reaperStatus();
+      const beaten = st.active && state.reaperBeatenAt === st.start;
+      const wait = beaten ? st.start + REAPER_EVERY_MINUTES * MIN - Date.now() : st.next;
+      return { prompt: `${beaten ? '🏆 You beat the dragon this time!' : '😴 The PUMPKIN REAPER DRAGON is sleeping...'} It wakes up in <b>${fmt(wait)}</b> (every hour at :${String(REAPER_AT_MINUTE).padStart(2, '0')})` };
+    }
     if (ctx.isCarryingEgg?.()) return { prompt: '🥚 Take your egg to the Spawn Ruins first, then fight the dragon!' };
     return { prompt: '<kbd>E</kbd> 🐉 Enter the manor and fight the PUMPKIN REAPER DRAGON!', action: enter };
   }
