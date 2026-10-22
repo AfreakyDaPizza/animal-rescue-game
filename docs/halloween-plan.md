@@ -178,3 +178,15 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
 - A small tracker on the left (only in the Halloween world) shows your quest and a progress bar. When you finish one, a **QUEST COMPLETE!** card pops up with confetti: click **Claim** or press **Enter**.
 - Code: `src/questline.js` (counting + prizes, `state.echoQuests = { day, index, progress, claimed }`), `src/echoQuestStall.js` (stall, panel, tracker, card), Echo's model in `src/echoShop.js` (`buildEcho`).
 - Testing (dev console): `game.questline.open()` opens it early; `game.questline.finish()` finishes the current quest; `game.questline.jump(9)` goes to quest 10; `game.questline.track('ghostCatch', 5)`.
+
+## ✅ Built: 🗺️ World Expedition + 🔥 Halloween World 2: Hell (Issue #11, 2026-10-22)
+- **🗺️ World Expedition map** (`src/worldExpedition.js`): a big glowing map board in the Spawn Ruins (south-east, `EXPEDITION_MAP` = HW_X+12, z 9). It shows World 1 (Halloween) and World 2 (Hell). Press E:
+  - World 2 is locked: "🍬 Soul Candy 3/5 — beat the Pumpkin Reaper Dragon in the Abandoned Manor". When you have 5, the Unlock button uses 5 Soul Candy (`state.soulCandy`, `state.world2Unlocked`).
+  - Then "🔥 Travel to Hell" (new red loading screen, theme `hell` in `src/loading.js`).
+- **🔥 Hell** (`src/hellShape.js` = map and numbers, `src/hellWorld.js` = looks): far away at x ≈ -2600. Lava sea that flows and glows, dark red sky, ash and embers, black spikes, big chains, fire geysers.
+  - **Parkour:** 23 flying lava rocks (`HELL_ROCKS`). Some slide, some float up and down, some spin and carry you around, some fly in circles. 5 🚩 checkpoints (the 5th is the castle landing). Fall in the lava → "🔥 HOT HOT HOT!" and you go back to your last checkpoint (nothing is lost).
+  - The slowest player (Speed 100) can jump about 4.5 m; the rocks are at most 2.6 m apart when they are closest. A test robot finished the whole path.
+  - 🌀 Portals back to the Halloween World on the first island and in the castle courtyard.
+- **🏰 Witch Castle:** a dark castle with a courtyard, 🧙‍♀️ the Witch (pointy hat, bubbling cauldron, black cat, speech bubbles). Press E to talk → she tells you about her **🗼 Witch Tower** (east of the castle) and lights a glowing path to its door (`state.witchMet`).
+  - The tower door: for now it says "🗼 The Witch Tower — coming next!". For the next helper: `setWitchTowerEntry(fn)` from `src/hellWorld.js`, or `window.__enterWitchTower = fn`.
+- Control Panel: Teleport → "World Expedition map" and "Hell (World 2)"; Unlocks → "Halloween World 2 (Hell) unlocked"; Give → 🍬 Soul Candy.

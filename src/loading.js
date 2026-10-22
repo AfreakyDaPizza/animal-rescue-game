@@ -5,7 +5,7 @@
 //     ... progress(0.5) ...           // 0–1，真實進度（可以唔叫，條會自己慢慢行）
 //   }, 1.8, { theme: 'halloween', title: 'Halloween World', kicker: 'Travelling to' });
 //   if (!ok) return;                   // 出錯／太耐 → 已經收埋畫面兼彈咗出錯卡
-// theme：'nature'（普通世界）／'halloween'／'ghost'
+// theme：'nature'（普通世界）／'halloween'／'ghost'／'hell'（🔥 Halloween World 2）
 // 最少顯示 minSeconds 秒；loading.active = true 嗰陣其他嘢（暫停、Boss）會停
 // 第一次開網頁：index.html 已經有 #loading-screen（class="boot"），main.js 起好叫 finishBoot()
 import { ANIMALS } from './data/animals.js';
@@ -26,6 +26,11 @@ const THEMES = {
     kicker: 'All aboard!', title: 'Ghost World', rider: '🚂', orbit: '👻',
     floaters: ['👻', '✨', '💀', '🕯️', '👻', '🔮', '✨', '👻'], flyers: ['🚂', '👻'], icons: ['👻', '🔮', '💀', '🧹'],
   },
+  // 🔥 Halloween World 2（Issue #11）：熔岩紅天、火山、火星
+  hell: {
+    kicker: 'World 2 · Travelling to', title: 'Hell', rider: '🔥', orbit: '🦇',
+    floaters: ['🔥', '🌋', '💀', '🔥', '🪨', '🍬', '🔥', '⛓️'], flyers: ['🦇', '🦇', '🧹'], icons: ['🔥', '🌋', '🏰', '🧙‍♀️'],
+  },
 };
 
 // ---- 提示（玩法）+ 動物知識（真資料，src/data/animals.js）----
@@ -45,6 +50,14 @@ const TIPS = {
     '🎣 Better fishing rods catch better Halloween eggs.',
     '🦇 Every biome boss chases you. NO MERCY!',
     '🪦 Put your eggs in the Egg Graveyard to hatch them.',
+  ],
+  hell: [
+    '🔥 Jump across the flying lava rocks to reach the Witch Castle!',
+    '🚩 Touch a checkpoint flag. If you fall in the lava, you go back there.',
+    '🌀 Some rocks spin around. Jump when the next rock comes close!',
+    '🧙‍♀️ Talk to the Witch in the castle. She knows the way into the tower.',
+    '🍬 Soul Candy comes from beating the Pumpkin Reaper Dragon.',
+    '🏃 More Speed = longer jumps. Train on the Treadmill!',
   ],
   ghost: [
     '🧹 Hold E (or the mouse button) to suck up ghosts.',

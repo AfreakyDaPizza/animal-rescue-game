@@ -28,6 +28,7 @@ import { fenceMat, roundBox } from './fences.js'; // 🪵 圍牆裝飾
 import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, BEACH_PIER, GYM, GYM_DOOR, labStatus } from './labShape.js';
 import { beach } from './secretBeach.js';
 import { inHalloween, hwWalkable, hwZoneAt } from './halloweenShape.js'; // 🎃 Halloween 世界（好遠嘅西邊）
+import { inHell } from './hellShape.js'; // 🔥 Halloween World 2
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
 export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
@@ -85,8 +86,12 @@ export const gymArea = { open: false };
 export const platforms = [];
 // bottom（可以唔俾）：塊台有幾厚 → 例如天橋，下面夠高就可以喺下面行過（唔會當牆）
 export function addPlatform(rect, top, bottom = null) {
-  platforms.push({ ...rect, top, bottom });
+  const p = { ...rect, top, bottom };
+  platforms.push(p);
+  return p;
 }
+// 🔥 圓形台（Hell 嘅轉石／石島）：{ cx, cz, r }；長方形就睇 minX…maxZ（m = 額外闊度）
+const onPlat = (p, x, z, m = 0) => (p.r ? (x - p.cx) ** 2 + (z - p.cz) ** 2 <= (p.r + m) ** 2 : x >= p.minX - m && x <= p.maxX + m && z >= p.minZ - m && z <= p.maxZ + m);
 const HEADROOM = 2.2; // 喺天橋下面行要幾高位
 const STEP_UP = 0.45; // 低過呢個高度嘅台，行過去自動踏上去（例如跑步機）
 
@@ -94,22 +99,28 @@ const STEP_UP = 0.45; // 低過呢個高度嘅台，行過去自動踏上去（�
 export function groundAt(x, z, feetY) {
   let ground = 0;
   for (const p of platforms) {
-    if (x >= p.minX && x <= p.maxX && z >= p.minZ && z <= p.maxZ && p.top <= feetY + STEP_UP) ground = Math.max(ground, p.top);
+    if (p.top <= feetY + STEP_UP && onPlat(p, x, z)) ground = Math.max(ground, p.top);
   }
   return ground;
 }
 
-// feetY：玩家腳嘅高度。太矮嘅時候，石台就好似牆咁擋住（要跳先上到）
-export function isWalkable(x, z, radius, feetY = 0) {
-  // 🎃 Halloween 世界：自己一套範圍（夜晚閘、普通地圖都唔理）
-  if (inHalloween(x, z)) return hwWalkable(x, z, radius) && colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius);
-  if (gate.locked && z < 0.8) return false; // 閘口落咗，入唔到通道
+// 太高嘅石台就好似牆咁擋住（要跳先上到）
+function platformWall(x, z, radius, feetY) {
   for (const p of platforms) {
     // 矮嘅樓梯級唔計公仔闊度（級太淺，計埋就會俾第二級擋住，踏唔上第一級）
     if (p.bottom !== null && feetY + HEADROOM < p.bottom) continue; // 喺天橋下面行過
     const m = p.top - feetY <= STEP_UP * 2.2 ? 0 : radius;
-    if (feetY + STEP_UP < p.top && x > p.minX - m && x < p.maxX + m && z > p.minZ - m && z < p.maxZ + m) return false;
+    if (feetY + STEP_UP < p.top && (p.r ? (x - p.cx) ** 2 + (z - p.cz) ** 2 < (p.r + m) ** 2 : x > p.minX - m && x < p.maxX + m && z > p.minZ - m && z < p.maxZ + m)) return true;
   }
+  return false;
+}
+// feetY：玩家腳嘅高度。太矮嘅時候，石台就好似牆咁擋住（要跳先上到）
+export function isWalkable(x, z, radius, feetY = 0) {
+  // 🎃 Halloween 世界：自己一套範圍（夜晚閘、普通地圖都唔理）
+  // 🔥 Hell（Halloween World 2）：高過你嘅熔岩石當牆（唔係會行咗入石入面跌落熔岩）
+  if (inHalloween(x, z)) return hwWalkable(x, z, radius) && colliders.every((c) => Math.hypot(x - c.x, z - c.z) >= c.r + radius) && (!inHell(x, z) || !platformWall(x, z, radius, feetY));
+  if (gate.locked && z < 0.8) return false; // 閘口落咗，入唔到通道
+  if (platformWall(x, z, radius, feetY)) return false;
   const r = radius + WALL_THICKNESS / 2; // 牆有一半厚度企喺地圖入面
   const inRect = (rect) =>
     x >= rect.minX + r && x <= rect.maxX - r && z >= rect.minZ + r && z <= rect.maxZ - r;

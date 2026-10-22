@@ -23,6 +23,7 @@ import {
   mistLayer, wispCloud,
 } from './halloweenArt.js';
 import { buildGhostTown } from './ghostTown.js';
+import { inHell } from './hellShape.js'; // 🔥 Halloween World 2
 
 
 // ---------- 狀態 ----------
@@ -948,9 +949,10 @@ export async function buildHalloween(scene, progress = () => {}) {
     nearBackPortal: (pos) => Math.hypot(pos.x - HW_PORTAL.x, pos.z - HW_PORTAL.z) < 3.4,
     update(dt, t, camPos, quality = 3) {
       const show = halloween.sky > 0.02;
-      live.visible = show;
-      moon.visible = show;
-      stars.visible = show;
+      const hell = inHell(camPos.x, camPos.z); // 🔥 Hell：冇月亮、冇星（Hell 自己有灰燼同火星）
+      live.visible = show && !hell;
+      moon.visible = show && !hell;
+      stars.visible = show && !hell;
       if (!show) return;
       backPortal.update(t);
       flameSpots.forEach(([x, y, z, s], i) => {
@@ -1413,6 +1415,7 @@ function makeBats(live, groups, rand) {
 // ================= 恐怖天空（main.js 喺 updateAmbience 之後叫）=================
 // Issue #9：以前成個天血紅色好核突 → 改做深紫藍夜空、地平線紫紅色光、大月光；霧跟天色夾
 // 每個地方嘅霧唔同（Hollow Sprites 最大霧，但都睇到前面）；間中行雷（天上有閃電）
+const C = (h) => new THREE.Color(h);
 const ZONE_FOG = {
   '🎃 Spawn Ruins': [0x3a2a58, 22, 125],
   'Pumpkin Graveyard': [0x4a2f4a, 16, 95],
@@ -1422,8 +1425,17 @@ const ZONE_FOG = {
   'Train Station': [0x30285a, 22, 125],
   'Fishing Lake': [0x2c2c56, 20, 115],
   'Ghost World': [0x221637, 14, 95], // 鬼鎮：遠少少都睇到啲屋（霧仍然好大）
+  Hell: [0x4a0c04, 40, 250], // 🔥 Halloween World 2：暗紅煙霧（要睇到遠處嘅城堡）
+  'Witch Castle': [0x3f0a10, 34, 230],
 };
-const C = (h) => new THREE.Color(h);
+// 🔥 Hell 嘅天：暗紅天頂、地平線熔岩橙光；冇月亮、冇閃電（熔岩光代替）
+const HELL_SKY_TOP = C(0x1a0204);
+const HELL_SKY_BOTTOM = C(0x7a1a06);
+const HELL_HEMI_SKY = C(0xff7a4a);
+const HELL_HEMI_GROUND = C(0xff3d00);
+const HELL_LIGHT = C(0xffa060);
+const HELL_AMBIENT = C(0xffb090);
+const HW_AMBIENT = C(0xcdbcff);
 const SKY_TOP = C(0x0a0820);
 const SKY_BOTTOM = C(0x40295c);
 const _fog = new THREE.Color();
@@ -1488,9 +1500,10 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
     return;
   }
   const zone = ZONE_FOG[hwZoneAt(camPos.x, camPos.z)] || ZONE_FOG['🎃 Spawn Ruins'];
+  const hell = inside && inHell(camPos.x, camPos.z); // 🔥 Halloween World 2
   // 行雷：每 7–16 秒一次，閃兩下
   if (!bolt) makeBolt(scene);
-  if (inside) {
+  if (inside && !hell) {
     halloween.nextFlash -= dt;
     if (halloween.nextFlash <= 0) {
       halloween.nextFlash = 7 + Math.random() * 9;
@@ -1506,10 +1519,10 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
   bolt.visible = ft < 0.4 && k > 0.5;
   bolt.material.opacity = ft < 0.12 ? 1 : ft < 0.2 ? 0.15 : ft < 0.3 ? 0.9 : Math.max(0, 1 - (ft - 0.3) * 10);
   // 天色
-  _bg.copy(SKY_BOTTOM).lerp(_flashC, flash * 0.45);
+  _bg.copy(hell ? HELL_SKY_BOTTOM : SKY_BOTTOM).lerp(_flashC, flash * 0.45);
   scene.background.lerp(_bg, k);
   skyUniforms.bottom.value.lerp(_bg, k);
-  skyUniforms.top.value.lerp(SKY_TOP, k);
+  skyUniforms.top.value.lerp(hell ? HELL_SKY_TOP : SKY_TOP, k);
   skyUniforms.sunAmt.value *= 1 - k;
   skyUniforms.moonAmt.value *= 1 - k;
   // 霧：顏色 + 距離（慢慢變）
@@ -1531,12 +1544,13 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
     hwAmbient = new THREE.AmbientLight(0xcdbcff, 0);
     scene.add(hwAmbient);
   }
-  hwAmbient.intensity = THREE.MathUtils.lerp(hwAmbient.intensity, 0.9 * k, Math.min(1, dt * 3));
-  hemi.color.copy(hemiOrig.sky).lerp(HEMI_SKY, k);
-  hemi.groundColor.copy(hemiOrig.ground).lerp(HEMI_GROUND, k);
+  hwAmbient.intensity = THREE.MathUtils.lerp(hwAmbient.intensity, (hell ? 0.75 : 0.9) * k, Math.min(1, dt * 3));
+  hwAmbient.color.copy(hell ? HELL_AMBIENT : HW_AMBIENT);
+  hemi.color.copy(hemiOrig.sky).lerp(hell ? HELL_HEMI_SKY : HEMI_SKY, k);
+  hemi.groundColor.copy(hemiOrig.ground).lerp(hell ? HELL_HEMI_GROUND : HEMI_GROUND, k);
   hemi.intensity = THREE.MathUtils.lerp(hemi.intensity, 2.3 + flash * 1.4, k);
   sun.intensity = THREE.MathUtils.lerp(sun.intensity, 2.4 + flash * 1.4, k);
-  sun.color.lerp(MOON_LIGHT, k);
+  sun.color.lerp(hell ? HELL_LIGHT : MOON_LIGHT, k);
 }
 
 // 🎃 載入畫面搬咗去 src/loading.js（Issue #8）

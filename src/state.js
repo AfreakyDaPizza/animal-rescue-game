@@ -59,6 +59,9 @@ const DEFAULTS = {
   echoQuests: null, // 🐾 Echo's Questline（2026-10-22）：{ day, index, progress, claimed }，每日午夜重新由第 1 個開始
   echoQuestsEarly: false, // 🔐 秘密控制台：提早開 Echo's Questline
   meteorCrystals: 0, // ☄️ METEORIC 活動執到嘅 Meteoric Crystals（Issue #10；每粒 × state.crystalMultiplier）
+  soulCandy: 0, // 🍬 Soul Candy（Issue #11）：每打贏一次 Pumpkin Reaper Dragon 得 1 粒；5 粒開 Halloween World 2（Hell）
+  world2Unlocked: false, // 🔥 喺 World Expedition 地圖用 5 粒 Soul Candy 開咗 Hell 未
+  witchMet: false, // 🧙‍♀️ 同 Witch Castle 個女巫傾過偈未（傾完先開到 Witch Tower 道門）
 };
 
 export const state = load();

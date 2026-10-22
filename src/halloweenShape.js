@@ -27,6 +27,8 @@
 //
 // 安全區：Spawn Ruins 圓圈入面（RUINS_SAFE_R），Boss 唔會入嚟
 
+import { inHell, hellWalkable, hellZoneAt } from './hellShape.js'; // 🔥 Halloween World 2：Hell（x ≈ -2600，Issue #11）
+
 export const HW_X = -1400; // 成個 Halloween 世界嘅中線
 export const HW_EDGE_X = -1250; // x 細過呢個就係 Halloween 世界（包埋 Ghost World）
 
@@ -155,6 +157,7 @@ export const inSafeZone = (x, z) => Math.hypot(x - RUINS.x, z - RUINS.z) <= RUIN
 
 // 呢個點（連埋公仔闊度 radius）喺唔喺 Halloween 世界行得嘅地方？（撞嘢圈另外計）
 export function hwWalkable(x, z, radius) {
+  if (inHell(x, z)) return hellWalkable(x, z, radius); // 🔥
   if (inGhostWorld(x, z)) return Math.hypot(x - GHOST_WORLD.x, z - GHOST_WORLD.z) <= GHOST_WORLD.r - radius && !GHOST_TOWN.blocks.some((b) => inBlock(b, x, z, radius)); // 鬼鎮啲屋行唔入
   if (Math.hypot(x - RUINS.x, z - RUINS.z) <= RUINS.r - radius) return true;
   if (!inR(LAKE_SHORE, x, z, radius) && !inR(DOCK, x, z, 0) && x > LAKE_WATER.minX && x < LAKE_WATER.maxX && z > LAKE_WATER.minZ && z < LAKE_WATER.maxZ) return false; // 水
@@ -165,6 +168,7 @@ export function hwWalkable(x, z, radius) {
 export function hwZoneAt(x, z) {
   if (!inHalloween(x, z)) return null;
   if (inGhostWorld(x, z)) return 'Ghost World';
+  if (inHell(x, z)) return hellZoneAt(x, z); // 🔥 'Hell' 或者 'Witch Castle'
   if (Math.hypot(x - RUINS.x, z - RUINS.z) <= RUINS.r + 1) return '🎃 Spawn Ruins';
   for (const b of HW_BIOMES) if (inR(b.rect, x, z, -1)) return b.name;
   if (inR(EGG_GRAVEYARD, x, z, -1)) return 'Egg Graveyard';
@@ -176,4 +180,4 @@ export function hwZoneAt(x, z) {
 export function hwBiomeIndexAt(x, z) {
   return HW_BIOMES.findIndex((b) => inR(b.rect, x, z, 0));
 }
-export const HW_ZONES = ['🎃 Spawn Ruins', ...HW_BIOMES.map((b) => b.name), 'Egg Graveyard', 'Train Station', 'Fishing Lake', 'Ghost World'];
+export const HW_ZONES = ['🎃 Spawn Ruins', ...HW_BIOMES.map((b) => b.name), 'Egg Graveyard', 'Train Station', 'Fishing Lake', 'Ghost World', 'Hell', 'Witch Castle'];

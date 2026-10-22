@@ -73,6 +73,9 @@ import { createFishing, fishingInteraction, fishingPress, fishingBusy, updateFis
 import { setRodShopActions } from './rodShop.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
+import { buildHell, setWitchTowerEntry } from './hellWorld.js'; // 🔥 Halloween World 2：Hell + 飛天熔岩石 + Witch Castle（Issue #11）
+import { HELL_ARRIVE, HELL_START, inHell } from './hellShape.js';
+import { createExpedition, EXPEDITION_SPOT } from './worldExpedition.js'; // 🗺️ World Expedition 地圖（Soul Candy 開 World 2）
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
@@ -148,6 +151,8 @@ let hwWorld = null; // 🎃 Halloween 世界：第一次入去先起（載入畫
 let hwEggs = null; // 🥚 Halloween 蛋同 Boss（同 hwWorld 一齊起）
 let echo = null; // 🐕 Echo 嘅 Zombified Chest 舖（同 hwWorld 一齊起）
 let echoQuests = null; // 🐾 Echo's Questline 攤位（同 hwWorld 一齊起）
+let expedition = null; // 🗺️ World Expedition 地圖（同 hwWorld 一齊起）
+let hell = null; // 🔥 Halloween World 2（第一次去先起）
 labStatus.gone = !!state.labBossDefeated; // 舊存檔：打贏咗 Boss = 實驗室已經爆咗
 const updateBeach = buildSecretBeach(scene); // Issue #2：秘密沙灘（打贏 Boss 先開）
 const eclipse = createEclipse(scene); // Eclipse 日蝕活動（天上嘅日蝕、DNA 激光）
@@ -508,7 +513,7 @@ function enableMobile() {
     controls: player.controls,
     isPaused,
     onUse: () => {
-      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
+      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
       if (!isPaused()) interact();
     },
     onPause: () => {
@@ -638,7 +643,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB' && !isPanelOpen()) toggleSideBox('pets'); // 🐾 地塊寵物
   if (e.code === 'KeyT' && !isPanelOpen()) toggleSideBox('timers'); // ⏱️ 繁殖機時間
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
@@ -907,6 +912,10 @@ function currentInteraction() {
   if (echoAct) return echoAct;
   const questAct = echoQuests?.interaction(pos); // 🐾 Echo's Questline
   if (questAct) return questAct;
+  const exAct = expedition?.interaction(pos); // 🗺️ World Expedition 地圖
+  if (exAct) return exAct;
+  const hellAct = hell?.interaction(pos); // 🔥 Hell：傳送門、🧙‍♀️ 女巫、🗼 Witch Tower 門
+  if (hellAct) return hellAct;
   const meteorAct = meteorShop.interaction(pos); // ☄️ Meteoric Shop
   if (meteorAct) return meteorAct;
   if (hwWorld && inHalloween(pos.x, pos.z) && hwWorld.nearBackPortal(pos)) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Hub', action: leaveHalloween };
@@ -1180,6 +1189,7 @@ setAdminActions({
     { id: 'halloweenEarly', label: '🎃 Halloween open early', on: !!state.halloweenEarly },
     { id: 'meteorEarly', label: '☄️ Meteoric Shop open early', on: !!state.meteorEarly, hint: 'The METEORIC event still starts on its date - use the Events tab to try it now' },
     { id: 'echoQuestsEarly', label: "🐕 Echo's Quests open early", on: !!state.echoQuestsEarly, hint: 'Echo the dog: Halloween questline (opens 24 October)' },
+    { id: 'world2Unlocked', label: '🔥 Halloween World 2 (Hell) unlocked', on: !!state.world2Unlocked, hint: 'Normally costs 5 🍬 Soul Candy at the World Expedition map' },
     { id: 'kingdomDebug', label: '👑 Kingdom gate open (test)', on: kingdomDebug, hint: 'Only for this visit' },
     { id: 'tutorialDone', label: '🎓 Tutorial finished', on: !!state.tutorialDone },
     { id: 'mute', label: '🔇 Sound muted', on: isMuted() },
@@ -1191,6 +1201,7 @@ setAdminActions({
     else if (id === 'halloweenEarly') this.halloweenEarly(!state.halloweenEarly);
     else if (id === 'meteorEarly') state.meteorEarly = !state.meteorEarly;
     else if (id === 'echoQuestsEarly') state.echoQuestsEarly = !state.echoQuestsEarly; // 🐕
+    else if (id === 'world2Unlocked') state.world2Unlocked = !state.world2Unlocked; // 🔥
     else if (id === 'kingdomDebug') kingdomDebug = !kingdomDebug;
     else if (id === 'tutorialDone') state.tutorialDone = !state.tutorialDone;
     else if (id === 'mute') {
@@ -1207,6 +1218,8 @@ setAdminActions({
     { id: 'beach', group: 'secret', emoji: '🏖️', name: 'Secret Beach', locked: beach.open ? '' : 'Beat the Lab boss first' },
     { id: 'halloween', group: 'halloween', emoji: '🎃', name: 'Halloween World', locked: isHalloweenOpen() || state.halloweenEarly ? '' : 'Open Halloween early first (Unlocks tab)' },
     { id: 'ghost', group: 'halloween', emoji: '👻', name: 'Ghost World', locked: isHalloweenOpen() || state.halloweenEarly ? '' : 'Open Halloween early first (Unlocks tab)' },
+    { id: 'expedition', group: 'halloween', emoji: '🗺️', name: 'World Expedition map', locked: isHalloweenOpen() || state.halloweenEarly ? '' : 'Open Halloween early first (Unlocks tab)' },
+    { id: 'hell', group: 'halloween', emoji: '🔥', name: 'Hell (World 2)', locked: !(isHalloweenOpen() || state.halloweenEarly) ? 'Open Halloween early first (Unlocks tab)' : state.world2Unlocked ? '' : 'Unlock World 2 first (Unlocks tab)' },
   ],
   async teleport(id) {
     const place = this.places().find((p) => p.id === id);
@@ -1215,9 +1228,11 @@ setAdminActions({
     if (rescue.carrying) return popup('🐾 Bring the animal you are carrying home first!');
     togglePanel('admin');
     const inHw = inHalloween(camera.position.x, camera.position.z);
-    if (id === 'halloween' || id === 'ghost') {
+    if (id === 'halloween' || id === 'ghost' || id === 'expedition' || id === 'hell') {
       if (!inHw) await enterHalloween();
       if (!inHalloween(camera.position.x, camera.position.z)) return; // 入唔到（例如載入出錯）
+      if (id === 'hell') return travelToHell(); // 🔥
+      if (id === 'expedition') return travel(EXPEDITION_SPOT.x, EXPEDITION_SPOT.z, EXPEDITION_SPOT.rotY, '🗺️ The World Expedition map!');
       if (id === 'ghost') {
         forceTrain(); // 有車先留得低（冇車會即刻送返火車站）
         travel(GHOST_ARRIVE.x, GHOST_ARRIVE.z, GHOST_ARRIVE.rotY, '👻 The GHOST WORLD!');
@@ -1344,6 +1359,7 @@ async function enterHalloween() {
     if (!hwEggs) hwEggs = createHalloweenEggs(scene, camera, { teleport: (x, z) => { teleportPlayer(player, x, z); camera.rotation.set(0, 0, 0, 'YXZ'); } });
     if (!echo) echo = createEchoShop({ scene, openShop: () => togglePanel('echo'), popup }); // 🐕
     if (!echoQuests) echoQuests = createEchoQuests({ scene, openPanel: () => togglePanel('echoQuests'), popup, announce }); // 🐾
+    if (!expedition) expedition = createExpedition({ scene, openPanel: () => togglePanel('expedition'), closePanel: () => togglePanel('expedition'), travel: () => travelToHell(), popup, announce }); // 🗺️
     teleportPlayer(player, HW_ARRIVE.x, HW_ARRIVE.z);
     camera.rotation.set(0, HW_ARRIVE.rotY, 0, 'YXZ');
     halloween.sky = 1; // 一出現就係恐怖天空（唔使慢慢變）
@@ -1368,6 +1384,50 @@ async function leaveHalloween() {
   stopFishing(fishing); // 🎣 返普通世界：收線（魚竿留低，Issue #8 #9）
   announce('🏡 Back at the Animal Rescue Park!');
 }
+
+// ---- 🔥 Halloween World 2：Hell（Issue #11）----
+// 傳送去某個高度（石台上面）：teleportPlayer 會將腳放返 0，所以之後再擺高
+function placePlayer(x, y, z, rotY = null) {
+  teleportPlayer(player, x, z);
+  player.feetY = y;
+  camera.position.y += y;
+  if (rotY !== null) camera.rotation.set(0, rotY, 0, 'YXZ');
+}
+async function travelToHell() {
+  if (hwTravelling) return;
+  if (!state.world2Unlocked) return popup('🔒 Unlock World 2 at the 🗺️ World Expedition map first!');
+  if (rescue.carrying || hwEggs?.isCarrying()) return popup('🥚 Take what you are carrying to the Spawn Ruins first!');
+  hwTravelling = true;
+  play('portal');
+  const ok = await showLoading(hell ? '🔥 Travelling to Hell...' : '🔥 Building Hell...', async (progress) => {
+    if (!hell) hell = await buildHell(scene, progress, {
+      place: placePlayer, popup, announce, play,
+      openWitch: () => togglePanel('witch'), closeWitch: () => togglePanel('witch'),
+      goBack: () => leaveHell(),
+    });
+    placePlayer(HELL_ARRIVE.x, HELL_START.top, HELL_ARRIVE.z, HELL_ARRIVE.rotY);
+    hell.arrive();
+    halloween.sky = 1;
+  }, 2, { theme: 'hell', title: 'Hell', kicker: '🔥 World 2 · Travelling to' });
+  hwTravelling = false;
+  if (!ok) return;
+  play('rumble');
+  announce('🔥 Welcome to HELL! 🔥');
+  setTimeout(() => popup('🪨 Jump across the flying lava rocks to reach the 🏰 Witch Castle!'), 2300);
+}
+async function leaveHell() {
+  if (hwTravelling) return;
+  hwTravelling = true;
+  play('portal');
+  const ok = await showLoading('🎃 Back to the Halloween World...', async () => {
+    teleportPlayer(player, HW_ARRIVE.x, HW_ARRIVE.z);
+    camera.rotation.set(0, HW_ARRIVE.rotY, 0, 'YXZ');
+  }, 1.2, { theme: 'halloween', kicker: 'Going back to', title: 'Halloween World' });
+  hwTravelling = false;
+  if (ok) announce('🎃 Back in the Halloween World!');
+}
+// 🗼 Witch Tower：下一位 helper 用 setWitchTowerEntry(fn)（hellWorld.js）或者 window.__enterWitchTower = fn
+void setWitchTowerEntry;
 
 // ---- 秘密沙灘 ----
 function travel(x, z, rotY, text) {
@@ -1878,7 +1938,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (labHit) onLabHit(labHit);
     const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
     if (bosses.some((b) => b.mode === 'chase') || labBattle) setMusicMood('boss');
-    else if (inHalloween(pos.x, pos.z)) setMusicMood(inGhostWorld(pos.x, pos.z) ? 'ghost' : 'spooky'); // 🎃 Halloween 世界日夜都係呢首；👻 Ghost World 更恐怖嗰首
+    else if (inHalloween(pos.x, pos.z)) setMusicMood(inGhostWorld(pos.x, pos.z) || inHell(pos.x, pos.z) ? 'ghost' : 'spooky'); // 🔥 Hell 都用恐怖啲嗰首 // 🎃 Halloween 世界日夜都係呢首；👻 Ghost World 更恐怖嗰首
     else if (dayNight.isNight) setMusicMood('night');
     else setMusicMood(location === 'Hub' || location === 'Gym' ? 'hub' : 'biome');
     if (safeTime <= 0 && caught) onBossCatch(caught);
@@ -1987,6 +2047,8 @@ renderer.setAnimationLoop((timestamp) => {
   applyHalloweenSky({ scene, skyUniforms: sky.uniforms, hemi, sun, dt, camPos: camera.position, playSound: play });
   hubPortal.update(time, isHalloweenOpen());
   hwWorld?.update(dt, time, camera.position, quality.level);
+  hell?.update(dt, time, { pos: camera.position, player, paused: isPaused() || frozen || !!fling, quality: quality.level }); // 🔥 飛天熔岩石（載住你郁）、跌落熔岩
+  expedition?.update(dt, time, camera.position); // 🗺️
   phantom.update(dt, time, camera.position); // 🚂
   ghostHunt.update(dt, time, { pos: camera.position, feetY: player.feetY, paused: isPaused(), view: viewCam }); // 🧹👻
   shards.update(time, camera.position); // 🗿
@@ -2080,6 +2142,6 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.meteor = meteor; // ☄️ 測試：game.forceEvent('meteor')、game.meteor

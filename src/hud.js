@@ -151,7 +151,9 @@ export function showZoneTitle(location) {
     'Egg Graveyard': ['Hatch your eggs here', '🪦 Egg Graveyard', '#9575cd'],
     'Train Station': ['All aboard...', '🚂 Phantom Express', '#76ff03'],
     'Fishing Lake': ['Fish for Halloween eggs', '🎣 Fishing Lake', '#4fc3f7'],
-    'Ghost World': ['Catch the ghosts!', '👻 Ghost World', '#b388ff'] }[location];
+    'Ghost World': ['Catch the ghosts!', '👻 Ghost World', '#b388ff'],
+    Hell: ['🔥 Halloween World 2', '🌋 Hell', '#ff7043'], // Issue #11
+    'Witch Castle': ['🔥 Halloween World 2', '🏰 Witch Castle', '#ea80fc'] }[location];
   el.querySelector('small').textContent = extra ? extra[0] : i >= 0 ? `Biome ${i + 1}` : 'Welcome back to';
   el.querySelector('span').textContent = extra ? extra[1] : i >= 0 ? BIOMES[i].short : 'The Hub';
   el.style.setProperty('--zone-color', extra ? extra[2] : i >= 0 ? BIOME_THEMES[i].top : '#ffd54f');

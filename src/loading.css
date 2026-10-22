@@ -84,6 +84,37 @@
   --ls-fog: rgba(178, 255, 230, 0.16);
 }
 
+/* ---- 🔥 Hell（Halloween World 2）：熔岩紅天、火山太陽、火星 ---- */
+#loading-screen[data-theme="hell"] {
+  --ls-sky: radial-gradient(circle at 50% 110%, #ff6d00 0%, #d84315 18%, #7f0000 42%, #2b0303 72%, #0d0000 100%);
+  --ls-orb: radial-gradient(circle at 45% 40%, #fff8e1 0%, #ffca28 30%, #ff5722 70%, #b71c1c 100%);
+  --ls-orb-glow: rgba(255, 87, 34, 0.6);
+  --ls-ground-1: #3e0a05;
+  --ls-ground-2: #140202;
+  --ls-card: linear-gradient(180deg, #fff3e0 0%, #ffccbc 100%);
+  --ls-ring: #d84315;
+  --ls-ink: #3e0a00;
+  --ls-ink-soft: #7a2a12;
+  --ls-title: #ff7043;
+  --ls-title-2: #ffca28;
+  --ls-stroke: #2a0000;
+  --ls-bar-ring: #b71c1c;
+  --ls-fill-a: #ffca28;
+  --ls-fill-b: #ff3d00;
+  --ls-tip-bg: #fbe9e7;
+  --ls-tip-line: #ff7043;
+  --ls-tip-head: #bf360c;
+  --ls-icon-ring: conic-gradient(#ff3d00, #ffca28, #ff3d00, #3e0000, #ff3d00);
+  --ls-fog: rgba(255, 112, 67, 0.2);
+}
+#loading-screen[data-theme="hell"] .ls-floaters span { filter: drop-shadow(0 0 14px rgba(255, 120, 40, 0.9)); }
+#loading-screen[data-theme="hell"] .ls-ground::after {
+  content: ''; position: absolute; inset: 55% 0 0 0;
+  background: repeating-linear-gradient(100deg, rgba(255, 145, 0, 0.55) 0 6px, rgba(255, 61, 0, 0) 6px 60px);
+  filter: blur(3px); animation: ls-lava-flow 3s linear infinite;
+}
+@keyframes ls-lava-flow { from { background-position: 0 0; } to { background-position: 120px 0; } }
+
 /* =================== 背景（會郁） =================== */
 #loading-screen .ls-bg { position: absolute; inset: 0; pointer-events: none; }
 /* 太陽光（淨係 nature）：慢慢轉 */

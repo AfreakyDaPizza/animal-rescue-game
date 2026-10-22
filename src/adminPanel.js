@@ -67,6 +67,7 @@ const CURRENCIES = [
   { key: 'candyCorn', emoji: '🌽', name: 'Candy Corn', max: 1e9, hw: true },
   { key: 'soulDust', emoji: '💀', name: 'Soul Dust (Souls)', max: 1e9, hw: true },
   { key: 'hwShards', emoji: '🔮', name: 'Halloween Shards', max: 999, steps: [1, 10, 100], hw: true },
+  { key: 'soulCandy', emoji: '🍬', name: 'Soul Candy', max: 999, steps: [1, 5, 10], hw: true }, // 🔥 5 粒開 Halloween World 2（Issue #11）
   { key: 'meteorCrystals', emoji: '💎', name: 'Meteor Crystals', max: 1e9 },
 ];
 const STEPS = [100, 1e3, 1e6];
