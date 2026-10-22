@@ -75,6 +75,7 @@ import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHa
 import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { buildHell, setWitchTowerEntry } from './hellWorld.js'; // 🔥 Halloween World 2：Hell + 飛天熔岩石 + Witch Castle（Issue #11）
 import { HELL_ARRIVE, HELL_START, inHell } from './hellShape.js';
+import { inReaperHall } from './reaperShape.js';
 import { createExpedition, EXPEDITION_SPOT } from './worldExpedition.js'; // 🗺️ World Expedition 地圖（Soul Candy 開 World 2）
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
@@ -2031,7 +2032,7 @@ renderer.setAnimationLoop((timestamp) => {
   updateLabGuide(camera, time, state.labUnlocked && !state.labVisited && !inMovie);
   document.body.classList.toggle('in-movie', inMovie); // 播緊片：收埋稀有動物通知（唔好遮住畫面）
   document.body.classList.toggle('in-halloween', inHalloween(camera.position.x, camera.position.z)); // 🎃 Halloween 世界：收埋教學、正常世界嘅夜晚倒數
-  document.body.classList.toggle('in-hell', inHell(camera.position.x, camera.position.z)); // 🔥 Hell：收埋火車、蛋提示（喺度用唔到）
+  document.body.classList.toggle('in-hell', inHell(camera.position.x, camera.position.z) || inReaperHall(camera.position.x, camera.position.z)); // 🔥 Hell：收埋火車、蛋提示（喺度用唔到）
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || hwEggs?.carryModel() || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
