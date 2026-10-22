@@ -2,6 +2,8 @@
 // 好似管理員面板：提早開新嘢、攞任何寵物、成本 Index、Max 晒、開活動、喺生態區出指定稀有度
 // Issue #10（小朋友 2026-10-21）：可以俾 🌽 Candy Corn、💎 Meteor Crystals 等等貨幣；面板整靚啲：
 //   分頁清楚啲、寵物搜尋、快速掣（+100／+1K／+1M／MAX）、所有活動（直接讀 events.js 個 EVENTS）、傳送、測試開關
+// 🎒 Gears 分頁（小朋友 2026-10-22）：俾任何 Shard（每粒有自己個樣，src/gearArt.js）、寶箱、Boost；清走所有 Gear
+//   全部直接讀 GEARS（data/gears.js）：其他檔案加新 gear type 就自動出現
 // 第一次改嘢之前會備份真存檔（SAVE_KEY + '-backup'），可以一撳還原
 import { state, save, SAVE_KEY, autoBackups, restoreAutoBackup } from './state.js';
 import { short } from './format.js';
@@ -11,6 +13,8 @@ import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
 import { petPic } from './animalPics.js';
+import { GEARS, gearInfo, gearCount, addGear, takeGear, isShardGear, syncShardCount } from './data/gears.js';
+import { gearPic } from './gearArt.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
@@ -25,6 +29,7 @@ let group = 'all'; // 寵物分類
 
 export function setAdminActions(a) {
   actions = a;
+  popup = a.popup || null;
 }
 
 const isOpen = () => $('panel').dataset.kind === 'admin';
@@ -36,6 +41,7 @@ const dateText = (iso) => {
 const TABS = [
   ['give', '💰 Give'],
   ['pets', '🐾 Pets'],
+  ['gears', '🎒 Gears'],
   ['world', '🌍 Teleport'],
   ['events', '🎉 Events'],
   ['future', '🔓 Unlocks'],
@@ -73,6 +79,7 @@ function parseAmount(text) {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
 }
 function setCurrency(key, value) {
+  if (key === 'hwShards') return setGearCount('halloweenShard', value); // 🔮 Halloween Shard 而家係背包 Gear（hwShards 只係鏡）
   state[key] = Math.max(0, Math.floor(value));
   save();
   play('coin');
@@ -98,15 +105,75 @@ function giveHtml() {
     ${section('🚀 Everything at once', `<div class="pet-actions">${confirmButton('rich', '💰 Huge Money, Speed, IQ and Jump Power')}</div>`)}`;
 }
 
+// ---------- 🎒 Gears：Shard、寶箱、Boost ----------
+const GEAR_MAX = 999;
+function setGearCount(type, n) {
+  n = Math.min(GEAR_MAX, Math.max(0, Math.floor(n)));
+  const now = gearCount(type);
+  if (n > now) addGear(type, n - now);
+  else for (let i = now; i > n; i--) takeGear(type);
+  save();
+  play('coin');
+}
+function gearCard(type) {
+  const g = gearInfo(type);
+  const n = gearCount(type);
+  return `<div class="card-animal admin-gear" style="border-color:${g.color}">${gearPic(type)}<b>${g.name}</b>
+    <small style="color:${g.color}">${g.rarity} · You have ${n}</small>
+    <div class="pet-actions admin-gear-btns">
+      <button data-admin="gear" data-type="${type}" data-v="1">+1</button><button data-admin="gear" data-type="${type}" data-v="10">+10</button>
+      <button data-admin="gear" data-type="${type}" data-v="zero" class="grey" title="Remove all">0</button>
+    </div></div>`;
+}
+// ⏱️ Boost（另一個幫手整緊 state.boosts）：佢可以喺 adminExtras.boosts 話我知有咩 Boost、點俾
+//   adminExtras.boosts = { list: () => [{ id, emoji, name }], give: (id, minutes) => {} }
+// 未有就試吓直接讀 state.boosts（{ id: 完結時間 ms } 或者 { id: { until } }），再冇就唔顯示
+export const adminExtras = {};
+const BOOST_MINUTES = [5, 30];
+function boostList() {
+  if (adminExtras.boosts) return adminExtras.boosts.list();
+  if (!state.boosts || typeof state.boosts !== 'object' || Array.isArray(state.boosts)) return [];
+  return Object.keys(state.boosts).map((id) => ({ id, emoji: '⏱️', name: id }));
+}
+function giveBoost(id, minutes) {
+  if (adminExtras.boosts) return adminExtras.boosts.give(id, minutes);
+  const add = minutes * 60e3;
+  const v = state.boosts[id];
+  const field = v && typeof v === 'object' ? ['until', 'endsAt', 'end'].find((k) => typeof v[k] === 'number') : null;
+  if (typeof v === 'number') state.boosts[id] = Math.max(Date.now(), v) + add;
+  else if (field) v[field] = Math.max(Date.now(), v[field]) + add;
+  else return popup?.('⏱️ Not sure how to give that boost yet!');
+  save();
+  play('coin');
+}
+let popup = null; // main.js 個 popup（經 actions）
+function gearsHtml() {
+  const types = Object.keys(GEARS);
+  const shards = types.filter(isShardGear);
+  const others = types.filter((t) => !isShardGear(t));
+  const total = (state.gears || []).length;
+  const boosts = boostList();
+  return `<p class="index-summary">🎒 You have <b>${total}</b> gear${total === 1 ? '' : 's'}. They go into the <b>⚙️ Gears</b> tab of your Inventory (press <kbd>\`</kbd>).</p>
+    ${section('💎 Mutation Shards', `<div class="cards admin-cards admin-gear-cards">${shards.map(gearCard).join('')}</div>
+      <div class="pet-actions"><button data-admin="allShards" class="sell">🎁 Give me 1 of every shard</button></div>`, 'Use a shard on a pet in your Inventory to give it that mutation!')}
+    ${section('🧰 Chests and more', others.length ? `<div class="cards admin-cards admin-gear-cards">${others.map(gearCard).join('')}</div>` : '<p class="hint">No chests yet. New gears show up here by themselves!</p>')}
+    ${boosts.length ? section('⏱️ Boosts', boosts.map((b) => `<div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">${b.emoji}</span><b>${b.name}</b></div>
+      <div class="admin-cur-btns">${BOOST_MINUTES.map((m) => `<button data-admin="boost" data-id="${b.id}" data-v="${m}">+${m} min</button>`).join('')}</div></div>`).join('')) : ''}
+    ${section('🗑️ Clear', `<div class="pet-actions">${confirmButton('clearGears', '🗑️ Remove ALL my gears')}</div>`)}`;
+}
+
 // ---------- 🔓 Unlocks + 測試開關 ----------
 // 🔮 所有有日期嘅新嘢：加一個新更新（例如 Halloween）就喺度加一行，再喺 main.js 嘅 unlockAll 開埋佢
 // open：到咗日期未；early：提早開咗未
+const ECHO_QUESTS_DATE = '2026-10-24';
 const FUTURE = [
   { emoji: '🧪', name: 'Fuse Machine', date: FUSE_OPEN_DATE, open: (s) => s.fuseDate, early: () => state.bigButton },
   { emoji: '👑', name: 'Enchanted Kingdom', date: NEW_BIOME_DATE, open: (s) => s.kingdomDate, early: () => state.bigButton },
   { emoji: '💪', name: 'Ranger Gym', date: GYM_OPEN_DATE, open: (s) => s.gymDate, early: () => state.gymEarly && actions.status().gymPresent },
   { emoji: '🎃', name: 'Halloween World', date: HALLOWEEN_OPEN_DATE, open: (s) => s.halloweenDate, early: () => state.halloweenEarly },
   { emoji: '☄️', name: 'Meteoric Shop + Event', date: METEOR_OPEN_DATE, open: (s) => s.meteorDate, early: () => state.meteorEarly },
+  // 🐕 Echo 嘅 Halloween 任務（另一個幫手整緊；state.echoQuestsEarly = 提早開）
+  { emoji: '🐕', name: "Echo's Halloween Quests", date: ECHO_QUESTS_DATE, open: () => new Date().toLocaleDateString('en-CA') >= ECHO_QUESTS_DATE && !state.echoQuestsEarly, early: () => state.echoQuestsEarly },
 ];
 
 function futureHtml() {
@@ -215,7 +282,7 @@ function safetyHtml() {
 
 export function adminHtml() {
   if (!actions) return '';
-  const body = { give: giveHtml, future: futureHtml, pets: petsHtml, world: worldHtml, max: maxHtml, events: eventsHtml, safety: safetyHtml }[tab]();
+  const body = { give: giveHtml, future: futureHtml, pets: petsHtml, gears: gearsHtml, world: worldHtml, max: maxHtml, events: eventsHtml, safety: safetyHtml }[tab]();
   return `<div class="admin">
     <div class="tabs admin-tabs">${TABS.map(([id, label]) => `<button data-admin="tab" data-tab-id="${id}" class="${id === tab ? 'active' : ''}">${label}</button>`).join('')}</div>
     <div class="admin-body">${body}</div>
@@ -290,6 +357,27 @@ $('panel-body').addEventListener('click', (e) => {
     case 'srarity': spawnRarity = d.v; break;
     case 'spawn': actions.spawn(spawnBiome, spawnRarity); return;
     case 'restore': actions.restore(); return;
+    case 'gear': {
+      actions.backup();
+      setGearCount(d.type, d.v === 'zero' ? 0 : gearCount(d.type) + Number(d.v));
+      break;
+    }
+    case 'allShards': {
+      actions.backup();
+      for (const t of Object.keys(GEARS).filter(isShardGear)) addGear(t, 1);
+      save();
+      play('magic');
+      break;
+    }
+    case 'clearGears': {
+      actions.backup();
+      state.gears = [];
+      syncShardCount();
+      save();
+      play('swoosh');
+      break;
+    }
+    case 'boost': actions.backup(); giveBoost(d.id, Number(d.v)); break;
   }
   rerender();
 });

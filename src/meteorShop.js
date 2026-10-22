@@ -42,6 +42,7 @@ import { extraPanels, closePanel, panelKind, openPanel, renderHotbar } from './h
 import { addGear, gearCount } from './data/gears.js';
 import { bulkButtons, bulkCount } from './bulkBuy.js';
 import { petPic } from './animalPics.js';
+import { gearPic } from './gearArt.js'; // 💎 Shard 圖示（同背包一樣）
 import { makeSign } from './signs.js';
 import { playMovie, once, shake } from './movie.js';
 import { short } from './format.js';
@@ -298,7 +299,7 @@ function shopHtml() {
   const chestPic = picture('chest', () => buildMeteorChest().g);
   const rows = METEOR_CHEST_DROPS.map((d) => {
     const r = rarityInfo(d.rarity);
-    const art = d.gear ? `<div class="pet-pic" style="--pic-bg:${r.color}"><span class="emoji">${d.emoji}</span></div>` : petPic(d.name, { rarity: d.rarity });
+    const art = d.gear ? gearPic(d.gear) : petPic(d.name, { rarity: d.rarity }); // 💎 gearArt.js
     const what = d.gear ? `${d.emoji} Astral Mutation Reroll` : `${findAnimal(d.name)?.emoji || ''} ${d.name}`;
     const owned = !d.gear && state.indexFound.includes(d.name) ? ' ✅' : '';
     const p = chestPercent(d);
@@ -310,7 +311,7 @@ function shopHtml() {
   const [lo, hi] = ARCADRAGON_MONEY;
   return `<p class="index-summary met-balance">${GEM} You have <b>${short(crystalsOf())} Meteor Crystals</b> · ✖️ Crystal Multiplier <b>x${mult}</b></p>
     <div class="cards met-cards">
-      ${card({ id: 'shard', pic: img(picture('shard', buildShard), '☄️'), title: '☄️ Meteoric Shard', price: METEORIC_SHARD_COST,
+      ${card({ id: 'shard', pic: gearPic('meteoricShard'), title: '☄️ Meteoric Shard', price: METEORIC_SHARD_COST,
         text: 'Use it on a pet to give it a bluey <b>METEORIC</b> look and <b>x5 money</b>!', extra: shards ? `<small>🎒 You have ${shards}</small>` : '' })}
       ${card({ id: 'mult', pic: img(picture('mult', buildMultiplier), '✖️'), title: `✖️ Crystals Multiplier`, price: multiplierCost(mult), owned: maxed ? `MAX x${MULTIPLIER_MAX}` : false,
         text: maxed ? 'You have the biggest multiplier!' : `Pick up more crystals: <b>x${mult} → x${mult + MULTIPLIER_STEP}</b>. It costs more every time you buy it!` })}

@@ -13,6 +13,7 @@ import { rarityInfo } from './data/balance.js';
 import { GEARS, gearInfo, gearStacks, takeGear, isChestGear } from './data/gears.js';
 import { extraPanels, panelKind, mutationTags, hotbarItems, hotbarToolCount, assignHotbar, clearHotbar, hotbarHooks, uidOf, popup, announce, selectSlot } from './hud.js';
 import { petPic } from './animalPics.js';
+import { gearPic, gearIcon } from './gearArt.js'; // 💎 Shard 圖示
 
 const $ = (id) => document.getElementById(id);
 
@@ -74,7 +75,7 @@ function gearCard({ type, count }) {
   const slot = slotOf(key);
   return `<div class="card-animal inv-card inv-drag inv-gear ${picked === key ? 'inv-picked' : ''}" data-key="${key}" style="border-color:${g.color}">
     ${slot !== null ? `<span class="inv-slot-num">${slot}</span>` : ''}
-    <div class="emoji inv-gear-emoji">${g.emoji}</div><b>${g.name}</b>
+    ${gearPic(type)}<b>${g.name}</b>
     <small style="color:${g.color}">${g.rarity} Gear · x${count}</small>
     <p>${g.desc()}</p><p class="inv-where">${g.where || ''}</p>
     <div class="card-buttons"><button data-inv="use" data-type="${type}">${g.chest ? '🧰 Open' : '✨ Use'}</button></div>
@@ -93,7 +94,7 @@ function inventoryHtml() {
   const hint = win
     ? `<div class="inv-banner inv-win" style="border-color:${win.color};--c:${win.color}">${win.text}</div>`
     : g
-    ? `<div class="inv-banner inv-mutate-banner" style="border-color:${g.color}">${g.emoji} <b>Using a ${g.name}!</b> Pick a pet to mutate. <button data-inv="cancel" class="grey">Cancel</button></div>`
+    ? `<div class="inv-banner inv-mutate-banner" style="border-color:${g.color}">${gearIcon(mutateWith, 'inv-banner-icon')} <b>Using a ${g.name}!</b> Pick a pet to mutate. <button data-inv="cancel" class="grey">Cancel</button></div>`
     : pickedName
     ? `<div class="inv-banner">👉 Now tap a hotbar slot below to put <b>${pickedName}</b> there!</div>`
     : '<p class="hint inv-hint">🖱️ Drag a card onto the hotbar (1-0) below · 📱 Tap a card, then tap a slot · drag a slot back up here to take it off</p>';
@@ -163,7 +164,7 @@ function open(gearType = null) {
   mutateWith = gearType && GEARS[gearType] ? gearType : null;
   picked = null;
   win = null;
-  if (mutateWith) tab = 'animals';
+  if (mutateWith) tab = petEntries(false).some((e) => e.kind === 'pet') || !petEntries(true).some((e) => e.kind === 'pet') ? 'animals' : 'endangered'; // 冇魔法寵物：直接去 Endangered 分頁
   if (!isOpen()) ctx.togglePanel('inventory');
   else rerender();
 }

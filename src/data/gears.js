@@ -4,13 +4,13 @@
 // mutate()：用嗰陣俾寵物邊個變異（null = 呢隻寵物用唔到，例如已經有晒）
 
 import { state } from '../state.js';
-import { hasMutation, mutationInfo } from './animals.js';
+import { hasMutation, mutationInfo, MUTATIONS } from './animals.js';
 import { SHARD_PHANTOM_CHANCE } from './balance.js';
 
 export const GEARS = {
   // 🔮 Halloween Shard：Statue of Halloween 用 400 Soul Dust 換；揀一隻寵物 → 一定中，50/50 👻 Spectral 或者 🟣 Phantom
   halloweenShard: {
-    name: 'Halloween Shard', emoji: '🔮', color: '#b388ff', rarity: 'Epic',
+    name: 'Halloween Shard', emoji: '🔮', color: '#b388ff', rarity: 'Epic', art: 'halloween', // art：src/gearArt.js 嘅樣
     desc: () => `Pick a pet: it becomes 👻 SPECTRAL x${mutationInfo('spectral').money} or 🟣 PHANTOM x${mutationInfo('phantom').money}!`,
     where: 'Trade Soul Dust at the 🗿 Statue of Halloween',
     mutate(pet) {
@@ -23,7 +23,7 @@ export const GEARS = {
   },
   // ☄️ Meteoric Shard：Meteoric Shop（另一個幫手整緊）賣；揀一隻寵物 → ☄️ Meteoric
   meteoricShard: {
-    name: 'Meteoric Shard', emoji: '☄️', color: '#40c4ff', rarity: 'Legendary',
+    name: 'Meteoric Shard', emoji: '☄️', color: '#40c4ff', rarity: 'Legendary', art: 'meteoric', mutation: 'meteoric',
     desc: () => `Pick a pet: it becomes ☄️ METEORIC x${mutationInfo('meteoric').money}!`,
     where: 'Buy it at the ☄️ Meteoric Shop',
     mutate: (pet) => (hasMutation(pet, 'meteoric') ? null : 'meteoric'),
@@ -31,7 +31,7 @@ export const GEARS = {
   },
   // 🌌 Astral Reroll：Meteoric Chest 1% 開到；揀一隻寵物 → 🌌 Astral（加落去，唔會洗走其他變異）
   astralReroll: {
-    name: 'Astral Reroll', emoji: '🌌', color: '#ea80fc', rarity: 'Mythic',
+    name: 'Astral Reroll', emoji: '🌌', color: '#ea80fc', rarity: 'Mythic', art: 'astral', mutation: 'astral',
     desc: () => `Pick a pet: it becomes 🌌 ASTRAL x${mutationInfo('astral').money}!`,
     where: 'Open a ☄️ Meteoric Chest (1% chance)',
     mutate: (pet) => (hasMutation(pet, 'astral') ? null : 'astral'),
@@ -55,6 +55,28 @@ export const GEARS = {
   },
 };
 export const isChestGear = (type) => !!GEARS[type]?.chest;
+
+// 💎 每個變異一粒 Shard（小朋友 2026-10-22）：未有專屬 Shard 嘅變異（🔥 fire、🌑 eclipse、👻 spectral、🟣 phantom…）
+// 自動整一個 gear 'shard_<變異>'，揀一隻寵物 → 一定變嗰個變異（加落去，唔會洗走其他變異）
+// 點解每個變異一個 type（唔係一個 type + mutation 欄）：state.gears 仍然係 { type }，背包疊埋、快捷欄 key 'gear:<type>' 全部照用，唔使改舊存檔
+// ☄️ meteoric 同 🌌 astral 已經有 meteoricShard／astralReroll（mutation 欄），唔再整多一粒
+// 將來 MUTATIONS 加新變異 → 自動有新 Shard（樣用變異顏色，想要專屬樣喺 gearArt.js STYLES 加）
+const SHARD_RARITY = { fire: 'Epic', eclipse: 'Legendary', spectral: 'Epic', phantom: 'Legendary' };
+const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
+for (const m of MUTATIONS) {
+  if (Object.values(GEARS).some((g) => g.mutation === m)) continue;
+  GEARS[`shard_${m}`] = {
+    name: `${niceName(m)} Shard`, emoji: mutationInfo(m).emoji, color: mutationInfo(m).color, rarity: SHARD_RARITY[m] || 'Epic', art: m, mutation: m,
+    desc: () => `Pick a pet: it becomes ${mutationInfo(m).emoji} ${mutationInfo(m).name} x${mutationInfo(m).money}!`,
+    where: 'A super rare shard! (Ranger Control Panel)',
+    mutate: (pet) => (hasMutation(pet, m) ? null : m),
+    canUse: (pet) => !hasMutation(pet, m),
+  };
+}
+// 變異 → 用邊種 gear（例如 'fire' → 'shard_fire'，'meteoric' → 'meteoricShard'）
+export const mutationShardType = (m) => Object.keys(GEARS).find((t) => GEARS[t].mutation === m) || null;
+// 所有變異 Shard（有 mutate 嘅 gear，包括 🔮 Halloween Shard）
+export const isShardGear = (type) => !!GEARS[type]?.mutate;
 
 export const gearInfo = (type) => GEARS[type] || { name: type, emoji: '❓', color: '#90a4ae', rarity: 'Common', desc: () => 'A mystery gear!', mutate: () => null, canUse: () => false };
 export const gearCount = (type) => (state.gears || []).filter((g) => g.type === type).length;
