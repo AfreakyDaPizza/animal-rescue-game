@@ -191,6 +191,17 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
   - The tower door: for now it says "🗼 The Witch Tower — coming next!". For the next helper: `setWitchTowerEntry(fn)` from `src/hellWorld.js`, or `window.__enterWitchTower = fn`.
 - Control Panel: Teleport → "World Expedition map" and "Hell (World 2)"; Unlocks → "Halloween World 2 (Hell) unlocked"; Give → 🍬 Soul Candy.
 
+## ✅ Built: 🏰 Witch Castle makeover (Issue #12, 2026-10-22)
+- The kid said: "The fortress is too ugly and too blank." So the whole castle got a new look (`src/witchCastle.js`). Gameplay is the same: same walls, same gate, same Witch, same tower door, same portal and checkpoint.
+- **Stone walls** with pixel stone textures, tall walls with battlements and a walkway on top, arrow slits, buttresses, wall torches with 🟢 green and 🟣 purple witch fire.
+- **Big gatehouse:** two towers with pointy roofs, a pointed arch, a raised spiky portcullis with chains, banners, a glowing moon badge.
+- **The keep:** big doors with a purple glow, a rose window, banners, gargoyles, a tall middle tower with a spire, 4 round towers with glowing windows, flying buttresses on the sides.
+- **Courtyard:** a spinning 🔮 magic circle on the floor with glowing stones and a floating crystal, floating candles, smoke from the cauldron, potion shelves, a spell book, a crystal ball, hanging cages with friendly glowing wisps.
+- **🍄 Witch garden** (north-west corner): glowing mushrooms, twisted trees, pumpkins, glowing herbs, a little fence and an arch.
+- **🗼 Witch Tower:** glowing runes spiral up the tower (the light moves upwards), a balcony with gargoyles, and a big glowing door with purple fire bowls. Before you talk to the Witch, a pink magic seal is on the door.
+- 🦇 Bats fly around the towers. 🌋 Lava falls pour off the edges of the island.
+- Graphics: on Low the bats and smoke are hidden and there are fewer candles; on Lowest the candles are hidden too.
+
 ## ✅ Built: 🐉 Pumpkin Reaper Dragon + 🔫 magic weapons (Issue #11, 2026-10-22)
 - **When:** every hour on the real clock at **:30** (the Phantom Express is at :00), so everybody sees it at the same time. A **red warning** shows 1 minute before: "⚠️ The PUMPKIN REAPER DRAGON awakens in the Abandoned Manor!". Then the dragon stays awake for **10 minutes** (a red pill shows the time left).
 - **Getting in:** the 🏚️ Abandoned Manor's front door glows red-orange (with a red beacon and a sign). Walk up the steps into the door (or press E) → loading screen → a **broken manor hall** (torn purple wallpaper, moonlit windows with torn curtains, broken roof beams, cracked pillars with green ghost-fire, candles, a fallen chandelier, crooked paintings with glowing eyes).

@@ -7,6 +7,7 @@
 // - 🔥 Parkour：飛天熔岩石（hellShape.js 嘅 HELL_ROCKS）—— 會左右飄、上落浮、打圈轉、兜圈飛；企喺上面會載住你郁
 // - 🚩 Checkpoint 0–5：跌落熔岩 → 火燒特效 + 返去上一個 Checkpoint（唔扣嘢）
 // - 🏰 Witch Castle：庭園、🧙‍♀️ 女巫（大鍋 + 黑貓 + 對白泡泡）、🗼 Witch Tower（發光嘅門）
+//   城堡／塔嘅樣喺 witchCastle.js（Issue #12 重做）；呢度淨係女巫、傳送門、發光小路同玩法
 //
 // main.js 用法：
 //   const hell = await buildHell(scene, progress, { place, popup, announce, play, openWitch, goBack })
@@ -25,10 +26,11 @@ import { makeSign, makeLabel, THEMES } from './signs.js';
 import { state, save } from './state.js';
 import { extraPanels } from './hud.js';
 import { M, GLOW, add, box, cyl, cone, ball, canvasTex, seeded, glowTex, lightPool, halo, tiledBox } from './halloweenArt.js';
+import { buildWitchCastle } from './witchCastle.js'; // 🏰 Witch Castle 嘅樣（Issue #12）
 import { B, S, pivot, bigEyes, smile, cone as kCone, cyl as kCyl, GLOW as KGLOW } from './echoPetModels.js';
 import {
   HELL, LAVA_Y, LAVA_KILL, HELL_START, HELL_PORTAL, HELL_ROCKS, HELL_CHECKPOINTS, HELL_LAST_CP, rockAt, inHell,
-  CASTLE_TOP, CASTLE_ISLAND, CASTLE_LANDING, KEEP, COURTYARD, CASTLE_GATE_Z, WITCH, CAULDRON, WITCH_CAT, TOWER, TOWER_DOOR, CASTLE_PORTAL, HELL_BLOCKS,
+  CASTLE_TOP, CASTLE_ISLAND, CASTLE_LANDING, COURTYARD, WITCH, CAULDRON, WITCH_CAT, TOWER, TOWER_DOOR, CASTLE_PORTAL,
 } from './hellShape.js';
 
 const PI = Math.PI;
@@ -437,13 +439,8 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
   const spireMat = M(0xffffff, { map: spireMap, emissive: 0xff4a10, emissiveMap: spireMap, emissiveIntensity: 0.9, roughness: 0.95 });
   const rockTop = topTex();
   const topMat = M(0xffffff, { map: rockTop, emissive: 0xff6a20, emissiveMap: rockTop, emissiveIntensity: 0.35 });
-  const brick = castleBrickTex();
-  const brickMat = M(0xffffff, { map: brick });
   const brickDark = castleBrickTex([40, 32, 48]);
   const brickDarkMat = M(0xffffff, { map: brickDark });
-  const roofMat = M(0x4a148c, { roughness: 0.7 });
-  const windowMat = GLOW(0xffa040, 2.2);
-  const purpleGlow = GLOW(0xd500f9, 2);
   const flame = flameTex();
   const flameMat = new THREE.MeshBasicMaterial({ map: flame, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
 
@@ -642,126 +639,12 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
     }
   });
 
-  // ---- 🏰 城堡島 + 城堡 ----
+  // ---- 🏰 城堡島 + 城堡（Issue #12 重做：witchCastle.js）----
   addPlatform(CASTLE_ISLAND, CASTLE_TOP); // 企得上去
   addPlatform(CASTLE_LANDING, CASTLE_TOP);
-  bake((r) => {
-    const I = CASTLE_ISLAND;
-    const cx = (I.minX + I.maxX) / 2, cz = (I.minZ + I.maxZ) / 2, w = I.maxX - I.minX, d = I.maxZ - I.minZ;
-    add(r, tiledBox(w, 1.2, d, 3), topMat, cx, CASTLE_TOP - 0.6, cz);
-    const under = add(r, jaggedCone(1, 1, 9, 77), sideMat, cx, CASTLE_TOP - 1.2 - 14, cz);
-    under.rotation.x = PI;
-    under.scale.set(w * 0.62, 28, d * 0.62);
-    const L = CASTLE_LANDING;
-    add(r, tiledBox(L.maxX - L.minX, 1.2, L.maxZ - L.minZ, 1.6), topMat, (L.minX + L.maxX) / 2, CASTLE_TOP - 0.6, (L.minZ + L.maxZ) / 2);
-    const lu = add(r, jaggedCone(4, 7, 5, 88), sideMat, (L.minX + L.maxX) / 2, CASTLE_TOP - 1.2 - 3.5, (L.minZ + L.maxZ) / 2 + 0.5);
-    lu.rotation.x = PI;
-    // 庭園地板
-    const C = COURTYARD;
-    add(r, tiledBox(C.maxX - C.minX, 0.1, C.maxZ - C.minZ, 2.5), M(0xffffff, { map: castleBrickTex([70, 56, 64]) }), (C.minX + C.maxX) / 2, CASTLE_TOP + 0.05, (C.minZ + C.maxZ) / 2, false);
-    // 去 Witch Tower 嘅小路（石板）
-    for (let x = C.maxX - 2; x < TOWER_DOOR.x; x += 2.2) add(r, tiledBox(1.8, 0.1, 2.6, 1.8), M(0xffffff, { map: castleBrickTex([70, 56, 64]) }), x, CASTLE_TOP + 0.05, TOWER.z, false);
-    // ---- 城堡主樓 ----
-    const K = KEEP;
-    const kx = (K.minX + K.maxX) / 2, kz = (K.minZ + K.maxZ) / 2, kw = K.maxX - K.minX, kd = K.maxZ - K.minZ;
-    const kh = 16;
-    add(r, tiledBox(kw, kh, kd, 2), brickMat, kx, CASTLE_TOP + kh / 2, kz);
-    for (let x = K.minX + 0.8; x <= K.maxX - 0.8; x += 2) { // 城垛
-      add(r, box(1.1, 1.2, 1), brickMat, x, CASTLE_TOP + kh + 0.6, K.maxZ - 0.5);
-      add(r, box(1.1, 1.2, 1), brickMat, x, CASTLE_TOP + kh + 0.6, K.minZ + 0.5);
-    }
-    // 中間大塔
-    add(r, tiledBox(12, 14, 10, 2), brickDarkMat, kx, CASTLE_TOP + kh + 7, kz - 1);
-    add(r, cone(9.5, 12, 4), roofMat, kx, CASTLE_TOP + kh + 20, kz - 1).rotation.y = PI / 4;
-    add(r, box(0.3, 4, 0.3), purpleGlow, kx, CASTLE_TOP + kh + 27.5, kz - 1);
-    // 4 個角樓
-    for (const [x, z] of [[K.minX, K.minZ], [K.maxX, K.minZ], [K.minX, K.maxZ], [K.maxX, K.maxZ]]) {
-      add(r, cyl(3.2, 3.6, 26, 10), brickDarkMat, x, CASTLE_TOP + 13, z);
-      add(r, cone(4.4, 10, 10), roofMat, x, CASTLE_TOP + 31, z);
-      for (let y = 6; y < 24; y += 5) add(r, box(0.6, 1.6, 0.3), windowMat, x, CASTLE_TOP + y, z + 3.4);
-    }
-    // 正門（大拱門，發紫光）+ 窗（橙光）
-    add(r, box(6.4, 8.6, 0.6), brickDarkMat, kx, CASTLE_TOP + 4.3, K.maxZ + 0.2);
-    add(r, box(4.6, 6.6, 0.3), GLOW(0x7b1fa2, 1.4), kx, CASTLE_TOP + 3.3, K.maxZ + 0.5, false);
-    add(r, cyl(2.3, 2.3, 0.32, 16, ), GLOW(0x7b1fa2, 1.4), kx, CASTLE_TOP + 6.6, K.maxZ + 0.5, false).rotation.x = PI / 2;
-    for (const x of [-12, -7, 7, 12]) for (const y of [4, 10]) {
-      add(r, box(1.4, 2.4, 0.3), windowMat, kx + x, CASTLE_TOP + y, K.maxZ + 0.1, false);
-      add(r, cone(0.7, 0.8, 4), windowMat, kx + x, CASTLE_TOP + y + 1.6, K.maxZ + 0.1, false).rotation.y = PI / 4;
-    }
-    // ---- 城牆 + 閘樓 ----
-    for (const b of HELL_BLOCKS.slice(1)) {
-      const bw = b.maxX - b.minX, bd = b.maxZ - b.minZ;
-      add(r, tiledBox(bw, 5, bd, 2), brickMat, (b.minX + b.maxX) / 2, CASTLE_TOP + 2.5, (b.minZ + b.maxZ) / 2);
-      const long = bw > bd;
-      const n = Math.floor((long ? bw : bd) / 2);
-      for (let i = 0; i < n; i++) {
-        const t = (i + 0.5) / n;
-        const x = long ? b.minX + bw * t : (b.minX + b.maxX) / 2;
-        const z = long ? (b.minZ + b.maxZ) / 2 : b.minZ + bd * t;
-        if (i % 2 === 0) add(r, box(long ? 1 : 2.2, 1, long ? 2.2 : 1), brickMat, x, CASTLE_TOP + 5.5, z);
-      }
-    }
-    for (const s of [-1, 1]) {
-      const x = HX + s * 6.5;
-      add(r, cyl(2.4, 2.7, 11, 8), brickDarkMat, x, CASTLE_TOP + 5.5, CASTLE_GATE_Z);
-      add(r, cone(3.2, 6, 8), roofMat, x, CASTLE_TOP + 14, CASTLE_GATE_Z);
-      addCollider(x, CASTLE_GATE_Z, 2.7);
-    }
-    add(r, tiledBox(11, 2, 2.4, 2), brickDarkMat, HX, CASTLE_TOP + 7.4, CASTLE_GATE_Z); // 閘門頂
-    for (let x = -4; x <= 4; x += 0.8) add(r, box(0.14, 1.6, 0.14), M(0x2b2b2b, { metalness: 0.7 }), HX + x, CASTLE_TOP + 5.6, CASTLE_GATE_Z); // 吊起咗嘅鐵閘
-    // 庭園：4 個綠火盆、南瓜燈
-    for (const [x, z] of [[C.minX + 3, C.maxZ - 3], [C.maxX - 3, C.maxZ - 3], [C.minX + 3, C.minZ + 3], [C.maxX - 3, C.minZ + 3]]) {
-      add(r, cyl(0.25, 0.35, 1.4, 8), M(0x2b2b2b, { metalness: 0.6 }), x, CASTLE_TOP + 0.7, z);
-      add(r, cyl(0.7, 0.4, 0.5, 8), M(0x2b2b2b, { metalness: 0.6 }), x, CASTLE_TOP + 1.6, z);
-      halo(r, x, CASTLE_TOP + 2.4, z, 2.2, 0x76ff03, 0.45);
-      lightPool(r, x, z, 4, 0x76ff03, 0.3, CASTLE_TOP + 0.12);
-      addCollider(x, z, 0.8);
-    }
-    lightPool(r, CAULDRON.x, CAULDRON.z, 5, 0x76ff03, 0.35, CASTLE_TOP + 0.12);
-    // 🗼 Witch Tower
-    const T = TOWER;
-    add(r, cyl(T.r - 0.6, T.r, T.h, 14), brickDarkMat, T.x, CASTLE_TOP + T.h / 2, T.z);
-    for (let y = 14; y < T.h; y += 16) add(r, new THREE.TorusGeometry(T.r - 0.2, 0.5, 6, 20), brickMat, T.x, CASTLE_TOP + y, T.z).rotation.x = PI / 2;
-    for (let i = 0; i < 18; i++) { // 螺旋窗（紫光）
-      const a = i * 1.1 + 0.4, y = 8 + i * 3.1;
-      const rr = T.r - 0.45;
-      const wnd = add(r, box(0.9, 1.6, 0.4), purpleGlow, T.x + Math.cos(a) * rr, CASTLE_TOP + y, T.z + Math.sin(a) * rr, false);
-      wnd.rotation.y = -a + PI / 2;
-    }
-    // 門框（向西）
-    add(r, box(1.2, 7.2, 5), brickMat, TOWER_DOOR.x + 0.3, CASTLE_TOP + 3.6, T.z);
-  });
-  // 塔頂（歪咗嘅尖帽）+ 會郁嘅嘢
-  let towerOrb = null, towerDoor = null, runes = [], pathStones = [];
+  const castle = buildWitchCastle({ root, live, steps, topMat, sideMat, jaggedCone, swirlTex });
+  let pathStones = [];
   steps.push(() => {
-    const T = TOWER;
-    const roof = new THREE.Group();
-    roof.position.set(T.x, CASTLE_TOP + T.h, T.z);
-    root.add(roof);
-    add(roof, cyl(T.r + 2, T.r + 2, 0.6, 16), roofMat, 0, 0, 0);
-    add(roof, cone(T.r + 1.2, 12, 14), roofMat, 0, 6, 0);
-    const tipG = new THREE.Group();
-    tipG.position.set(0, 11.5, 0);
-    tipG.rotation.z = 0.5;
-    roof.add(tipG);
-    add(tipG, cone(2.4, 7, 12), roofMat, 0, 3, 0);
-    towerOrb = add(tipG, ball(0.9, 14, 10), GLOW(0xea80fc, 3), 0, 7, 0, false);
-    halo(tipG, 0, 7, 0, 5, 0xd500f9, 0.5);
-    // 發光門（紫色漩渦）
-    const doorM = new THREE.MeshBasicMaterial({ map: swirlTex('#e040fb', '#1a0033'), transparent: true, depthWrite: false, side: THREE.DoubleSide });
-    towerDoor = add(root, new THREE.PlaneGeometry(3, 5), doorM, TOWER_DOOR.x - 0.32, CASTLE_TOP + 2.5, T.z, false);
-    towerDoor.rotation.y = -PI / 2;
-    halo(root, TOWER_DOOR.x - 0.6, CASTLE_TOP + 2.6, T.z, 3.4, 0xd500f9, 0.45);
-    const sign = makeSign([{ text: '🗼 THE WITCH TOWER', size: 0.34 }, { text: 'Ask the Witch to open the door', size: 0.18 }], 4.6, 1.1, THEMES.purple);
-    sign.position.set(TOWER_DOOR.x - 0.75, CASTLE_TOP + 6.2, T.z);
-    sign.rotation.y = -PI / 2;
-    root.add(sign);
-    // 浮住嘅符文（圍住座塔轉）
-    const runeM = new THREE.MeshBasicMaterial({ color: 0xea80fc, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-    for (let i = 0; i < 10; i++) {
-      const m = add(live, new THREE.RingGeometry(0.5, 0.75, 5), runeM, T.x, CASTLE_TOP + 10 + i * 5, T.z, false);
-      runes.push({ m, a: i * 0.7, y: 10 + i * 5 });
-    }
     // ✨ 發光小路（女巫 → 塔門）：傾完偈先亮
     const pathM = new THREE.MeshBasicMaterial({ color: 0xea80fc, map: glowTex(), transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false });
     const from = new THREE.Vector2(WITCH.x + 2, WITCH.z + 1.5);
@@ -778,10 +661,6 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
     // 城堡嗰邊嘅傳送門
     buildPortal(root, CASTLE_PORTAL.x, CASTLE_TOP, CASTLE_PORTAL.z, PI / 2, '🌀 Back to Halloween World');
     for (const s of [-1, 1]) addCollider(CASTLE_PORTAL.x, CASTLE_PORTAL.z + s * 2.4, 0.9);
-    // 城堡門口指示牌
-    const csign = makeSign([{ text: '🏰 WITCH CASTLE', size: 0.36 }, { text: '🧙‍♀️ The Witch is waiting inside!', size: 0.18 }], 5, 1.2, THEMES.purple);
-    csign.position.set(HX, CASTLE_TOP + 9.6, CASTLE_GATE_Z + 1.3);
-    root.add(csign);
   });
   const _plane = { g: null };
   function geoPlane() {
@@ -1024,20 +903,9 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
         sys.pts.geometry.attributes.position.needsUpdate = true;
       }
       embers.pts.material.opacity = 0.7 + Math.sin(t * 7) * 0.2;
-      // 傳送門轉、塔頂光、符文
+      // 傳送門轉；🏰 城堡（火、蠟燭、蝙蝠、符文、塔門…）
       for (const p of portals) p.disc.rotation.z = -t * 1.6;
-      if (towerOrb) towerOrb.material.emissiveIntensity = 2.4 + Math.sin(t * 2) * 0.8;
-      if (towerDoor) {
-        towerDoor.rotation.x = 0;
-        towerDoor.material.opacity = state.witchMet ? 0.85 + Math.sin(t * 4) * 0.15 : 0.35;
-        towerDoor.material.map.rotation = t * 0.6;
-        towerDoor.material.map.center.set(0.5, 0.5);
-      }
-      for (const r of runes) {
-        const a = r.a + t * 0.5;
-        r.m.position.set(TOWER.x + Math.cos(a) * (TOWER.r + 2.2), CASTLE_TOP + r.y + Math.sin(t + r.a) * 0.6, TOWER.z + Math.sin(a) * (TOWER.r + 2.2));
-        r.m.lookAt(TOWER.x, r.m.position.y, TOWER.z);
-      }
+      castle.update(dt, t, quality);
       for (const s of pathStones) s.m.material.opacity = state.witchMet ? 0.35 + Math.max(0, Math.sin(t * 4 - s.i * 0.5)) * 0.55 : 0.08;
       // 🧙‍♀️ 女巫：對白泡泡輪住換
       talking = Math.max(0, talking - dt);
