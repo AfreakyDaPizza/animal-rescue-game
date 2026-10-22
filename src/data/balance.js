@@ -417,3 +417,37 @@ export const DEMONIC_CHEST_DROPS = [
 // 😈 Witch Tower eggs: how long they take to hatch at the 🪦 Egg Graveyard (seconds)
 export const LAVA_BLOOM_HATCH = 1200; // Legendary egg (20 minutes)
 export const PUMPKGRIM_HATCH = 2400; // Mythic egg (40 minutes)
+
+// ---- 🗼 ENDLESS WITCH TOWER (kid, Issue #11): fight zombies and cure corrupted animals, floor after floor ----
+// The rewards are in src/data/towerRewards.js
+export const TOWER_HEARTS = 5; // your hearts in the tower (each hit takes 1)
+export const TOWER_HEART_REGEN = 10; // seconds without getting hit to get 1 heart back
+export const TOWER_HIT_SAFE = 1.2; // seconds after a hit when nothing can hit you again
+export const TOWER_KO_KEEP = 0.5; // knocked out: you keep this much of your 🎒 tower bag (0.5 = half). Leave by the 🚪 door = keep it ALL
+// How many enemies on floor N: TOWER_BASE_ENEMIES + N × TOWER_ENEMIES_PER_FLOOR (never more than TOWER_MAX_ENEMIES)
+export const TOWER_BASE_ENEMIES = 3;
+export const TOWER_ENEMIES_PER_FLOOR = 0.8;
+export const TOWER_MAX_ENEMIES = 18;
+export const TOWER_MAX_AT_ONCE = 8; // most enemies in the room at the same time (the rest come out of the portals later)
+// Enemies get stronger every floor: HP × (1 + TOWER_HP_GROWTH × (N - 1)), speed × (1 + TOWER_SPEED_GROWTH × (N - 1))
+export const TOWER_HP_GROWTH = 0.15;
+export const TOWER_SPEED_GROWTH = 0.025;
+export const TOWER_MAX_SPEED_MULT = 1.6; // but never faster than this many times
+export const TOWER_DOUBLE_DAMAGE_FLOOR = 20; // from this floor, hits take 2 ❤️ instead of 1
+export const TOWER_BOSS_EVERY = 5; // a MINI-BOSS every this many floors (5, 10, 15...)
+// Corrupted animals: share of the enemies that are animals = TOWER_ANIMAL_SHARE + N × TOWER_ANIMAL_SHARE_GROWTH (max TOWER_ANIMAL_SHARE_MAX)
+export const TOWER_ANIMAL_SHARE = 0.15;
+export const TOWER_ANIMAL_SHARE_GROWTH = 0.03;
+export const TOWER_ANIMAL_SHARE_MAX = 0.5;
+// The enemies. hp = HP on floor 1 (the Soul Blaster does 100 per shot) · speed = metres per second · from = first floor it can show up
+export const TOWER_ENEMIES = {
+  walker: { name: 'Zombie', hp: 300, speed: 2.3, from: 1 }, // shambles to you and swipes
+  runner: { name: 'Speedy Zombie', hp: 180, speed: 4.4, from: 4 }, // small and fast
+  spitter: { name: 'Slime Zombie', hp: 260, speed: 1.9, from: 7 }, // stays back and throws green slime (red circle = where it lands)
+  brute: { name: 'Big Zombie', hp: 900, speed: 1.6, from: 9 }, // big, slow and tough
+  animal: { name: 'Corrupted animal', hp: 420, speed: 2.6, from: 2, dash: 15 }, // runs at you (dash = charge speed). Never hurt: at 0 HP it is CURED 💚
+};
+// Mini-bosses every TOWER_BOSS_EVERY floors: 👑 Zombie King (floor 5, 15, 25...) and a 😵 GIANT corrupted animal (floor 10, 20, 30...)
+// HP grows by TOWER_BOSS_GROWTH every time one comes back (0.35 = +35%)
+export const TOWER_BOSS_HP = { king: 5000, giant: 6000 };
+export const TOWER_BOSS_GROWTH = 0.35;

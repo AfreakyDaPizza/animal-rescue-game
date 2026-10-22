@@ -29,6 +29,7 @@
 
 import { inHell, hellWalkable, hellZoneAt } from './hellShape.js'; // 🔥 Halloween World 2：Hell（x ≈ -2600，Issue #11）
 import { inReaperHall, reaperHallWalkable, REAPER_ZONE } from './reaperShape.js'; // 🐉 Pumpkin Reaper Dragon 大廳（Issue #11）
+import { inTowerArena, towerWalkable, TOWER_ZONE } from './towerShape.js'; // 🗼 Endless Witch Tower（Issue #11）
 
 export const HW_X = -1400; // 成個 Halloween 世界嘅中線
 export const HW_EDGE_X = -1250; // x 細過呢個就係 Halloween 世界（包埋 Ghost World）
@@ -160,6 +161,7 @@ export const inSafeZone = (x, z) => Math.hypot(x - RUINS.x, z - RUINS.z) <= RUIN
 export function hwWalkable(x, z, radius) {
   if (inHell(x, z)) return hellWalkable(x, z, radius); // 🔥
   if (inReaperHall(x, z)) return reaperHallWalkable(x, z, radius); // 🐉
+  if (inTowerArena(x, z)) return towerWalkable(x, z, radius); // 🗼
   if (inGhostWorld(x, z)) return Math.hypot(x - GHOST_WORLD.x, z - GHOST_WORLD.z) <= GHOST_WORLD.r - radius && !GHOST_TOWN.blocks.some((b) => inBlock(b, x, z, radius)); // 鬼鎮啲屋行唔入
   if (Math.hypot(x - RUINS.x, z - RUINS.z) <= RUINS.r - radius) return true;
   if (!inR(LAKE_SHORE, x, z, radius) && !inR(DOCK, x, z, 0) && x > LAKE_WATER.minX && x < LAKE_WATER.maxX && z > LAKE_WATER.minZ && z < LAKE_WATER.maxZ) return false; // 水
@@ -172,6 +174,7 @@ export function hwZoneAt(x, z) {
   if (inGhostWorld(x, z)) return 'Ghost World';
   if (inHell(x, z)) return hellZoneAt(x, z); // 🔥 'Hell' 或者 'Witch Castle'
   if (inReaperHall(x, z)) return REAPER_ZONE; // 🐉
+  if (inTowerArena(x, z)) return TOWER_ZONE; // 🗼
   if (Math.hypot(x - RUINS.x, z - RUINS.z) <= RUINS.r + 1) return '🎃 Spawn Ruins';
   for (const b of HW_BIOMES) if (inR(b.rect, x, z, -1)) return b.name;
   if (inR(EGG_GRAVEYARD, x, z, -1)) return 'Egg Graveyard';
@@ -183,4 +186,4 @@ export function hwZoneAt(x, z) {
 export function hwBiomeIndexAt(x, z) {
   return HW_BIOMES.findIndex((b) => inR(b.rect, x, z, 0));
 }
-export const HW_ZONES = ['🎃 Spawn Ruins', ...HW_BIOMES.map((b) => b.name), 'Egg Graveyard', 'Train Station', 'Fishing Lake', 'Ghost World', 'Hell', 'Witch Castle'];
+export const HW_ZONES = ['🎃 Spawn Ruins', ...HW_BIOMES.map((b) => b.name), 'Egg Graveyard', 'Train Station', 'Fishing Lake', 'Ghost World', 'Hell', 'Witch Castle', TOWER_ZONE];

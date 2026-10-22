@@ -56,6 +56,8 @@
 - 2026-10-22：Issue #11：🔫 武器系統 `src/weapons.js`（API 寫喺檔頭：`createWeapons`、`setZone`、`give`、`registerTarget`；數值 `src/data/weapons.js`；模型 `src/weaponModels.js`；`state.weapons`；快捷欄用 `toolFlags.weapons`）+ 🐉 Pumpkin Reaper Dragon（`src/reaperBoss.js`／`reaperModel.js`／`reaperShape.js`：大廳喺 x -1400 z -1100，每個鐘 :30 醒 10 分鐘，大屋前門入；`state.soulCandy`、`state.reaperBeatenAt`；數值 `REAPER_*`；測試 `game.reaper.*`）。`sound.js` 加咗 `addSounds`。
 - 2026-10-22：Witch Castle 重做（Issue #12，`src/witchCastle.js`；hellWorld.js 叫 `buildWitchCastle`，玩法位置唔變）。
 
+- 2026-10-22：Issue #11 + #12：🗼 Endless Witch Tower（`src/witchTower.js`；地圖 `src/towerShape.js` x -3200；殭屍模型 + 腐化外衣 `src/towerModels.js`；獎品／難度 `src/data/towerRewards.js`；數值 `TOWER_*` 喺 balance.js）。塔門 `setWitchTowerEntry` → 揀 Easy/Medium/Hard 面板（`extraPanels.tower`）；`state.towerBest`、`towerBestByMode`、`towerStats`；🎒 袋（離開 = 全部，暈低 = `TOWER_KO_KEEP`）、5 層一次里程碑即刻俾；控制台 Teleport 分頁有入塔 + 跳層；測試 `game.tower.*`。塔入面唔行雷（`halloweenWorld.js`）。
+
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。

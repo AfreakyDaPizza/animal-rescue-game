@@ -24,6 +24,7 @@ import {
 } from './halloweenArt.js';
 import { buildGhostTown } from './ghostTown.js';
 import { inHell } from './hellShape.js'; // 🔥 Halloween World 2
+import { inTowerArena } from './towerShape.js'; // 🗼 Witch Tower 入面唔行雷（成個畫面會白晒）
 
 
 // ---------- 狀態 ----------
@@ -1503,7 +1504,7 @@ export function applyHalloweenSky({ scene, skyUniforms, hemi, sun, dt, camPos, p
   const hell = inside && inHell(camPos.x, camPos.z); // 🔥 Halloween World 2
   // 行雷：每 7–16 秒一次，閃兩下
   if (!bolt) makeBolt(scene);
-  if (inside && !hell) {
+  if (inside && !hell && !inTowerArena(camPos.x, camPos.z)) {
     halloween.nextFlash -= dt;
     if (halloween.nextFlash <= 0) {
       halloween.nextFlash = 7 + Math.random() * 9;

@@ -19,6 +19,7 @@ import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
   selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
+  extraPanels,
 } from './hud.js';
 import { initSideBoxes, toggleSideBox, updateSideBoxes, sideBoxOpen } from './sideBoxes.js'; // 右邊中間：🐾 地塊寵物、⏱️ 繁殖機時間（小朋友 2026-10-18）
 import { state, save, SAVE_KEY } from './state.js';
@@ -74,8 +75,10 @@ import { setRodShopActions } from './rodShop.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { buildHell, setWitchTowerEntry } from './hellWorld.js'; // 🔥 Halloween World 2：Hell + 飛天熔岩石 + Witch Castle（Issue #11）
-import { HELL_ARRIVE, HELL_START, inHell } from './hellShape.js';
+import { HELL_ARRIVE, HELL_START, inHell, CASTLE_TOP, TOWER_DOOR, HELL_LAST_CP } from './hellShape.js';
 import { inReaperHall } from './reaperShape.js';
+import { inTowerArena } from './towerShape.js'; // 🗼 Endless Witch Tower（Issue #11）
+import { createWitchTower } from './witchTower.js';
 import { createExpedition, EXPEDITION_SPOT } from './worldExpedition.js'; // 🗺️ World Expedition 地圖（Soul Candy 開 World 2）
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
@@ -397,6 +400,14 @@ const reaper = createReaper({
   isOpen: () => isHalloweenOpen(),
   isCarryingEgg: () => !!hwEggs?.isCarrying(),
 });
+// 🗼 Endless Witch Tower（src/witchTower.js）：Witch Castle 塔門入；完咗返去庭園（Hell 未起就先起）
+const tower = createWitchTower({
+  scene, camera, player, weapons, play, popup, announce, isWalkable, showLoading, extraPanels,
+  flash: () => flashScreen(),
+  teleport: (x, z, rotY) => { teleportPlayer(player, x, z); faceTo(rotY); },
+  togglePanel: (kind) => togglePanel(kind),
+  toCastle: () => towerToCastle(),
+});
 const chests = createChests(scene); // 🧰 開箱動畫（圍住玩家）
 const inventory = createInventory({
   togglePanel: (kind) => togglePanel(kind), play,
@@ -534,7 +545,7 @@ function enableMobile() {
     controls: player.controls,
     isPaused,
     onUse: () => {
-      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
+      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
       if (!isPaused()) interact();
     },
     onPause: () => {
@@ -664,7 +675,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB' && !isPanelOpen()) toggleSideBox('pets'); // 🐾 地塊寵物
   if (e.code === 'KeyT' && !isPanelOpen()) toggleSideBox('timers'); // ⏱️ 繁殖機時間
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
@@ -935,6 +946,8 @@ function currentInteraction() {
   if (questAct) return questAct;
   const exAct = expedition?.interaction(pos); // 🗺️ World Expedition 地圖
   if (exAct) return exAct;
+  const towerAct = tower.interaction(pos); // 🗼 塔入面：出口、升降魔法陣
+  if (towerAct) return towerAct;
   const hellAct = hell?.interaction(pos); // 🔥 Hell：傳送門、🧙‍♀️ 女巫、🗼 Witch Tower 門
   if (hellAct) return hellAct;
   const meteorAct = meteorShop.interaction(pos); // ☄️ Meteoric Shop
@@ -1289,6 +1302,15 @@ setAdminActions({
     togglePanel('admin');
     forceEvent(id);
   },
+  // 🗼 控制台：直接入 Witch Tower（唔理女巫／World 2 鎖），floor = 由第幾層開始（塔入面就即刻跳去嗰層）
+  async tower(mode = 'medium', floor = 1) {
+    togglePanel('admin');
+    if (tower.inside) return tower.debug.floor(floor);
+    if (rescue.carrying) return popup('🐾 Bring the animal you are carrying home first!');
+    if (!inHalloween(camera.position.x, camera.position.z)) await enterHalloween();
+    if (!inHalloween(camera.position.x, camera.position.z)) return;
+    return tower.enter(mode, floor);
+  },
   reaper() { // 🐉 控制台：召喚 Pumpkin Reaper Dragon（5 秒紅色警告，之後醒）
     togglePanel('admin');
     reaper.debug.spawn(5);
@@ -1422,6 +1444,14 @@ function placePlayer(x, y, z, rotY = null) {
   camera.position.y += y;
   if (rotY !== null) camera.rotation.set(0, rotY, 0, 'YXZ');
 }
+async function ensureHell(progress = () => {}) {
+  if (!hell) hell = await buildHell(scene, progress, {
+    place: placePlayer, popup, announce, play,
+    openWitch: () => togglePanel('witch'), closeWitch: () => togglePanel('witch'),
+    goBack: () => leaveHell(),
+  });
+  return hell;
+}
 async function travelToHell() {
   if (hwTravelling) return;
   if (!state.world2Unlocked) return popup('🔒 Unlock World 2 at the 🗺️ World Expedition map first!');
@@ -1429,11 +1459,7 @@ async function travelToHell() {
   hwTravelling = true;
   play('portal');
   const ok = await showLoading(hell ? '🔥 Travelling to Hell...' : '🔥 Building Hell...', async (progress) => {
-    if (!hell) hell = await buildHell(scene, progress, {
-      place: placePlayer, popup, announce, play,
-      openWitch: () => togglePanel('witch'), closeWitch: () => togglePanel('witch'),
-      goBack: () => leaveHell(),
-    });
+    await ensureHell(progress);
     placePlayer(HELL_ARRIVE.x, HELL_START.top, HELL_ARRIVE.z, HELL_ARRIVE.rotY);
     hell.arrive();
     halloween.sky = 1;
@@ -1455,8 +1481,25 @@ async function leaveHell() {
   hwTravelling = false;
   if (ok) announce('🎃 Back in the Halloween World!');
 }
-// 🗼 Witch Tower：下一位 helper 用 setWitchTowerEntry(fn)（hellWorld.js）或者 window.__enterWitchTower = fn
-void setWitchTowerEntry;
+// 🗼 Witch Tower：塔門撳 E → 揀難度面板（src/witchTower.js）
+setWitchTowerEntry(() => tower.openModes());
+// 打完／暈低：返去 Witch Castle 庭園（塔門前面，望住庭園）；控制台直接入塔嘅話 Hell 未起，就順手起埋
+async function towerToCastle() {
+  const go = () => {
+    placePlayer(TOWER_DOOR.x - 8, CASTLE_TOP, TOWER_DOOR.z, -Math.PI / 2); // 望住塔門（第三身鏡頭唔會擠埋入發光道門度）
+    hell.setCheckpoint(HELL_LAST_CP); // 跌落熔岩都係返城堡
+    halloween.sky = 1;
+  };
+  if (hell) {
+    flashScreen();
+    go();
+    return;
+  }
+  await showLoading('🏰 Back to the Witch Castle...', async (progress) => {
+    await ensureHell(progress);
+    go();
+  }, 1.2, { theme: 'hell', title: 'Witch Castle', kicker: '🔥 World 2 · Going back to' });
+}
 
 // ---- 秘密沙灘 ----
 function travel(x, z, rotY, text) {
@@ -1967,7 +2010,7 @@ renderer.setAnimationLoop((timestamp) => {
     });
     if (labHit) onLabHit(labHit);
     const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
-    if (bosses.some((b) => b.mode === 'chase') || labBattle || reaper.battle) setMusicMood('boss'); // 🐉 Reaper 大廳都係 Boss 音樂
+    if (bosses.some((b) => b.mode === 'chase') || labBattle || reaper.battle || tower.battle) setMusicMood('boss'); // 🐉 Reaper 大廳都係 Boss 音樂
     else if (inHalloween(pos.x, pos.z)) setMusicMood(inGhostWorld(pos.x, pos.z) || inHell(pos.x, pos.z) ? 'ghost' : 'spooky'); // 🔥 Hell 都用恐怖啲嗰首 // 🎃 Halloween 世界日夜都係呢首；👻 Ghost World 更恐怖嗰首
     else if (dayNight.isNight) setMusicMood('night');
     else setMusicMood(location === 'Hub' || location === 'Gym' ? 'hub' : 'biome');
@@ -2039,7 +2082,7 @@ renderer.setAnimationLoop((timestamp) => {
   updateLabGuide(camera, time, state.labUnlocked && !state.labVisited && !inMovie);
   document.body.classList.toggle('in-movie', inMovie); // 播緊片：收埋稀有動物通知（唔好遮住畫面）
   document.body.classList.toggle('in-halloween', inHalloween(camera.position.x, camera.position.z)); // 🎃 Halloween 世界：收埋教學、正常世界嘅夜晚倒數
-  document.body.classList.toggle('in-hell', inHell(camera.position.x, camera.position.z) || inReaperHall(camera.position.x, camera.position.z)); // 🔥 Hell：收埋火車、蛋提示（喺度用唔到）
+  document.body.classList.toggle('in-hell', inHell(camera.position.x, camera.position.z) || inReaperHall(camera.position.x, camera.position.z) || inTowerArena(camera.position.x, camera.position.z)); // 🔥 🗼 Hell：收埋火車、蛋提示（喺度用唔到）
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || hwEggs?.carryModel() || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
@@ -2079,13 +2122,14 @@ renderer.setAnimationLoop((timestamp) => {
   // 🐉 Pumpkin Reaper Dragon + 🔫 武器（要喺 updateThirdPerson、applyHalloweenSky 之後）
   reaper.update(dt, time, { paused: isPaused(), frozen, inHw: inHalloween(camera.position.x, camera.position.z), view: viewCam });
   if (!isPaused() && !inMovie && !loading.active) reaper.autoEnter(camera.position);
+  tower.update(dt, time, { paused: isPaused() || inMovie, frozen, view: viewCam }); // 🗼 Witch Tower（要喺 weapons.update 之前：打中先計到）
   weapons.update(dt, { view: viewCam, third: viewCam !== camera, time, paused: isPaused() || inMovie });
   hubPortal.update(time, isHalloweenOpen());
   hwWorld?.update(dt, time, camera.position, quality.level);
   hell?.update(dt, time, { pos: camera.position, player, paused: isPaused() || frozen || !!fling, quality: quality.level }); // 🔥 飛天熔岩石（載住你郁）、跌落熔岩
   expedition?.update(dt, time, camera.position); // 🗺️
   phantom.update(dt, time, camera.position); // 🚂
-  ghostHunt.update(dt, time, { pos: camera.position, feetY: player.feetY, paused: isPaused(), view: viewCam, hideTool: !!weapons.held || reaper.inside }); // 🧹👻
+  ghostHunt.update(dt, time, { pos: camera.position, feetY: player.feetY, paused: isPaused(), view: viewCam, hideTool: !!weapons.held || reaper.inside || tower.inside }); // 🧹👻
   shards.update(time, camera.position); // 🗿
   if (!frozen) hwEggs?.update(dt, time, { x: camera.position.x, z: camera.position.z, feetY: player.feetY }); // 🥚
   echo?.update(dt, time, camera.position); // 🐕 Echo 搖尾（開箱動畫都要郁）
@@ -2103,7 +2147,7 @@ renderer.setAnimationLoop((timestamp) => {
   sun.position.set(pos.x + 15, 30, pos.z + 8);
   sun.target.position.set(pos.x, 0, pos.z);
 
-  const quake = inMovie ? null : meteorShake(meteor) || reaper.shake(); // ☄️ 隕石撞落地／🐉 Boss 爆地板：震下畫面
+  const quake = inMovie ? null : meteorShake(meteor) || reaper.shake() || tower.shake(); // ☄️ 隕石撞落地／🐉 Boss 爆地板：震下畫面
   if (quake) viewCam.position.add(quake);
   if (quality.bloom) composer.render();
   else renderer.render(scene, viewCam);
@@ -2178,6 +2222,6 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.meteor = meteor; // ☄️ 測試：game.forceEvent('meteor')、game.meteor
