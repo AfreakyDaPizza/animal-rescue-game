@@ -18,6 +18,7 @@
 //   hwEggs.carryModel() → 手上隻蛋嘅模型（第三身頂喺頭）| null
 import * as THREE from 'three';
 import { state, save } from './state.js';
+import { questline } from './questline.js'; // 🐾 Echo's Questline 報數
 import { HW_X, RUINS, RUINS_SAFE_R, HW_BIOMES, HW_NORTH_Z, EGG_SLOTS, HW_ARRIVE, inSafeZone, inHalloween, hwBiomeIndexAt } from './halloweenShape.js';
 import { HALLOWEEN_BIOMES, rollHalloweenEgg } from './data/halloween.js';
 import { findAnimal, randomKg } from './data/animals.js';
@@ -292,6 +293,7 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     camera.add(wrap);
     hw.carrying = { name: w.name, rarity: w.rarity, biome: w.biome, x: w.x, z: w.z, model: wrap };
     hw.safeWas = false;
+    questline.track('eggGrab'); // 🐾
     // 呢個生態區嘅 Boss：幾秒之後就追
     for (const b of hw.bosses) b.grace = b.index === w.biome ? HALLOWEEN_HEAD_START : 1;
     play('alarm');
@@ -337,6 +339,7 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
       state.money += reward;
     }
     save();
+    questline.track('eggHatch'); // 🐾
     refreshSlots();
     hatchEffect(i, s.name, pet.rarity);
     play('crystal');
@@ -402,6 +405,7 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
       hw.carrying = null;
       state.hwEggs = [...(state.hwEggs || []), { name: c.name, rarity: c.rarity }];
       save();
+      questline.track('eggRescue', 1, { biome: c.biome }); // 🐾
       play('rescue');
       announce(`🥚 ${c.rarity} ${c.name} egg rescued! Take it to the 🪦 Egg Graveyard to hatch it.`);
     }

@@ -320,6 +320,30 @@ export const GHOST_MAX_SOULS = 12;
 export const PHANTOM_EXPRESS_EVERY_MINUTES = 60;
 export const PHANTOM_EXPRESS_STAY_MINUTES = 30;
 
+// ---- 🐾 ECHO'S QUESTLINE (kid 2026-10-22): 10 daily quests in a row at Echo's Questline stall (Spawn Ruins) ----
+// The day the questline opens (year-month-day). Before this day the stall shows "Opens on 24 Oct".
+// The Secret Ranger Control Panel can open it early (state.echoQuestsEarly).
+export const ECHO_QUESTS_OPEN_DATE = '2026-10-24';
+// One quest at a time, in this order. Every day at midnight you start again from quest 1.
+// track = what counts: fishCatch (catch anything fishing) · candyFish (Candy Corn you fish up) · eggGrab (pick up a wild egg)
+//   eggRescue (bring an egg back to the Spawn Ruins) · eggHatch (hatch at the Egg Graveyard) · trainRide (board the Phantom Express)
+//   ghostCatch (catch a ghost with the vacuum) · shardTrade (Halloween Shards traded at the Statue of Halloween)
+// target = how many · biome (only for eggRescue) = egg must come from 0 Pumpkin Graveyard, 1 Hollow Sprites, 2 Abandoned Manor
+// reward: candy = 🌽 Candy Corn · dust = 💀 Soul Dust · shards = 🔮 Halloween Shards · chests = 🧟 Zombified Chests
+//   tokens = 🎟️ Skin Tokens · money = $ · pet = a pet that goes straight into your backpack
+export const ECHO_QUESTS = [
+  { emoji: '🎣', text: 'Catch 3 things at the Fishing Lake', track: 'fishCatch', target: 3, reward: { candy: 150 } },
+  { emoji: '🌽', text: 'Fish up 50 Candy Corn', track: 'candyFish', target: 50, reward: { candy: 400, tokens: 3 } },
+  { emoji: '🥚', text: 'Grab a wild egg in a spooky biome', track: 'eggGrab', target: 1, reward: { chests: 1, money: 50000 } },
+  { emoji: '🏃', text: 'Bring 2 eggs back to the Spawn Ruins (run from the Boss!)', track: 'eggRescue', target: 2, reward: { dust: 600, tokens: 5 } },
+  { emoji: '🐣', text: 'Hatch 2 eggs at the Egg Graveyard', track: 'eggHatch', target: 2, reward: { shards: 1, candy: 800 } },
+  { emoji: '🚂', text: 'Ride the Phantom Express to the Ghost World', track: 'trainRide', target: 1, reward: { chests: 2, money: 250000 } },
+  { emoji: '👻', text: 'Catch 20 ghosts with your vacuum', track: 'ghostCatch', target: 20, reward: { shards: 2, candy: 1500, tokens: 10 } },
+  { emoji: '🗿', text: 'Trade for 3 Halloween Shards at the Statue of Halloween', track: 'shardTrade', target: 3, reward: { chests: 3, dust: 2000, tokens: 15 } },
+  { emoji: '🌫️', text: 'Escape the Hollow Wraith: bring back a Hollow Sprites egg', track: 'eggRescue', biome: 1, target: 1, reward: { chests: 5, shards: 3, money: 2000000, tokens: 20 } },
+  { emoji: '🐉', text: 'Escape the Bone Drake: bring back an Abandoned Manor egg', track: 'eggRescue', biome: 2, target: 1, reward: { pet: 'Soul Phantom', chests: 10, shards: 5, candy: 5000, tokens: 50 } },
+];
+
 // ---- 🐕 ECHO'S ZOMBIFIED CHEST (kid, Issue #8): Echo the dog sells it at the Spawn Ruins ----
 // How much one Zombified Chest costs (in 🍬 Candy Corn)
 export const ZOMBIE_CHEST_COST = 500;

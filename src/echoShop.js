@@ -1,7 +1,7 @@
 // 🐕 Echo 隻狗 + 🧟 Zombified Chest 舖（小朋友 Issue #8）
 // 「Spawn Ruins 開頭有隻叫 ECHO 嘅狗，用 Candy Corn 賣新嘅 ZOMBIFIED CHEST，500 Candy Corn 一個」
 //
-// - Echo：方塊風格、有少少殭屍味（縫線、發光綠眼、包紮）但好可愛嘅狗，企喺自己個小舖頭度，搖尾、歪頭、望住你
+// - Echo：方塊風格嘅鬼魂狗（2026-10-22 小朋友改：半透明發淡青光、後面係條鬼尾、浮喺半空），企喺自己個小舖頭度，搖尾、歪頭、望住你
 // - 撳 E → 面板：見到你有幾多 🌽 Candy Corn、箱嘅價錢、開到乜嘢（機會率）
 // - 買 → 開箱動畫：箱由天跌落嚟 → 震 → 按稀有度發光 → 爆開 → 大字講你開到乜；Mythic 有特別大嘅動畫
 // - 開到寵物：直接入背囊（state.pets），同蛋墳場孵出嚟嘅一樣（唔使再孵）；開到 Candy Corn：加返落 state.candyCorn
@@ -47,78 +47,112 @@ export function giveCandyCorn(n = 5000) {
   return state.candyCorn;
 }
 
-// ======================== 🐕 Echo ========================
-// 面向 -z；回傳 { g, head, tail, animate(t, look) }
-function buildEcho() {
+// ======================== 👻🐕 Echo（鬼魂狗）========================
+// 小朋友 2026-10-22：「Echo should be a ghost dog」
+// 半透明、發淡青色光嘅狗仔：前面兩隻腳浮浮吓，後面冇腳，身慢慢收窄變成一條飄吓飄吓嘅「鬼尾」；
+// 發光眼、頸圈 + 糖果粟米牌（保留）；成隻浮喺半空上上落落，尾搖嚟搖去，後面拖住啲細光點（Bloom 會令佢發光）
+// 面向 -z；回傳 { g, head, animate(t, look, dt, excited) }（同以前一樣，舖頭／任務攤位都用）
+let sparkTex = null;
+function sparkTexture() {
+  if (sparkTex) return sparkTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr;
+  x.fillRect(0, 0, 64, 64);
+  sparkTex = new THREE.CanvasTexture(c);
+  return sparkTex;
+}
+export function buildEcho() {
   const g = new THREE.Group();
-  const root = pivot(g);
-  const fur = 0x7cab66; // 殭屍綠
-  const fur2 = 0x557d45;
-  const belly = 0xc5dcaa;
-  const patch = 0xc9a77c; // 補咗嘅一塊（唔同色）
-  const stitchC = 0xb388ff;
-  const stitchM = M(stitchC, GLOW(stitchC, 1.6));
-  const eyeC = 0x76ff03;
-  // 身
+  const root = pivot(g); // 成隻浮上浮落
+  const spirit = 0x8cf2e6; // 淡青色鬼魂
+  const glowC = 0x64ffda;
+  const eyeC = 0x18ffff;
+  // 鬼魂材質：半透明 + 自己發光（越後越透明）
+  const ghostM = (o, i = 0.55, c = spirit) => new THREE.MeshStandardMaterial({ color: c, emissive: glowC, emissiveIntensity: i, transparent: true, opacity: o, roughness: 0.55, depthWrite: false });
+  const addM = (c, o = 0.85) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false });
+  const bodyM = ghostM(0.76, 0.22);
+  const lightM = ghostM(0.86, 0.35, 0xd8fffa); // 嘴、肚（白啲）
+  const earM = ghostM(0.84, 0.3, 0x80deea);
+  // 身（前面圓碌碌，後面收窄）
   const body = pivot(root, 0, 0.62, 0.05);
-  B(body, 0.6, 0.48, 0.86, fur, 0, 0, 0, {}, { line: 0.07, r: 0.35 });
-  B(body, 0.42, 0.2, 0.6, belly, 0, -0.18, -0.04, {}, { r: 0.4 });
-  // 補丁（右邊身，唔同色）+ 發光縫線
-  const side = pivot(body, 0.3, 0.04, 0.12);
-  side.rotation.y = -PI / 2; // local -z = 向外（+x）
-  B(side, 0.3, 0.24, 0.04, patch, 0, 0, 0, {}, { r: 0.3 });
-  stitches(side, V(-0.15, 0.12, -0.025), V(0.15, 0.12, -0.025), 5, stitchC, stitchM, 0.06, 0.014);
-  stitches(side, V(-0.15, -0.12, -0.025), V(0.15, -0.12, -0.025), 5, stitchC, stitchM, 0.06, 0.014);
-  B(body, 0.2, 0.1, 0.3, fur2, -0.12, 0.24, 0.15, {}, { r: 0.4 }); // 背上深色斑
-  // 4 隻腳（前左腳包咗繃帶）
-  const legs = [[-0.18, -0.28, 0], [0.18, -0.28, PI], [-0.18, 0.32, PI], [0.18, 0.32, 0]].map(([x, z, phase], i) => {
-    const hip = pivot(body, x, -0.16, z);
-    B(hip, 0.17, 0.42, 0.18, fur, 0, -0.2, 0, {}, { line: 0.08 });
-    B(hip, 0.2, 0.1, 0.24, belly, 0, -0.42, -0.03, {}, { line: 0.08 });
-    if (i === 0) for (let k = 0; k < 3; k++) B(hip, 0.185, 0.04, 0.195, 0xf5f0e1, 0, -0.12 - k * 0.07, 0, {}, { r: 0.3 }).rotation.z = (k - 1) * 0.12;
-    return { hip, phase };
+  B(body, 0.6, 0.48, 0.66, spirit, 0, 0, -0.04, bodyM, { r: 0.42 });
+  B(body, 0.46, 0.36, 0.3, spirit, 0, 0, 0.34, bodyM, { r: 0.45 }); // 後面細啲
+  B(body, 0.42, 0.18, 0.5, 0xe8fffc, 0, -0.17, -0.08, lightM, { r: 0.45 });
+  // 心口有團細光（好似鬼魂嘅「心」）
+  const heart = S(body, 0.09, 0.09, 0.09, 0x84ffff, 0, 0.02, -0.08, addM(0x18ffff, 0.22), { lo: true });
+  // 前面 2 隻浮浮吓嘅腳（腳尖淡出）
+  const legs = [-0.17, 0.17].map((x, i) => {
+    const hip = pivot(body, x, -0.16, -0.22);
+    B(hip, 0.16, 0.3, 0.17, spirit, 0, -0.14, 0, bodyM, { r: 0.45 });
+    B(hip, 0.18, 0.1, 0.2, 0xe8fffc, 0, -0.31, -0.02, ghostM(0.55, 0.8, 0xe8fffc), { r: 0.45 });
+    return { hip, phase: i * PI };
   });
-  // 頸圈 + 糖果粟米牌
-  const neck = pivot(body, 0, 0.18, -0.38);
-  torus(neck, 0.2, 0.035, 0x6a1b9a, 0, 0, 0, {}).rotation.x = PI / 2 - 0.4;
-  const tag = candyCorn(neck, 0.075, 0, -0.14, -0.19);
-  tag.rotation.x = PI;
-  // 頭
-  const head = pivot(body, 0, 0.36, -0.46);
-  B(head, 0.58, 0.5, 0.5, fur, 0, 0, 0, {}, { line: 0.07, r: 0.38 });
-  B(head, 0.34, 0.22, 0.24, belly, 0, -0.13, -0.29, {}, { line: 0.07, r: 0.4 }); // 嘴
-  S(head, 0.085, 0.06, 0.06, 0x1a1420, 0, -0.04, -0.42, { roughness: 0.15 }); // 鼻
-  S(head, 0.025, 0.016, 0.012, 0xffffff, -0.025, -0.02, -0.475, GLOW(0xffffff, 0.6), { lo: true });
-  smile(head, -0.05, -0.17, -0.41, 0.05, 0x2a1220, {}, 2.3);
-  smile(head, 0.05, -0.17, -0.41, 0.05, 0x2a1220, {}, 2.3);
-  const tongue = B(head, 0.09, 0.03, 0.12, 0xff6f91, 0, -0.24, -0.38, {}, { r: 0.45 });
-  tongue.rotation.x = 0.5;
-  const eyes = bigEyes(head, 0.14, 0.07, -0.25, 0.1, eyeC, { glow: true, glowI: 1.4 });
-  // 額頭縫線（發光紫）+ 一邊眼有補丁圈
-  stitches(head, V(-0.2, 0.2, -0.255), V(0.06, 0.24, -0.255), 5, stitchC, stitchM, 0.07, 0.016);
-  torus(head, 0.125, 0.018, 0x6d8466, 0.14, 0.07, -0.26, {});
-  // 耳：一隻企、一隻垂（垂嗰隻包咗膠布）
-  const earUp = pivot(head, -0.2, 0.22, 0.02);
-  earUp.rotation.z = 0.25;
-  B(earUp, 0.14, 0.26, 0.08, fur2, 0, 0.12, 0, {}, { line: 0.08 });
-  B(earUp, 0.08, 0.16, 0.02, 0xffa4b8, 0, 0.11, -0.045, {}, { r: 0.4 });
-  const earFlop = pivot(head, 0.24, 0.18, 0.02);
-  earFlop.rotation.z = -1.9;
-  B(earFlop, 0.14, 0.26, 0.08, fur2, 0, 0.12, 0, {}, { line: 0.08 });
-  const tape = B(earFlop, 0.16, 0.05, 0.1, 0xf5f0e1, 0, 0.1, 0, {}, { r: 0.3 });
-  tape.rotation.z = 0.4;
-  // 尾（一節節，搖得好快）
-  const tail = pivot(body, 0, 0.14, 0.42);
-  tail.rotation.x = -0.7;
+  // 後面：冇腳，變成一條鬼尾（一粒粒越嚟越細、越嚟越透明，尾尖發光）
+  const tail = pivot(body, 0, -0.04, 0.46);
   const tailSegs = [];
   let parent = tail;
-  for (let i = 0; i < 4; i++) {
-    const seg = pivot(parent, 0, i ? 0.1 : 0, 0);
-    B(seg, 0.1 - i * 0.012, 0.13, 0.1 - i * 0.012, i === 3 ? belly : fur, 0, 0.06, 0, {}, { line: 0.1 });
+  for (let i = 0; i < 6; i++) {
+    const seg = pivot(parent, 0, 0, i ? 0.13 - i * 0.006 : 0);
+    const r = 0.2 - i * 0.03;
+    S(seg, r, r * 0.85, r * 1.1, spirit, 0, 0, 0.04, ghostM(0.72 - i * 0.09, 0.35 + i * 0.15), { lo: i > 2 });
     tailSegs.push(seg);
     parent = seg;
   }
-  S(tailSegs[3], 0.035, 0.035, 0.035, eyeC, 0, 0.14, 0, GLOW(eyeC, 2.4), { lo: true }); // 尾尖發光
+  S(tailSegs[5], 0.05, 0.05, 0.05, eyeC, 0, 0.03, 0.1, addM(eyeC, 0.9), { lo: true });
+  // 頸圈 + 糖果粟米牌（保留）
+  const neck = pivot(body, 0, 0.16, -0.36);
+  torus(neck, 0.2, 0.035, 0x7c4dff, 0, 0, 0, GLOW(0x7c4dff, 0.6)).rotation.x = PI / 2 - 0.4;
+  const tag = candyCorn(neck, 0.075, 0, -0.14, -0.19);
+  tag.rotation.x = PI;
+  // 頭
+  const head = pivot(body, 0, 0.36, -0.44);
+  B(head, 0.58, 0.5, 0.5, spirit, 0, 0, 0, bodyM, { r: 0.42 });
+  B(head, 0.34, 0.22, 0.24, 0xe8fffc, 0, -0.13, -0.29, lightM, { r: 0.45 }); // 嘴
+  S(head, 0.085, 0.06, 0.06, 0x1a2a40, 0, -0.04, -0.42, { roughness: 0.15 }); // 鼻
+  S(head, 0.025, 0.016, 0.012, 0xffffff, -0.025, -0.02, -0.475, GLOW(0xffffff, 0.6), { lo: true });
+  smile(head, -0.05, -0.17, -0.41, 0.05, 0x1a2a40, {}, 2.3);
+  smile(head, 0.05, -0.17, -0.41, 0.05, 0x1a2a40, {}, 2.3);
+  const tongue = B(head, 0.09, 0.03, 0.12, 0xff80ab, 0, -0.24, -0.38, GLOW(0xff4081, 0.3), { r: 0.45 });
+  tongue.rotation.x = 0.5;
+  const eyes = bigEyes(head, 0.14, 0.06, -0.25, 0.1, eyeC, { glow: true, glowI: 2.6, pupil: 0x003c4f });
+  for (const s of [-1, 1]) S(head, 0.05, 0.03, 0.02, 0xff80ab, s * 0.21, -0.07, -0.25, ghostM(0.6, 0.6, 0xff80ab), { lo: true }); // 面珠
+  // 耳：兩隻軟軟垂低（鬼魂狗仔好乖）
+  const ears = [-1, 1].map((s) => {
+    const ear = pivot(head, s * 0.24, 0.18, 0.02);
+    ear.rotation.z = s * 1.75;
+    B(ear, 0.14, 0.28, 0.08, 0x80deea, 0, 0.13, 0, earM, { r: 0.45 });
+    return { ear, s };
+  });
+  // 頭頂一點鬼火（細細嘅藍色火苗）
+  const wisp = pivot(head, 0, 0.36, 0.02);
+  const flameM = addM(0x84ffff, 0.85);
+  S(wisp, 0.06, 0.09, 0.06, 0x84ffff, 0, 0, 0, flameM, { lo: true });
+  cone(wisp, 0.045, 0.12, 0x84ffff, 0, 0.1, 0, flameM, 10);
+  // 地上淡淡一團光（浮得高，光圈細啲）
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 32), addM(glowC, 0.25));
+  shadow.rotation.x = -PI / 2;
+  shadow.position.y = 0.02;
+  g.add(shadow);
+  // ✨ 拖尾光點（喺尾尖出，慢慢飄上去淡出）
+  const N = 26;
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+  const life = new Float32Array(N).map((_, i) => i / N);
+  const vel = Array.from({ length: N }, () => V(0, 0, 0));
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const sparks = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.11, map: sparkTexture(), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sparks.frustumCulled = false;
+  g.add(sparks);
+  const sparkC = new THREE.Color(0x84ffff);
+  const tipW = new THREE.Vector3();
   const seed = 1.3;
   const tmp = new THREE.Vector3();
   let lookYaw = 0;
@@ -129,15 +163,25 @@ function buildEcho() {
     animate(t, look, dt = 0.016, excited = 0) {
       const b = blinkAt(t, seed);
       for (const e of eyes) e.scale.y = b;
-      const wag = Math.sin(t * (12 + excited * 8)) * (0.55 + excited * 0.25);
-      tail.rotation.z = wag;
-      tailSegs.forEach((s, i) => (s.rotation.z = Math.sin(t * (12 + excited * 8) - i * 0.6) * 0.25));
-      body.position.y = 0.62 + Math.sin(t * 2.2) * 0.012; // 呼吸
-      body.scale.set(1, 1 + Math.sin(t * 2.2) * 0.015, 1);
-      // 間唔中開心跳一跳（「汪！」）
+      // 浮上浮落（間唔中開心跳一跳）
       const hop = Math.max(0, Math.sin(t * 0.9)) ** 30;
-      root.position.y = hop * 0.18 + excited * Math.abs(Math.sin(t * 9)) * 0.08;
+      root.position.y = 0.12 + Math.sin(t * 1.8) * 0.07 + hop * 0.18 + excited * Math.abs(Math.sin(t * 7)) * 0.1;
+      root.rotation.z = Math.sin(t * 1.1) * 0.05;
+      shadow.scale.setScalar(Math.max(0.4, 1 - (root.position.y - 0.12) * 1.5));
+      body.scale.set(1, 1 + Math.sin(t * 2.2) * 0.02, 1);
+      // 鬼尾：好似搖尾咁左右擺，一節跟一節（好似波浪）
+      const sp = 7 + excited * 6;
+      tail.rotation.y = Math.sin(t * sp) * (0.35 + excited * 0.2);
+      tail.rotation.x = -0.45 + Math.sin(t * 1.8) * 0.08;
+      tailSegs.forEach((s, i) => {
+        s.rotation.y = Math.sin(t * sp - i * 0.7) * 0.22;
+        s.rotation.x = -0.18 - Math.sin(t * 2 - i * 0.5) * 0.08;
+      });
+      heart.scale.setScalar(0.09 * (1 + Math.sin(t * 3) * 0.2));
       tongue.scale.z = 1 + hop * 0.6;
+      wisp.scale.set(1 + Math.sin(t * 13) * 0.1, 1 + Math.sin(t * 9) * 0.18, 1);
+      // 前腳好似喺空氣度扒吓扒吓（游水咁）
+      legs.forEach((l) => (l.hip.rotation.x = Math.sin(t * (3 + excited * 6) + l.phase) * (0.25 + excited * 0.15)));
       // 望住你（頭轉，唔轉身）
       let wantYaw = Math.sin(t * 0.5) * 0.25;
       let wantPitch = 0;
@@ -150,9 +194,30 @@ function buildEcho() {
       lookYaw += (wantYaw - lookYaw) * k;
       lookPitch += (wantPitch - lookPitch) * k;
       head.rotation.set(lookPitch, lookYaw, Math.sin(t * 1.3) * 0.12 + hop * 0.15); // 歪頭
-      earFlop.rotation.z = -1.9 + Math.sin(t * 3.1) * 0.12 + hop * 0.4;
-      earUp.rotation.z = 0.25 + Math.sin(t * 2.3) * 0.05;
-      legs.forEach((l) => (l.hip.rotation.x = excited ? Math.sin(t * 14 + l.phase) * 0.15 : 0));
+      for (const e of ears) e.ear.rotation.z = e.s * (1.75 + Math.sin(t * 2.6 + e.s) * 0.12 + hop * 0.3);
+      // ✨ 光點：死咗就喺尾尖重生
+      tipW.set(0, 0, 0.1);
+      tailSegs[5].localToWorld(tipW);
+      g.worldToLocal(tipW);
+      for (let i = 0; i < N; i++) {
+        life[i] += dt * 0.7;
+        if (life[i] >= 1) {
+          life[i] -= 1;
+          pos[i * 3] = tipW.x + (Math.random() - 0.5) * 0.12;
+          pos[i * 3 + 1] = tipW.y + (Math.random() - 0.5) * 0.12;
+          pos[i * 3 + 2] = tipW.z + (Math.random() - 0.5) * 0.12;
+          vel[i].set((Math.random() - 0.5) * 0.15, 0.2 + Math.random() * 0.25, 0.05 + Math.random() * 0.15);
+        }
+        pos[i * 3] += vel[i].x * dt;
+        pos[i * 3 + 1] += vel[i].y * dt;
+        pos[i * 3 + 2] += vel[i].z * dt;
+        const f = Math.sin(life[i] * PI) * 0.9; // 淡入淡出
+        col[i * 3] = sparkC.r * f;
+        col[i * 3 + 1] = sparkC.g * f;
+        col[i * 3 + 2] = sparkC.b * f;
+      }
+      pGeo.attributes.position.needsUpdate = true;
+      pGeo.attributes.color.needsUpdate = true;
     },
   };
 }

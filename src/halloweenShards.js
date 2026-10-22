@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
+import { questline } from './questline.js'; // 🐾 Echo's Questline 報數
 import { HALLOWEEN_SHARD_COST } from './data/balance.js';
 import { addMutation, mutationInfo } from './data/animals.js';
 import { addGear } from './data/gears.js';
@@ -50,6 +51,7 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
     state.soulDust -= n * HALLOWEEN_SHARD_COST;
     addGear('halloweenShard', n); // 🎒 入背包 Gears 分頁
     save();
+    questline.track('shardTrade', n); // 🐾
     play('shard');
     popup(`🔮 You got ${n} Halloween Shard${n > 1 ? 's' : ''}! Open your 🎒 Inventory (\`) to use it on a pet.`);
   }

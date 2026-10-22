@@ -133,7 +133,7 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - Look at land or the dock → the ring turns **orange** and moves to the nearest water. You can fish from anywhere on the dock or along the lake shore, not only the end of the dock. Phones: drag the screen to aim, tap USE.
 
 ## ✅ Built: 🐕 Echo + 🧟 Zombified Chest (Issue #8, 2026-10-21)
-- **Echo** is a cute zombie dog (green fur, glowing green eyes, purple stitches, a bandaged leg and a taped floppy ear, wagging tail). He stands on the counter of his little stall in the north-east of the Spawn Ruins, so you see him as soon as you arrive. He looks at you, tilts his head and does a happy hop now and then.
+- **Echo** was a cute zombie dog at first (2026-10-22: now a ghost dog, see below) (green fur, glowing green eyes, purple stitches, a bandaged leg and a taped floppy ear, wagging tail). He stands on the counter of his little stall in the north-east of the Spawn Ruins, so you see him as soon as you arrive. He looks at you, tilts his head and does a happy hop now and then.
 - Press **E** at the stall to open the shop: your 🍬 Candy Corn, the chest price and what's inside (with chances).
 - **Zombified Chest** costs **500 Candy Corn** (`ZOMBIE_CHEST_COST`). What's inside (`ZOMBIE_CHEST_DROPS` in balance.js):
   - Candy Corn (Common) 51%. The kid hasn't said how much, so for now it's a random **250–750** (`ZOMBIE_CHEST_CANDY`).
@@ -145,3 +145,22 @@ The kid said "do the world first". We designed the map ourselves. Everything is 
 - The chest gives the **pet straight into your backpack** (no egg to hatch), like a pet that just hatched. The 4 chest pets only come from the chest (no eggs, no fishing). In the Index they have their own "🧟 Zombified Chest" part. They earn money like Abandoned Manor pets (biome 9).
 - Code: `src/echoShop.js` (Echo, stall, shop, animation), `src/echoPetModels.js` (the 4 pet models), `src/data/echoChest.js` (pet data + chest roll).
 - Testing (dev console): `game.candy(5000)` gives Candy Corn; `game.echo.open('Soul Phantom')` plays the animation with that prize (free).
+
+## ✅ Built: 👻🐕 Echo is a ghost dog + 🐾 Echo's Questline (kid, 2026-10-22)
+- **Echo is now a ghost dog:** see-through, glowing pale-cyan body, glowing cyan eyes, floppy ears, a little blue ghost flame on his head, and his purple collar with the candy-corn tag. He has 2 floaty front paws; instead of back legs his body fades into a wispy ghost tail that wags, with tiny sparkles trailing from the tip. He floats up and down over the counter (both stalls).
+- **Echo's Questline stall** is in the north-west of the Spawn Ruins (opposite Echo's Chest Shop). Ghost-blue stall, glowing paw prints, a notice board with 10 quest papers (green = done, glowing = the one you're on), and Echo floating there too. Press **E** to see today's 10 quests.
+- **Opens on 24 October** (`ECHO_QUESTS_OPEN_DATE` in balance.js). Before that the sign says "🔒 Opens on 24 Oct (in N days)". Test switch: `state.echoQuestsEarly`.
+- **10 quests in a row, one at a time.** Each is harder with a better prize. Every day at midnight (your own clock) you start again from quest 1. Quests + prizes are `ECHO_QUESTS` in balance.js:
+  1. 🎣 Catch 3 things at the Fishing Lake → 🌽 150 Candy Corn
+  2. 🌽 Fish up 50 Candy Corn → 🌽 400 + 🎟️ 3 Skin Tokens
+  3. 🥚 Grab a wild egg in a spooky biome → 🧟 1 Zombified Chest + 💰 $50K
+  4. 🏃 Bring 2 eggs back to the Spawn Ruins → 💀 600 Soul Dust + 🎟️ 5
+  5. 🐣 Hatch 2 eggs at the Egg Graveyard → 🔮 1 Halloween Shard + 🌽 800
+  6. 🚂 Ride the Phantom Express → 🧟 2 + 💰 $250K
+  7. 👻 Catch 20 ghosts with your vacuum → 🔮 2 + 🌽 1,500 + 🎟️ 10
+  8. 🗿 Trade for 3 Halloween Shards at the Statue → 🧟 3 + 💀 2,000 + 🎟️ 15
+  9. 🌫️ Escape the Hollow Wraith (bring back a Hollow Sprites egg) → 🧟 5 + 🔮 3 + 💰 $2M + 🎟️ 20
+  10. 🐉 Escape the Bone Drake (bring back an Abandoned Manor egg) → **Mythic Soul Phantom pet** + 🧟 10 + 🔮 5 + 🌽 5,000 + 🎟️ 50
+- A small tracker on the left (only in the Halloween world) shows your quest and a progress bar. When you finish one, a **QUEST COMPLETE!** card pops up with confetti: click **Claim** or press **Enter**.
+- Code: `src/questline.js` (counting + prizes, `state.echoQuests = { day, index, progress, claimed }`), `src/echoQuestStall.js` (stall, panel, tracker, card), Echo's model in `src/echoShop.js` (`buildEcho`).
+- Testing (dev console): `game.questline.open()` opens it early; `game.questline.finish()` finishes the current quest; `game.questline.jump(9)` goes to quest 10; `game.questline.track('ghostCatch', 5)`.
