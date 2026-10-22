@@ -10,6 +10,7 @@
 //   'table'     → hub.js 學生桌（同 'iq' 疊埋 = x4）
 // 頭頂（左邊）有細細粒嘅「chip」顯示開咗邊啲同仲有幾耐
 
+import { adminExtras } from './adminPanel.js'; // 🔐 控制面板俾 Boost
 import { state, save } from './state.js';
 import { BOOSTS } from './data/meteorShop.js';
 
@@ -105,3 +106,15 @@ export function startBoostChips() {
   renderChips();
   setInterval(renderChips, 500);
 }
+
+// 🔐 控制面板：+5／+30 分鐘（adminPanel.js 嘅 adminExtras.boosts）
+adminExtras.boosts = {
+  list: () => BOOSTS.map((b) => ({ id: b.id, emoji: b.emoji, name: b.name })),
+  give(id, minutes) {
+    const now = Date.now();
+    state.boosts = { ...(state.boosts || {}) };
+    state.boosts[id] = Math.max(now, state.boosts[id] || 0) + minutes * 60000;
+    save();
+    renderChips();
+  },
+};
