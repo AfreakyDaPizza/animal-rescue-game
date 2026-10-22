@@ -487,23 +487,25 @@ function buildGate(root, live) {
   const { x, z } = PARK_GATE;
   const pillar = mat(0x8d6e63);
   const cap = mat(0x4e342e);
+  // 小朋友 2026-10-22：圍牆高咗一倍（7 米）→ 門柱、橫樑、牌一齊升高 UP 米，大門仍然高過圍牆
+  const UP = 3.2;
   for (const s of [-1, 1]) {
-    add(root, rbox(1.4, 6.5, 1.4), pillar, x + s * 3.6, 3.25, z);
-    add(root, rbox(1.7, 0.5, 1.7), cap, x + s * 3.6, 6.7, z);
+    add(root, rbox(1.4, 6.5 + UP, 1.4), pillar, x + s * 3.6, (6.5 + UP) / 2, z);
+    add(root, rbox(1.7, 0.5, 1.7), cap, x + s * 3.6, 6.7 + UP, z);
   }
-  add(root, rbox(8.6, 0.7, 0.8), cap, x, 6.0, z);
+  add(root, rbox(8.6, 0.7, 0.8), cap, x, 6.0 + UP, z);
   // 柱頂金色球 + 柱身爬藤 + 底座（小朋友 2026-10-19：要型啲）
   const goldTop = mat(0xffc107, { metalness: 0.6, roughness: 0.35 });
   const ivy = mat(0x388e3c);
   for (const s of [-1, 1]) {
-    add(root, new THREE.SphereGeometry(0.45, 14, 10), goldTop, x + s * 3.6, 7.4, z);
+    add(root, new THREE.SphereGeometry(0.45, 14, 10), goldTop, x + s * 3.6, 7.4 + UP, z);
     add(root, rbox(2.0, 0.6, 2.0), cap, x + s * 3.6, 0.3, z);
-    for (let k = 0; k < 4; k++) add(root, new THREE.BoxGeometry(0.5, 0.7 + (k % 2) * 0.5, 0.1), ivy, x + s * 3.6 + (k - 1.5) * 0.3, 1.2 + k * 1.1, z - 0.74, false);
+    for (let k = 0; k < 7; k++) add(root, new THREE.BoxGeometry(0.5, 0.7 + (k % 2) * 0.5, 0.1), ivy, x + s * 3.6 + ((k % 4) - 1.5) * 0.3, 1.2 + k * 1.15, z - 0.74, false);
   }
-  const crest = add(root, new THREE.OctahedronGeometry(0.5, 0), goldTop, x, 7.9, z);
+  const crest = add(root, new THREE.OctahedronGeometry(0.5, 0), goldTop, x, 7.9 + UP, z);
   crest.scale.y = 1.4;
   const sign = makeSign([{ text: 'ANIMAL RESCUE PARK', size: 0.4 }], 6.6, 1.1, THEMES.green);
-  sign.position.set(x, 7.1, z - 0.45);
+  sign.position.set(x, 7.1 + UP, z - 0.45);
   sign.rotation.y = Math.PI;
   live.add(sign);
   // 兩扇鐵閘（向兩邊趟開）
@@ -517,6 +519,11 @@ function buildGate(root, live) {
     live.add(door);
     return door;
   });
+  // 鐵閘上面（門頂到橫樑）：固定嘅鐵花窗，大門高咗都唔會穿窿
+  const grille = mat(0x37474f, { metalness: 0.7, roughness: 0.4 });
+  for (const y of [5.0, 8.6]) add(root, new THREE.BoxGeometry(5.8, 0.18, 0.18), grille, x, y, z, false);
+  for (let i = 0; i < 11; i++) add(root, new THREE.BoxGeometry(0.12, 3.6, 0.12), grille, x - 2.75 + i * 0.55, 6.8, z, false);
+  add(root, new THREE.TorusGeometry(1.1, 0.1, 6, 20), grille, x, 6.8, z, false);
   // 門外：一條路（去 Laboratory 門口）+ 大草地（開場動畫架車喺呢度行）
   add(root, new THREE.BoxGeometry(6, 0.05, 38), mat(0x616161), x, 0.02, z + 19, false);
   const outside = add(root, new THREE.BoxGeometry(150, 0.5, 130), mat(0x689f38), x, -0.27, z + 65, false);

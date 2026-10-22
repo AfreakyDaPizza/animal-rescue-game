@@ -23,7 +23,7 @@ import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
-import { HUB } from './hubShape.js';
+import { HUB, HUB_WALL_H } from './hubShape.js';
 import { fenceMat, roundBox } from './fences.js'; // 🪵 圍牆裝飾
 import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, BEACH_PIER, GYM, GYM_DOOR, labStatus } from './labShape.js';
 import { beach } from './secretBeach.js';
@@ -39,7 +39,7 @@ export const KINGDOM_Y = 13;
 export const KINGDOM_RECT = { minX: -75, maxX: 75, minZ: -6 * BIOME_LENGTH - 200, maxZ: -6 * BIOME_LENGTH }; // 小朋友：要好大（150 × 200 米）
 const KINGDOM_DOOR = { minX: -3.4, maxX: 3.4, minZ: -6 * BIOME_LENGTH - 4, maxZ: -6 * BIOME_LENGTH + 3 }; // 閘門個窿（接住條橋同入面嘅樓梯）
 
-const WALL_HEIGHT = 3.5;
+const WALL_HEIGHT = HUB_WALL_H; // 小朋友 2026-10-22：「Hub 圍牆高啲」→ 3.5 → 7 米（數值喺 hubShape.js）
 const WALL_THICKNESS = 1;
 
 export { BIOMES }; // 名同顏色喺 src/data/biomeList.js（Discord bot 都用）
@@ -151,7 +151,7 @@ export function buildWorld(scene) {
   decorateWall(staticRoot, -HUB_TOP_HALF, 0, STEM.minX, 0, 0, 1, wallMaterial, 0);
   decorateWall(staticRoot, STEM.maxX, 0, HUB_TOP_HALF, 0, 0, 1, wallMaterial, 1);
   buildBiomeBorders(staticRoot);
-  buildMeteorDecor(staticRoot);
+  animators.push(buildMeteorDecor(staticRoot, { scene, sky, bake: bakeStatic })); // 2026-10-22：仲有撞擊坑、裂縫、地標、飄浮水晶、巨型隕石、北極光
   const a0 = Math.asin(-HUB.cz / HUB.r); // 右上角（z = 0）嘅角度
   const a1 = Math.PI - a0; // 左上角
   const SEGMENTS = 60;
@@ -228,9 +228,10 @@ function decorateWall(root, x1, z1, x2, z2, nx, nz, stone, i) {
   };
   const mx = (x1 + x2) / 2;
   const mz = (z1 + z2) / 2;
-  // 頂邊石 + 底腳線
+  // 頂邊石 + 底腳線 + 半腰一條石線（圍牆高咗，中間加條線先唔會成幅好悶）
   put(new THREE.BoxGeometry(len + 0.2, 0.28, WALL_THICKNESS + 0.3), coping, mx, WALL_HEIGHT + 0.14, mz);
   put(new THREE.BoxGeometry(len + 0.15, 0.45, WALL_THICKNESS + 0.18), dark, mx, 0.22, mz, ry, false);
+  put(new THREE.BoxGeometry(len + 0.12, 0.3, WALL_THICKNESS + 0.16), dark, mx, WALL_HEIGHT * 0.5, mz, ry, false);
   // 城垛：一嚿嚿凸起
   const n = Math.max(1, Math.round(len / 1.6));
   for (let k = 0; k < n; k++) {
@@ -243,7 +244,7 @@ function decorateWall(root, x1, z1, x2, z2, nx, nz, stone, i) {
     const r = h - Math.floor(h);
     if (r > 0.55) continue;
     const t = 0.2 + 0.6 * ((k + r) / 3);
-    const vh = 1.2 + r * 2;
+    const vh = (1.2 + r * 2) * (WALL_HEIGHT / 3.5) * 0.8; // 牆高咗，爬藤都長啲
     put(new THREE.BoxGeometry(0.5 + r * 0.6, vh, 0.12), ivy, x1 + (x2 - x1) * t + nx * (WALL_THICKNESS / 2 + 0.04), WALL_HEIGHT - vh / 2, z1 + (z2 - z1) * t + nz * (WALL_THICKNESS / 2 + 0.04), ry, false);
   }
   if (i % 5 !== 0) return;
@@ -259,10 +260,11 @@ function decorateWall(root, x1, z1, x2, z2, nx, nz, stone, i) {
   const bx = px + nx * 0.86;
   const bz = pz + nz * 0.86;
   const fy = Math.atan2(nx, nz);
-  put(new THREE.BoxGeometry(1.3, 0.09, 0.09), gold, bx, WALL_HEIGHT + 0.6, bz, fy, false);
-  put(new THREE.BoxGeometry(1.1, 2.1, 0.05), fenceMat(c, { roughness: 0.9 }), bx, WALL_HEIGHT - 0.5, bz, fy, false);
-  put(new THREE.ConeGeometry(0.55, 0.45, 3), fenceMat(c, { roughness: 0.9 }), bx, WALL_HEIGHT - 1.75, bz, fy, false).rotation.z = Math.PI;
-  put(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16), fenceMat(0xfffde7), bx + nx * 0.04, WALL_HEIGHT - 0.35, bz + nz * 0.04, 0, false).rotation.set(Math.PI / 2, fy, 0, "YXZ");
+  // 牆高咗：旗都大啲、長啲
+  put(new THREE.BoxGeometry(1.6, 0.1, 0.1), gold, bx, WALL_HEIGHT + 0.6, bz, fy, false);
+  put(new THREE.BoxGeometry(1.4, 3.2, 0.05), fenceMat(c, { roughness: 0.9 }), bx, WALL_HEIGHT - 1.0, bz, fy, false);
+  put(new THREE.ConeGeometry(0.7, 0.55, 3), fenceMat(c, { roughness: 0.9 }), bx, WALL_HEIGHT - 2.87, bz, fy, false).rotation.z = Math.PI;
+  put(new THREE.CylinderGeometry(0.38, 0.38, 0.06, 16), fenceMat(0xfffde7), bx + nx * 0.04, WALL_HEIGHT - 0.7, bz + nz * 0.04, 0, false).rotation.set(Math.PI / 2, fy, 0, "YXZ");
 }
 
 // 一幅直線牆，由 (x1,z1) 去 (x2,z2)；extra = 兩頭加長幾多（轉角位唔會有窿）
@@ -472,7 +474,7 @@ function stoneTexture() {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(12, 1);
+  texture.repeat.set(12, WALL_HEIGHT / 3.5); // 牆高咗：磚嘅大細唔變（多幾行磚）
   return texture;
 }
 

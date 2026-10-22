@@ -4,6 +4,8 @@
 const R = 38;
 const CZ = 24;
 export const HUB = { cx: 0, cz: CZ, r: R, minX: -R, maxX: R, minZ: 0, maxZ: CZ + R };
+// 圍牆有幾高（小朋友 2026-10-22：「make the borders at Hub higher」→ 3.5 → 7）；world.js 起牆、meteorDecor.js 放牆頂水晶都用
+export const HUB_WALL_H = 7;
 
 // 🐾 地塊（2026-10-18 Hub 重新排位：搬咗去噴水池右邊 Pets Zone；閘口喺 minX 嗰邊、面向噴水池條路）
 export const PLOT = { minX: 14, maxX: 30, minZ: 16.5, maxZ: 31.5, gateZ: 24, gateWidth: 3 };
