@@ -329,3 +329,14 @@ body.inv-dragging, body.inv-dragging * { cursor: grabbing !important; }
 @keyframes inv-glow { 0%, 100% { box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.3); } 50% { box-shadow: 0 0 0 4px #7c4dff, 0 0 20px rgba(124, 77, 255, 0.7); } }
 @keyframes inv-pop { 0% { transform: scale(1); } 30% { transform: scale(1.18) rotate(-3deg); } 60% { transform: scale(0.96) rotate(2deg); } 100% { transform: scale(1); } }
 @keyframes inv-spark { 0% { transform: rotate(var(--a)) translateY(0) scale(0.4); opacity: 1; } 100% { transform: rotate(var(--a)) translateY(-90px) scale(1.2); opacity: 0; } }
+/* 💎 Gear 圖示（src/gearArt.js）：水晶碎畫 */
+.gear-icon { display: block; object-fit: contain; pointer-events: none; user-select: none; }
+.gear-pic { background: radial-gradient(circle at 50% 45%, #2a1f3d 0%, color-mix(in srgb, var(--pic-bg) 35%, #120c1e) 75%, #0b0714 100%); }
+.gear-pic .gear-icon { width: auto; height: 100%; margin: 0 auto; animation: inv-float 2.4s ease-in-out infinite; filter: drop-shadow(0 0 6px var(--pic-bg)); }
+.slot .gear-icon.slot-gear { width: 88%; height: 88%; margin: auto; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5)); }
+.slot .gear-emoji.slot-gear { font-size: inherit; }
+.inv-banner-icon { display: inline-block; width: 30px; height: 30px; vertical-align: middle; }
+.gear-mini { display: inline-block; width: 22px; height: 22px; vertical-align: -5px; }
+.admin-gear-cards .gear-pic { max-width: 120px; }
+.admin-gear-btns { justify-content: center; }
+.admin-gear-btns button { padding: 4px 10px !important; margin: 2px; }

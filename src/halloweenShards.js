@@ -8,6 +8,7 @@ import { state, save } from './state.js';
 import { HALLOWEEN_SHARD_COST } from './data/balance.js';
 import { addMutation, mutationInfo } from './data/animals.js';
 import { addGear } from './data/gears.js';
+import { gearPic } from './gearArt.js'; // 💎 Shard 圖示
 import { STATUE_OF_HALLOWEEN, inGhostWorld } from './halloweenShape.js';
 import { PLOT } from './hubShape.js';
 import { extraPanels, openPanel, panelKind } from './hud.js';
@@ -24,7 +25,7 @@ function statueHtml() {
   const can = Math.floor(state.soulDust / HALLOWEEN_SHARD_COST);
   return `<p class="index-summary">💀 Soul Dust: <b>${short(state.soulDust)}</b> · 🔮 Halloween Shards: <b>${state.hwShards}</b></p>
     <div class="cards"><div class="card-animal" style="border-color:#b388ff">
-      <div class="emoji">🔮</div><b>Halloween Shard</b>
+      ${gearPic('halloweenShard')}<b>Halloween Shard</b>
       <small>Costs ${HALLOWEEN_SHARD_COST} 💀 Soul Dust</small>
       <p>It goes into your 🎒 Inventory (press <kbd>\`</kbd>) as a Gear. Pick any pet: it becomes 👻 SPECTRAL x${mutationInfo('spectral').money} or 🟣 PHANTOM x${mutationInfo('phantom').money}!</p>
       <div class="card-buttons">

@@ -17,6 +17,7 @@ import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
 import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import { rodShopHtml, currentRod } from './rodShop.js'; // 🎣 Halloween 魚竿舖
 import { gearInfo, gearStacks } from './data/gears.js'; // ⚙️ 背包 Gears（Issue #10）
+import { gearIcon } from './gearArt.js'; // 💎 Shard 圖示（快捷欄）
 import { plotSlots, plotMoneyMulti, MAX_TRAINING_LEVEL, MACHINE_LEVELS, LAB_LEGENDARY_NEEDED, LAB_PODS, LAB_PORTAL_BY_PODS, LAB_PORTAL_BY_LEGENDARY } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -275,7 +276,7 @@ export function selectSlot(i) {
 }
 export const scrollHotbar = (direction) => selectSlot(selected + direction);
 
-const slotIcon = (it) => (it.kind === 'tool' ? (it.item.bat ? '🏏' : '🔨') : it.kind === 'gear' ? gearInfo(it.item.gear).emoji : findAnimal(it.item.name)?.emoji || '❓');
+const slotIcon = (it) => (it.kind === 'tool' ? (it.item.bat ? '🏏' : '🔨') : it.kind === 'gear' ? gearIcon(it.item.gear, 'slot-gear') : findAnimal(it.item.name)?.emoji || '❓');
 let lastHotbar = '';
 export function renderHotbar() {
   const items = hotbarItems();

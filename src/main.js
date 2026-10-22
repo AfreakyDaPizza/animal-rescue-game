@@ -75,6 +75,7 @@ import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenS
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
+import { shardModel } from './gearArt.js'; // 💎 手上嘅 Shard 3D 模型
 import { createInventory } from './inventory.js'; // 🎒 背包：Animals／Endangered Animals／Gears（Issue #10）
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { createEchoShop, giveCandyCorn } from './echoShop.js'; // 🐕 Echo 隻狗 + 🧟 Zombified Chest（Issue #8）
@@ -301,6 +302,26 @@ avatarBat.position.set(0.22, -0.7, -0.15);
 avatarBat.scale.setScalar(1.4);
 avatarBat.visible = false;
 thirdPerson.avatar.arms[1].add(avatarBat);
+// 💎 手上嘅 Shard（快捷欄揀咗 Shard gear，src/gearArt.js）：第一身掛喺鏡頭，第三身掛喺右手
+const handShard = new THREE.Group();
+handShard.position.set(0.3, -0.2, -0.7);
+handShard.rotation.set(0.15, 0, -0.15);
+handShard.scale.setScalar(0.14);
+camera.add(handShard);
+const avatarShard = new THREE.Group();
+avatarShard.position.set(0.05, -0.9, -0.35);
+avatarShard.scale.setScalar(1.3);
+thirdPerson.avatar.arms[1].add(avatarShard);
+let heldShard = null; // 而家手上邊種 Shard
+function holdShard(type) {
+  if (type === heldShard) return;
+  heldShard = type;
+  for (const [holder, slot] of [[handShard, 'hand'], [avatarShard, 'avatar']]) {
+    holder.clear();
+    const m = type && shardModel(type, slot);
+    if (m) holder.add(m);
+  }
+}
 applyRangerSkin(thirdPerson, RANGER_SKINS.find((s) => s.id === state.rangerSkin) || RANGER_SKINS[0]);
 // ---- 🎃 Halloween：Phantom Express、捉鬼、Halloween Shard ----
 const faceTo = (rotY) => camera.rotation.set(0, rotY, 0, 'YXZ');
@@ -1019,6 +1040,7 @@ const reloadNoIntro = () => {
   location.reload();
 };
 setAdminActions({
+  popup: (t) => popup(t),
   status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present, halloweenDate: isHalloweenOpen() && !state.halloweenEarly, meteorDate: isMeteorOpen() && !state.meteorEarly }),
   hasBackup,
   // 第一次改嘢之前：備份真存檔
@@ -1078,6 +1100,7 @@ setAdminActions({
     state.gymEarly = true;
     state.halloweenEarly = true; // 🎃
     state.meteorEarly = true; // ☄️
+    state.echoQuestsEarly = true; // 🐕
     if (!gym.present) return this.gotoGym();
     save();
     this.unlockEarly();
@@ -1131,6 +1154,7 @@ setAdminActions({
     { id: 'gymEarly', label: '💪 Gym open early', on: !!state.gymEarly },
     { id: 'halloweenEarly', label: '🎃 Halloween open early', on: !!state.halloweenEarly },
     { id: 'meteorEarly', label: '☄️ Meteoric Shop open early', on: !!state.meteorEarly, hint: 'The METEORIC event still starts on its date - use the Events tab to try it now' },
+    { id: 'echoQuestsEarly', label: "🐕 Echo's Quests open early", on: !!state.echoQuestsEarly, hint: 'Echo the dog: Halloween questline (opens 24 October)' },
     { id: 'kingdomDebug', label: '👑 Kingdom gate open (test)', on: kingdomDebug, hint: 'Only for this visit' },
     { id: 'tutorialDone', label: '🎓 Tutorial finished', on: !!state.tutorialDone },
     { id: 'mute', label: '🔇 Sound muted', on: isMuted() },
@@ -1141,6 +1165,7 @@ setAdminActions({
     else if (id === 'gymEarly') this.gymEarly(!state.gymEarly);
     else if (id === 'halloweenEarly') this.halloweenEarly(!state.halloweenEarly);
     else if (id === 'meteorEarly') state.meteorEarly = !state.meteorEarly;
+    else if (id === 'echoQuestsEarly') state.echoQuestsEarly = !state.echoQuestsEarly; // 🐕
     else if (id === 'kingdomDebug') kingdomDebug = !kingdomDebug;
     else if (id === 'tutorialDone') state.tutorialDone = !state.tutorialDone;
     else if (id === 'mute') {
@@ -1880,6 +1905,10 @@ renderer.setAnimationLoop((timestamp) => {
   handHammer.visible = showTool && !bat && thirdPerson.zoom === 0;
   avatarHammer.visible = showTool && !bat;
   handBat.visible = showTool && bat && thirdPerson.zoom === 0;
+  holdShard(sel?.kind === 'gear' && !rescue.carrying && !vacuumOut && !hwEggs?.isCarrying() ? sel.item.gear : null); // 💎
+  handShard.visible = !!heldShard && thirdPerson.zoom === 0;
+  avatarShard.visible = !!heldShard;
+  if (heldShard) for (const h of [handShard, avatarShard]) h.children[0]?.userData.animate?.(time);
   avatarBat.visible = showTool && bat;
   batSwing = Math.max(0, batSwing - dt);
   const k = batSwing > 0 ? Math.sin((1 - batSwing / 0.25) * Math.PI) : 0; // 揮棒
