@@ -9,6 +9,7 @@
 // 魚竿：每個人都有免費 Twig Rod；用 Candy Corn 喺魚竿舖升級（rodShop.js），會存低，返普通世界都唔會斷
 import * as THREE from 'three';
 import { state } from './state.js';
+import { questline } from './questline.js'; // 🐾 Echo's Questline 報數
 import { FISHING_BITE_WINDOW, FISHING_CAST_RANGE, FISHING_POWER_PERIOD, FISHING_REEL, FISHING_REEL_WEIGHT, rarityInfo } from './data/balance.js';
 import { buildHalloweenEgg } from './halloweenPets.js';
 import { ROD_SHOP, FISH_SPOT, DOCK, LAKE_WATER, LAKE_SHORE, LAKE, RUINS } from './halloweenShape.js';
@@ -709,8 +710,10 @@ function finishCatch(fishing, ui) {
   fishing.prize = null;
   fishing.phase = 'idle';
   fishing.cool = 0.8;
+  questline.track('fishCatch'); // 🐾
   if (c.kind === 'candy') {
     state.candyCorn = (state.candyCorn || 0) + c.amount;
+    questline.track('candyFish', c.amount); // 🐾
     ui.save();
     if (c.pile.big) {
       ui.play('bigCatch');

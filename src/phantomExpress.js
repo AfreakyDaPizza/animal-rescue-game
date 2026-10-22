@@ -8,6 +8,7 @@ import { STATION, STATION_PLATFORM, TRACK_X, TRAIN_STOP, TRAIN_BOARD, GHOST_ARRI
 import { THEMES, dynamicSign } from './signs.js';
 import { beacon, glowSign } from './hwBeacons.js';
 import { PHANTOM_EXPRESS_EVERY_MINUTES, PHANTOM_EXPRESS_STAY_MINUTES } from './data/balance.js';
+import { questline } from './questline.js'; // 🐾 Echo's Questline 報數
 
 const MIN = 60 * 1000;
 const ROLL_SECONDS = 8; // 入站／出站要幾耐
@@ -217,6 +218,7 @@ export function createPhantomExpress({ scene, teleport, showLoading, popup, anno
     }, 2.6, { theme: 'ghost', kicker: 'All aboard!', title: 'Ghost World' });
     travelling = false;
     if (!ok) return;
+    questline.track('trainRide'); // 🐾
     announce('👻 Welcome to the GHOST WORLD! Get a vacuum and catch the souls!');
     setTimeout(() => popup('🧹 Hold E (or the mouse button) to suck up ghosts. Stronger ghosts take longer!'), 2600);
   }

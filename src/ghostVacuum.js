@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
+import { questline } from './questline.js'; // 🐾 Echo's Questline 報數
 import { GHOST_VACUUM, GHOST_MAX_SOULS, GHOST_HEARTS, GHOST_HEART_REGEN, GHOST_HIT_SAFE } from './data/balance.js';
 import { buildSoul, randomSoulType, rollSoulDust, launchSoulOrb } from './halloweenSouls.js';
 import { GHOST_WORLD, GHOST_SPAWN_R, STATUE_OF_HALLOWEEN, VACUUM_SHOP, GHOST_TRAIN_STOP, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
@@ -562,6 +563,7 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
         const dust = rollSoulDust(s.type);
         state.soulDust += dust;
         save();
+        questline.track('ghostCatch'); // 🐾
         s.caught = 0;
         kick = 1;
         play('soulCatch');

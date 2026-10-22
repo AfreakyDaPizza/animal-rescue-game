@@ -51,6 +51,7 @@
 - 2026-10-21：Issue #10 ☄️ METEORIC 活動 + 長期隕石裝飾（`src/meteorEvent.js`／`meteorDecor.js`／`meteorBoss.js`／`meteorKit.js`；`state.meteorCrystals`；`boost.meteor`）。
 
 - 2026-10-21（夜）：Issue #10：背包（`src/inventory.js`，` 掣；Animals／Endangered／Gears；拖去快捷欄 `state.hotbar`）、Gears（`src/data/gears.js`：halloweenShard 一定中、meteoricShard、astralReroll）、新變異 meteoric x5／astral x8；隕石裝飾 + METEORIC 活動（`src/meteorEvent.js`／`meteorDecor.js`／`meteorBoss.js`，`state.meteorCrystals`）；Meteoric Shop（`src/meteorShop.js`，數值 `src/data/meteorShop.js`，Library 搬去牆邊）；控制面板重做（分頁、俾貨幣、傳送）；Halloween 數值框；手機掣細咗；釣魚線駁返竿頭 + 瞄準拋竿（`FISHING_CAST_RANGE`）。Discord：GitHub webhook secret 未設（每次跳過），NAS 冇 bot，等小朋友做。
+- 2026-10-22：Echo 改做鬼魂狗（`buildEcho` 喺 `src/echoShop.js`，兩個攤位共用）；🐾 Echo's Questline（`src/questline.js` 計數／俾獎，`src/echoQuestStall.js` 攤位喺 Spawn Ruins 西北 + 面板 + 左邊追蹤器 + 完成卡 Enter 攞獎）：10 個每日連續任務 `ECHO_QUESTS`，24/10 開（`ECHO_QUESTS_OPEN_DATE`，測試 `state.echoQuestsEarly`），`state.echoQuests = { day, index, progress, claimed }`；報數 hook `questline.track(...)` 喺 fishing／halloweenEggs／phantomExpress／ghostVacuum／halloweenShards。
 
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
