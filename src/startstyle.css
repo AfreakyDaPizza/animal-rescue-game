@@ -405,3 +405,5 @@ body.mobile #fish-reel { top: 20%; }
 #fish-big[hidden], #fish-power[hidden], #fish-reel[hidden], #fish-perfect[hidden], #hw-candy-hud[hidden] { display: none; }
 /* ☄️ 隕石活動嘅水晶只喺普通世界出：喺 Halloween 世界收埋個水晶框 */
 body.in-halloween #meteor-hud, body.fishing #hw-egg-hint { visibility: hidden; } /* 釣魚時都收埋 Eggs 框，唔好遮住瞄準提示 */
+/* 🔥 Hell（World 2）：火車同蛋提示喺度用唔到 */
+body.in-hell #hw-train-hud, body.in-hell #hw-egg-hint, body.in-hell #hw-arrow-hud { visibility: hidden; }
