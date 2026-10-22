@@ -329,3 +329,9 @@ body.inv-dragging, body.inv-dragging * { cursor: grabbing !important; }
 @keyframes inv-glow { 0%, 100% { box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.3); } 50% { box-shadow: 0 0 0 4px #7c4dff, 0 0 20px rgba(124, 77, 255, 0.7); } }
 @keyframes inv-pop { 0% { transform: scale(1); } 30% { transform: scale(1.18) rotate(-3deg); } 60% { transform: scale(0.96) rotate(2deg); } 100% { transform: scale(1); } }
 @keyframes inv-spark { 0% { transform: rotate(var(--a)) translateY(0) scale(0.4); opacity: 1; } 100% { transform: rotate(var(--a)) translateY(-90px) scale(1.2); opacity: 0; } }
+
+/* 💾 存檔提示（saveToast.js） */
+#save-toast { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 40; padding: 6px 14px; border-radius: 999px; background: #e8f5e9; border: 3px solid #43a047; color: #1b5e20; font-weight: 800; font-size: 15px; pointer-events: none; opacity: 0; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s; max-width: min(420px, calc(100vw - 32px)); }
+#save-toast.show { opacity: 1; transform: none; }
+#save-toast.bad { background: #ffebee; border-color: #e53935; color: #b71c1c; border-radius: 14px; }
+body.mobile #save-toast { bottom: auto; top: calc(110px + env(safe-area-inset-top, 0px)); right: 8px; font-size: 13px; }

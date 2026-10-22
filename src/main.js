@@ -23,6 +23,7 @@ import {
 import { initSideBoxes, toggleSideBox, updateSideBoxes, sideBoxOpen } from './sideBoxes.js'; // 右邊中間：🐾 地塊寵物、⏱️ 繁殖機時間（小朋友 2026-10-18）
 import { state, save, SAVE_KEY } from './state.js';
 import { account, uploadSave } from './account.js';
+import './saveToast.js'; // 💾 「Saved!」提示
 import { setAdminActions } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import {
   createRescue, spawnAnimal, nearestAnimal, borrow, deliver, loseAnimal, setHolding, updateRescue,
@@ -1026,6 +1027,15 @@ const reloadNoIntro = () => {
 setAdminActions({
   status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present, halloweenDate: isHalloweenOpen() && !state.halloweenEarly, meteorDate: isMeteorOpen() && !state.meteorEarly }),
   hasBackup,
+  reloadNoIntro: () => {
+    // 自動備份已經寫咗入 localStorage：唔好再 save() 蓋過佢
+    try {
+      sessionStorage.setItem('animal-rescue-skip-intro', '1');
+    } catch {
+      // 照載入
+    }
+    location.reload();
+  },
   // 第一次改嘢之前：備份真存檔
   backup() {
     if (hasBackup()) return;

@@ -64,25 +64,108 @@ const DEFAULTS = {
 export const state = load();
 
 function load() {
+  let raw = null;
   try {
-    const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+    raw = localStorage.getItem(SAVE_KEY);
+  } catch {
+    return { ...DEFAULTS };
+  }
+  try {
+    const saved = JSON.parse(raw);
     const s = { ...DEFAULTS, ...saved };
     if (s.beachFinaleSeen === null) s.beachFinaleSeen = !!s.labEndingSeen; // 舊存檔：以前睇完結局就已經去咗沙灘
     return s;
   } catch {
+    // 存檔壞咗：唔好就咁覆蓋，原封不動抄一份去 -broken，等可以救返（小朋友 2026-10-22 唔見咗啲嘢）
+    try {
+      if (raw) localStorage.setItem(`${SAVE_KEY}-broken-${Date.now()}`, raw);
+    } catch {
+      // 抄唔到就算
+    }
     return { ...DEFAULTS };
   }
 }
 
+// ---- 💾 自動存檔（小朋友 2026-10-22：「得到好嘢就自動存，因為我唔見晒啲嘢」）----
+// - 每秒睇一次：有改過就即刻存（唔使等 5 秒）；熄視窗／轉 tab／手機收埋都即刻存
+// - 得到新寵物、新 Gear、新物種：右下角閃「💾 Saved!」
+// - 自動備份：每 10 分鐘留一份，最多 5 份（AUTO_KEY），控制面板 Safety 分頁可以揀一份返去
+export const AUTO_KEY = `${SAVE_KEY}-auto`;
+const AUTO_EVERY = 10 * 60 * 1000;
+const AUTO_KEEP = 5;
+let lastJson = '';
+let lastGood = null;
+export const saveStatus = { failed: false };
+const goodCount = () => ({ pets: state.pets?.length || 0, gears: state.gears?.length || 0, index: state.indexFound?.length || 0 });
+
+let frozen = false; // 返去自動備份之後：唔好再存（就嚟重新載入），免得舊嘢蓋返過去
+
 export function save() {
+  if (frozen) return;
+  state.savedAt = Date.now(); // 帳號系統（account.js）比較雲端同本機邊份新
+  const json = JSON.stringify(state);
+  const changed = json.replace(/"savedAt":\d+/, '') !== lastJson.replace(/"savedAt":\d+/, '');
   try {
-    state.savedAt = Date.now(); // 帳號系統（account.js）比較雲端同本機邊份新
-    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    if (changed) localStorage.setItem(SAVE_KEY, json);
+    lastJson = json;
+    if (saveStatus.failed) window.dispatchEvent(new CustomEvent('game-save', { detail: { ok: true } }));
+    saveStatus.failed = false;
   } catch {
-    // 瀏覽器唔俾存（例如無痕模式）都照玩得，只係唔記得進度
+    // 瀏覽器唔俾存（無痕模式、冇晒位）：照玩，但話俾玩家知
+    if (!saveStatus.failed) window.dispatchEvent(new CustomEvent('game-save', { detail: { ok: false } }));
+    saveStatus.failed = true;
+    return;
   }
+  const now = goodCount();
+  if (lastGood && (now.pets > lastGood.pets || now.gears > lastGood.gears || now.index > lastGood.index)) window.dispatchEvent(new CustomEvent('game-save', { detail: { ok: true, good: true } }));
+  lastGood = now;
+  autoBackup(json);
 }
 
-// 每 5 秒自動存一次，關視窗嗰下都存
-setInterval(save, 5000);
+// 自動備份：太耐冇備份就加一份；舊嘅最多留 AUTO_KEEP 份
+export function autoBackups() {
+  try {
+    return JSON.parse(localStorage.getItem(AUTO_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+function autoBackup(json) {
+  const list = autoBackups();
+  if (list.length && Date.now() - list[0].at < AUTO_EVERY) return;
+  // 新開嘅空存檔唔使備份（免得將有料嘅備份擠走）
+  if (!(state.pets?.length || state.money > 0 || state.rescued > 0)) return;
+  list.unshift({ at: Date.now(), money: state.money || 0, pets: state.pets?.length || 0, rescued: state.rescued || 0, json });
+  while (list.length > AUTO_KEEP) list.pop();
+  try {
+    localStorage.setItem(AUTO_KEY, JSON.stringify(list));
+  } catch {
+    // 冇位就少留一份
+    list.pop();
+    try {
+      localStorage.setItem(AUTO_KEY, JSON.stringify(list));
+    } catch {
+      // 算數
+    }
+  }
+}
+// 揀一份自動備份返去（覆蓋而家嘅存檔；返去之前先將而家嘅加入備份，唔會再唔見）
+export function restoreAutoBackup(at) {
+  const b = autoBackups().find((x) => x.at === at);
+  if (!b) return false;
+  const list = autoBackups();
+  list.unshift({ at: Date.now(), money: state.money || 0, pets: state.pets?.length || 0, rescued: state.rescued || 0, json: JSON.stringify(state) });
+  try {
+    localStorage.setItem(AUTO_KEY, JSON.stringify(list.slice(0, AUTO_KEEP + 1)));
+    localStorage.setItem(SAVE_KEY, b.json);
+  } catch {
+    return false;
+  }
+  frozen = true;
+  return true;
+}
+
+setInterval(save, 1000);
 window.addEventListener('beforeunload', save);
+window.addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save());

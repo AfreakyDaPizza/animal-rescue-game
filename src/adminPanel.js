@@ -3,7 +3,7 @@
 // Issue #10（小朋友 2026-10-21）：可以俾 🌽 Candy Corn、💎 Meteor Crystals 等等貨幣；面板整靚啲：
 //   分頁清楚啲、寵物搜尋、快速掣（+100／+1K／+1M／MAX）、所有活動（直接讀 events.js 個 EVENTS）、傳送、測試開關
 // 第一次改嘢之前會備份真存檔（SAVE_KEY + '-backup'），可以一撳還原
-import { state, save } from './state.js';
+import { state, save, SAVE_KEY, autoBackups, restoreAutoBackup } from './state.js';
 import { short } from './format.js';
 import { play } from './sound.js';
 import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
@@ -198,8 +198,19 @@ function maxHtml() {
 
 function safetyHtml() {
   const has = actions.hasBackup();
-  return section('💾 Your real save', `<p>Before your first change here, the game saved a copy of your <b>real</b> save.</p>
-    ${has ? `<div class="pet-actions">${confirmButton('restore', '💾 Restore my real save')}</div>` : '<p class="hint">No changes yet, so there is nothing to restore.</p>'}`);
+  let backupAt = 0;
+  try {
+    backupAt = JSON.parse(localStorage.getItem(`${SAVE_KEY}-backup`))?.savedAt || 0;
+  } catch {
+    backupAt = 0;
+  }
+  const when = (t) => (t ? new Date(t).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'a while ago');
+  const autos = autoBackups();
+  const autoRows = autos.map((a) => `<tr><td>🕒 <b>${when(a.at)}</b></td><td>💰 $${short(a.money)} · 🐾 ${a.pets} pets · 🦏 ${a.rescued} rescued</td><td>${confirmButton(`auto:${a.at}`, 'Go back to this')}</td></tr>`).join('');
+  return `${section('💾 Autosaves', autos.length ? `<div class="admin-table"><table>${autoRows}</table></div>` : '<p class="hint">No autosaves yet. The game keeps one every 10 minutes (the last 5).</p>', 'Your game saves by itself every second. If something went wrong, pick a time to go back to. Your game right now is kept as an autosave too, so you can come back.')}
+    ${section('🕰️ Save from before the Control Panel', `<p>Before your <b>first</b> change here, the game kept a copy of your save from <b>${when(backupAt)}</b>.</p>
+    <p class="hint">⚠️ Going back to it <b>throws away everything you got since then</b> (pets, money, everything)!</p>
+    ${has ? `<div class="pet-actions">${confirmButton('restore', '🕰️ Go back to that old save')}</div>` : '<p class="hint">No changes yet, so there is nothing to go back to.</p>'}`)}`;
 }
 
 export function adminHtml() {
@@ -225,6 +236,11 @@ $('panel-body').addEventListener('click', (e) => {
   const what = b.dataset.admin;
   const d = b.dataset;
   if (what === 'noop') return;
+  if (what.startsWith('auto:')) {
+    // 💾 返去一份自動備份（先將而家嘅都留一份）
+    if (restoreAutoBackup(Number(what.slice(5)))) actions.reloadNoIntro();
+    return;
+  }
   if (what !== 'ask' && what !== 'cancel') confirm = null;
   switch (what) {
     case 'tab':
