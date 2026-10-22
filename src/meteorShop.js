@@ -2,7 +2,7 @@
 // 用 💎 Meteor Crystals（state.meteorCrystals，Meteoric 活動度執）買：
 //   - ☄️ Meteoric Shard（250）：入 state.gears（{ type: 'meteoricShard' }），喺背包用 → 寵物變藍色 METEORIC、x5 錢
 //   - ✖️ Meteoric Crystals Multiplier：每買一次 state.crystalMultiplier +0.5（x1 → x1.5 → x2…），越買越貴
-//   - 🧰 Meteoric Chest（100）：開箱動畫 → 5 隻新寵物之一，或者 🌌 Astral Reroll（入 state.gears：{ type: 'astralReroll' }）
+//   - 🧰 Meteoric Chest（100）：可以一次過買好多個，入背包（Gear 'meteorChest'）；喺快捷欄開（chests.js）→ 5 隻新寵物之一，或者 🌌 Astral Reroll
 //   - 🦹 Meteoric Boss Skin（500）：買一次；之後喺任何生態區 Boss 隔籬撳 E 換皮膚（meteorBossSkin.js）
 //   - 🌌 Cosmic Arcadragon（1000）：Eternal 寵物，每隻 $500M–$1B/秒（data/animals.js fixedMoney）
 // 數值全部喺 data/meteorShop.js
@@ -28,13 +28,15 @@ export function meteorOpenText() {
 }
 import {
   METEORIC_SHARD_COST, METEOR_CHEST_COST, METEOR_BOSS_SKIN_COST, ARCADRAGON_COST, ARCADRAGON_MONEY,
-  MULTIPLIER_STEP, MULTIPLIER_MAX, multiplierCost, METEOR_CHEST_DROPS, chestPercent, rollMeteorChest,
+  MULTIPLIER_STEP, MULTIPLIER_MAX, multiplierCost, METEOR_CHEST_DROPS, chestPercent,
 } from './data/meteorShop.js';
 import { findAnimal, randomKg, itemMoney } from './data/animals.js';
 import { buildAnimalModel } from './animalModels.js';
 import { METEOR_SHOP } from './hubShape.js';
 import { addCollider } from './world.js';
-import { extraPanels, closePanel, panelKind, openPanel } from './hud.js';
+import { extraPanels, closePanel, panelKind, openPanel, renderHotbar } from './hud.js';
+import { addGear, gearCount } from './data/gears.js';
+import { bulkButtons, bulkCount } from './bulkBuy.js';
 import { petPic } from './animalPics.js';
 import { makeSign } from './signs.js';
 import { playMovie, once, shake } from './movie.js';
@@ -275,6 +277,15 @@ function card({ id, pic, title, price, text, owned = false, extra = '' }) {
   return `<div class="card-animal met-card">${pic}<b>${title}</b><span class="kg">${GEM} ${short(price)} crystals</span><p>${text}</p>${extra}<div class="pet-actions">${button}</div></div>`;
 }
 
+// 🧰 Meteoric Chest：一次過買 x1／x5／x10／x25／MAX（小朋友 2026-10-22），箱入背包，喺快捷欄開（chests.js）
+function chestCard(chestPic) {
+  const have = gearCount('meteorChest');
+  return `<div class="card-animal met-card">${img(chestPic, '🧰')}<b>🧰 Meteoric Chest</b><span class="kg">${GEM} ${short(METEOR_CHEST_COST)} crystals each</span>
+    <p>Open it to get a NEW Meteoric pet (or a super rare 🌌 Astral Reroll)! Chests go in your 🎒 - put them in your hotbar and click to open.</p>
+    ${have ? `<small>🎒 You have ${have}</small>` : ''}
+    <div class="pet-actions">${bulkButtons({ attr: 'data-meteor="chest"', cost: METEOR_CHEST_COST, have: crystalsOf(), icon: GEM })}</div></div>`;
+}
+
 function shopHtml() {
   const mult = crystalMultiplier();
   const maxed = mult >= MULTIPLIER_MAX;
@@ -299,8 +310,7 @@ function shopHtml() {
         text: 'Use it on a pet to give it a bluey <b>METEORIC</b> look and <b>x5 money</b>!', extra: shards ? `<small>🎒 You have ${shards}</small>` : '' })}
       ${card({ id: 'mult', pic: img(picture('mult', buildMultiplier), '✖️'), title: `✖️ Crystals Multiplier`, price: multiplierCost(mult), owned: maxed ? `MAX x${MULTIPLIER_MAX}` : false,
         text: maxed ? 'You have the biggest multiplier!' : `Pick up more crystals: <b>x${mult} → x${mult + MULTIPLIER_STEP}</b>. It costs more every time you buy it!` })}
-      ${card({ id: 'chest', pic: img(chestPic, '🧰'), title: '🧰 Meteoric Chest', price: METEOR_CHEST_COST,
-        text: 'Open it to get a NEW Meteoric pet (or a super rare 🌌 Astral Reroll)!' })}
+      ${chestCard(chestPic)}
       ${card({ id: 'skin', pic: img(picture('skin', buildHelmet), '🦹'), title: '🦹 Meteoric Boss Skin', price: METEOR_BOSS_SKIN_COST, owned: state.meteorBossSkin ? 'Unlocked' : false,
         text: state.meteorBossSkin ? 'Go to any Boss and press <kbd>E</kbd> to change its skin!' : 'Then go to any Boss and press <kbd>E</kbd> to give it a cool meteor look!' })}
       ${card({ id: 'dragon', pic: petPic('Cosmic Arcadragon', { rarity: 'Eternal' }), title: '🌌 Cosmic Arcadragon', price: ARCADRAGON_COST,
@@ -416,8 +426,8 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
     return { pet, reward };
   }
 
-  // 買嘢（forced = 測試用：直接開某樣嘢，唔使水晶，例如 api.buy('chest', 'Meteor Dragon')）
-  function buy(id, forced = null) {
+  // 買嘢（forced = 測試用：唔使水晶直接買 Cosmic Arcadragon；n = 寶箱買幾多個，'max' = 買得起幾多就幾多）
+  function buy(id, forced = null, n = 1) {
     if (api.busy) return;
     if (id === 'shard') {
       if (!spend(METEORIC_SHARD_COST)) return;
@@ -446,17 +456,15 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
       return refresh();
     }
     if (id === 'chest') {
-      if (!forced && !spend(METEOR_CHEST_COST)) return;
-      const drop = forced ? { ...METEOR_CHEST_DROPS.find((d) => d.name === forced) } : rollMeteorChest();
-      let reward = 0;
-      let pet = null;
-      if (drop.gear) {
-        state.gears = state.gears || [];
-        state.gears.push({ type: drop.gear });
-      } else ({ pet, reward } = addPet(drop.name, drop.rarity));
+      const count = bulkCount(n, METEOR_CHEST_COST, crystalsOf());
+      if (!count) return popup(`${GEM} You need ${short(METEOR_CHEST_COST)} Meteor Crystals for a Meteoric Chest!`);
+      state.meteorCrystals = crystalsOf() - count * METEOR_CHEST_COST;
+      addGear('meteorChest', count);
       save();
-      if (panelKind() === 'meteor') closePanel();
-      return openAnimation(drop, reward, pet);
+      renderHotbar();
+      play('crystal');
+      popup(`+${count} Meteoric Chest${count === 1 ? '' : 's'} added to your 🎒`);
+      return refresh();
     }
     if (id === 'dragon') {
       if (!forced && !spend(ARCADRAGON_COST)) return;
@@ -471,10 +479,10 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
   $('panel-body').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-meteor]');
     if (!b || panelKind() !== 'meteor') return;
-    buy(b.dataset.meteor);
+    buy(b.dataset.meteor, null, b.dataset.n);
   });
 
-  // ---------- 🎬 開箱動畫（Meteoric Chest／Cosmic Arcadragon）----------
+  // ---------- 🎬 Cosmic Arcadragon 動畫（以前 Meteoric Chest 都用；寶箱而家喺 chests.js 開）----------
   // 箱好似隕石咁拖住藍火由天斜斜跌落嚟 → 撞地（地上一圈衝擊波 + 石仔）→ 震 + 發光 → 爆開 → 寵物升上嚟
   function openAnimation(drop, reward, pet) {
     api.busy = true;
@@ -793,6 +801,6 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
       },
     });
   }
-  api.open = (name) => (name === 'Cosmic Arcadragon' ? buy('dragon', true) : buy('chest', name || 'Meteoric Soul')); // 測試：game.meteorShop.open('Meteor Dragon')
+  api.open = () => buy('dragon', true); // 測試：game.meteorShop.open() = Cosmic Arcadragon 動畫（寶箱用 game.chests.open('meteorChest', 'Meteor Dragon')）
   return api;
 }

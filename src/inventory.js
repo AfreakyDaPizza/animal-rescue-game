@@ -2,7 +2,7 @@
 // 三個分頁：
 //   🐉 Animals：魔法／Halloween／寶箱／Fuse 寵物（唔係真嘅動物）
 //   🐼 Endangered Animals：真嘅動物（src/data/animals.js ANIMALS 入面、唔係 magical）——救返嚟等繁殖機嘅 + 呢啲品種嘅寵物
-//   ⚙️ Gears：道具（src/data/gears.js），例如 🔮 Halloween Shard、☄️ Meteoric Shard
+//   ⚙️ Gears：道具（src/data/gears.js），例如 🔮 Halloween Shard、☄️ Meteoric Shard、🧰 寶箱（chests.js：撳 Open／快捷欄撳 E 開箱）
 // 電腦：用滑鼠拖張卡落下面快捷欄（1–0）；手機：撳張卡，再撳一格
 // 用 Shard：揀咗佢（Gears 分頁撳 Use，或者快捷欄揀咗撳 E）→ 跳去 Animals 分頁「揀一隻寵物變異」→ 撳寵物 → 變！
 
@@ -10,8 +10,8 @@ import { state, save } from './state.js';
 import { short as fmt } from './format.js';
 import { ANIMALS, findAnimal, kgOf, formatKg, itemMoney, sizeText, mutationInfo, applyMutation } from './data/animals.js';
 import { rarityInfo } from './data/balance.js';
-import { GEARS, gearInfo, gearStacks, takeGear } from './data/gears.js';
-import { extraPanels, panelKind, mutationTags, hotbarItems, hotbarToolCount, assignHotbar, clearHotbar, hotbarHooks, uidOf, popup, announce } from './hud.js';
+import { GEARS, gearInfo, gearStacks, takeGear, isChestGear } from './data/gears.js';
+import { extraPanels, panelKind, mutationTags, hotbarItems, hotbarToolCount, assignHotbar, clearHotbar, hotbarHooks, uidOf, popup, announce, selectSlot } from './hud.js';
 import { petPic } from './animalPics.js';
 
 const $ = (id) => document.getElementById(id);
@@ -77,7 +77,7 @@ function gearCard({ type, count }) {
     <div class="emoji inv-gear-emoji">${g.emoji}</div><b>${g.name}</b>
     <small style="color:${g.color}">${g.rarity} Gear · x${count}</small>
     <p>${g.desc()}</p><p class="inv-where">${g.where || ''}</p>
-    <div class="card-buttons"><button data-inv="use" data-type="${type}">✨ Use</button></div>
+    <div class="card-buttons"><button data-inv="use" data-type="${type}">${g.chest ? '🧰 Open' : '✨ Use'}</button></div>
   </div>`;
 }
 
@@ -274,8 +274,25 @@ export function createInventory(opts) {
     rerender();
   });
 
-  function useGear(type) {
+  // fromHotbar = 快捷欄撳 E／滑鼠（寶箱：即刻開一個）；背包 Use 掣（寶箱：放上快捷欄、揀咗佢、收埋背包、開一個）
+  function useGear(type, fromHotbar = false) {
     if (!(state.gears || []).some((g) => g.type === type)) return popup(`You have no ${gearInfo(type).name}s!`);
+    if (isChestGear(type)) {
+      if (!fromHotbar) {
+        const key = `gear:${type}`;
+        let slot = hotbarItems().findIndex((e) => e?.key === key);
+        if (slot < 0) {
+          const items = hotbarItems();
+          slot = items.findIndex((e, i) => i >= hotbarToolCount() && !e);
+          if (slot < 0) slot = hotbarToolCount();
+          assignHotbar(slot, key);
+        }
+        selectSlot(slot);
+        if (isOpen()) ctx.togglePanel('inventory');
+        popup(`🧰 Your chests are in hotbar slot ${(slot + 1) % 10} - click or press E to open more!`);
+      }
+      return ctx.openChest?.(type);
+    }
     ctx.play('click');
     open(type);
   }
