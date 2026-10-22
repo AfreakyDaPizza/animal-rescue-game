@@ -15,7 +15,17 @@
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
-import { INDEX_NEW_SPECIES_REWARD, rarityInfo } from './data/balance.js';
+import { INDEX_NEW_SPECIES_REWARD, rarityInfo, METEOR_OPEN_DATE } from './data/balance.js';
+
+// ☄️ 開放日（小朋友 2026-10-22：同 METEORIC 活動一齊，10 月 24 號開）；控制面板可以提早開（state.meteorEarly）
+const today = () => new Date().toLocaleDateString('en-CA');
+export const isMeteorOpen = () => today() >= METEOR_OPEN_DATE || !!state.meteorEarly;
+export function meteorOpenText() {
+  const [y, m, d] = METEOR_OPEN_DATE.split('-').map(Number);
+  const open = new Date(y, m - 1, d);
+  const days = Math.max(0, Math.ceil((open - Date.now()) / 86400000));
+  return `${open.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} (in ${days} day${days === 1 ? '' : 's'})`;
+}
 import {
   METEORIC_SHARD_COST, METEOR_CHEST_COST, METEOR_BOSS_SKIN_COST, ARCADRAGON_COST, ARCADRAGON_MONEY,
   MULTIPLIER_STEP, MULTIPLIER_MAX, multiplierCost, METEOR_CHEST_DROPS, chestPercent, rollMeteorChest,
@@ -379,6 +389,7 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
   api.interaction = (pos) => {
     if (api.busy) return null;
     if (Math.hypot(pos.x - SHOP_SPOT.x, pos.z - SHOP_SPOT.z) > 2.6) return null;
+    if (!isMeteorOpen()) return { prompt: `🔒 The Meteoric Shop opens on ${meteorOpenText()}, together with the ☄️ METEORIC event!` };
     return { prompt: `<kbd>E</kbd> ☄️ Open the Meteoric Shop (${GEM} ${short(crystalsOf())} crystals)`, action: () => { play('crystal'); openShop(); } };
   };
 

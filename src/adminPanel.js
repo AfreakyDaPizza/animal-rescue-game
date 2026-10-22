@@ -7,7 +7,7 @@ import { state, save } from './state.js';
 import { short } from './format.js';
 import { play } from './sound.js';
 import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
-import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE } from './data/balance.js';
+import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE, METEOR_OPEN_DATE } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
 import { petPic } from './animalPics.js';
@@ -106,6 +106,7 @@ const FUTURE = [
   { emoji: '👑', name: 'Enchanted Kingdom', date: NEW_BIOME_DATE, open: (s) => s.kingdomDate, early: () => state.bigButton },
   { emoji: '💪', name: 'Ranger Gym', date: GYM_OPEN_DATE, open: (s) => s.gymDate, early: () => state.gymEarly && actions.status().gymPresent },
   { emoji: '🎃', name: 'Halloween World', date: HALLOWEEN_OPEN_DATE, open: (s) => s.halloweenDate, early: () => state.halloweenEarly },
+  { emoji: '☄️', name: 'Meteoric Shop + Event', date: METEOR_OPEN_DATE, open: (s) => s.meteorDate, early: () => state.meteorEarly },
 ];
 
 function futureHtml() {

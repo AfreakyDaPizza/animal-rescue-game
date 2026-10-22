@@ -78,7 +78,7 @@ import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 
 import { createInventory } from './inventory.js'; // 🎒 背包：Animals／Endangered Animals／Gears（Issue #10）
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { createEchoShop, giveCandyCorn } from './echoShop.js'; // 🐕 Echo 隻狗 + 🧟 Zombified Chest（Issue #8）
-import { createMeteorShop, giveCrystals } from './meteorShop.js'; // ☄️ Meteoric Shop（Issue #10）
+import { createMeteorShop, giveCrystals, isMeteorOpen } from './meteorShop.js'; // ☄️ Meteoric Shop（Issue #10）
 import { createMeteorBossSkins } from './meteorBossSkin.js'; // 🦹 Meteoric Boss Skin（Issue #10）
 import { FOUNTAIN } from './hubPark.js';
 import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
@@ -1019,7 +1019,7 @@ const reloadNoIntro = () => {
   location.reload();
 };
 setAdminActions({
-  status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present, halloweenDate: isHalloweenOpen() && !state.halloweenEarly }),
+  status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present, halloweenDate: isHalloweenOpen() && !state.halloweenEarly, meteorDate: isMeteorOpen() && !state.meteorEarly }),
   hasBackup,
   // 第一次改嘢之前：備份真存檔
   backup() {
@@ -1077,6 +1077,7 @@ setAdminActions({
     state.bigButton = true;
     state.gymEarly = true;
     state.halloweenEarly = true; // 🎃
+    state.meteorEarly = true; // ☄️
     if (!gym.present) return this.gotoGym();
     save();
     this.unlockEarly();
@@ -1129,6 +1130,7 @@ setAdminActions({
     { id: 'bigButton', label: '🧪👑 Fuse + Kingdom unlocked', on: !!state.bigButton },
     { id: 'gymEarly', label: '💪 Gym open early', on: !!state.gymEarly },
     { id: 'halloweenEarly', label: '🎃 Halloween open early', on: !!state.halloweenEarly },
+    { id: 'meteorEarly', label: '☄️ Meteoric Shop open early', on: !!state.meteorEarly, hint: 'The METEORIC event still starts on its date - use the Events tab to try it now' },
     { id: 'kingdomDebug', label: '👑 Kingdom gate open (test)', on: kingdomDebug, hint: 'Only for this visit' },
     { id: 'tutorialDone', label: '🎓 Tutorial finished', on: !!state.tutorialDone },
     { id: 'mute', label: '🔇 Sound muted', on: isMuted() },
@@ -1138,6 +1140,7 @@ setAdminActions({
     if (id === 'bigButton') state.bigButton = !state.bigButton;
     else if (id === 'gymEarly') this.gymEarly(!state.gymEarly);
     else if (id === 'halloweenEarly') this.halloweenEarly(!state.halloweenEarly);
+    else if (id === 'meteorEarly') state.meteorEarly = !state.meteorEarly;
     else if (id === 'kingdomDebug') kingdomDebug = !kingdomDebug;
     else if (id === 'tutorialDone') state.tutorialDone = !state.tutorialDone;
     else if (id === 'mute') {

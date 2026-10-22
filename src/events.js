@@ -1,6 +1,7 @@
 // 隨機活動：跟真實時鐘，每 15 分鐘（:00、:15、:30、:45）開始一個（小朋友 2026-10-11；Issue #9 2026-10-21 由 30 分鐘改 15 分鐘）
 // 每次揀邊個活動係「固定隨機」：同一個時段，邊部電腦玩都係同一個活動
 
+import { METEOR_OPEN_DATE } from './data/balance.js';
 const SLOT_MS = 15 * 60 * 1000;
 
 export const EVENTS = [
@@ -36,7 +37,9 @@ function meteorRoll(n) {
   h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 }
-const isMeteorSlot = (slot) => meteorRoll(slot) < METEOR_CHANCE && !(meteorRoll(slot - 1) < METEOR_CHANCE);
+// 開放日（METEOR_OPEN_DATE，本地時間）之前嘅時段唔會有 METEORIC（小朋友 2026-10-22）
+const slotOpen = (slot) => new Date(slot * SLOT_MS).toLocaleDateString('en-CA') >= METEOR_OPEN_DATE;
+const isMeteorSlot = (slot) => slotOpen(slot) && meteorRoll(slot) < METEOR_CHANCE && !(slotOpen(slot - 1) && meteorRoll(slot - 1) < METEOR_CHANCE);
 function eventForSlot(slot) {
   if (isMeteorSlot(slot)) return EVENTS.find((e) => e.id === 'meteor');
   const others = EVENTS.filter((e) => e.id !== 'meteor');

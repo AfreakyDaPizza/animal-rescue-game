@@ -189,6 +189,9 @@ export const NEW_BIOME_DATE = '2026-10-24';
 // ---- 🧪 FUSE MACHINE (Issue #4): put in 3 pets, get 1 special fuse-only pet ----
 // The day the Fuse Machine opens (year-month-day). Before this day it shows a countdown.
 export const FUSE_OPEN_DATE = '2026-10-22';
+
+// ---- ☄️ METEORIC 活動 + Meteoric Shop 開放日（小朋友 2026-10-22：同一日開）----
+export const METEOR_OPEN_DATE = '2026-10-24';
 // How good each rarity is when you put it IN (3 pets → score 0 to 12)
 export const FUSE_RARITY_SCORE = { Common: 0, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4 };
 // Chance (%) of each result: Rhinoblade (Common), Spideron (Rare), Dunkleosteus (Epic), Puffaball (Legendary), Endangered Combination (Mythic)
