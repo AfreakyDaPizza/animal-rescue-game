@@ -337,10 +337,10 @@ export function openPanel(kind) {
     pets: ['🐾 My Pets', petsHtml, 'E'],
     sell: ['💰 Sell Stall', sellHtml, 'E'],
     fuse: ['🧪 Fuse Machine', fuseHtml, 'E'],
-    quests: ['📜 Daily Quests', questsHtml, 'Q'],
+    quests: ['📜 Daily Quests', questsHtml, 'J'],
     shop: ['🛍️ Skin Shop', shopHtml, 'E'],
     portal: ['🌀 The Portal', portalHtml, 'E'],
-    admin: ['🔐 SECRET RANGER CONTROL PANEL', adminHtml, 'E'],
+    admin: ['🔐 SECRET RANGER CONTROL PANEL', adminHtml, 'Q'],
     ...extraPanels,
     rods: ['🎣 Skeleton Sam\'s Rod Shop', rodShopHtml, 'E'],
   };
@@ -719,7 +719,7 @@ const PET_SWATCH = {
 function shopHtml() {
   const tab = (id, label) => `<button data-shop-tab="${id}" class="${shopTab === id ? 'active' : ''}">${label}</button>`;
   let html = `<div class="tabs">${tab('ranger', '🧑 Ranger Skins')}${tab('pet', '🐾 Pet Skins')}</div>
-    <p class="index-summary">You have <b>🎟️ ${fmt(state.tokens)}</b> Skin Tokens. Get more from 📜 Quests (Q) and new pets!</p>`;
+    <p class="index-summary">You have <b>🎟️ ${fmt(state.tokens)}</b> Skin Tokens. Get more from 📜 Quests (J) and new pets!</p>`;
   const card = (preview, name, cost, owned, equipped, action, i, extra = '') => `<div class="card-animal ${equipped ? 'equipped' : ''}">
       ${preview}<b>${name}</b>${extra}
       ${equipped ? '<span class="tag">✔ Wearing</span>'

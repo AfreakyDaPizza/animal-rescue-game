@@ -5,17 +5,25 @@
 // 🎒 Gears 分頁（小朋友 2026-10-22）：俾任何 Shard（每粒有自己個樣，src/gearArt.js）、寶箱、Boost；清走所有 Gear
 //   全部直接讀 GEARS（data/gears.js）：其他檔案加新 gear type 就自動出現
 // 第一次改嘢之前會備份真存檔（SAVE_KEY + '-backup'），可以一撳還原
+// Issue #14（小朋友 2026-10-23）：要打密碼先開到（adminGate.js，打啱一次永遠解鎖），之後撳 Q 開；
+//   成個面板變未來感（adminPanel.css）；Gears 分頁加 🔫 武器（直接讀 WEAPONS）、🥚 蛋、🧰 工具；
+//   新 🎨 Skins 分頁：所有 Ranger／寵物／Boss 皮膚，可以俾、着、鎖返（測試用）
 import { state, save, SAVE_KEY, autoBackups, restoreAutoBackup } from './state.js';
 import { short } from './format.js';
 import { play } from './sound.js';
-import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText } from './data/animals.js';
-import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE, METEOR_OPEN_DATE } from './data/balance.js';
+import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText, findAnimal, randomKg } from './data/animals.js';
+import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE, METEOR_OPEN_DATE, FISHING_RODS, GHOST_VACUUM } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
 import { petPic } from './animalPics.js';
 import { GEARS, gearInfo, gearCount, addGear, takeGear, isShardGear, syncShardCount } from './data/gears.js';
 import { gearPic } from './gearArt.js';
-import { giveReward } from './demonicRewards.js'; // 🧙 Witch Tower 獎品（Issue #11）
+import { giveReward, giveHalloweenEgg } from './demonicRewards.js'; // 🧙 Witch Tower 獎品（Issue #11）
+import { WEAPONS } from './data/weapons.js'; // 🔫 其他幫手加新武器就自動出現
+import { RANGER_SKINS, PET_SKINS } from './skins.js';
+import { setBossSkin } from './demonicBossSkin.js';
+import { toolFlags, renderHotbar } from './hud.js';
+import { adminUnlocked, unlockAdmin, checkPassword, gateHtml } from './adminGate.js'; // 🔐 Issue #14 密碼
 
 const $ = (id) => document.getElementById(id);
 const fmt = short; // K／M／B／T（src/format.js）
@@ -44,6 +52,7 @@ const TABS = [
   ['give', '💰 Give'],
   ['pets', '🐾 Pets'],
   ['gears', '🎒 Gears'],
+  ['skins', '🎨 Skins'],
   ['world', '🌍 Teleport'],
   ['events', '🎉 Events'],
   ['future', '🔓 Unlocks'],
@@ -133,7 +142,7 @@ function gearCard(type) {
 //   adminExtras.boosts = { list: () => [{ id, emoji, name }], give: (id, minutes) => {} }
 // 未有就試吓直接讀 state.boosts（{ id: 完結時間 ms } 或者 { id: { until } }），再冇就唔顯示
 export const adminExtras = {};
-const BOOST_MINUTES = [5, 30];
+const BOOST_MINUTES = [5, 30, 60];
 function boostList() {
   if (adminExtras.boosts) return adminExtras.boosts.list();
   if (!state.boosts || typeof state.boosts !== 'object' || Array.isArray(state.boosts)) return [];
@@ -158,18 +167,92 @@ function gearsHtml() {
   const total = (state.gears || []).length;
   const boosts = boostList();
   return `<p class="index-summary">🎒 You have <b>${total}</b> gear${total === 1 ? '' : 's'}. They go into the <b>⚙️ Gears</b> tab of your Inventory (press <kbd>\`</kbd>).</p>
+    ${weaponsSection()}
     ${section('💎 Mutation Shards', `<div class="cards admin-cards admin-gear-cards">${shards.map(gearCard).join('')}</div>
       <div class="pet-actions"><button data-admin="allShards" class="sell">🎁 Give me 1 of every shard</button></div>`, 'Use a shard on a pet in your Inventory to give it that mutation!')}
     ${section('🧰 Chests and more', others.length ? `<div class="cards admin-cards admin-gear-cards">${others.map(gearCard).join('')}</div>` : '<p class="hint">No chests yet. New gears show up here by themselves!</p>')}
     ${boosts.length ? section('⏱️ Boosts', boosts.map((b) => `<div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">${b.emoji}</span><b>${b.name}</b></div>
-      <div class="admin-cur-btns">${BOOST_MINUTES.map((m) => `<button data-admin="boost" data-id="${b.id}" data-v="${m}">+${m} min</button>`).join('')}</div></div>`).join('')) : ''}
-    ${section('🧙 Witch Tower prizes', `<div class="pet-actions admin-wrap">
-      <button data-admin="tower" data-type="lavaBloomEgg">🌋 +1 Lava Bloom Egg</button>
-      <button data-admin="tower" data-type="pumpkgrimEgg">🎃 +1 Pumpkgrim Egg</button>
-      <button data-admin="tower" data-type="demonicSkin" class="${state.ownedRanger?.includes('demonic') ? 'grey' : ''}">${state.ownedRanger?.includes('demonic') ? '✔ ' : ''}😈 Demonic Ranger skin</button>
-      <button data-admin="tower" data-type="demonicBossSkin" class="${state.demonicBossSkin ? 'grey' : ''}">${state.demonicBossSkin ? '✔ ' : ''}😈 Demonic Boss skin</button>
-    </div>`, 'Eggs hatch at the 🪦 Egg Graveyard. Demonic Chests and the Demonic Shard are in the lists above.')}
+      <div class="admin-cur-btns">${BOOST_MINUTES.map((m) => `<button data-admin="boost" data-id="${b.id}" data-v="${m}">+${m} min</button>`).join('')}<button data-admin="boostStop" data-id="${b.id}" class="grey" title="Stop this boost">Stop</button></div></div>`).join('')
+      + '<div class="pet-actions admin-wrap"><button data-admin="boostAll" class="sell">⏱️ +30 min of EVERY boost</button><button data-admin="boostStopAll" class="grey">Stop all boosts</button></div>') : ''}
+    ${eggsSection()}
+    ${toolsSection()}
     ${section('🗑️ Clear', `<div class="pet-actions">${confirmButton('clearGears', '🗑️ Remove ALL my gears')}</div>`)}`;
+}
+
+// 🔫 魔法武器：直接讀 WEAPONS（其他幫手加新武器就自動有）；淨係喺戰鬥區（Witch Tower／Boss 大廳）先攞出嚟
+const weaponIds = () => Object.keys(WEAPONS);
+const hasWeapon = (id) => (state.weapons || []).includes(id);
+function weaponsSection() {
+  const card = (id) => {
+    const w = WEAPONS[id];
+    const own = hasWeapon(id);
+    const color = `#${(w.color ?? 0x40ffd0).toString(16).padStart(6, '0')}`;
+    return `<div class="card-animal admin-weapon ${own ? 'equipped' : ''}" style="--wc:${color}"><span class="admin-weapon-emoji">${w.emoji || '🔫'}</span><b>${w.name}</b>
+      <small>💥 ${w.damage} damage · ${w.auto ? 'Auto' : 'Tap'} · ${w.mag} shots</small>
+      <div class="pet-actions admin-gear-btns">${own ? `<button class="grey" data-admin="noop">✔ Have it</button><button data-admin="weaponTake" data-id="${id}" class="grey" title="Remove (for testing)">✕</button>` : `<button data-admin="weaponGive" data-id="${id}">🎁 Give</button>`}</div></div>`;
+  };
+  const all = weaponIds().every(hasWeapon);
+  return section('🔫 Magic Weapons', `<div class="cards admin-cards admin-gear-cards">${weaponIds().map(card).join('')}</div>
+    <div class="pet-actions admin-wrap"><button data-admin="weaponAll" class="${all ? 'grey' : 'sell'}">${all ? '✔ You have every weapon' : '🎁 Give me EVERY weapon'}</button><button data-admin="weaponNone" class="grey">✕ Remove all weapons</button></div>`,
+  'Weapons come out in the 🗼 Witch Tower and the Boss hall (they show in your hotbar there).');
+}
+
+// 🥚 蛋：所有可以孵嘅蛋寵物（Halloween 蛋 + Witch Tower 蛋），去 🪦 Egg Graveyard 孵
+const eggPets = () => GROUPS[0][2]().filter((a) => a.halloween && a.hatchSeconds > 0);
+function eggsSection() {
+  const eggs = state.hwEggs || [];
+  const count = (name) => eggs.filter((e) => e.name === name).length;
+  return section(`🥚 Eggs <small class="admin-count">${eggs.length} in your bag</small>`, `<div class="cards admin-cards admin-gear-cards">${eggPets().map((a) => `<div class="card-animal admin-egg">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b>
+      <small>${a.rarity} · You have ${count(a.name)}</small><div class="pet-actions admin-gear-btns"><button data-admin="egg" data-name="${a.name}" data-v="1">+1</button><button data-admin="egg" data-name="${a.name}" data-v="5">+5</button></div></div>`).join('')}</div>
+    <div class="pet-actions admin-wrap"><button data-admin="eggAll" class="sell">🎁 1 of every egg</button>${confirmButton('eggClear', '🗑️ Remove all eggs')}</div>`,
+  'Eggs hatch at the 🪦 Egg Graveyard in the Halloween World.');
+}
+
+// 🧰 工具：鎚仔、魚竿、吸塵機
+function toolsSection() {
+  const rod = Number.isInteger(state.rod) ? state.rod : 0;
+  const vac = state.vacuumLevel || 0;
+  return section('🧰 Tools', `<div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">🔨</span><b>Hammer</b><span class="admin-cur-val ${state.hasHammer ? '' : 'off'}">${state.hasHammer ? 'YES' : 'NO'}</span></div>
+      <div class="admin-cur-btns"><button data-admin="hammer" class="${state.hasHammer ? 'grey' : ''}">${state.hasHammer ? '✕ Take it away' : '🎁 Give'}</button></div></div>
+    <div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">🎣</span><b>Fishing Rod</b><span class="admin-cur-val">${FISHING_RODS[rod]?.name || rod}</span></div>
+      <div class="admin-cur-btns"><button data-admin="rod" data-v="-1" class="grey">◂</button><button data-admin="rod" data-v="1">▸</button><button data-admin="rod" data-v="max" class="sell">BEST</button></div></div>
+    <div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">🧹</span><b>Ghost Vacuum</b><span class="admin-cur-val">${vac ? `Lv ${vac}` : 'None'}</span></div>
+      <div class="admin-cur-btns">${[0, ...GHOST_VACUUM.map((_, i) => i + 1)].map((lv) => `<button data-admin="vacuum" data-v="${lv}" class="${lv === vac ? '' : 'grey'}">${lv ? `Lv ${lv}` : '0'}</button>`).join('')}</div></div>`,
+  'Changing the vacuum reloads the game so it looks right.');
+}
+
+// ---------- 🎨 Skins：Ranger、寵物、Boss 皮膚 ----------
+// Boss 皮膚：每款一個 state 開關（meteorBossSkin.js／demonicBossSkin.js）；加新款就喺度加一行
+const BOSS_SKINS = [
+  { id: 'meteoric', emoji: '☄️', name: 'Meteoric Boss Skin', key: 'meteorBossSkin' },
+  { id: 'demonic', emoji: '😈', name: 'Demonic Boss Skin', key: 'demonicBossSkin' },
+];
+const skinTag = (s) => (s.meteor ? '☄️ Meteoric Shop' : s.tower ? '🧙 Witch Tower' : s.cost ? `🎟️ ${s.cost}` : 'Free');
+const baseSkin = (kind) => (kind === 'ranger' ? 'ranger' : 'none');
+const ownedList = (kind) => (kind === 'ranger' ? (state.ownedRanger ||= ['ranger']) : (state.ownedPet ||= ['none']));
+function skinCard(kind, s) {
+  const wearing = (kind === 'ranger' ? state.rangerSkin : state.petSkin) === s.id;
+  const base = s.id === baseSkin(kind);
+  const has = ownedList(kind).includes(s.id) || base;
+  return `<div class="card-animal admin-skin ${wearing ? 'equipped' : ''} ${has ? '' : 'locked'}"><b>${s.name}</b><small>${has ? (wearing ? '✔ Wearing' : '✔ Unlocked') : `🔒 ${skinTag(s)}`}</small>
+    <div class="pet-actions admin-gear-btns">${wearing ? '' : `<button data-admin="skinWear" data-kind="${kind}" data-id="${s.id}">${has ? '👕 Wear' : '🎁 Wear'}</button>`}${!has ? `<button data-admin="skinGive" data-kind="${kind}" data-id="${s.id}" class="grey" title="Unlock only">🔓</button>` : base ? '' : `<button data-admin="skinLock" data-kind="${kind}" data-id="${s.id}" class="grey" title="Lock it again (for testing)">🔒</button>`}</div></div>`;
+}
+function skinsHtml() {
+  const bossRow = (b) => {
+    const on = !!state[b.key];
+    const worn = Object.values(state.bossSkins || {}).filter((v) => v === b.id).length;
+    return `<div class="admin-cur"><div class="admin-cur-name"><span class="admin-cur-emoji">${b.emoji}</span><b>${b.name}</b><span class="admin-cur-val ${on ? '' : 'off'}">${on ? 'UNLOCKED' : 'LOCKED'}</span></div>
+      <div class="admin-cur-btns"><button data-admin="bossSkin" data-id="${b.id}" class="${on ? 'grey' : 'sell'}">${on ? '🔒 Lock' : '🔓 Unlock'}</button>
+      <button data-admin="bossWear" data-id="${b.id}">🦹 Put on every Boss${worn ? ` (${worn} now)` : ''}</button></div></div>`;
+  };
+  const allOf = (kind, list) => list.every((s) => ownedList(kind).includes(s.id));
+  const group = (kind, list, title, back) => section(title, `<div class="cards admin-cards admin-skin-cards">${list.map((s) => skinCard(kind, s)).join('')}</div>
+      <div class="pet-actions admin-wrap"><button data-admin="skinAll" data-kind="${kind}" class="${allOf(kind, list) ? 'grey' : 'sell'}">${allOf(kind, list) ? '✔ All unlocked' : `🎁 Unlock ALL ${kind} skins`}</button>${confirmButton(`skinReset-${kind}`, `🔒 Lock all (back to ${back})`)}</div>`);
+  return `<p class="index-summary">Unlock, wear or lock any skin. In the shops they cost 🎟️ Skin Tokens or 💎, here they are free!</p>
+    ${group('ranger', RANGER_SKINS, '🧑 Ranger skins', 'Classic')}
+    ${group('pet', PET_SKINS, '🐾 Pet skins', 'Natural')}
+    ${section('🦹 Boss skins', `${BOSS_SKINS.map(bossRow).join('')}
+      <div class="pet-actions admin-wrap"><button data-admin="bossWear" data-id="normal" class="grey">↩️ Every Boss back to normal</button></div>`, 'You can also walk up to a Boss and press E to change just that one.')}`;
 }
 
 // ---------- 🔓 Unlocks + 測試開關 ----------
@@ -241,7 +324,8 @@ function petsHtml() {
       <div class="pet-actions admin-wrap">${GROUPS.map(([id, label]) => `<button data-admin="group" data-v="${id}" class="${id === group ? '' : 'grey'}">${label}</button>`).join('')}</div>
       <div class="cards admin-cards">${list.map((a) => `<div class="card-animal ${a.name === pick.name ? 'equipped' : ''}" data-pet="${a.name.toLowerCase()}" ${matches(a) ? '' : 'hidden'}>${petPic(a.name, { rarity: a.rarity || pick.rarity })}<b>${a.name}</b>
         <button data-admin="pick" data-name="${a.name}" class="${a.name === pick.name ? '' : 'grey'}">${a.name === pick.name ? '✔ Picked' : 'Pick'}</button></div>`).join('')}</div>
-      <p class="hint" id="admin-none" ${list.some(matches) ? 'hidden' : ''}>No pets match. Try another word!</p>`)}`;
+      <p class="hint" id="admin-none" ${list.some(matches) ? 'hidden' : ''}>No pets match. Try another word!</p>
+      <div class="pet-actions admin-wrap">${confirmButton('everyPet', `🎁 Give me 1 of EVERY pet here (${list.length})`)}</div>`)}`;
 }
 
 // ---------- 🌍 Teleport ----------
@@ -295,7 +379,11 @@ function safetyHtml() {
 
 export function adminHtml() {
   if (!actions) return '';
-  const body = { give: giveHtml, future: futureHtml, pets: petsHtml, gears: gearsHtml, world: worldHtml, max: maxHtml, events: eventsHtml, safety: safetyHtml }[tab]();
+  if (!adminUnlocked()) {
+    setTimeout(() => $('admin-pass')?.focus(), 30); // 一打開就可以打字
+    return `<div class="admin admin-locked">${gateHtml()}</div>`;
+  }
+  const body = { give: giveHtml, future: futureHtml, pets: petsHtml, gears: gearsHtml, skins: skinsHtml, world: worldHtml, max: maxHtml, events: eventsHtml, safety: safetyHtml }[tab]();
   return `<div class="admin">
     <div class="tabs admin-tabs">${TABS.map(([id, label]) => `<button data-admin="tab" data-tab-id="${id}" class="${id === tab ? 'active' : ''}">${label}</button>`).join('')}</div>
     <div class="admin-body">${body}</div>
@@ -312,7 +400,7 @@ const rerender = () => {
 
 $('panel-body').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-admin]');
-  if (!b || !isOpen() || !actions) return;
+  if (!b || !isOpen() || !actions || !adminUnlocked()) return; // 🔐 未解鎖：淨係得密碼表格（submit 處理）
   const what = b.dataset.admin;
   const d = b.dataset;
   if (what === 'noop') return;
@@ -395,8 +483,154 @@ $('panel-body').addEventListener('click', (e) => {
     }
     case 'boost': actions.backup(); giveBoost(d.id, Number(d.v)); break;
     case 'tower': actions.backup(); giveReward({ type: d.type }); break; // 🧙
+    case 'boostStop': actions.backup(); stopBoost(d.id); break;
+    case 'boostAll': actions.backup(); for (const x of boostList()) giveBoost(x.id, 30); break;
+    case 'boostStopAll': actions.backup(); for (const x of boostList()) stopBoost(x.id); break;
+    // 🔫 武器
+    case 'weaponGive': actions.backup(); giveWeapon(d.id); play('magic'); break;
+    case 'weaponAll': actions.backup(); weaponIds().forEach(giveWeapon); play('magic'); break;
+    case 'weaponTake': actions.backup(); takeWeapons([d.id]); break;
+    case 'weaponNone': actions.backup(); takeWeapons(weaponIds()); break;
+    // 🥚 蛋
+    case 'egg': actions.backup(); giveHalloweenEgg(d.name, Number(d.v)); play('coin'); break;
+    case 'eggAll': actions.backup(); for (const a of eggPets()) giveHalloweenEgg(a.name, 1); play('magic'); break;
+    case 'eggClear': actions.backup(); state.hwEggs = []; save(); play('swoosh'); break;
+    // 🧰 工具
+    case 'hammer': actions.backup(); state.hasHammer = !state.hasHammer; save(); renderHotbar(); play('click'); break;
+    case 'rod': {
+      actions.backup();
+      const now = Number.isInteger(state.rod) ? state.rod : 0;
+      state.rod = d.v === 'max' ? FISHING_RODS.length - 1 : Math.max(0, Math.min(FISHING_RODS.length - 1, now + Number(d.v)));
+      save();
+      play('coin');
+      break;
+    }
+    case 'vacuum': actions.backup(); state.vacuumLevel = Number(d.v); save(); actions.reloadNoIntro(); return; // 換吸塵機樣要重新載入
+    // 🐾 每隻寵物一隻（呢個分類）
+    case 'everyPet': actions.backup(); giveEveryPet(GROUPS.find((g) => g[0] === group)[2]()); break;
+    // 🎨 皮膚
+    case 'skinGive': actions.backup(); ownSkin(d.kind, d.id); play('magic'); break;
+    case 'skinWear': actions.backup(); ownSkin(d.kind, d.id); wearSkin(d.kind, d.id); play('magic'); break;
+    case 'skinLock': actions.backup(); lockSkin(d.kind, d.id); break;
+    case 'skinAll': actions.backup(); (d.kind === 'ranger' ? RANGER_SKINS : PET_SKINS).forEach((s) => ownSkin(d.kind, s.id)); play('magic'); break;
+    case 'skinReset-ranger': case 'skinReset-pet': {
+      actions.backup();
+      const kind = what.slice(10);
+      (kind === 'ranger' ? RANGER_SKINS : PET_SKINS).forEach((s) => lockSkin(kind, s.id));
+      break;
+    }
+    case 'bossSkin': {
+      actions.backup();
+      const bs = BOSS_SKINS.find((x) => x.id === d.id);
+      state[bs.key] = !state[bs.key];
+      if (!state[bs.key]) wearBossSkin(d.id, true); // 鎖返：着緊嗰啲 Boss 都除返
+      save();
+      play(state[bs.key] ? 'magic' : 'click');
+      break;
+    }
+    case 'bossWear': {
+      actions.backup();
+      const bs = BOSS_SKINS.find((x) => x.id === d.id);
+      if (bs && !state[bs.key]) state[bs.key] = true; // 未有就順手解鎖
+      wearBossSkin(d.id);
+      play('magic');
+      break;
+    }
   }
   rerender();
+});
+
+// ---------- 俾嘢小幫手 ----------
+function stopBoost(id) {
+  if (!state.boosts?.[id]) return;
+  state.boosts = { ...state.boosts };
+  delete state.boosts[id];
+  save(); // 頭頂 chip 每半秒自己更新
+}
+function giveWeapon(id) {
+  if (actions.giveWeapon) return actions.giveWeapon(id); // main.js 嘅 weapons.give（會更新快捷欄）
+  if (!hasWeapon(id)) state.weapons = [...(state.weapons || []), id];
+  save();
+}
+function takeWeapons(ids) {
+  state.weapons = (state.weapons || []).filter((id) => !ids.includes(id));
+  toolFlags.weapons = (toolFlags.weapons || []).filter((id) => !ids.includes(id)); // 戰鬥區入面：即刻喺快捷欄消失
+  save();
+  renderHotbar();
+  play('swoosh');
+}
+function giveEveryPet(list) {
+  for (const a of list) {
+    const info = findAnimal(a.name) || a;
+    state.pets.push({ name: info.name, biome: info.biome, kg: Math.max(0.1, Math.round(randomKg(info) * 10) / 10), rarity: info.rarity || pick.rarity, onPlot: false, ...(info.fuse ? { fuse: true } : {}) });
+    if (!info.fuse && !state.indexFound.includes(info.name)) state.indexFound.push(info.name);
+  }
+  save();
+  play('rescue');
+  popup?.(`🎁 ${list.length} pets are in your backpack!`);
+}
+function ownSkin(kind, id) {
+  const list = ownedList(kind);
+  if (!list.includes(id)) list.push(id);
+  save();
+}
+function wearSkin(kind, id) {
+  if (kind === 'ranger') {
+    state.rangerSkin = id;
+    actions.wearRanger?.(RANGER_SKINS.find((s) => s.id === id));
+  } else {
+    state.petSkin = id;
+    actions.refreshPets?.();
+  }
+  save();
+}
+function lockSkin(kind, id) {
+  if (id === baseSkin(kind)) return;
+  if (kind === 'ranger') state.ownedRanger = ownedList(kind).filter((x) => x !== id);
+  else state.ownedPet = ownedList(kind).filter((x) => x !== id);
+  if ((kind === 'ranger' ? state.rangerSkin : state.petSkin) === id) wearSkin(kind, baseSkin(kind)); // 着緊就換返基本款
+  save();
+}
+// 所有生態區 Boss 換皮膚（id = 'normal' 除晒）；onlyOff = 淨係除咗着緊呢款嘅
+function wearBossSkin(id, onlyOff = false) {
+  const skins = (state.bossSkins ||= {});
+  for (const b of actions.bosses?.() || []) {
+    if (onlyOff) {
+      if (skins[b.biome] !== id) continue;
+      delete skins[b.biome];
+      setBossSkin(b, 'normal');
+      continue;
+    }
+    if (id === 'normal') delete skins[b.biome];
+    else skins[b.biome] = id;
+    setBossSkin(b, id);
+  }
+  save();
+}
+
+// 🔐 密碼表格：撳 UNLOCK 或者 Enter
+$('panel-body').addEventListener('submit', (e) => {
+  if (!e.target.matches?.('form[data-admin-gate]')) return;
+  e.preventDefault();
+  const input = $('admin-pass');
+  if (checkPassword(input?.value || '')) {
+    unlockAdmin();
+    play('magic');
+    const gate = e.target.closest('.admin-gate');
+    gate?.classList.add('granted');
+    $('admin-gate-msg').textContent = '✅ ACCESS GRANTED';
+    setTimeout(rerender, 900); // 睇到「GRANTED」先開面板
+    return;
+  }
+
+  play('wrong');
+  const gate = e.target.closest('.admin-gate');
+  gate.classList.remove('denied', 'shake');
+  void gate.offsetWidth; // 重新播震動動畫
+  gate.classList.add('denied', 'shake');
+  $('admin-gate-msg').textContent = '⛔ ACCESS DENIED';
+  input.value = '';
+  input.focus();
 });
 
 $('panel-body').addEventListener('input', (e) => {
