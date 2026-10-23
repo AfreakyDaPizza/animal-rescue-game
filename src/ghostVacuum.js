@@ -418,10 +418,11 @@ export function createGhostHunt({ scene, camera, avatar, isFirstPerson, isBlocke
     hookTouch();
     const inside = inHalloween(pos.x, pos.z) && !hideTool; // hideTool：🔫 拎住武器（Issue #11）就收埋吸塵機
     const ghost = inGhostWorld(pos.x, pos.z);
-    // 吸塵機：喺 Halloween 世界先見到
+    // 吸塵機：淨係喺 Ghost World（鬼鎮）先拎住（小朋友 Issue #13：出咗鬼鎮仲拎住）
     const fp = isFirstPerson();
-    if (handModel) handModel.visible = inside && fp && !paused;
-    if (avatarModel) avatarModel.visible = inside;
+    const holdVac = ghost && !hideTool;
+    if (handModel) handModel.visible = holdVac && fp && !paused;
+    if (avatarModel) avatarModel.visible = holdVac;
     // HUD
     const panelOpen = !$('panel').hidden;
     hud.hidden = !inside || panelOpen;

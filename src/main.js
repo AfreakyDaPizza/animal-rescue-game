@@ -2123,6 +2123,9 @@ renderer.setAnimationLoop((timestamp) => {
   reaper.update(dt, time, { paused: isPaused(), frozen, inHw: inHalloween(camera.position.x, camera.position.z), view: viewCam });
   if (!isPaused() && !inMovie && !loading.active) reaper.autoEnter(camera.position);
   tower.update(dt, time, { paused: isPaused() || inMovie, frozen, view: viewCam }); // 🗼 Witch Tower（要喺 weapons.update 之前：打中先計到）
+  // 🔫 武器淨係喺戰鬥區（塔、Reaper 大廳）先有：用任何方法離開（傳送、控制面板）都即刻收埋（小朋友 Issue #13）
+  if (!inTowerArena(camera.position.x, camera.position.z)) weapons.setZone('tower', false);
+  if (!inReaperHall(camera.position.x, camera.position.z)) weapons.setZone('reaper', false);
   weapons.update(dt, { view: viewCam, third: viewCam !== camera, time, paused: isPaused() || inMovie });
   hubPortal.update(time, isHalloweenOpen());
   hwWorld?.update(dt, time, camera.position, quality.level);
