@@ -63,6 +63,8 @@
 - 2026-10-23：Issue #14（12/15/16）：Eclipse 片段播完冇擺返玩家（卡喺 Hub 牆外）已修，Eclipse 返嚟但 `adminOnly`（淨係控制台開得，唔入隨機時間表）；升級加價（`COST_RAMP*`、`MACHINE_LEVELS`）；Lv16 改 Prehistoric Age（`src/prehistoric.js`）；繁殖機 Lv6 ☄️ Meteoric Dragon's Lair（`meteoricChance`，機唔再出 🔥 Fire）。詳情 `docs/plan.md`「Issue #14」。
 
 - 2026-10-23：Issue #14（城堡部分）：女巫重做（`buildWitch` 喺 `src/hellWorld.js`，攪鍋／揮手／笑三個動作；`mergePivots` 焊唔郁嘅 mesh）、城堡正門 = 返 Halloween World 傳送門（`CASTLE_PORTAL` 喺閘口；由庭園行出去先傳送）、🌳 Skill Tree（`src/skillTree.js`、數值 `src/data/skills.js`、`state.skills`、`window.__skills.mult(id)`：crit = 機會率、shield = 盾數）、🛒 Castle Shop（`src/castleShop.js`、價錢 `src/data/castleShop.js`，用 ☠️ Skele Tokens 買 Boss／護林員皮膚）。
+- 2026-10-23（夜）：Issue #13 修好（吸塵機淨係鬼鎮、武器出咗戰鬥區一定收埋：`weapons.update` 要 `zones.size>0`）；Issue #14 除第 11 點（全服公告要伺服器，等家長）全部上網；賣 Zombified Chest 改做 Zonko（喪屍狗，`buildZonko`），Echo 鬼魂狗留喺 questline；Castle Shop 淨係賣 demonic 皮膚 + Demonic/Eclipse Shard + Demonic Chest（`src/data/castleShop.js`）；開場藍色閃震 bug：`dt` 第一格可以係負數 → 而家 `Math.max(0, …)`。控制面板密碼 hash 喺 `src/adminGate.js`，Q 開面板、J 開 Quests。
+
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。
