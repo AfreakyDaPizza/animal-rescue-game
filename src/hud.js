@@ -9,7 +9,7 @@ import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
-import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY } from './data/balance.js';
+import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
@@ -585,7 +585,7 @@ function machineIndexHtml() {
         <img src="${pics[i]}" alt="${lv.name}">
         <b>${got ? lv.name : '???'}</b>
         <small>${got ? `Level ${i + 1}` : `🔒 $${fmt(lv.cost)} to unlock`}</small>
-        <span class="kg">⏱️ ${faster}${lv.double ? '<br>👯 2 pets at once · 🔥 20% GIANT (1-10x)' : ''}</span>
+        <span class="kg">⏱️ ${faster}${lv.double ? `<br>👯 2 pets at once · 🦣 ${Math.round(lv.giantChance * 100)}% GIANT (1-10x)` : ''}${lv.quiz ? '<br>❓ Answer questions to speed up' : ''}${lv.meteoricChance ? `<br>☄️ ${Math.round(lv.meteoricChance * 100)}% METEORIC mutation (x${METEORIC_MONEY} money)` : ''}</span>
         ${current ? '<p class="you">⭐ You have this one!</p>' : ''}
       </div>`;
     }).join('')}</div>`;

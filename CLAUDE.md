@@ -60,6 +60,8 @@
 
 - 2026-10-22（夜）：Issue #11/#12 全部上網：Pumpkin Reaper Dragon（`src/reaperBoss.js`，每個鐘 :30 醒 10 分鐘，鬼屋門口有倒數）、魔法武器（`src/weapons.js` API、`src/weaponModels.js`；家長同意改名：AK-47→Soul Blaster、手槍→Candy Pistol；被污染動物係「淨化」唔係殺）、World 2 Hell（`src/hellWorld.js`／`src/witchCastle.js`、`src/worldExpedition.js`，5 粒 `state.soulCandy` 解鎖）、無限女巫塔（`src/witchTower.js`，Easy/Medium/Hard，獎勵表 `src/data/towerRewards.js`）、惡魔獎勵（`src/demonicRewards.js`）、Index「✨ Special Pets」分頁、自動存檔每秒 + 5 份自動備份（控制面板 Safety）。小朋友 2026-10-22 唔見咗存檔（原因未知，問咗）。
 
+- 2026-10-23：Issue #14（12/15/16）：Eclipse 片段播完冇擺返玩家（卡喺 Hub 牆外）已修，Eclipse 返嚟但 `adminOnly`（淨係控制台開得，唔入隨機時間表）；升級加價（`COST_RAMP*`、`MACHINE_LEVELS`）；Lv16 改 Prehistoric Age（`src/prehistoric.js`）；繁殖機 Lv6 ☄️ Meteoric Dragon's Lair（`meteoricChance`，機唔再出 🔥 Fire）。詳情 `docs/plan.md`「Issue #14」。
+
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。

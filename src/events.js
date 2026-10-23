@@ -14,7 +14,8 @@ export const EVENTS = [
   // 小朋友 2026-10-18：刪走 Eclipse 活動（已經有 🌑 Eclipse 變異嘅寵物照樣保留 x6）
   // Issue #10 小朋友 2026-10-21：METEORIC（隕石雨）—— 比其他活動少啲機會（大約每 6–7 次一次），見 eventForSlot
   { id: 'meteor', emoji: '☄️', name: 'METEORIC', desc: 'Blue meteors crashed! Grab the glowing ☄️ Meteoric Crystals!', duration: 300 },
-  // { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180 },
+  // Issue #14（2026-10-23）：Eclipse 返嚟，但淨係 Admin 面板（🎉 Events）開得（adminOnly：唔會入隨機時間表，所以以前嘅時間表冇變）
+  { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180, adminOnly: true },
 ];
 // （秘密拉桿同 BIG PET FRENZY：2026-10-15 小朋友叫刪走）
 
@@ -42,7 +43,7 @@ const slotOpen = (slot) => new Date(slot * SLOT_MS).toLocaleDateString('en-CA') 
 const isMeteorSlot = (slot) => slotOpen(slot) && meteorRoll(slot) < METEOR_CHANCE && !(slotOpen(slot - 1) && meteorRoll(slot - 1) < METEOR_CHANCE);
 function eventForSlot(slot) {
   if (isMeteorSlot(slot)) return EVENTS.find((e) => e.id === 'meteor');
-  const others = EVENTS.filter((e) => e.id !== 'meteor');
+  const others = EVENTS.filter((e) => e.id !== 'meteor' && !e.adminOnly);
   const pick = (n) => ((Math.imul(n, 2654435761) >>> 0) >>> 7) % others.length;
   let i = pick(slot);
   if (i === pick(slot - 1)) i = (i + 1) % others.length; // 唔好連續兩次一樣
