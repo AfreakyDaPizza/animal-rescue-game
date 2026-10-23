@@ -655,7 +655,7 @@ function specialIndexHtml() {
   // 🐕 Echo 嘅 Zombified Chest 寵物（Issue #8）
   const chestGot = CHEST_PETS.filter((a) => state.indexFound.includes(a.name)).length;
   html += `<h3>🧟 Zombified Chest <span class="count">${chestGot}/${CHEST_PETS.length}${chestGot === CHEST_PETS.length ? ' ✅' : ''}</span></h3>
-    <p class="reward">Buy a Zombified Chest from 🐕 Echo at the Spawn Ruins!</p><div class="cards">`;
+    <p class="reward">Buy a Zombified Chest from 🧟🐕 Zonko at the Spawn Ruins!</p><div class="cards">`;
   for (const a of CHEST_PETS) {
     html += state.indexFound.includes(a.name)
       ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`

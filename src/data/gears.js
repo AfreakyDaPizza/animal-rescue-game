@@ -42,7 +42,7 @@ export const GEARS = {
   zombieChest: {
     name: 'Zombified Chest', emoji: '🧟', color: '#76ff03', rarity: 'Epic', chest: true,
     desc: () => 'Put it in your hotbar and click to open it! Candy Corn or a NEW spooky pet inside.',
-    where: "Buy it from 🐕 Echo in the Halloween World (500 🌽)",
+    where: "Buy it from 🧟🐕 Zonko in the Halloween World (500 🌽)",
     mutate: () => null,
     canUse: () => false,
   },

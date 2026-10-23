@@ -369,7 +369,7 @@ export const ECHO_QUESTS = [
   { emoji: '🐉', text: 'Escape the Bone Drake: bring back an Abandoned Manor egg', track: 'eggRescue', biome: 2, target: 1, reward: { pet: 'Soul Phantom', chests: 10, shards: 5, candy: 5000, tokens: 50 } },
 ];
 
-// ---- 🐕 ECHO'S ZOMBIFIED CHEST (kid, Issue #8): Echo the dog sells it at the Spawn Ruins ----
+// ---- 🧟🐕 ZONKO'S ZOMBIFIED CHEST (kid, Issue #8; seller renamed Echo → Zonko the zombie dog 2026-10-23) ----
 // How much one Zombified Chest costs (in 🍬 Candy Corn)
 export const ZOMBIE_CHEST_COST = 500;
 // If you win Candy Corn from the chest, you get a random amount between these 2 numbers

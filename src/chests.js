@@ -214,7 +214,7 @@ export function createChests(scene) {
     if (queue.length >= QUEUE_MAX) return false; // 撳太快：呢下唔算（箱仲喺度）
     if (!forced) {
       if (gearCount(type) <= 0) {
-        popup(`🧰 No ${gearInfo(type).name}s left! Get more at ${CHEST_TYPES[type].where || '🐕 Echo'}.`);
+        popup(`🧰 No ${gearInfo(type).name}s left! Get more at ${CHEST_TYPES[type].where || '🧟🐕 Zonko'}.`);
         return false;
       }
       takeGear(type);

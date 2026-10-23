@@ -44,6 +44,118 @@ export function giveCandyCorn(n = 5000) {
   return state.candyCorn;
 }
 
+
+// ======================== 🧟🐕 Zonko（喪屍狗）========================
+// 小朋友 2026-10-23：Zombified Chest 舖唔再係 Echo，改做 Zonko（喪屍狗）；Echo（鬼魂狗）留喺 Echo's Questline
+// （模型係 Echo 未變鬼之前嗰隻綠色喪屍狗）
+export function buildZonko() {
+  const g = new THREE.Group();
+  const root = pivot(g);
+  const fur = 0x7cab66; // 殭屍綠
+  const fur2 = 0x557d45;
+  const belly = 0xc5dcaa;
+  const patch = 0xc9a77c; // 補咗嘅一塊（唔同色）
+  const stitchC = 0xb388ff;
+  const stitchM = M(stitchC, GLOW(stitchC, 1.6));
+  const eyeC = 0x76ff03;
+  // 身
+  const body = pivot(root, 0, 0.62, 0.05);
+  B(body, 0.6, 0.48, 0.86, fur, 0, 0, 0, {}, { line: 0.07, r: 0.35 });
+  B(body, 0.42, 0.2, 0.6, belly, 0, -0.18, -0.04, {}, { r: 0.4 });
+  // 補丁（右邊身，唔同色）+ 發光縫線
+  const side = pivot(body, 0.3, 0.04, 0.12);
+  side.rotation.y = -PI / 2; // local -z = 向外（+x）
+  B(side, 0.3, 0.24, 0.04, patch, 0, 0, 0, {}, { r: 0.3 });
+  stitches(side, V(-0.15, 0.12, -0.025), V(0.15, 0.12, -0.025), 5, stitchC, stitchM, 0.06, 0.014);
+  stitches(side, V(-0.15, -0.12, -0.025), V(0.15, -0.12, -0.025), 5, stitchC, stitchM, 0.06, 0.014);
+  B(body, 0.2, 0.1, 0.3, fur2, -0.12, 0.24, 0.15, {}, { r: 0.4 }); // 背上深色斑
+  // 4 隻腳（前左腳包咗繃帶）
+  const legs = [[-0.18, -0.28, 0], [0.18, -0.28, PI], [-0.18, 0.32, PI], [0.18, 0.32, 0]].map(([x, z, phase], i) => {
+    const hip = pivot(body, x, -0.16, z);
+    B(hip, 0.17, 0.42, 0.18, fur, 0, -0.2, 0, {}, { line: 0.08 });
+    B(hip, 0.2, 0.1, 0.24, belly, 0, -0.42, -0.03, {}, { line: 0.08 });
+    if (i === 0) for (let k = 0; k < 3; k++) B(hip, 0.185, 0.04, 0.195, 0xf5f0e1, 0, -0.12 - k * 0.07, 0, {}, { r: 0.3 }).rotation.z = (k - 1) * 0.12;
+    return { hip, phase };
+  });
+  // 頸圈 + 糖果粟米牌
+  const neck = pivot(body, 0, 0.18, -0.38);
+  torus(neck, 0.2, 0.035, 0x6a1b9a, 0, 0, 0, {}).rotation.x = PI / 2 - 0.4;
+  const tag = candyCorn(neck, 0.075, 0, -0.14, -0.19);
+  tag.rotation.x = PI;
+  // 頭
+  const head = pivot(body, 0, 0.36, -0.46);
+  B(head, 0.58, 0.5, 0.5, fur, 0, 0, 0, {}, { line: 0.07, r: 0.38 });
+  B(head, 0.34, 0.22, 0.24, belly, 0, -0.13, -0.29, {}, { line: 0.07, r: 0.4 }); // 嘴
+  S(head, 0.085, 0.06, 0.06, 0x1a1420, 0, -0.04, -0.42, { roughness: 0.15 }); // 鼻
+  S(head, 0.025, 0.016, 0.012, 0xffffff, -0.025, -0.02, -0.475, GLOW(0xffffff, 0.6), { lo: true });
+  smile(head, -0.05, -0.17, -0.41, 0.05, 0x2a1220, {}, 2.3);
+  smile(head, 0.05, -0.17, -0.41, 0.05, 0x2a1220, {}, 2.3);
+  const tongue = B(head, 0.09, 0.03, 0.12, 0xff6f91, 0, -0.24, -0.38, {}, { r: 0.45 });
+  tongue.rotation.x = 0.5;
+  const eyes = bigEyes(head, 0.14, 0.07, -0.25, 0.1, eyeC, { glow: true, glowI: 1.4 });
+  // 額頭縫線（發光紫）+ 一邊眼有補丁圈
+  stitches(head, V(-0.2, 0.2, -0.255), V(0.06, 0.24, -0.255), 5, stitchC, stitchM, 0.07, 0.016);
+  torus(head, 0.125, 0.018, 0x6d8466, 0.14, 0.07, -0.26, {});
+  // 耳：一隻企、一隻垂（垂嗰隻包咗膠布）
+  const earUp = pivot(head, -0.2, 0.22, 0.02);
+  earUp.rotation.z = 0.25;
+  B(earUp, 0.14, 0.26, 0.08, fur2, 0, 0.12, 0, {}, { line: 0.08 });
+  B(earUp, 0.08, 0.16, 0.02, 0xffa4b8, 0, 0.11, -0.045, {}, { r: 0.4 });
+  const earFlop = pivot(head, 0.24, 0.18, 0.02);
+  earFlop.rotation.z = -1.9;
+  B(earFlop, 0.14, 0.26, 0.08, fur2, 0, 0.12, 0, {}, { line: 0.08 });
+  const tape = B(earFlop, 0.16, 0.05, 0.1, 0xf5f0e1, 0, 0.1, 0, {}, { r: 0.3 });
+  tape.rotation.z = 0.4;
+  // 尾（一節節，搖得好快）
+  const tail = pivot(body, 0, 0.14, 0.42);
+  tail.rotation.x = -0.7;
+  const tailSegs = [];
+  let parent = tail;
+  for (let i = 0; i < 4; i++) {
+    const seg = pivot(parent, 0, i ? 0.1 : 0, 0);
+    B(seg, 0.1 - i * 0.012, 0.13, 0.1 - i * 0.012, i === 3 ? belly : fur, 0, 0.06, 0, {}, { line: 0.1 });
+    tailSegs.push(seg);
+    parent = seg;
+  }
+  S(tailSegs[3], 0.035, 0.035, 0.035, eyeC, 0, 0.14, 0, GLOW(eyeC, 2.4), { lo: true }); // 尾尖發光
+  const seed = 1.3;
+  const tmp = new THREE.Vector3();
+  let lookYaw = 0;
+  let lookPitch = 0;
+  return {
+    g, head,
+    // look：玩家喺 local 座標（Echo 面向 -z）
+    animate(t, look, dt = 0.016, excited = 0) {
+      const b = blinkAt(t, seed);
+      for (const e of eyes) e.scale.y = b;
+      const wag = Math.sin(t * (12 + excited * 8)) * (0.55 + excited * 0.25);
+      tail.rotation.z = wag;
+      tailSegs.forEach((s, i) => (s.rotation.z = Math.sin(t * (12 + excited * 8) - i * 0.6) * 0.25));
+      body.position.y = 0.62 + Math.sin(t * 2.2) * 0.012; // 呼吸
+      body.scale.set(1, 1 + Math.sin(t * 2.2) * 0.015, 1);
+      // 間唔中開心跳一跳（「汪！」）
+      const hop = Math.max(0, Math.sin(t * 0.9)) ** 30;
+      root.position.y = hop * 0.18 + excited * Math.abs(Math.sin(t * 9)) * 0.08;
+      tongue.scale.z = 1 + hop * 0.6;
+      // 望住你（頭轉，唔轉身）
+      let wantYaw = Math.sin(t * 0.5) * 0.25;
+      let wantPitch = 0;
+      if (look) {
+        tmp.copy(look);
+        wantYaw = THREE.MathUtils.clamp(Math.atan2(-tmp.x, -tmp.z), -0.9, 0.9);
+        wantPitch = THREE.MathUtils.clamp(Math.atan2(tmp.y - 1, Math.hypot(tmp.x, tmp.z)) * 0.5, -0.3, 0.3);
+      }
+      const k = Math.min(1, dt * 4);
+      lookYaw += (wantYaw - lookYaw) * k;
+      lookPitch += (wantPitch - lookPitch) * k;
+      head.rotation.set(lookPitch, lookYaw, Math.sin(t * 1.3) * 0.12 + hop * 0.15); // 歪頭
+      earFlop.rotation.z = -1.9 + Math.sin(t * 3.1) * 0.12 + hop * 0.4;
+      earUp.rotation.z = 0.25 + Math.sin(t * 2.3) * 0.05;
+      legs.forEach((l) => (l.hip.rotation.x = excited ? Math.sin(t * 14 + l.phase) * 0.15 : 0));
+    },
+  };
+}
+
 // ======================== 👻🐕 Echo（鬼魂狗）========================
 // 小朋友 2026-10-22：「Echo should be a ghost dog」
 // 半透明、發淡青色光嘅狗仔：前面兩隻腳浮浮吓，後面冇腳，身慢慢收窄變成一條飄吓飄吓嘅「鬼尾」；
@@ -324,7 +436,7 @@ function buildStall(scene) {
     c.rotation.set(i, i * 2, 0);
   }
   // 招牌
-  const sign = makeSign([{ text: "🐕 ECHO'S CHEST SHOP", size: 0.34 }, { text: `🧟 Zombified Chest · ${ZOMBIE_CHEST_COST} ${CANDY} Candy Corn`, size: 0.2 }], 3.8, 1.0, THEMES.purple);
+  const sign = makeSign([{ text: "🧟 ZONKO'S CHEST SHOP", size: 0.34 }, { text: `🧟 Zombified Chest · ${ZOMBIE_CHEST_COST} ${CANDY} Candy Corn`, size: 0.2 }], 3.8, 1.0, THEMES.purple);
   sign.material.fog = false;
   sign.position.set(0, 3.9, 1.0); // 面向 +z（客人嗰邊）
   g.add(sign);
@@ -338,12 +450,12 @@ function buildStall(scene) {
   ring.position.set(0, 0.2, 2.6);
   g.add(ring);
   // 🐕 Echo 企喺櫃面左邊（望住客人）
-  const echo = buildEcho();
+  const echo = buildZonko(); // 🧟🐕 Zonko 賣箱
   echo.g.position.set(-0.35, 1.28, 0.35);
   echo.g.rotation.y = PI;
   echo.g.scale.setScalar(1.05);
   g.add(echo.g);
-  const label = makeLabel([{ text: '🐕 ECHO', color: '#b9f6ca' }, { text: `Zombified Chest · ${ZOMBIE_CHEST_COST} ${CANDY}`, color: '#ffd54f' }], 0.7);
+  const label = makeLabel([{ text: '🧟🐕 ZONKO', color: '#b9f6ca' }, { text: `Zombified Chest · ${ZOMBIE_CHEST_COST} ${CANDY}`, color: '#ffd54f' }], 0.7);
   label.material.fog = false;
   label.material.depthTest = false; // 唔好俾簷篷遮住
   label.position.set(-0.35, 3.0, 0.6);
@@ -411,9 +523,9 @@ function shopHtml() {
       </div>
       <div class="echo-drops"><h3>What's inside?</h3>${rows}</div>
     </div>
-    <p class="hint">🐕 Echo says: "Woof! I found these chests in the old manor. ${can ? 'Want some chests? Buy lots and open them all! Woof woof!' : 'Bring me Candy Corn - you can get it by fishing at the lake!'}"</p>`;
+    <p class="hint">🧟🐕 Zonko says: "Grrr-woof! I found these chests in the old manor. ${can ? 'Want some chests? Buy lots and open them all! Woof woof!' : 'Bring me Candy Corn - you can get it by fishing at the lake!'}"</p>`;
 }
-extraPanels.echo = ["🐕 Echo's Zombified Chest Shop", shopHtml, 'E'];
+extraPanels.echo = ["🧟 Zonko's Zombified Chest Shop", shopHtml, 'E'];
 
 const CSS = `
 .echo-shop { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
@@ -469,7 +581,7 @@ export function createEchoShop({ scene, openShop, popup }) {
 
   api.interaction = (pos) => {
     if (Math.hypot(pos.x - SHOP_SPOT.x, pos.z - SHOP_SPOT.z) > 2.6 && Math.hypot(pos.x - ECHO_STALL.x, pos.z - ECHO_STALL.z) > 2.8) return null;
-    return { prompt: `<kbd>E</kbd> 🐕 Talk to Echo: buy a 🧟 Zombified Chest (${ZOMBIE_CHEST_COST} ${CANDY})`, action: () => { excited = 2; play('boing'); openShop(); } };
+    return { prompt: `<kbd>E</kbd> 🧟🐕 Talk to Zonko: buy a 🧟 Zombified Chest (${ZOMBIE_CHEST_COST} ${CANDY})`, action: () => { excited = 2; play('boing'); openShop(); } };
   };
 
   // 買箱（一次過買 n 個；n = 'max' = 買得起幾多就幾多）→ 入背包
