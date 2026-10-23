@@ -7,6 +7,7 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
+import { rangerSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
 import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
@@ -710,7 +711,6 @@ function questsHtml() {
 // ================= 皮膚商店面板 =================
 let shopTab = 'ranger';
 const swatch = (colors) => `<div class="swatch" style="background:linear-gradient(135deg, ${colors.join(', ')})"></div>`;
-const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 const PET_SWATCH = {
   none: ['#a5d6a7', '#8d6e63'], shadow: ['#1a1a24', '#4527a0'], golden: ['#fff59d', '#ffa000'],
   neon: ['#ff4081', '#18ffff'], galaxy: ['#1a0640', '#7c4dff', '#0b2a6b'], rainbow: ['#ff1744', '#ffea00', '#00e676', '#2979ff', '#d500f9'],
@@ -729,7 +729,7 @@ function shopHtml() {
         : `<button data-shop="${action}-buy" data-i="${i}" ${state.tokens < cost ? 'disabled' : ''}>Buy 🎟️ ${cost}</button>`}
     </div>`;
   if (shopTab === 'ranger') {
-    html += `<div class="cards">${RANGER_SKINS.map((s, i) => card(swatch([hex(s.hat), hex(s.shirt), hex(s.pants)]), s.name, s.cost,
+    html += `<div class="cards">${RANGER_SKINS.map((s, i) => card(rangerSkinPic(s), s.name, s.cost, // 🧑 真公仔相（skinPics.js，Issue #14）
       state.ownedRanger.includes(s.id), state.rangerSkin === s.id, 'ranger', i)).join('')}</div>`;
   } else {
     html += `<p class="reward">A pet skin changes the look of ALL your pets.</p><div class="cards">${PET_SKINS.map((s, i) => card(swatch(PET_SWATCH[s.id]), s.name, s.cost,

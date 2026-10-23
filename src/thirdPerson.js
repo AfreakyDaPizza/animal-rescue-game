@@ -7,6 +7,7 @@ import { poseGym, gymFirstPerson } from './gymPoses.js'; // 💪 Gym 動作
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { kgScale } from './data/animals.js';
 import { buildDemonicParts, animateDemonic } from './demonicRanger.js'; // 😈 Demonic Ranger（Issue #11）
+import { buildOutfit, applyBody } from './rangerOutfits.js'; // 👕 每款皮膚嘅衫（Issue #14）
 
 const MIN_ZOOM = 0; // 0 = 第一身
 const MAX_ZOOM = 20;
@@ -22,10 +23,11 @@ function box(parent, w, h, d, color, x, y, z) {
   return m;
 }
 
-// Roblox 款護林員公仔：顏色由皮膚決定（mats），每款皮膚有自己嘅配件（extras）
+// Roblox 款護林員公仔：淨係砌「身體」（頭、身、手、腳、塊面）；衫褲帽、背囊、徽章等等由皮膚決定
+// （小朋友 Issue #14：皮膚要靚 → 每款皮膚嘅衫喺 rangerOutfits.js，第一次著先砌，焊埋做幾個 mesh）
 export function buildAvatar() {
   const M = () => new THREE.MeshStandardMaterial({ roughness: 0.55 });
-  const mats = { shirt: M(), pants: M(), skin: M(), hat: M(), shoes: M() };
+  const mats = { shirt: M(), sleeve: M(), pants: M(), skin: M(), shoes: M() };
   const g = new THREE.Group();
   // 膝頭（knee）：條腳分大髀同小腿，跑步、跳起嗰陣屈得到；預設 0 = 同以前一樣直
   const knees = [];
@@ -47,18 +49,13 @@ export function buildAvatar() {
   const torso = new THREE.Group();
   g.add(torso);
   box(torso, 0.85, 0.9, 0.45, mats.shirt, 0, 1.35, 0);
-  const badge = box(torso, 0.2, 0.35, 0.05, 0xffd600, 0.22, 1.55, -0.24); // 徽章
-  box(torso, 0.87, 0.14, 0.47, mats.shoes, 0, 0.95, 0); // 皮帶（跟鞋顏色）
-  box(torso, 0.16, 0.12, 0.04, 0xffd54f, 0, 0.95, -0.24); // 皮帶扣
-  box(torso, 0.24, 0.2, 0.04, mats.pants, -0.22, 1.5, -0.235); // 心口袋
-  for (const s of [-1, 1]) box(torso, 0.3, 0.1, 0.12, mats.shirt, s * 0.17, 1.82, -0.2).rotation.z = s * -0.3; // 衫領
   // 手踭（elbow）：上臂 + 前臂，跑步嗰陣屈起
   const elbows = [];
   const arms = [-1, 1].map((s) => {
     const sh = new THREE.Group();
     sh.position.set(s * 0.62, 1.75, 0);
     // Minecraft 款：成隻手一嚿實心方塊（衫袖）+ 手掌，冇手踭縫
-    box(sh, 0.34, 0.74, 0.34, mats.shirt, 0, -0.32, 0);
+    box(sh, 0.34, 0.74, 0.34, mats.sleeve, 0, -0.32, 0);
     const elbow = new THREE.Group(); // 保留（舊 code 會 reset 佢），永遠 0
     elbow.position.y = -0.4;
     box(elbow, 0.34, 0.22, 0.34, mats.skin, 0, -0.41, 0);
@@ -71,22 +68,28 @@ export function buildAvatar() {
   const head = new THREE.Group();
   head.position.y = 2.15;
   box(head, 0.66, 0.66, 0.66, mats.skin, 0, 0, 0);
-  const hat = new THREE.Group();
-  box(hat, 0.72, 0.18, 0.72, mats.hat, 0, 0.36, 0);
-  box(hat, 0.9, 0.05, 0.9, mats.hat, 0, 0.28, 0);
-  head.add(hat);
+  // 塊面（全罩頭盔嘅皮膚會收埋）
+  const face = new THREE.Group();
+  head.add(face);
+  const browMat = new THREE.MeshStandardMaterial({ color: 0x4e342e, roughness: 0.6 });
+  const brows = [];
+  const cheeks = [];
   for (const s of [-1, 1]) {
-    box(head, 0.15, 0.15, 0.03, 0xffffff, s * 0.15, 0.05, -0.335); // 眼白
-    box(head, 0.08, 0.1, 0.03, 0x1b1b1b, s * 0.15, 0.04, -0.348); // 眼珠
-    box(head, 0.03, 0.03, 0.02, 0xffffff, s * 0.15 + 0.02, 0.07, -0.362); // 反光
-    box(head, 0.16, 0.04, 0.03, 0x4e342e, s * 0.15, 0.17, -0.34); // 眉
-    box(head, 0.1, 0.06, 0.02, 0xff8a80, s * 0.24, -0.08, -0.335); // 面珠
+    box(face, 0.15, 0.15, 0.03, 0xffffff, s * 0.15, 0.05, -0.335); // 眼白
+    box(face, 0.08, 0.1, 0.03, 0x1b1b1b, s * 0.15, 0.04, -0.348); // 眼珠
+    box(face, 0.03, 0.03, 0.02, 0xffffff, s * 0.15 + 0.02, 0.07, -0.362); // 反光
+    brows.push(box(face, 0.16, 0.04, 0.03, browMat, s * 0.15, 0.17, -0.34)); // 眉
+    cheeks.push(box(face, 0.1, 0.06, 0.02, 0xff8a80, s * 0.24, -0.08, -0.335)); // 面珠
   }
-  box(head, 0.2, 0.05, 0.04, 0x8d4a3a, 0, -0.16, -0.34); // 笑口
-  box(hat, 0.74, 0.07, 0.74, mats.shoes, 0, 0.3, 0); // 帽帶
+  box(face, 0.2, 0.05, 0.04, 0x8d4a3a, 0, -0.16, -0.34); // 笑口
   torso.add(head);
+  // 舊 code 會讀 hat／badge：保留兩個空 Group（而家帽同徽章係皮膚衫嘅一部分）
+  const hat = new THREE.Group();
+  const badge = new THREE.Group();
+  head.add(hat);
+  torso.add(badge);
 
-  // ---- 每款皮膚嘅配件 ----
+  // ---- 特別皮膚嘅配件（有自己動畫）：用 make 整，applyRangerSkin 開／收 ----
   const extras = {};
   const make = (name, parent) => {
     const e = new THREE.Group();
@@ -95,131 +98,12 @@ export function buildAvatar() {
     extras[name] = e;
     return e;
   };
-  const ninja = make('ninja', head);
-  box(ninja, 0.7, 0.12, 0.7, 0xd50000, 0, 0.2, 0); // 紅頭巾
-  box(ninja, 0.12, 0.3, 0.06, 0xd50000, 0.12, 0.1, 0.36);
-  box(ninja, 0.68, 0.3, 0.05, 0x111111, 0, -0.15, -0.34); // 面罩
-  const panda = make('panda', head);
-  for (const s of [-1, 1]) {
-    box(panda, 0.22, 0.22, 0.12, 0x1d1d1d, s * 0.28, 0.4, 0); // 黑耳
-    box(panda, 0.2, 0.22, 0.03, 0x1d1d1d, s * 0.14, 0.03, -0.335); // 黑眼圈
-  }
-  const astronaut = make('astronaut', head);
-  const visor = box(astronaut, 0.86, 0.86, 0.86, new THREE.MeshStandardMaterial({ color: 0x80d8ff, transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.5 }), 0, 0.02, 0);
-  visor.castShadow = false;
-  const pack = make('pack', torso);
-  box(pack, 0.6, 0.7, 0.3, 0xcfd8dc, 0, 1.4, 0.38); // 背囊
-  const knight = make('knight', head);
-  box(knight, 0.5, 0.06, 0.04, 0x111111, 0, 0.04, -0.345); // 頭盔隙
-  box(knight, 0.1, 0.45, 0.4, 0xd50000, 0, 0.55, 0.05); // 紅羽毛
-  const crown = make('crown', head);
-  const gold = new THREE.MeshStandardMaterial({ color: 0xffd600, metalness: 0.9, roughness: 0.2, emissive: 0x6d4c00 });
-  box(crown, 0.7, 0.15, 0.7, gold, 0, 0.42, 0);
-  for (const [x, z] of [[-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28], [0.28, 0.28]]) box(crown, 0.12, 0.2, 0.12, gold, x, 0.58, z);
-  const wings = make('wings', torso);
-  for (const s of [-1, 1]) {
-    const w = box(wings, 0.08, 1.0, 0.6, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 }), s * 0.6, 1.7, 0.4);
-    w.rotation.z = s * -0.5;
-  }
-  // ---- 新皮膚（小朋友 2026-10-17）：每款有頭上嘅（name）同身上嘅（name + 'Body'）配件 ----
-  const SM = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
-  const SG = (color, k = 1) => SM(color, { emissive: color, emissiveIntensity: k });
-  // 海盜船長：黑色三角帽（金邊）+ 眼罩 + 紅色腰帶
-  const pirate = make('pirate', head);
-  box(pirate, 0.95, 0.12, 0.8, 0x212121, 0, 0.38, 0);
-  box(pirate, 0.7, 0.3, 0.62, 0x212121, 0, 0.55, 0);
-  box(pirate, 0.97, 0.04, 0.82, SM(0xffd54f, { metalness: 0.8 }), 0, 0.45, 0);
-  box(pirate, 0.18, 0.16, 0.04, 0x111111, 0.15, 0.05, -0.36); // 眼罩
-  box(pirate, 0.7, 0.03, 0.03, 0x111111, 0, 0.12, -0.35).rotation.z = -0.3;
-  const pirateBody = make('pirateBody', torso);
-  box(pirateBody, 0.88, 0.16, 0.48, 0xc62828, 0, 0.95, 0);
-  box(pirateBody, 0.18, 0.18, 0.05, SM(0xffd54f, { metalness: 0.8 }), 0, 0.95, -0.25);
-  // 魔法師：好高嘅紫色星星帽 + 白鬍子 + 披風
-  const wizard = make('wizard', head);
-  box(wizard, 0.95, 0.08, 0.95, 0x4a148c, 0, 0.36, 0);
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 8), SM(0x6a1b9a));
-  cone.position.set(0, 0.95, 0.05);
-  cone.rotation.x = -0.15;
-  cone.castShadow = true;
-  wizard.add(cone);
-  for (const [x, y, z] of [[0.15, 0.7, -0.3], [-0.12, 0.95, -0.22], [0.05, 1.2, -0.12]]) box(wizard, 0.09, 0.09, 0.03, SG(0xffeb3b, 1.4), x, y, z);
-  box(wizard, 0.5, 0.45, 0.12, 0xf5f5f5, 0, -0.32, -0.32); // 鬍子
-  box(wizard, 0.2, 0.2, 0.1, 0xf5f5f5, 0, -0.6, -0.32);
-  const wizardBody = make('wizardBody', torso);
-  box(wizardBody, 0.95, 1.3, 0.08, 0x311b92, 0, 1.2, 0.3); // 披風
-  // 電子忍者：發光藍色護目鏡 + 身上霓虹線
-  const cyber = make('cyber', head);
-  box(cyber, 0.7, 0.16, 0.06, SG(0x00e5ff, 1.6), 0, 0.06, -0.35);
-  box(cyber, 0.72, 0.12, 0.72, 0x263238, 0, 0.3, 0);
-  box(cyber, 0.06, 0.4, 0.06, SG(0xff4081, 1.4), 0.3, 0.45, 0.2); // 天線
-  const cyberBody = make('cyberBody', torso);
-  for (const s of [-1, 1]) box(cyberBody, 0.05, 0.85, 0.05, SG(0x00e5ff, 1.4), s * 0.36, 1.35, -0.24);
-  box(cyberBody, 0.6, 0.05, 0.05, SG(0xff4081, 1.4), 0, 1.6, -0.24);
-  // 龍騎士：紅色龍頭盔（角）+ 紅色龍翼
-  const dragon = make('dragon', head);
-  box(dragon, 0.74, 0.22, 0.74, 0xb71c1c, 0, 0.32, 0);
-  box(dragon, 0.5, 0.12, 0.2, 0xb71c1c, 0, 0.28, -0.42); // 龍嘴罩
-  for (const s of [-1, 1]) {
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 6), SM(0xfff8e1));
-    horn.position.set(s * 0.25, 0.55, 0.1);
-    horn.rotation.set(-0.5, 0, s * -0.4);
-    dragon.add(horn);
-    box(dragon, 0.06, 0.06, 0.02, SG(0xffab00, 1.6), s * 0.14, 0.2, -0.53); // 頭盔眼
-  }
-  const dragonBody = make('dragonBody', torso);
-  for (const s of [-1, 1]) {
-    const w = box(dragonBody, 0.06, 0.9, 0.9, SM(0xd32f2f, { transparent: true, opacity: 0.9 }), s * 0.75, 1.75, 0.45);
-    w.rotation.z = s * -0.6;
-    box(dragonBody, 0.08, 0.9, 0.08, 0x4e0000, s * 0.62, 1.95, 0.3).rotation.z = s * -0.6; // 翼骨
-  }
-  // 皇帝：大金皇冠（寶石）+ 紅色披風（白毛邊）
-  const king = make('king', head);
-  const kg = SM(0xffd600, { metalness: 0.9, roughness: 0.2, emissive: 0x6d4c00 });
-  box(king, 0.78, 0.2, 0.78, kg, 0, 0.44, 0);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    box(king, 0.14, 0.24, 0.14, kg, Math.cos(a) * 0.32, 0.64, Math.sin(a) * 0.32);
-  }
-  for (const [c, x] of [[0xd50000, 0], [0x2962ff, -0.2], [0x00c853, 0.2]]) box(king, 0.1, 0.1, 0.04, SG(c, 0.8), x, 0.45, -0.4);
-  const kingBody = make('kingBody', torso);
-  box(kingBody, 1.0, 1.45, 0.08, 0xb71c1c, 0, 1.15, 0.3);
-  box(kingBody, 1.05, 0.16, 0.5, 0xfafafa, 0, 1.85, 0.08); // 白毛領
-  // 冰之守護者：水晶頭盔 + 冰水晶膊頭
-  const ice = make('ice', head);
-  box(ice, 0.74, 0.2, 0.74, SM(0xb3e5fc, { metalness: 0.4, roughness: 0.1 }), 0, 0.32, 0);
-  for (const [x, h] of [[-0.22, 0.4], [0, 0.6], [0.22, 0.4]]) {
-    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), SG(0x80d8ff, 0.9));
-    c.position.set(x, 0.42 + h / 2, 0);
-    c.scale.y = h / 0.2;
-    ice.add(c);
-  }
-  const iceBody = make('iceBody', torso);
-  for (const s of [-1, 1]) {
-    const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), SG(0x80d8ff, 0.8));
-    c.position.set(s * 0.62, 1.95, 0);
-    c.scale.y = 1.6;
-    iceBody.add(c);
-  }
-  // 熔岩騎士：黑色頭盔（發光橙色縫）+ 背後火焰劍
-  const lava = make('lava', head);
-  box(lava, 0.74, 0.74, 0.74, 0x212121, 0, 0.02, 0);
-  box(lava, 0.5, 0.06, 0.04, SG(0xff6d00, 1.8), 0, 0.04, -0.375); // 眼縫
-  box(lava, 0.08, 0.4, 0.42, SG(0xff3d00, 1.4), 0, 0.5, 0.05); // 火焰冠
-  const lavaBody = make('lavaBody', torso);
-  box(lavaBody, 0.1, 1.3, 0.05, SG(0xff6d00, 1.5), 0.2, 1.55, 0.3).rotation.z = 0.4; // 背後劍
-  box(lavaBody, 0.4, 0.08, 0.08, 0x424242, 0.06, 1.0, 0.3).rotation.z = 0.4;
-  // 銀河探險家：透明星空頭盔 + 星星背包
-  const galaxy = make('galaxy', head);
-  const dome = box(galaxy, 0.86, 0.86, 0.86, SM(0x7c4dff, { transparent: true, opacity: 0.35, roughness: 0.05, emissive: 0x311b92, emissiveIntensity: 0.6 }), 0, 0.02, 0);
-  dome.castShadow = false;
-  for (const [x, y, z] of [[0.3, 0.3, -0.3], [-0.32, 0.2, 0.2], [0.1, 0.42, 0.3]]) box(galaxy, 0.05, 0.05, 0.05, SG(0xffffff, 2), x, y, z);
-  const galaxyBody = make('galaxyBody', torso);
-  box(galaxyBody, 0.6, 0.7, 0.3, 0x1a237e, 0, 1.4, 0.38);
-  box(galaxyBody, 0.15, 0.15, 0.05, SG(0xffeb3b, 1.6), 0, 1.5, 0.55);
-  const cosmic = buildCosmic({ make, head, torso, arms, legs, SM, SG });
-  const demonic = buildDemonicParts(make, { head, torso, arms, legs }); // 😈 角、翼、尾
-  return { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge, cosmic, demonic };
+  const avatar = { g, torso, legs, arms, knees, elbows, head, mats, extras, hat, badge, cosmic: null, demonic: null, face, brows, browMat, cheeks, make, outfits: {}, outfit: null };
+  return avatar;
 }
+
+const SM = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
+const SG = (color, k = 1) => SM(color, { emissive: color, emissiveIntensity: k });
 
 // ---- 🌠 Cosmic Meteor Ranger（小朋友 2026-10-22）----
 // 深藍戰衣 + 發光藍色隕石裂紋、星空披風、膊頭水晶、發光面罩、一粒細隕石圍住你轉
@@ -390,17 +274,25 @@ function applySuperLand(avatar, land, held) {
   lerpRot(avatar.head, -0.6, 0, 0); // 抬頭望前面
 }
 
-// 換護林員皮膚
+// 換護林員皮膚：身體物料 + 嗰款皮膚嘅衫（第一次著先砌）+ 特別皮膚嘅動畫配件
 export function applyRangerSkin(tp, skin) {
-  const { mats, extras, hat, badge } = tp.avatar;
-  for (const k of Object.keys(mats)) {
-    mats[k].color.setHex(skin[k]);
-    mats[k].metalness = skin.metal ? 0.85 : 0;
-    mats[k].roughness = skin.metal ? 0.25 : 0.55;
-  }
-  for (const [name, e] of Object.entries(extras)) e.visible = name === skin.extra || name === `${skin.extra}Body` || (!!skin.extra && name.startsWith(`${skin.extra}_`)) || (name === 'pack' && skin.extra === 'astronaut');
-  hat.visible = !skin.extra || skin.extra === 'wings'; // 有自己頭飾嘅皮膚就收埋護林員帽
-  badge.visible = skin.id === 'ranger';
+  const av = tp.avatar;
+  const { extras } = av;
+  // 特別皮膚（有自己動畫）：第一次先砌
+  if (skin.extra === 'cosmic' && !av.cosmic) av.cosmic = buildCosmic({ make: av.make, head: av.head, torso: av.torso, arms: av.arms, legs: av.legs, SM, SG });
+  if (skin.extra === 'demonic' && !av.demonic) av.demonic = buildDemonicParts(av.make, { head: av.head, torso: av.torso, arms: av.arms, legs: av.legs }); // 😈 角、翼、尾
+  for (const [name, e] of Object.entries(extras)) e.visible = !!skin.extra && (name === skin.extra || name === `${skin.extra}Body` || name.startsWith(`${skin.extra}_`));
+  // 衫褲配件（rangerOutfits.js）
+  const outfit = (av.outfits[skin.id] ??= buildOutfit(av, skin));
+  for (const o of Object.values(av.outfits)) o.setVisible(o === outfit);
+  av.outfit = outfit;
+  applyBody(av.mats, outfit.body);
+  const f = outfit.face;
+  av.face.visible = !f.hide;
+  av.browMat.color.setHex(f.brows ?? 0x4e342e);
+  for (const b of av.brows) b.visible = !f.hideBrows;
+  for (const c of av.cheeks) c.visible = f.cheeks !== false;
+  outfit.animate(0, null, 0); // 擺好姿勢（粒子要等每格郁先出）
   tp.rainbow = !!skin.rainbow;
   tp.cosmic = skin.extra === 'cosmic'; // 🌠 動畫 + 超級英雄落地
   tp.demonic = skin.extra === 'demonic'; // 😈 飛 + 火噴射跳（demonicRanger.js）
@@ -553,7 +445,7 @@ function applyLocomotion(avatar, a, { feetY, held, t }) {
 const fwd = new THREE.Vector3();
 
 // held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；回傳要用嚟畫畫面嘅鏡頭
-export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0 }) {
+export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3 }) {
   const { eye, avatar, view } = tp;
   tp.smoothZoom += (tp.zoom - tp.smoothZoom) * Math.min(1, dt * 10);
   const third = tp.zoom > 0;
@@ -597,12 +489,6 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded
   avatar.head.position.y = 2.15;
   const running = station?.kind === 'treadmill'; // 跑步機：自動跑
   const sitting = station?.kind === 'table'; // 學生桌：坐低寫字
-  if (tp.rainbow) {
-    const h = (performance.now() / 4000) % 1;
-    avatar.mats.shirt.color.setHSL(h, 1, 0.5);
-    avatar.mats.pants.color.setHSL((h + 0.33) % 1, 1, 0.5);
-    avatar.mats.shoes.color.setHSL((h + 0.66) % 1, 1, 0.5);
-  }
   const t = performance.now() / 1000;
   const anim = trackMotion(tp, dt, { walking: walking || running, running, grounded, vy });
   if (gymStation && poseGym(tp, gymStation, { feetY, dt, time })) {
@@ -627,6 +513,7 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded
     tp.phase = anim.phase; // 頭頂寵物跟住步伐輕輕彈
     if (tp.land) applySuperLand(avatar, tp.land, !!held); // 🦸 Cosmic Meteor Ranger 落地（cosmicLanding.js 設定 tp.land）
   }
+  avatar.outfit?.animate(t, anim, quality); // 👕 皮膚嘅細動畫（披風、翼、羽毛、粒子…；粒子跟畫質）
   if (tp.cosmic) animateCosmic(avatar, t, anim); // 🌠 披風、細隕石、裂紋閃
   if (tp.demonic && !sitting && !gymStation) animateDemonic(avatar, t, anim, !!held); // 😈 行路 = 飛、拍翼
 
