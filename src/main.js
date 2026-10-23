@@ -420,7 +420,7 @@ document.getElementById('inventory-button').addEventListener('click', () => inve
 // 任務有進度：完成就提你去領代幣
 function quest(id, amount = 1) {
   for (const q of questEvent(id, amount)) {
-    popup('📜 Quest complete! Press Q to claim your tokens');
+    popup('📜 Quest complete! Press J to claim your tokens');
     play('ding');
   }
 }
@@ -670,7 +670,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Backquote') inventory.toggle(); // 🎒 背包
   if (e.code === 'KeyP') togglePanel('stats');
   if (e.code === 'KeyI') togglePanel('index');
-  if (e.code === 'KeyQ') togglePanel('quests');
+  if (e.code === 'KeyJ') togglePanel('quests'); // 📜 Quests（Issue #14：Q 讓咗俾控制面板）
+  if (e.code === 'KeyQ') togglePanel('admin'); // 🔐 控制面板（未解鎖就出密碼畫面）
   if (e.code === 'KeyH') toggleHidePets();
   if (e.code === 'KeyB' && !isPanelOpen()) toggleSideBox('pets'); // 🐾 地塊寵物
   if (e.code === 'KeyT' && !isPanelOpen()) toggleSideBox('timers'); // ⏱️ 繁殖機時間
@@ -1102,6 +1103,14 @@ const reloadNoIntro = () => {
 };
 setAdminActions({
   popup: (t) => popup(t),
+  // 🎁 Issue #14：控制面板俾武器／換皮膚／Boss 皮膚
+  giveWeapon: (id) => weapons.give(id),
+  wearRanger: (skin) => applyRangerSkin(thirdPerson, skin || RANGER_SKINS[0]),
+  refreshPets() {
+    refreshPlotPets(hub);
+    if (rescue.holding) rescue.holding.name = '__refresh__'; // 手上嗰隻都換（同皮膚商店一樣）
+  },
+  bosses: () => bosses,
   status: () => ({ fuseDate: isFuseOpen() && !state.bigButton, kingdomDate: isNewBiomeOpen(), gymDate: isGymOpen() && !state.gymEarly && !gym.debug, gymPresent: gym.present, halloweenDate: isHalloweenOpen() && !state.halloweenEarly, meteorDate: isMeteorOpen() && !state.meteorEarly }),
   hasBackup,
   reloadNoIntro: () => {

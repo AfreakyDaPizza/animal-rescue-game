@@ -1,0 +1,234 @@
+/* 🔐 Secret Ranger Control Panel：未來感（小朋友 Issue #14）
+   深色玻璃 + 霓虹青／洋紅、等寬字標題、掃描線 + 格仔背景、會發光嘅分頁、會轉嘅邊框、全息掣
+   全部都係 #panel[data-kind="admin"] 開頭：其他面板唔受影響，亦蓋得過 style.css／polish.css／startstyle.css */
+
+#panel[data-kind="admin"] {
+  --ad-cyan: #00e5ff;
+  --ad-mag: #ff2bd6;
+  --ad-lime: #b2ff59;
+  --ad-ink: #e6f7ff;
+  --ad-dim: #8fb3c9;
+  --ad-glass: rgba(10, 18, 38, 0.82);
+  --ad-glass2: rgba(18, 30, 60, 0.7);
+  --ad-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  background: radial-gradient(ellipse at 50% 30%, rgba(0, 60, 90, 0.45), rgba(2, 4, 14, 0.85));
+}
+
+/* ---------- 卡（外框）：玻璃 + 轉動嘅霓虹邊 ---------- */
+#panel[data-kind="admin"] .card.wide {
+  position: relative; isolation: isolate; color: var(--ad-ink);
+  border-radius: 18px; padding: 0 20px 18px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+    linear-gradient(rgba(0, 229, 255, 0.06) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(0, 229, 255, 0.06) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(160deg, rgba(14, 24, 52, 0.96), rgba(6, 10, 24, 0.97));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.35), 0 0 30px rgba(0, 229, 255, 0.25), 0 0 60px rgba(255, 43, 214, 0.15), 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+/* 霓虹邊：青 ↔ 洋紅 慢慢變（張卡自己會捲，所以唔用 ::before 畫邊，唔係會跟住捲走） */
+#panel[data-kind="admin"] .card.wide { border: 2px solid var(--ad-cyan); animation: card-in 0.3s ease-out, ad-glow 5s ease-in-out infinite; }
+@keyframes ad-glow {
+  0%, 100% { border-color: var(--ad-cyan); box-shadow: 0 0 22px rgba(0, 229, 255, 0.45), 0 0 60px rgba(255, 43, 214, 0.12), 0 24px 60px rgba(0, 0, 0, 0.6); }
+  50% { border-color: var(--ad-mag); box-shadow: 0 0 22px rgba(255, 43, 214, 0.5), 0 0 60px rgba(0, 229, 255, 0.15), 0 24px 60px rgba(0, 0, 0, 0.6); }
+}
+
+/* ---------- 標題 ---------- */
+#panel[data-kind="admin"] #panel-title {
+  margin: 0 -20px 12px; padding: 14px 58px 12px; border-radius: 18px 18px 0 0;
+  font-family: var(--ad-mono); font-size: 22px; font-weight: 700; letter-spacing: 3px;
+  color: var(--ad-cyan); -webkit-text-stroke: 0; filter: none;
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.9), 0 0 18px rgba(0, 229, 255, 0.5), 2px 0 0 rgba(255, 43, 214, 0.55);
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.16), rgba(10, 18, 38, 0.92));
+  border-bottom: 1px solid rgba(0, 229, 255, 0.5);
+  box-shadow: 0 1px 0 rgba(255, 43, 214, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+#panel[data-kind="admin"] #panel-title::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ad-mag), var(--ad-cyan), transparent);
+  animation: ad-sweep 3s ease-in-out infinite;
+}
+@keyframes ad-sweep { 0%, 100% { opacity: 0.3; transform: scaleX(0.4); } 50% { opacity: 1; transform: scaleX(1); } }
+
+/* ---------- 所有掣：全息 ---------- */
+#panel[data-kind="admin"] .card button {
+  position: relative; overflow: hidden;
+  font-family: var(--ad-mono); font-weight: 700; letter-spacing: 0.4px; text-shadow: none;
+  color: #e9fdff; border: 1px solid rgba(0, 229, 255, 0.7); border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.22), rgba(120, 80, 255, 0.18) 55%, rgba(255, 43, 214, 0.2));
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25), inset 0 0 12px rgba(0, 229, 255, 0.12);
+  transition: transform 0.12s, box-shadow 0.15s, background 0.15s;
+}
+#panel[data-kind="admin"] .card button::after { /* 掃過嘅光 */
+  content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: skewX(-20deg); transition: left 0.45s;
+}
+#panel[data-kind="admin"] .card button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.36), rgba(120, 80, 255, 0.26) 55%, rgba(255, 43, 214, 0.32));
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.55), 0 0 26px rgba(255, 43, 214, 0.25), inset 0 0 14px rgba(0, 229, 255, 0.2);
+}
+#panel[data-kind="admin"] .card button:hover::after { left: 120%; }
+#panel[data-kind="admin"] .card button:active { transform: translateY(1px); box-shadow: 0 0 6px rgba(0, 229, 255, 0.4); }
+#panel[data-kind="admin"] .card button.grey {
+  color: var(--ad-dim); border-color: rgba(143, 179, 201, 0.35);
+  background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+#panel[data-kind="admin"] .card button.grey:hover { color: var(--ad-ink); border-color: rgba(0, 229, 255, 0.6); background: rgba(0, 229, 255, 0.1); }
+#panel[data-kind="admin"] .card button.sell {
+  color: #fff; border-color: var(--ad-mag);
+  background: linear-gradient(135deg, rgba(255, 43, 214, 0.5), rgba(124, 77, 255, 0.45));
+  box-shadow: 0 0 14px rgba(255, 43, 214, 0.5), inset 0 0 12px rgba(255, 255, 255, 0.12);
+}
+#panel[data-kind="admin"] .card button.sell:hover { box-shadow: 0 0 22px rgba(255, 43, 214, 0.8), inset 0 0 14px rgba(255, 255, 255, 0.2); }
+#panel[data-kind="admin"] .card button.panel-x {
+  border-radius: 10px; color: #fff; border: 1px solid #ff4d6d; background: rgba(255, 23, 68, 0.25);
+  box-shadow: 0 0 12px rgba(255, 23, 68, 0.6); font-family: inherit;
+}
+#panel[data-kind="admin"] #panel-close { margin-top: 14px; }
+#panel[data-kind="admin"] kbd { font-family: var(--ad-mono); background: rgba(0, 229, 255, 0.15); color: var(--ad-cyan); border: 1px solid rgba(0, 229, 255, 0.5); box-shadow: none; }
+
+/* ---------- 分頁：發光 ---------- */
+#panel[data-kind="admin"] .admin-tabs {
+  top: 54px; gap: 6px; padding: 8px; margin: -4px 0 10px; border-radius: 12px;
+  background: rgba(6, 12, 28, 0.92); border: 1px solid rgba(0, 229, 255, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); backdrop-filter: blur(8px);
+}
+#panel[data-kind="admin"] .admin-tabs button {
+  margin: 0; border-radius: 8px; padding: 6px 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--ad-dim); background: transparent; border: 1px solid transparent; box-shadow: none;
+}
+#panel[data-kind="admin"] .admin-tabs button:hover { color: var(--ad-ink); border-color: rgba(0, 229, 255, 0.35); background: rgba(0, 229, 255, 0.08); }
+#panel[data-kind="admin"] .admin-tabs button.active {
+  color: #001018; border-color: var(--ad-cyan);
+  background: linear-gradient(135deg, var(--ad-cyan), #7c4dff 130%);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.8), 0 0 28px rgba(0, 229, 255, 0.35);
+}
+
+/* ---------- 內容 ---------- */
+#panel[data-kind="admin"] .index-summary { color: var(--ad-dim); font-size: 14px; }
+#panel[data-kind="admin"] .index-summary b, #panel[data-kind="admin"] p b { color: var(--ad-ink); }
+#panel[data-kind="admin"] .admin-sec {
+  position: relative; margin: 12px 0; padding: 12px 14px 12px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(20, 34, 68, 0.72), rgba(10, 18, 40, 0.72));
+  border: 1px solid rgba(0, 229, 255, 0.22); box-shadow: inset 0 0 24px rgba(0, 229, 255, 0.05), 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+#panel[data-kind="admin"] .admin-sec::before { /* 左上角角位 */
+  content: ''; position: absolute; top: -1px; left: -1px; width: 18px; height: 18px; border-radius: 12px 0 0 0;
+  border-top: 2px solid var(--ad-cyan); border-left: 2px solid var(--ad-cyan); filter: drop-shadow(0 0 4px var(--ad-cyan));
+}
+#panel[data-kind="admin"] .admin-sec::after {
+  content: ''; position: absolute; bottom: -1px; right: -1px; width: 18px; height: 18px; border-radius: 0 0 12px 0;
+  border-bottom: 2px solid var(--ad-mag); border-right: 2px solid var(--ad-mag); filter: drop-shadow(0 0 4px var(--ad-mag));
+}
+#panel[data-kind="admin"] .admin-sec h3 {
+  margin: 0 0 10px; padding: 0 0 6px; border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+  font-family: var(--ad-mono); font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--ad-cyan); text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+#panel[data-kind="admin"] .admin-count { float: right; font-size: 12px; color: var(--ad-dim); text-shadow: none; letter-spacing: 1px; }
+#panel[data-kind="admin"] .card .hint {
+  color: var(--ad-dim); font-weight: 400; font-size: 13px; padding: 6px 10px;
+  background: rgba(0, 229, 255, 0.05); border: 1px dashed rgba(0, 229, 255, 0.25); border-radius: 8px;
+}
+#panel[data-kind="admin"] .admin-cur { border-top: 1px dashed rgba(0, 229, 255, 0.18); }
+#panel[data-kind="admin"] .admin-cur:first-of-type { border-top: 0; }
+#panel[data-kind="admin"] .admin-cur-val {
+  font-family: var(--ad-mono); color: var(--ad-lime); background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(178, 255, 89, 0.4); text-shadow: 0 0 6px rgba(178, 255, 89, 0.6);
+}
+#panel[data-kind="admin"] input[type="search"], #panel[data-kind="admin"] input[type="number"], #panel[data-kind="admin"] .admin-set input, #panel[data-kind="admin"] .admin-gate input {
+  font-family: var(--ad-mono); color: var(--ad-ink); background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 229, 255, 0.45); border-radius: 8px; outline: none;
+}
+#panel[data-kind="admin"] input::placeholder { color: rgba(143, 179, 201, 0.6); }
+#panel[data-kind="admin"] input:focus { border-color: var(--ad-cyan); box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.25), 0 0 14px rgba(0, 229, 255, 0.35); }
+#panel[data-kind="admin"] input.bad { border-color: #ff1744; }
+#panel[data-kind="admin"] .admin-size input[type="range"] { accent-color: var(--ad-mag); }
+#panel[data-kind="admin"] .admin-search-row span { color: var(--ad-dim); }
+#panel[data-kind="admin"] .card table td { border-bottom: 1px solid rgba(0, 229, 255, 0.12); color: var(--ad-ink); }
+#panel[data-kind="admin"] .card p { color: var(--ad-ink); }
+
+/* 卡仔（寵物、Gear、武器、蛋、皮膚） */
+#panel[data-kind="admin"] .card-animal {
+  color: var(--ad-ink); border-radius: 10px; border: 1px solid rgba(0, 229, 255, 0.25);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); box-shadow: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+#panel[data-kind="admin"] .card-animal:hover { border-color: rgba(0, 229, 255, 0.6); box-shadow: 0 0 14px rgba(0, 229, 255, 0.25); transform: translateY(-1px); }
+#panel[data-kind="admin"] .card-animal small { color: var(--ad-dim); font-weight: 600; }
+#panel[data-kind="admin"] .card-animal.equipped { border-color: var(--ad-lime); box-shadow: 0 0 0 1px var(--ad-lime) inset, 0 0 14px rgba(178, 255, 89, 0.3); background: rgba(178, 255, 89, 0.07); }
+#panel[data-kind="admin"] .card-animal.locked { opacity: 0.75; background: rgba(0, 0, 0, 0.25); border-style: dashed; }
+#panel[data-kind="admin"] .pet-pic { box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.25); }
+#panel[data-kind="admin"] .admin-gear { border-width: 1px; }
+.admin-weapon { --wc: #00e5ff; border-color: color-mix(in srgb, var(--wc) 60%, transparent) !important; }
+.admin-weapon-emoji { display: block; font-size: 40px; line-height: 1.3; filter: drop-shadow(0 0 10px var(--wc)); }
+.admin-skin b { display: block; margin: 4px 0 2px; }
+.admin-skin-cards { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+
+/* 頂部「你會得到」：玻璃 */
+#panel[data-kind="admin"] .admin-pet-top {
+  top: 112px; color: var(--ad-ink); border-radius: 12px; border: 1px solid var(--ad-mag);
+  background: linear-gradient(135deg, rgba(60, 10, 70, 0.92), rgba(10, 24, 56, 0.92));
+  box-shadow: 0 0 18px rgba(255, 43, 214, 0.35); backdrop-filter: blur(8px);
+}
+#panel[data-kind="admin"] .admin-flags .admin-flag { color: var(--ad-dim); background: rgba(255, 255, 255, 0.04); border-color: rgba(143, 179, 201, 0.3); box-shadow: none; }
+#panel[data-kind="admin"] .admin-flags .admin-flag.on { color: var(--ad-ink); border-color: var(--ad-lime); background: rgba(178, 255, 89, 0.1); box-shadow: 0 0 12px rgba(178, 255, 89, 0.3); }
+#panel[data-kind="admin"] .admin-switch { background: rgba(143, 179, 201, 0.35); }
+#panel[data-kind="admin"] .admin-flag.on .admin-switch { background: var(--ad-lime); box-shadow: 0 0 8px var(--ad-lime); }
+
+/* ---------- 🔐 密碼畫面 ---------- */
+.admin-gate { position: relative; max-width: 460px; margin: 18px auto 6px; padding: 26px 20px 20px; text-align: center; border-radius: 16px;
+  background: radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.18), transparent 60%), rgba(4, 10, 24, 0.7);
+  border: 1px solid rgba(0, 229, 255, 0.4); box-shadow: 0 0 24px rgba(0, 229, 255, 0.25), inset 0 0 30px rgba(0, 229, 255, 0.08);
+  overflow: hidden; }
+.admin-gate::before { /* 掃描線上落 */
+  content: ''; position: absolute; left: 0; right: 0; height: 40px; top: -40px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0, 229, 255, 0.18), transparent);
+  animation: ad-scan 2.8s linear infinite;
+}
+@keyframes ad-scan { to { top: 100%; } }
+.gate-ring { width: 86px; height: 86px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  border: 2px solid var(--ad-cyan, #00e5ff); box-shadow: 0 0 18px rgba(0, 229, 255, 0.6), inset 0 0 18px rgba(0, 229, 255, 0.35); }
+.gate-ring::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 2px dashed rgba(255, 43, 214, 0.7); animation: ad-rot 8s linear infinite; }
+.gate-ring span { font-size: 38px; filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.9)); }
+@keyframes ad-rot { to { transform: rotate(360deg); } }
+.gate-kicker { margin: 0; font-family: var(--ad-mono, monospace); font-size: 11px; letter-spacing: 3px; color: var(--ad-mag, #ff2bd6) !important; text-shadow: 0 0 8px rgba(255, 43, 214, 0.7); }
+#panel[data-kind="admin"] .gate-title { margin: 6px 0 16px; padding: 0; border: 0; font-family: var(--ad-mono); font-size: 22px; letter-spacing: 4px; color: var(--ad-cyan); text-shadow: 0 0 10px rgba(0, 229, 255, 0.8); text-align: center; }
+.gate-form { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+#panel[data-kind="admin"] .gate-form input { flex: 1 1 200px; min-width: 0; max-width: 280px; padding: 10px 14px; font-size: 18px; letter-spacing: 3px; text-align: center; }
+#panel[data-kind="admin"] .gate-form button { margin: 0; padding: 10px 18px; font-size: 16px; }
+.gate-msg { margin: 14px 0 0; font-family: var(--ad-mono, monospace); font-size: 13px; color: var(--ad-dim, #8fb3c9) !important; min-height: 1.4em; }
+.admin-gate.denied { border-color: #ff1744; box-shadow: 0 0 28px rgba(255, 23, 68, 0.55), inset 0 0 30px rgba(255, 23, 68, 0.15); }
+.admin-gate.denied .gate-ring { border-color: #ff1744; box-shadow: 0 0 18px rgba(255, 23, 68, 0.8); }
+.admin-gate.denied .gate-msg { color: #ff5370 !important; font-size: 20px; font-weight: 800; letter-spacing: 4px; text-shadow: 0 0 10px rgba(255, 23, 68, 0.9); animation: ad-flicker 0.9s steps(2) 2; }
+.admin-gate.shake { animation: ad-shake 0.45s cubic-bezier(.36, .07, .19, .97); }
+.admin-gate.granted { border-color: #b2ff59; box-shadow: 0 0 30px rgba(178, 255, 89, 0.6); }
+.admin-gate.granted .gate-ring { border-color: #b2ff59; box-shadow: 0 0 24px rgba(178, 255, 89, 0.9); }
+.admin-gate.granted .gate-msg { color: #b2ff59 !important; font-size: 20px; font-weight: 800; letter-spacing: 4px; text-shadow: 0 0 10px rgba(178, 255, 89, 0.9); }
+@keyframes ad-shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(5px); } 30%, 50%, 70% { transform: translateX(-10px); } 40%, 60% { transform: translateX(10px); } }
+@keyframes ad-flicker { 50% { opacity: 0.35; } }
+
+/* ---------- 手機（窄畫面）---------- */
+@media (max-width: 520px) {
+  #panel[data-kind="admin"] .card.wide { padding: 0 12px 14px; }
+  #panel[data-kind="admin"] #panel-title { margin: 0 -12px 10px; padding: 12px 48px 10px; font-size: 15px; letter-spacing: 1.5px; }
+  #panel[data-kind="admin"] .admin-tabs { top: 44px; padding: 6px; gap: 4px; }
+  #panel[data-kind="admin"] .admin-tabs button { padding: 5px 7px; font-size: 11px; letter-spacing: 0.5px; }
+  #panel[data-kind="admin"] .admin-sec { padding: 10px; }
+  #panel[data-kind="admin"] .admin-cur-name { flex: 1 1 100%; }
+  #panel[data-kind="admin"] .cards { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  #panel[data-kind="admin"] .admin-pet-top { top: 128px; }
+  .gate-ring { width: 70px; height: 70px; }
+  #panel[data-kind="admin"] .gate-title { font-size: 17px; letter-spacing: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #panel[data-kind="admin"] .card.wide, .admin-gate::before, .gate-ring::after { animation: none; }
+}
+
+/* 卡仔名：其他 CSS 係深綠色，喺深色底睇唔到 */
+#panel[data-kind="admin"] .card-animal b, #panel[data-kind="admin"] .admin-pick b, #panel[data-kind="admin"] .admin-cur-name b { color: var(--ad-ink); }
+#panel[data-kind="admin"] .admin-pick small { color: var(--ad-dim); }
+#panel[data-kind="admin"] .admin-cur-val.off { color: #ff5370; border-color: rgba(255, 83, 112, 0.45); text-shadow: 0 0 6px rgba(255, 83, 112, 0.6); }

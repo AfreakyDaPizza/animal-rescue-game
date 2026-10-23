@@ -39,7 +39,8 @@ No time to reach the beach? The button behind the **golden rhino statue** (near 
 | 1 – 0 | Pick from the hotbar |
 | I | Index |
 | P | My Stats |
-| Q | Quests |
+| J | Quests |
+| Q | 🔐 Control Panel (needs the secret password) |
 | B | 🐾 Plot Pets box |
 | T | ⏱️ Machine Timers |
 | H | Hide or show pets |
