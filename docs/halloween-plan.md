@@ -244,3 +244,27 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
 - **Numbers:** `TOWER_*` in balance.js — enemies on floor N = 3 + 0.8 × N (max 18, 8 at once); HP × (1 + 0.15 × (N − 1)); speed × (1 + 0.025 × (N − 1)) up to ×1.6; corrupted share 15% + 3% per floor (max 50%); mini-boss HP 5,000 (King) / 6,000 (Giant), +35% each time.
 - **Control Panel:** 🌍 Teleport → 🗼 Witch Tower: Easy / Medium / Hard, and "⏩ Jump to floor N" (no Witch / World 2 lock needed).
 - **Test in the console:** `game.tower.enter('hard', 1)`, `game.tower.floor(10)`, `game.tower.clear()`, `game.tower.god = true`, `game.tower.ko()`, `game.tower.leave()`, `game.tower.lift()`, `game.tower.spawn('brute')`, `game.tower.lineup()` (all zombie kinds in a row, for photos), `game.tower.state`.
+
+## ✅ Built: 🧙‍♀️ Witch makeover + 🌀 gate portal + 🌳 Skill Tree + 🛒 Castle Shop (Issue #14, 2026-10-23)
+- **🧙‍♀️ New Witch** (the kid: "The witch looks too ugly"): a cute-spooky blocky witch with a big bent pointy hat (gold buckle, stars, a moon, a star on the tip), long purple hair that sways, big sparkly eyes, a cheeky open smile, blush and freckles, a two-layer robe with a cape and high collar, belt pouches and a potion, striped stockings, curly boots, a glowing crystal staff, a floating spellbook that turns its own pages, and sparkles.
+  - She stirs the cauldron, then waves, then laughs and bounces ("hehehe!"). When you talk to her she waves and laughs. Same place, same E to talk.
+- **🌀 The castle's front gate is the portal home** (the kid: "The castle door at the front should be the portal"): a swirling purple portal fills the gate arch. Walk OUT of the courtyard through the gate (or stand in the gate and press E) → back to the Halloween World. Walking IN from the landing still lets you into the castle. The old portal in the courtyard is gone. (The portal on the first lava island is still there.)
+- **🌳 The Witch's Skill Tree** (next to the Witch, west side): a glowing rune tree with a gem for each skill (brighter = higher level). Press E → skill tree panel (nodes, branches, levels). Spend **☠️ Skele Tokens** (`state.skeleTokens`). A skill under another one is 🔒 locked until the one below it has a level. Numbers in `src/data/skills.js`:
+
+  | Branch | Skill | Each level | Max | Costs |
+  |---|---|---|---|---|
+  | ❤️ Survival | Max Hearts | +1 ❤️ in the tower | 5 | 10, 25, 50, 90, 150 |
+  | ❤️ Survival | Heart Regen (needs Max Hearts 1) | hearts come back 20% faster | 5 | 20, 40, 75, 125, 200 |
+  | ❤️ Survival | Starting Shield (needs Max Hearts 2) | +1 🛡️ that blocks a hit, every tower run | 3 | 40, 90, 160 |
+  | 💥 Power | Spell Power | +10% weapon damage | 5 | 10, 25, 50, 90, 150 |
+  | 💥 Power | Lucky Crit (needs Spell Power 1) | +5% chance of a ×1.5 crit | 5 | 20, 40, 75, 125, 200 |
+  | 💥 Power | Quick Hands (needs Spell Power 1) | reload 12% faster | 5 | 20, 40, 75, 125, 200 |
+  | 🍀 Fortune | Loot Luck | +10% tower bag rewards | 5 | 10, 25, 50, 90, 150 |
+  | 🍀 Fortune | Treat Magnet (needs Loot Luck 1) | +15% Candy Corn and Souls from the tower | 5 | 20, 40, 75, 125, 200 |
+  | 🍀 Fortune | Swift Boots (needs Loot Luck 1) | run 5% faster in fights (tower + boss hall) | 5 | 20, 40, 75, 125, 200 |
+  - Saved as `state.skills = { id: level }`. Code: `src/skillTree.js` → `window.__skills = { level(id), mult(id), fightSpeed(x, z) }` (also `skillLevel`, `skillMult`, `fightSpeed` exports). `mult` is a multiplier (1 = nothing) except `'crit'` (= chance 0–0.25) and `'shield'` (= number of shields).
+  - Hooked in: `src/weapons.js` (damage, crit, reload), `src/witchTower.js` (hearts, regen, shield, loot, candy/souls), `src/player.js` (Swift Boots).
+- **🛒 Witch Castle Shop** (east side of the courtyard): a witchy stall with a striped awning, a witch-hat roof, a little ghost shopkeeper in a top hat, a spinning 😈 Demonic Ranger doll and a floating 👹 boss mask. Press E → shop panel with 3D pictures of every skin. Prices in `src/data/castleShop.js` (☠️ Skele Tokens):
+  - 👹 Demonic Boss Skin **900** · 🦹 Meteoric Boss Skin **600** (then press E at any biome Boss, like before)
+  - 😈 Demonic Ranger **500** · the normal Skin Shop ranger skins = their 🎟️ price × 3 (Ninja 24 … Galaxy Explorer 600). Owned skins have a "Wear" button. (🌠 Cosmic Meteor Ranger stays in the ☄️ Meteoric Shop.)
+- Test in the console: `game.hell.openSkills()`, `game.hell.openShop()`, `game.hell.witch.pose('wave' | 'laugh' | 'stir')`, `__skills.mult('damage')`.

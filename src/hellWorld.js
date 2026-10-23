@@ -8,6 +8,8 @@
 // - 🚩 Checkpoint 0–5：跌落熔岩 → 火燒特效 + 返去上一個 Checkpoint（唔扣嘢）
 // - 🏰 Witch Castle：庭園、🧙‍♀️ 女巫（大鍋 + 黑貓 + 對白泡泡）、🗼 Witch Tower（發光嘅門）
 //   城堡／塔嘅樣喺 witchCastle.js（Issue #12 重做）；呢度淨係女巫、傳送門、發光小路同玩法
+// - Issue #14：女巫重做（buildWitch）、🌀 城堡正門 = 返 Halloween World 嘅傳送門（舊庭園傳送門刪咗）、
+//   🌳 Skill Tree（skillTree.js）同 🛒 Castle Shop（castleShop.js）攤位
 //
 // main.js 用法：
 //   const hell = await buildHell(scene, progress, { place, popup, announce, play, openWitch, goBack })
@@ -21,17 +23,21 @@
 //   未有就彈「🗼 The Witch Tower — coming next!」
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addPlatform, platforms, addCollider, bakeStatic } from './world.js';
 import { makeSign, makeLabel, THEMES } from './signs.js';
 import { state, save } from './state.js';
 import { extraPanels } from './hud.js';
 import { M, GLOW, add, box, cyl, cone, ball, canvasTex, seeded, glowTex, lightPool, halo, tiledBox } from './halloweenArt.js';
 import { buildWitchCastle } from './witchCastle.js'; // 🏰 Witch Castle 嘅樣（Issue #12）
-import { B, S, pivot, bigEyes, smile, cone as kCone, cyl as kCyl, GLOW as KGLOW } from './echoPetModels.js';
+import { B, S, V as V3, pivot, bigEyes, smile, blinkAt, cached as kCached, add as kAdd, tube as kTube, torus as kTorus, cone as kCone, cyl as kCyl, GLOW as KGLOW } from './echoPetModels.js';
 import {
   HELL, LAVA_Y, LAVA_KILL, HELL_START, HELL_PORTAL, HELL_ROCKS, HELL_CHECKPOINTS, HELL_LAST_CP, rockAt, inHell,
-  CASTLE_TOP, CASTLE_ISLAND, CASTLE_LANDING, COURTYARD, WITCH, CAULDRON, WITCH_CAT, TOWER, TOWER_DOOR, CASTLE_PORTAL,
+  CASTLE_TOP, CASTLE_ISLAND, CASTLE_LANDING, COURTYARD, WITCH, CAULDRON, WITCH_CAT, TOWER, TOWER_DOOR, CASTLE_PORTAL, CASTLE_GATE_Z,
+  SKILL_TREE, CASTLE_SHOP,
 } from './hellShape.js';
+import { buildSkillTreeStall, createSkillTreePanel } from './skillTree.js'; // 🌳 Issue #14
+import { buildCastleShopStall, createCastleShopPanel } from './castleShop.js'; // 🛒 Issue #14
 
 const PI = Math.PI;
 const HX = HELL.x;
@@ -223,67 +229,342 @@ function jaggedCone(r, h, sides, seed) {
   return g;
 }
 
-// ======================== 🧙‍♀️ 女巫（方塊風、可愛少少恐怖）========================
+// ======================== 🧙‍♀️ 女巫（Issue #14 重做：「The witch looks too ugly」）========================
+// 可愛少少恐怖嘅方塊風女巫：大尖帽（金扣 + 星星 + 月亮）、長長紫色頭髮（會飄）、大眼 + 古惑笑、
+// 兩層長袍 + 斗篷 + 腰包、間條襪 + 彎頭靴、發光魔杖、浮住嘅魔法書、閃粉
+// 動畫：攪大鍋（平時）→ 揮手 → 笑到彈下彈下（hehehe!）；傾偈嗰陣一路揮手一路笑
+function starGeo(r = 0.12, depth = 0.04) {
+  return kCached(`wstar${r}|${depth}`, () => {
+    const s = new THREE.Shape();
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * PI * 2 + PI / 2;
+      const rr = i % 2 ? r * 0.45 : r;
+      if (i === 0) s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      else s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: depth * 0.3, bevelSize: depth * 0.3, bevelSegments: 1 });
+    geo.translate(0, 0, -depth / 2);
+    return geo;
+  });
+}
+// 減 draw call：每個 pivot（Group）入面唔郁嘅 mesh 按材質焊埋（pivot 照郁）；userData.keep / 收埋咗嘅唔焊
+function mergePivots(root) {
+  const pivots = [];
+  root.traverse((o) => { if (!o.isMesh && !o.isPoints && !o.isSprite) pivots.push(o); });
+  for (const p of pivots) {
+    const found = [];
+    const walk = (o, m) => {
+      for (const c of o.children) {
+        if (!c.isMesh || c.userData.keep || !c.visible) continue;
+        c.updateMatrix();
+        const cm = m.clone().multiply(c.matrix);
+        found.push([c, cm]);
+        walk(c, cm);
+      }
+    };
+    walk(p, new THREE.Matrix4());
+    if (found.length < 2) continue;
+    const buckets = new Map();
+    for (const [c, m] of found) {
+      const key = `${c.material.uuid}|${c.castShadow}`;
+      if (!buckets.has(key)) buckets.set(key, { material: c.material, castShadow: c.castShadow, list: [] });
+      const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
+      for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+      g.clearGroups();
+      g.applyMatrix4(m);
+      buckets.get(key).list.push(g);
+    }
+    if (!buckets.size || [...buckets.values()].some((b) => b.list.some((g) => !g.attributes.uv))) continue; // 安全：冇 uv 嘅唔理
+    for (const [c] of found) c.removeFromParent();
+    for (const { material, castShadow, list } of buckets.values()) {
+      const mesh = new THREE.Mesh(list.length === 1 ? list[0] : mergeGeometries(list), material);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = true;
+      p.add(mesh);
+    }
+  }
+}
 function buildWitch(parent) {
   const g = pivot(parent, WITCH.x, CASTLE_TOP, WITCH.z);
   g.rotation.y = PI; // 面向 +z（模型面向 -z）
-  const robe = 0x4a148c, robeD = 0x2a0a52, skin = 0xb9f6ca, hair = 0x7e57c2;
-  const body = pivot(g, 0, 0, 0);
-  // 長袍（上窄下闊）
-  kCyl(body, 0.42, 0.72, 1.3, robe, 0, 0.65, 0, { roughness: 0.6 }, 8);
-  B(body, 0.78, 0.12, 0.6, 0xffb300, 0, 1.0, 0, KGLOW(0xffb300, 0.3), { r: 0.3 }); // 金色腰帶
-  B(body, 0.22, 0.2, 0.06, 0xffe082, 0, 1.0, -0.31, KGLOW(0xffe082, 0.6), { r: 0.2 }); // 帶扣
-  for (const s of [-1, 1]) S(body, 0.16, 0.08, 0.16, 0x1a0a2e, s * 0.2, 0.05, -0.32, {}, { lo: true }); // 尖頭鞋
-  // 頭
-  const head = pivot(body, 0, 1.62, 0);
-  B(head, 0.62, 0.56, 0.56, skin, 0, 0, 0, {}, { line: 0.04, r: 0.3 });
-  bigEyes(head, 0.14, 0.04, -0.27, 0.1, 0xff9100, { glow: true, glowI: 0.8 });
-  smile(head, 0, -0.14, -0.28, 0.09, 0x2a1220);
-  for (const s of [-1, 1]) S(head, 0.06, 0.04, 0.02, 0xff80ab, s * 0.21, -0.1, -0.28, {}, { lo: true }); // 面紅紅
-  const nose = kCone(head, 0.05, 0.16, skin, 0, -0.02, -0.34, {}, 6);
-  nose.rotation.x = -PI / 2;
-  S(head, 0.03, 0.03, 0.03, 0x4caf50, 0.04, -0.05, -0.4, {}, { lo: true }); // 鼻上粒疣（可愛版）
-  // 頭髮（兩邊垂落）
-  for (const s of [-1, 1]) B(head, 0.14, 0.62, 0.5, hair, s * 0.34, -0.12, 0.04, {}, { r: 0.4 });
-  B(head, 0.7, 0.18, 0.2, hair, 0, 0.22, 0.24, {}, { r: 0.4 });
-  // 尖帽（彎少少）
-  const hat = pivot(head, 0, 0.3, 0);
-  kCyl(hat, 0.62, 0.62, 0.05, robeD, 0, 0, 0, {}, 20);
-  kCyl(hat, 0.36, 0.38, 0.14, 0xff6d00, 0, 0.08, 0, KGLOW(0xff6d00, 0.5), 16); // 橙色帽帶
-  const tip1 = pivot(hat, 0, 0.1, 0);
-  kCone(tip1, 0.36, 0.7, robeD, 0, 0.35, 0, {}, 12);
-  const tip2 = pivot(tip1, 0, 0.62, 0);
-  tip2.rotation.x = 0.5;
-  kCone(tip2, 0.16, 0.42, robeD, 0, 0.16, 0, {}, 10);
-  S(tip2, 0.06, 0.06, 0.06, 0xffeb3b, 0, 0.38, 0, KGLOW(0xffeb3b, 1.5), { lo: true }); // 帽尖星星
-  // 手（一隻揸住攪拌棍）
-  const armL = pivot(body, -0.48, 1.25, 0);
-  B(armL, 0.2, 0.62, 0.2, robe, 0, -0.26, 0, {}, { r: 0.4 });
-  S(armL, 0.1, 0.1, 0.1, skin, 0, -0.6, 0, {}, { lo: true });
-  const armR = pivot(body, 0.48, 1.25, 0);
-  B(armR, 0.2, 0.62, 0.2, robe, 0, -0.26, 0, {}, { r: 0.4 });
-  S(armR, 0.1, 0.1, 0.1, skin, 0, -0.6, 0, {}, { lo: true });
-  armR.rotation.x = -0.9;
-  const stick = kCyl(armR, 0.035, 0.035, 1.5, 0x5d4037, 0, -0.75, -0.25, {}, 6);
-  stick.rotation.x = 0.5;
-  // 掃把（挨住後面）
-  const broom = pivot(g, 0.85, 0, 0.45);
-  broom.rotation.z = -0.25;
-  kCyl(broom, 0.04, 0.04, 2.0, 0x6d4c41, 0, 1.0, 0, {}, 6);
-  kCone(broom, 0.22, 0.6, 0xc9a24a, 0, 0.25, 0, {}, 10).rotation.x = PI;
-  // 對白泡泡
+  const robe = 0x5b1f9e, robeD = 0x2e0f57, robeL = 0x8e44d8, skin = 0x9ff0b4, hair = 0x7c4dff, hairD = 0x5530b8;
+  const hatC = 0x24123f, gold = 0xffc94a, boot = 0x1c1030;
+  const W = pivot(g, 0, 0, 0); // 成隻（笑嗰陣彈）
+  W.scale.setScalar(1.12);
+  // ---- 👢 彎頭靴 + 間條襪 ----
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const leg = pivot(W, s * 0.2, 0, 0);
+    legs.push(leg);
+    B(leg, 0.26, 0.24, 0.42, boot, 0, 0.12, -0.06, {}, { line: 0.05, r: 0.35 });
+    B(leg, 0.28, 0.08, 0.3, 0x3d2466, 0, 0.29, 0.02, {}, { r: 0.3 }); // 靴口
+    const curl = kTorus(leg, 0.09, 0.035, boot, 0, 0.2, -0.32, {}, PI * 1.4);
+    curl.rotation.set(0, PI / 2, PI * 0.15); // 彎彎靴頭
+    S(leg, 0.04, 0.04, 0.04, gold, 0, 0.3, -0.38, KGLOW(gold, 0.8), { lo: true }); // 靴頭金波
+    for (let i = 0; i < 4; i++) kCyl(leg, 0.095, 0.095, 0.075, i % 2 ? 0x1a1024 : 0x76ff03, 0, 0.37 + i * 0.075, 0.02, i % 2 ? {} : KGLOW(0x76ff03, 0.25), 10); // 間條襪
+  }
+  // ---- 👗 兩層長袍 ----
+  const body = pivot(W, 0, 0, 0);
+  kCyl(body, 0.42, 0.66, 0.75, robeD, 0, 0.88, 0, { roughness: 0.7 }, 12); // 底層
+  for (let i = 0; i < 12; i++) { // 底層鋸齒裙邊
+    const a = (i / 12) * PI * 2;
+    kCone(body, 0.13, 0.22, robeD, Math.cos(a) * 0.6, 0.47, Math.sin(a) * 0.6, {}, 4).rotation.x = PI;
+  }
+  kCyl(body, 0.4, 0.58, 0.5, robe, 0, 1.08, 0, { roughness: 0.6 }, 12); // 上層（短啲）
+  for (let i = 0; i < 10; i++) { // 上層彎彎邊
+    const a = (i / 10) * PI * 2 + 0.3;
+    S(body, 0.16, 0.08, 0.16, robe, Math.cos(a) * 0.55, 0.84, Math.sin(a) * 0.55, {}, { lo: true });
+  }
+  B(body, 0.74, 0.5, 0.56, robe, 0, 1.5, 0, {}, { line: 0.04, r: 0.35 }); // 上身
+  B(body, 0.3, 0.42, 0.04, robeL, 0, 1.52, -0.29, {}, { r: 0.3 }); // 心口
+  for (let i = 0; i < 3; i++) S(body, 0.035, 0.035, 0.02, gold, 0, 1.64 - i * 0.11, -0.32, KGLOW(gold, 0.6), { lo: true }); // 鈕
+  // 腰帶 + 金扣 + 腰包 + 細藥水瓶
+  B(body, 0.8, 0.12, 0.62, 0x3e2418, 0, 1.25, 0, {}, { r: 0.3 });
+  B(body, 0.2, 0.17, 0.05, gold, 0, 1.25, -0.32, KGLOW(gold, 0.5), { r: 0.2 });
+  B(body, 0.1, 0.08, 0.06, 0x3e2418, 0, 1.25, -0.33, {}, { r: 0.2 });
+  for (const s of [-1, 1]) {
+    B(body, 0.2, 0.22, 0.14, 0x6d4430, s * 0.36, 1.12, -0.2, {}, { line: 0.05, r: 0.3 }); // 腰包
+    B(body, 0.21, 0.08, 0.15, 0x4e2f20, s * 0.36, 1.21, -0.2, {}, { r: 0.3 }); // 包蓋
+    S(body, 0.025, 0.025, 0.02, gold, s * 0.36, 1.17, -0.28, {}, { lo: true });
+  }
+  const vial = pivot(body, 0.15, 1.15, -0.33);
+  S(vial, 0.06, 0.07, 0.06, 0xff4fd8, 0, -0.05, 0, KGLOW(0xff4fd8, 1.2), { lo: true });
+  kCyl(vial, 0.02, 0.02, 0.05, 0xd7ccc8, 0, 0.03, 0, {}, 6);
+  // ---- 🦇 斗篷（後面，有高領）----
+  const cape = pivot(body, 0, 1.72, 0.22);
+  const capeIn = 0xc2185b;
+  const capePieces = [];
+  for (let i = 0; i < 3; i++) {
+    const seg = pivot(i ? capePieces[i - 1] : cape, 0, i ? -0.48 : 0, 0);
+    B(seg, 0.95 + i * 0.1, 0.5, 0.05, robeD, 0, -0.24, 0.03, {}, { r: 0.3 });
+    B(seg, 0.9 + i * 0.1, 0.48, 0.02, capeIn, 0, -0.24, -0.01, KGLOW(capeIn, 0.15), { r: 0.3 });
+    capePieces.push(seg);
+  }
+  for (let i = 0; i < 5; i++) kCone(capePieces[2], 0.11, 0.2, robeD, -0.46 + i * 0.23, -0.55, 0.03, {}, 4).rotation.x = PI; // 斗篷鋸齒
+  for (const s of [-1, 1]) { // 高領（尖尖）
+    const c = kCone(body, 0.15, 0.42, robeD, s * 0.3, 1.88, 0.12, {}, 4);
+    c.rotation.set(-0.3, 0, -s * 0.45);
+  }
+  // ---- 🙋 手（大袖）----
+  const arm = (s) => {
+    const sh = pivot(body, s * 0.45, 1.66, 0);
+    B(sh, 0.2, 0.42, 0.2, robe, 0, -0.2, 0, {}, { r: 0.4 });
+    const fore = pivot(sh, 0, -0.4, 0);
+    kCyl(fore, 0.1, 0.17, 0.32, robe, 0, -0.12, 0, {}, 10);
+    kCyl(fore, 0.17, 0.19, 0.05, robeL, 0, -0.28, 0, {}, 10); // 袖口
+    const hand = pivot(fore, 0, -0.36, 0);
+    S(hand, 0.1, 0.1, 0.1, skin, 0, 0, 0, {}, { lo: true });
+    return { sh, fore, hand };
+  };
+  const armL = arm(-1), armR = arm(1);
+  // 右手：攪大鍋嘅大木羹
+  const spoon = pivot(armR.hand, 0, 0, 0);
+  kCyl(spoon, 0.03, 0.03, 1.5, 0x6d4c41, 0, -0.55, 0, {}, 6);
+  S(spoon, 0.12, 0.05, 0.16, 0x6d4c41, 0, -1.3, 0, {}, { lo: true });
+  // 左手邊：🔮 發光魔杖（企喺地，左手揸住；頂嘅水晶喺帽邊外面，唔會遮塊面）
+  const staffMat = new THREE.MeshStandardMaterial({ color: 0xe1bee7, emissive: 0xd500f9, emissiveIntensity: 2.4, roughness: 0.15, flatShading: true });
+  const staff = pivot(body, -1.02, 0, -0.12);
+  kTube(staff, [V3(0, 0.02, 0), V3(0.04, 0.8, 0.02), V3(-0.03, 1.6, 0), V3(0.02, 2.45, 0), V3(-0.14, 2.68, 0), V3(-0.1, 2.86, 0)], 0.045, 0x5d4037, {}, 24);
+  const orb = kAdd(staff, new THREE.OctahedronGeometry(0.17), 0, staffMat, 0, 2.7, 0);
+  orb.scale.y = 1.4;
+  orb.userData.keep = true;
+  halo(staff, 0, 2.7, 0, 0.7, 0xd500f9, 0.5);
+  for (let i = 0; i < 3; i++) S(staff, 0.035, 0.035, 0.035, 0x76ff03, Math.cos(i * 2.1) * 0.13, 2.45, Math.sin(i * 2.1) * 0.13, KGLOW(0x76ff03, 1.5), { lo: true });
+  // ---- 🙂 頭 ----
+  const neck = pivot(body, 0, 1.78, 0);
+  const head = pivot(neck, 0, 0.36, 0);
+  B(head, 0.78, 0.7, 0.68, skin, 0, 0, 0, KGLOW(0x2e7d32, 0.18), { line: 0.04, r: 0.34 });
+  const eyes = bigEyes(head, 0.17, 0.02, -0.33, 0.13, 0xb388ff, { glow: true, glowI: 0.9, tilt: 0.2 });
+  eyes.forEach((e, i) => { // 眼睫毛（外眼角）
+    const s = i ? 1 : -1;
+    for (let k = 0; k < 2; k++) {
+      const l = B(e, 0.05, 0.015, 0.015, 0x1a0a2e, s * (0.13 + k * 0.02), 0.08 + k * 0.05, -0.02, {}, { r: 0.4 });
+      l.rotation.z = s * (0.5 + k * 0.4);
+    }
+  });
+  const brows = [-1, 1].map((s) => {
+    const b = B(head, 0.16, 0.035, 0.03, hairD, s * 0.17, 0.2, -0.34, {}, { r: 0.4 });
+    b.rotation.z = s * -0.2;
+    b.userData.keep = true;
+    return b;
+  });
+  const mouth = pivot(head, 0.03, -0.17, -0.345);
+  mouth.rotation.z = -0.15; // 古惑笑：一邊高啲
+  smile(mouth, 0, 0, 0, 0.1, 0x2a1220, {}, 2.4);
+  const openMouth = S(mouth, 0.08, 0.05, 0.02, 0x5a1030, 0, -0.04, 0, {}, { lo: true });
+  openMouth.userData.keep = true;
+  S(mouth, 0.03, 0.02, 0.012, 0xffffff, -0.03, -0.01, -0.01, {}, { lo: true }); // 一隻尖牙仔
+  for (const s of [-1, 1]) {
+    S(head, 0.08, 0.045, 0.02, 0xff80ab, s * 0.26, -0.1, -0.335, KGLOW(0xff80ab, 0.25), { lo: true }); // 面紅紅
+    for (let k = 0; k < 2; k++) S(head, 0.012, 0.012, 0.01, 0x4caf50, s * (0.22 + k * 0.05), -0.04 - k * 0.025, -0.345, {}, { lo: true }); // 雀斑
+  }
+  const nose = kCone(head, 0.05, 0.15, skin, 0, -0.06, -0.38, {}, 6);
+  nose.rotation.x = -PI / 2 - 0.25;
+  // ---- 💜 長頭髮（後面一條條會飄）----
+  B(head, 0.84, 0.24, 0.72, hair, 0, 0.27, 0.02, {}, { r: 0.4 }); // 頭頂
+  for (let i = 0; i < 3; i++) { // 瀏海
+    const f = B(head, 0.28, 0.16, 0.08, hair, -0.26 + i * 0.26, 0.24, -0.34, {}, { r: 0.45 });
+    f.rotation.z = (i - 1) * -0.25;
+  }
+  for (const s of [-1, 1]) B(head, 0.14, 0.5, 0.5, hair, s * 0.42, -0.1, 0.06, {}, { r: 0.45 }); // 兩邊
+  const locks = [];
+  for (let i = 0; i < 5; i++) {
+    let p = pivot(head, -0.32 + i * 0.16, 0.1, 0.36);
+    const chain = [p];
+    for (let k = 0; k < 4; k++) {
+      B(p, 0.17 - k * 0.012, 0.36, 0.12, k % 2 ? hairD : hair, 0, -0.17, 0, {}, { r: 0.45 });
+      if (k < 3) {
+        p = pivot(p, 0, -0.33, 0);
+        chain.push(p);
+      }
+    }
+    S(p, 0.08, 0.08, 0.08, hair, 0, -0.36, -0.04, {}, { lo: true }); // 髮尾捲
+    locks.push({ chain, ph: i * 0.7 });
+  }
+  for (const s of [-1, 1]) { // 前面兩條長辮
+    let p = pivot(head, s * 0.4, -0.3, -0.12);
+    const chain = [p];
+    for (let k = 0; k < 3; k++) {
+      B(p, 0.12, 0.3, 0.12, k % 2 ? hairD : hair, 0, -0.14, 0, {}, { r: 0.45 });
+      if (k < 2) {
+        p = pivot(p, 0, -0.28, 0);
+        chain.push(p);
+      }
+    }
+    S(p, 0.08, 0.06, 0.08, 0x76ff03, 0, -0.3, 0, KGLOW(0x76ff03, 1), { lo: true }); // 髮夾
+    locks.push({ chain, ph: s * 1.3, front: true });
+  }
+  // ---- 🎩 大尖帽（金扣 + 星星 + 月亮，帽尖彎）----
+  const hat = pivot(head, 0, 0.36, 0);
+  hat.rotation.set(0.05, 0, 0.08);
+  kCyl(hat, 0.88, 0.92, 0.06, hatC, 0, 0, 0, {}, 28);
+  kCyl(hat, 0.48, 0.52, 0.2, 0x7b1fa2, 0, 0.13, 0, KGLOW(0x7b1fa2, 0.2), 20); // 帽帶
+  const buckle = pivot(hat, 0, 0.13, -0.5);
+  buckle.rotation.x = 0.08;
+  for (const [w, h, x, y] of [[0.26, 0.05, 0, 0.09], [0.26, 0.05, 0, -0.09], [0.05, 0.22, -0.11, 0], [0.05, 0.22, 0.11, 0]]) B(buckle, w, h, 0.04, gold, x, y, 0, KGLOW(gold, 0.7), { r: 0.3 });
+  const t1 = pivot(hat, 0, 0.22, 0);
+  kCone(t1, 0.48, 0.85, hatC, 0, 0.42, 0, {}, 18);
+  const t2 = pivot(t1, 0, 0.72, 0);
+  t2.rotation.x = 0.35;
+  kCone(t2, 0.26, 0.6, hatC, 0, 0.22, 0, {}, 14);
+  const t3 = pivot(t2, 0, 0.42, 0);
+  t3.rotation.x = 0.7;
+  kCone(t3, 0.13, 0.4, hatC, 0, 0.16, 0, {}, 10);
+  const tipStar = pivot(t3, 0, 0.42, 0);
+  kAdd(tipStar, starGeo(0.14, 0.05), 0xffeb3b, KGLOW(0xffeb3b, 2.2));
+  for (const [x, y, z, r, rz] of [[-0.3, 0.4, -0.28, 0.08, 0.3], [0.22, 0.65, -0.24, 0.06, -0.2], [0.3, 0.25, -0.36, 0.05, 0.5], [-0.12, 0.85, -0.16, 0.05, 0]]) {
+    const st = kAdd(t1, starGeo(r, 0.02), 0xffe082, KGLOW(0xffd54f, 1.8), x, y, z);
+    st.rotation.set(-0.45, 0, rz);
+  }
+  const moon = kTorus(t1, 0.09, 0.03, 0xfff59d, -0.05, 0.2, -0.42, KGLOW(0xfff59d, 1.6), PI * 1.3);
+  moon.rotation.set(-0.4, 0, 0.6);
+  // ---- 📖 浮住嘅魔法書（右邊）----
+  const book = pivot(W, 0.95, 1.55, -0.25);
+  const pageGlow = new THREE.MeshStandardMaterial({ color: 0xf8f0ff, emissive: 0xb388ff, emissiveIntensity: 0.9, roughness: 0.6 });
+  for (const s of [-1, 1]) {
+    const c = pivot(book, 0, 0, 0);
+    c.rotation.z = s * -0.18;
+    B(c, 0.34, 0.03, 0.46, 0x6a1b9a, s * 0.17, 0, 0, {}, { r: 0.3 });
+    kAdd(c, kCached('wpage', () => new THREE.BoxGeometry(0.3, 0.04, 0.42)), 0, pageGlow, s * 0.16, 0.03, 0);
+    S(c, 0.04, 0.01, 0.04, gold, s * 0.3, -0.02, 0, KGLOW(gold, 0.6), { lo: true });
+  }
+  const flap = pivot(book, 0, 0.04, 0); // 自己揭嘅一頁
+  kAdd(flap, kCached('wflap', () => new THREE.BoxGeometry(0.3, 0.01, 0.4).translate(0.15, 0, 0)), 0, pageGlow);
+  const runeM = new THREE.MeshBasicMaterial({ color: 0xea80fc, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const runes = [];
+  for (let i = 0; i < 4; i++) runes.push(kAdd(book, starGeo(0.035, 0.01), 0, runeM, 0, 0.1, 0));
+  for (const r of runes) r.userData.keep = true;
+  halo(book, 0, 0.1, 0, 0.8, 0xb388ff, 0.35);
+  // ---- ✨ 閃粉（Points，圍住佢升上去）----
+  const SP = 26;
+  const spGeo = new THREE.BufferGeometry();
+  spGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SP * 3), 3));
+  const sparkles = new THREE.Points(spGeo, new THREE.PointsMaterial({ color: 0xf3c6ff, size: 0.16, map: glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sparkles.frustumCulled = false;
+  W.add(sparkles);
+  const spRand = seeded(1414);
+  const spBase = Array.from({ length: SP }, () => [spRand() * PI * 2, 0.6 + spRand() * 0.6, spRand(), 0.4 + spRand() * 0.5]);
+  mergePivots(g); // 190 → 少好多 draw call
+  // ---- 💬 對白泡泡 ----
   const bubble = makeLabel([{ text: 'Psst! Over here! 🧙‍♀️', color: '#ffe082' }], 1.1);
-  bubble.position.set(0, 3.2, 0);
+  bubble.position.set(0, 4.6, 0);
   g.add(bubble);
+  // ---- 動畫 ----
+  const lerp = (a, b, k) => a + (b - a) * k;
+  let mode = 'stir', modeT = 0, wv = 0, lg = 0, st = 1;
   return {
     g, bubble,
-    animate(t, talking) {
-      body.position.y = Math.abs(Math.sin(t * 1.6)) * 0.05;
-      head.rotation.z = Math.sin(t * 1.1) * 0.08;
-      hat.rotation.z = Math.sin(t * 1.3 + 1) * 0.06;
-      armR.rotation.z = Math.sin(t * 2.4) * 0.35; // 攪大鍋
-      armL.rotation.x = talking ? -1.2 + Math.sin(t * 6) * 0.3 : Math.sin(t * 0.9) * 0.1;
-      bubble.position.y = 3.2 + Math.sin(t * 2) * 0.08;
+    // 測試／影相：witch.pose('wave' | 'laugh' | 'stir')
+    pose(m) { mode = m; modeT = -30; },
+    animate(t, talking, dt = 1 / 60) {
+      // 揀動作：平時攪 7 秒 → 揮手 2.5 秒 → 笑 2.5 秒；傾偈嗰陣揮手 + 笑
+      modeT += dt;
+      if (talking) mode = Math.sin(t * 1.4) > 0 ? 'laugh' : 'wave';
+      else if (mode === 'stir' && modeT > 7) { mode = 'wave'; modeT = 0; }
+      else if (mode === 'wave' && modeT > 2.5) { mode = 'laugh'; modeT = 0; }
+      else if (mode === 'laugh' && modeT > 2.5) { mode = 'stir'; modeT = 0; }
+      const k = Math.min(1, dt * 6);
+      wv = lerp(wv, mode === 'wave' ? 1 : 0, k);
+      lg = lerp(lg, mode === 'laugh' ? 1 : 0, k);
+      st = lerp(st, mode === 'stir' ? 1 : 0, k);
+      // 笑：成隻彈、頭向後、口開、帽震
+      W.position.y = Math.abs(Math.sin(t * 1.6)) * 0.03 + Math.abs(Math.sin(t * 11)) * 0.09 * lg;
+      body.rotation.x = -0.12 * lg + Math.sin(t * 1.1) * 0.02;
+      head.rotation.set(-0.25 * lg + 0.05 * st, Math.sin(t * 0.7) * 0.15 * (1 - lg), Math.sin(t * 1.1) * 0.07 + Math.sin(t * 11) * 0.06 * lg);
+      hat.rotation.z = 0.08 + Math.sin(t * 1.3 + 1) * 0.05 + Math.sin(t * 13) * 0.06 * lg;
+      t2.rotation.z = Math.sin(t * 1.7) * 0.1;
+      t3.rotation.z = Math.sin(t * 2.1 + 0.5) * 0.18;
+      tipStar.rotation.y = t * 2;
+      openMouth.scale.set(0.08, 0.05 + 0.05 * lg * (0.6 + Math.abs(Math.sin(t * 11)) * 0.4), 0.02);
+      brows.forEach((b, i) => (b.position.y = 0.2 + 0.04 * lg + (i ? 0.03 * Math.max(0, Math.sin(t * 0.9)) : 0))); // 一邊眉揚起（古惑）
+      const blink = blinkAt(t, 3);
+      for (const e of eyes) e.scale.y = blink * (1 - 0.35 * lg); // 笑到眯埋眼
+      // 右手：攪大鍋（羹仔畫圈）／揮手
+      const sa = t * 2.4;
+      armR.sh.rotation.set(lerp(0.85 + Math.sin(sa) * 0.15, 2.75, wv), 0, lerp(0.2 + Math.cos(sa) * 0.18, 0.3, wv));
+      armR.fore.rotation.set(lerp(0.3, 0.15, wv), 0, lerp(0, Math.sin(t * 10) * 0.6, wv));
+      spoon.rotation.set(-1.15 - Math.sin(sa) * 0.15, 0, 0); // 羹垂直插落鍋
+      spoon.visible = wv < 0.6;
+      // 左手：揸住魔杖；笑嗰陣舉高
+      armL.sh.rotation.set(0.25 + 0.3 * lg, 0, -0.55 - 0.15 * lg);
+      armL.fore.rotation.set(0.45, 0, 0.05);
+      staff.position.y = 0.35 * lg * (0.7 + Math.abs(Math.sin(t * 11)) * 0.3); // 笑嗰陣舉起魔杖
+      staff.rotation.z = Math.sin(t * 1.2) * 0.03;
+      orb.rotation.y = t * 2.5;
+      staffMat.emissiveIntensity = 2.2 + Math.sin(t * 4) * 0.6 + lg * 1.5;
+      // 腳仔踢下踢下（笑嗰陣）
+      legs[0].rotation.x = Math.sin(t * 11) * 0.15 * lg;
+      legs[1].rotation.x = -Math.sin(t * 11) * 0.15 * lg;
+      // 頭髮 + 斗篷飄
+      for (const l of locks) l.chain.forEach((p, i) => {
+        p.rotation.x = (l.front ? 0.05 : 0.18 + i * 0.06) + Math.sin(t * 1.8 + l.ph + i * 0.6) * (0.06 + i * 0.03) + lg * 0.1;
+        p.rotation.z = Math.sin(t * 1.3 + l.ph + i) * 0.05;
+      });
+      capePieces.forEach((p, i) => (p.rotation.x = 0.12 + i * 0.05 + Math.sin(t * 1.6 + i * 0.7) * (0.05 + i * 0.03)));
+      // 📖 魔法書：浮、轉、自己揭頁、符文飛出嚟
+      book.position.set(0.95 + Math.sin(t * 0.6) * 0.06, 1.55 + Math.sin(t * 1.5) * 0.12, -0.25);
+      book.rotation.set(-0.5 + Math.sin(t * 1.1) * 0.08, -0.4 + Math.sin(t * 0.5) * 0.2, 0);
+      const fp = (t * 0.45) % 1;
+      flap.rotation.z = fp < 0.4 ? -(fp / 0.4) * PI * 0.92 + 0.15 : -PI * 0.92 + 0.15;
+      flap.visible = fp < 0.6;
+      runes.forEach((r, i) => {
+        const p = (t * 0.5 + i / runes.length) % 1;
+        r.position.set(Math.sin(i * 2.3 + t) * 0.15 * p, 0.08 + p * 0.7, Math.cos(i * 1.7) * 0.1);
+        r.rotation.set(t + i, t * 2, 0);
+        r.scale.setScalar(p < 0.8 ? 1 : (1 - p) * 5);
+      });
+      // ✨ 閃粉
+      const arr = spGeo.attributes.position.array;
+      spBase.forEach(([a, r, ph, sp], i) => {
+        const p = (t * 0.25 * sp + ph) % 1;
+        const aa = a + t * sp * 0.8;
+        arr[i * 3] = Math.cos(aa) * r;
+        arr[i * 3 + 1] = 0.3 + p * 3.2;
+        arr[i * 3 + 2] = Math.sin(aa) * r;
+      });
+      spGeo.attributes.position.needsUpdate = true;
+      sparkles.material.opacity = 0.6 + Math.sin(t * 5) * 0.25 + lg * 0.2;
+      bubble.position.y = 4.6 + Math.sin(t * 2) * 0.08;
     },
   };
 }
@@ -411,7 +692,8 @@ function ensureDom() {
 // ======================== 起成個 Hell ========================
 export async function buildHell(scene, progress = () => {}, ctx = {}) {
   ensureDom();
-  const { place, popup = () => {}, announce = () => {}, play = () => {}, openWitch = () => {}, closeWitch = () => {}, goBack = () => {} } = ctx;
+  const { place, popup = () => {}, announce = () => {}, play = () => {}, openWitch = () => {}, closeWitch = () => {}, goBack = () => {}, openPanel = () => {} } = ctx;
+  const openSkills = () => openPanel('skills'), openShop = () => openPanel('castleShop');
   extraPanels.witch = ['🧙‍♀️ The Witch', witchHtml, 'E'];
   const root = new THREE.Group(); // 成個 Hell（唔喺 Hell 就收埋）
   scene.add(root);
@@ -658,10 +940,71 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
       m.scale.setScalar(1.1);
       pathStones.push({ m, i });
     });
-    // 城堡嗰邊嘅傳送門
-    buildPortal(root, CASTLE_PORTAL.x, CASTLE_TOP, CASTLE_PORTAL.z, PI / 2, '🌀 Back to Halloween World');
-    for (const s of [-1, 1]) addCollider(CASTLE_PORTAL.x, CASTLE_PORTAL.z + s * 2.4, 0.9);
+    // 🌀 城堡正門 = 傳送門（Issue #14）：閘口入面一塊尖拱形漩渦
+    gateVeil = buildGatePortal(live);
   });
+  let gateVeil = null;
+  // 尖拱形（同閘口一樣：闊 6.8、直邊 5.4、頂 8.8）嘅漩渦 + 外圈光 + 閃粉 + 牌
+  function buildGatePortal(parent) {
+    const w = 6.6, sh = 5.3, h = 8.6;
+    const shp = new THREE.Shape();
+    shp.moveTo(-w / 2, 0);
+    shp.lineTo(w / 2, 0);
+    shp.lineTo(w / 2, sh);
+    shp.quadraticCurveTo(w / 2, sh + (h - sh) * 0.75, 0, h);
+    shp.quadraticCurveTo(-w / 2, sh + (h - sh) * 0.75, -w / 2, sh);
+    shp.closePath();
+    const geo = new THREE.ShapeGeometry(shp, 16);
+    const p = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + w / 2) / w, p.getY(i) / h); // UV 0–1
+    const g = new THREE.Group();
+    g.position.set(CASTLE_PORTAL.x, CASTLE_TOP, CASTLE_PORTAL.z);
+    parent.add(g);
+    const tex1 = swirlTex('#e040fb', '#2a0050');
+    tex1.center.set(0.5, 0.5);
+    const tex2 = swirlTex('#ff9e40', '#6a0080');
+    tex2.center.set(0.5, 0.5);
+    const m1 = new THREE.MeshBasicMaterial({ map: tex1, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+    const m2 = new THREE.MeshBasicMaterial({ map: tex2, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+    add(g, geo, m1, 0, 0.05, 0, false);
+    const v2 = add(g, geo, m2, 0, 0.05, -0.08, false);
+    v2.scale.set(0.96, 0.98, 1);
+    halo(g, 0, 4.2, -0.3, 5.2, 0xd500f9, 0.35);
+    lightPool(g, 0, -1, 4.5, 0xd500f9, 0.4, 0.1);
+    // 閃粉升上去
+    const N = 40;
+    const geoP = new THREE.BufferGeometry();
+    geoP.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+    const pts = new THREE.Points(geoP, new THREE.PointsMaterial({ color: 0xf8bbff, size: 0.22, map: glowTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    pts.frustumCulled = false;
+    g.add(pts);
+    const base = Array.from({ length: N }, () => [(rand() - 0.5) * w * 0.9, rand(), 0.4 + rand() * 0.6]);
+    // 牌：入面（向庭園）同外面（向著陸台）
+    const inSign = makeSign([{ text: '🌀 Back to Halloween World', size: 0.3 }, { text: 'Walk out through the gate · or press E', size: 0.16 }], 4.6, 1.0, THEMES.purple);
+    inSign.position.set(0, 9.6, -0.9);
+    inSign.rotation.y = PI;
+    g.add(inSign);
+    const outSign = makeSign([{ text: '🏰 WITCH CASTLE', size: 0.32 }, { text: 'Walk in! (walk back out = 🌀 home)', size: 0.16 }], 4.4, 1.0, THEMES.purple);
+    outSign.position.set(0, 10.2, 3.9);
+    g.add(outSign);
+    return {
+      update(t, quality) {
+        tex1.rotation = -t * 1.2;
+        tex2.rotation = t * 0.8;
+        m1.opacity = 0.82 + Math.sin(t * 2.2) * 0.1;
+        pts.visible = quality >= 1;
+        if (!pts.visible) return;
+        const a = geoP.attributes.position.array;
+        base.forEach(([x, ph, sp], i) => {
+          const k = (t * 0.25 * sp + ph) % 1;
+          a[i * 3] = x + Math.sin(t * 2 + i) * 0.2;
+          a[i * 3 + 1] = k * 8;
+          a[i * 3 + 2] = -0.3 - Math.sin(k * PI) * 0.4;
+        });
+        geoP.attributes.position.needsUpdate = true;
+      },
+    };
+  }
   const _plane = { g: null };
   function geoPlane() {
     if (!_plane.g) _plane.g = new THREE.PlaneGeometry(2, 2).rotateX(-PI / 2);
@@ -669,8 +1012,18 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
   }
 
   // ---- 🧙‍♀️ 女巫、貓、大鍋 ----
-  let witch = null, cat = null, cauldron = null;
+  let witch = null, cat = null, cauldron = null, skillStall = null, shopStall = null;
+  createSkillTreePanel({ play, popup, announce });
+  createCastleShopPanel({ play, popup, announce, equipRanger: ctx.equipRanger });
   steps.push(() => {
+    // 🌳 Skill Tree（女巫隔籬）+ 🛒 Castle Shop（庭園東邊）—— Issue #14
+    skillStall = buildSkillTreeStall(live, SKILL_TREE.x, CASTLE_TOP, SKILL_TREE.z, SKILL_TREE.ry);
+    addCollider(SKILL_TREE.x, SKILL_TREE.z, 2.3);
+    shopStall = buildCastleShopStall(live, CASTLE_SHOP.x, CASTLE_TOP, CASTLE_SHOP.z, CASTLE_SHOP.ry);
+    mergePivots(skillStall.g);
+    mergePivots(shopStall.g);
+    const c = Math.cos(CASTLE_SHOP.ry), sn = Math.sin(CASTLE_SHOP.ry);
+    for (const lx of [-3.4, -1.7, 0, 1.7, 3.4]) addCollider(CASTLE_SHOP.x + lx * c, CASTLE_SHOP.z - lx * sn, 1.3); // 攤位成排（本地 x 方向）
     witch = buildWitch(live);
     cat = buildCat(live);
     cauldron = buildCauldron(live);
@@ -716,6 +1069,7 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
   let bubbleI = 0, bubbleT = 0;
   let talking = 0;
   let rockT = 0; // 石嘅時間（暫停嗰陣唔行）
+  let lastGateZ = null, gateCd = 0; // 🌀 正門傳送門
   const wrapNear = (v, c, size) => c - size / 2 + ((((v - (c - size / 2)) % size) + size) % size);
 
   function lightCheckpoint(c, on) {
@@ -781,6 +1135,8 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
       respawn();
     },
     get witchStep() { return witchStep; },
+    get witch() { return witch; }, // 測試：game.hell.witch.pose('wave' | 'laugh' | 'stir')
+    openSkills: () => openSkills(), openShop: () => openShop(), // 測試：🌳／🛒 面板
     update(dt, t, { pos, player, paused = false, quality = 3 } = {}) {
       const inside = inHell(pos.x, pos.z);
       root.visible = inside;
@@ -909,7 +1265,18 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
       for (const s of pathStones) s.m.material.opacity = state.witchMet ? 0.35 + Math.max(0, Math.sin(t * 4 - s.i * 0.5)) * 0.55 : 0.08;
       // 🧙‍♀️ 女巫：對白泡泡輪住換
       talking = Math.max(0, talking - dt);
-      witch.animate(t, talking > 0);
+      witch.animate(t, talking > 0, dt);
+      skillStall.update(t, quality);
+      shopStall.update(t, quality);
+      gateVeil.update(t, quality);
+      // 🌀 由庭園行出正門（穿過漩渦向 +z）= 返 Halloween World；外面行入嚟唔會
+      gateCd = Math.max(0, gateCd - dt);
+      const atGate = Math.abs(pos.x - CASTLE_PORTAL.x) < CASTLE_PORTAL.w && player && player.feetY > CASTLE_TOP - 0.6;
+      if (atGate && lastGateZ != null && gateCd <= 0 && lastGateZ < CASTLE_PORTAL.z && pos.z >= CASTLE_PORTAL.z && pos.z - lastGateZ < 1.5) {
+        gateCd = 4;
+        goBack();
+      }
+      lastGateZ = pos.z;
       cat.animate(t);
       cauldron.animate(t);
       bubbleT -= dt;
@@ -924,7 +1291,10 @@ export async function buildHell(scene, progress = () => {}, ctx = {}) {
     interaction(p) {
       if (!inHell(p.x, p.z)) return null;
       const d = (a) => Math.hypot(p.x - a.x, p.z - a.z);
-      if (d(HELL_PORTAL) < 3.4 || d(CASTLE_PORTAL) < 3.4) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Halloween World', action: goBack };
+      if (d(HELL_PORTAL) < 3.4) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Halloween World', action: goBack };
+      if (Math.abs(p.x - CASTLE_PORTAL.x) < CASTLE_PORTAL.w && p.z > CASTLE_GATE_Z - 3.4 && p.z < CASTLE_GATE_Z + 2.2) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Halloween World (castle gate portal)', action: goBack };
+      if (d(skillStall.pos) < 3.2 || d(SKILL_TREE) < 3.6) return { prompt: '<kbd>E</kbd> 🌳 Open the Witch\'s Skill Tree (☠️ Skele Tokens)', action: () => { play('magic'); openSkills(); } };
+      if (d(shopStall.pos) < 3.4) return { prompt: '<kbd>E</kbd> 🛒 Open the Castle Shop (skins for ☠️ Skele Tokens)', action: openShop };
       if (d(WITCH) < 3.6 || d(CAULDRON) < 3) return { prompt: `<kbd>E</kbd> 🧙‍♀️ Talk to the Witch${state.witchMet ? ' again' : ''}`, action: () => { witchStep = 0; talking = 2; play('magic'); openWitch(); } };
       if (d(TOWER_DOOR) < 3.2) {
         if (!state.witchMet) return { prompt: '🔒 The door is sealed by magic... talk to the Witch first! 🧙‍♀️' };

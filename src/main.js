@@ -1457,6 +1457,7 @@ async function ensureHell(progress = () => {}) {
   if (!hell) hell = await buildHell(scene, progress, {
     place: placePlayer, popup, announce, play,
     openWitch: () => togglePanel('witch'), closeWitch: () => togglePanel('witch'),
+    openPanel: (kind) => togglePanel(kind), equipRanger: (skin) => applyRangerSkin(thirdPerson, skin), // 🌳 Skill Tree／🛒 Castle Shop（Issue #14）
     goBack: () => leaveHell(),
   });
   return hell;
