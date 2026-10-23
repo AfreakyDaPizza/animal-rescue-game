@@ -14,6 +14,14 @@
 //   完咗：結果卡（打咗幾多層、幾多殭屍、救咗幾多隻動物、攞咗咩獎）→ 返去 Witch Castle 庭園
 // 武器：src/weapons.js（第一次入嚟送晒 3 支）；數值：balance.js 嘅 TOWER_*；獎品：src/data/towerRewards.js
 // 測試（console）：game.tower.enter('hard')、game.tower.floor(10)、game.tower.clear()、game.tower.god = true、game.tower.ko()、game.tower.lineup()
+//
+// Issue #14（2026-10-23）：
+//   🧟 新殭屍：Leaper（踎低 → 撲落紅圈）、Shield（前面塊盾擋子彈：打個頭／背脊；爆炸／閃電繞得過）、Bomber（掟南瓜炸彈：紅圈 = 爆炸範圍）、
+//             Frost（掟冰波：打中 = 慢落嚟）、Splitter（打散 = 一開二變 2 隻 Mini）、Necro-Witch（綠光醫朋友 + 叫 Mini Zombie 出嚟）
+//   🔫 每次入塔淨係得一支武器（TOWER_STARTER_WEAPON = Candy Pistol）；殭屍 5%（TOWER_CRATE_CHANCE）跌 📦 Weapon Crate（Boss 一定跌）
+//      行過去執 = 隨機一支新武器（越稀有越難抽，WEAPON_RARITY）加入呢次嘅武器（weapons.setLoadout('tower', ...)）；出咗塔就冇
+//   測試：game.tower.spawn('leaper'|'shield'|'bomber'|'frost'|'splitter'|'mini'|'necro')、game.tower.crate()（喺前面跌一個 Crate）、
+//         game.tower.crateChance = 1（每隻都跌）、game.tower.giveWeapon('pumpkinLauncher')、game.tower.lineup()
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
@@ -24,7 +32,10 @@ import { canvasTex, seeded } from './halloweenArt.js';
 import { flame, bx, cyl, sph, cone } from './halloweenKit.js';
 import { ANIMALS } from './data/animals.js';
 import { buildAnimalModel } from './animalModels.js';
-import { buildZombie, corrupt, towerGlowTex } from './towerModels.js';
+import { buildZombie, corrupt, towerGlowTex, buildWeaponCrate } from './towerModels.js';
+import { projectileModel } from './weaponModels.js';
+import { WEAPONS, WEAPON_RARITY, TOWER_STARTER_WEAPON } from './data/weapons.js';
+import { moveOpts } from './player.js';
 import { giveReward } from './demonicRewards.js';
 import {
   TOWER_ARENA as A, TOWER_LIFT, TOWER_ARRIVE, TOWER_EXIT, TOWER_CAULDRONS, TOWER_SHELVES, towerPolar, inTowerArena, clampTower,
@@ -32,7 +43,7 @@ import {
 import {
   TOWER_HEARTS, TOWER_HEART_REGEN, TOWER_HIT_SAFE, TOWER_KO_KEEP, TOWER_BASE_ENEMIES, TOWER_ENEMIES_PER_FLOOR, TOWER_MAX_ENEMIES,
   TOWER_MAX_AT_ONCE, TOWER_HP_GROWTH, TOWER_SPEED_GROWTH, TOWER_MAX_SPEED_MULT, TOWER_DOUBLE_DAMAGE_FLOOR, TOWER_BOSS_EVERY,
-  TOWER_ANIMAL_SHARE, TOWER_ANIMAL_SHARE_GROWTH, TOWER_ANIMAL_SHARE_MAX, TOWER_ENEMIES, TOWER_BOSS_HP, TOWER_BOSS_GROWTH,
+  TOWER_ANIMAL_SHARE, TOWER_ANIMAL_SHARE_GROWTH, TOWER_ANIMAL_SHARE_MAX, TOWER_ENEMIES, TOWER_BOSS_HP, TOWER_BOSS_GROWTH, TOWER_CRATE_CHANCE,
 } from './data/balance.js';
 import {
   TOWER_MODES, TOWER_MODE_ORDER, TOWER_REWARD_LOOK, TOWER_RARE_TYPES, TOWER_PER_ZOMBIE, TOWER_PER_CURE, TOWER_PER_BOSS,
@@ -99,6 +110,47 @@ addSounds({
     tone(220, t + 0.2, 2.4, { type: 'sine', vol: 0.08, slide: 2.6 });
     noise(t, 2.6, { vol: 0.18, freq: 900, q: 0.4, type: 'bandpass' });
   },
+  // Issue #14 新殭屍 + 📦 Crate
+  leapCrouch: (t, { tone }) => tone(240, t, 0.5, { type: 'triangle', vol: 0.08, slide: 2.2 }),
+  leapLand: (t, { tone, noise }) => {
+    tone(90, t, 0.3, { type: 'sine', vol: 0.35, slide: 0.5 });
+    noise(t, 0.25, { vol: 0.3, freq: 500 });
+  },
+  bombThrow: (t, { tone }) => tone(300, t, 0.3, { type: 'triangle', vol: 0.08, slide: 1.6 }),
+  bombFuse: (t, { noise }) => noise(t, 0.5, { vol: 0.08, freq: 5000, type: 'highpass' }),
+  bombBoom: (t, { tone, noise, arp }) => {
+    tone(65, t, 0.7, { type: 'sine', vol: 0.5, slide: 0.4 });
+    noise(t, 0.6, { vol: 0.5, freq: 450 });
+    arp(t + 0.1, [1047, 1319, 1568], 0.05, { type: 'triangle', vol: 0.06 });
+  },
+  iceThrow: (t, { tone, noise }) => {
+    tone(1800, t, 0.25, { type: 'sine', vol: 0.06, slide: 0.5 });
+    noise(t, 0.2, { vol: 0.1, freq: 4000, type: 'highpass' });
+  },
+  iceHit: (t, { tone, arp }) => {
+    arp(t, [2093, 1760, 1568, 1319], 0.04, { type: 'triangle', vol: 0.08 });
+    tone(400, t, 0.3, { type: 'sine', vol: 0.1, slide: 0.6 });
+  },
+  shieldClang: (t, { tone, noise }) => {
+    tone(820, t, 0.18, { type: 'square', vol: 0.05, slide: 0.95 });
+    tone(1230, t, 0.14, { type: 'triangle', vol: 0.06 });
+    noise(t, 0.05, { vol: 0.12, freq: 3000, type: 'highpass' });
+  },
+  necroHeal: (t, { arp }) => arp(t, [659, 784, 988, 1175], 0.07, { type: 'sine', vol: 0.07 }),
+  necroSummon: (t, { tone, noise }) => {
+    tone(150, t, 0.9, { type: 'sawtooth', vol: 0.06, slide: 1.8 });
+    noise(t, 0.8, { vol: 0.12, freq: 900, q: 0.5, type: 'bandpass' });
+  },
+  splitPop: (t, { tone, noise }) => {
+    noise(t, 0.15, { vol: 0.25, freq: 1800, q: 0.8, type: 'bandpass' });
+    tone(500, t, 0.12, { type: 'sine', vol: 0.12, slide: 1.8 });
+    tone(500, t + 0.08, 0.12, { type: 'sine', vol: 0.12, slide: 2.2 });
+  },
+  crateDrop: (t, { arp }) => arp(t, [523, 784, 1047, 1568], 0.06, { type: 'triangle', vol: 0.1 }),
+  crateOpen: (t, { arp, noise }) => {
+    noise(t, 0.3, { vol: 0.2, freq: 2500, q: 0.6, type: 'bandpass' });
+    arp(t + 0.05, [523, 659, 784, 1047, 1319, 1568, 2093], 0.06, { type: 'square', vol: 0.07 });
+  },
   bossIntro: (t, { tone, noise }) => {
     tone(70, t, 1.4, { type: 'sawtooth', vol: 0.2, slide: 0.6 });
     noise(t, 1.2, { vol: 0.4, freq: 300 });
@@ -128,6 +180,14 @@ const CSS = `
 #tower-hearts .h.lost { animation: hw-heart-lost 0.5s ease-out; }
 #tower-hurt { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0) 45%, rgba(213, 0, 249, 0.45) 80%, rgba(120, 0, 60, 0.85) 100%); }
 #tower-hurt.on { animation: hw-hurt 0.8s ease-out; }
+#tower-frost { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.25s;
+  background: radial-gradient(ellipse at center, rgba(180, 240, 255, 0) 50%, rgba(160, 230, 255, 0.45) 82%, rgba(225, 250, 255, 0.85) 100%); box-shadow: inset 0 0 60px rgba(255, 255, 255, 0.7); }
+#tower-frost span { position: absolute; left: 50%; bottom: calc(230px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-weight: 900; font-size: 18px; color: #e1f5fe; -webkit-text-stroke: 2px #01579b; paint-order: stroke fill; }
+#tower-wpn { position: fixed; left: calc(14px + env(safe-area-inset-left, 0px)); top: 34%; z-index: 7; pointer-events: none; padding: 6px 10px; border-radius: 14px; background: rgba(20, 8, 30, 0.78); border: 2px solid #7e57c2; color: #f3e5f5; font-size: 12px; font-weight: 800; max-width: 200px; }
+#tower-wpn b { display: block; font-size: 12px; color: #ffd740; margin-bottom: 2px; }
+#tower-wpn div { white-space: nowrap; }
+body.mobile #tower-wpn { display: none; }
+body.in-movie #tower-wpn { visibility: hidden; }
 #tower-big { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); z-index: 20; pointer-events: none; text-align: center; font-weight: 900; color: #fff; width: 94vw; }
 #tower-big b { display: block; font-size: clamp(40px, 8vw, 96px); -webkit-text-stroke: 3px #2a0a3a; paint-order: stroke fill; text-shadow: 0 0 24px var(--c, #d500f9), 0 6px 0 rgba(0,0,0,0.4); }
 #tower-big span { display: block; font-size: clamp(16px, 2.6vw, 26px); color: #f3e5f5; -webkit-text-stroke: 1.5px #2a0a3a; paint-order: stroke fill; }
@@ -204,6 +264,8 @@ function buildUi() {
     boss: mk('tower-boss', '<b></b><div class="hpbar"><i></i><span></span></div>'),
     hearts: mk('tower-hearts'),
     hurt: mk('tower-hurt', '', true),
+    frost: mk('tower-frost', '<span>❄️ BRRR! You are FROZEN (slow)</span>', true),
+    wpn: mk('tower-wpn'),
     big: mk('tower-big', '<b></b><span></span>'),
     reward: mk('tower-reward'),
     lift: mk('tower-lift', '<b></b>', true),
@@ -680,7 +742,9 @@ export function createWitchTower(ctx) {
     hearts: TOWER_HEARTS, safeT: 0, regenT: 0, ko: -1, knock: V(),
     queue: [], spawnT: 0, liftHold: 0, god: false, calm: false,
     run: null, panel: 'modes', results: null, travelling: false, bossCount: 0,
+    slowT: 0, slowMul: 1, crateChance: null,
   };
+  const crates = []; // 📦 Weapon Crate（Issue #14）
   const enemies = [];
   const shots = []; // 🟢 Slime 彈
   const waves = []; // 💥 震波
@@ -855,7 +919,11 @@ export function createWitchTower(ctx) {
     return (list.length ? list : arena.portals)[Math.floor(Math.random() * (list.length || arena.portals.length))];
   }
   function zombieKindFor(n) {
-    const w = Object.entries({ walker: 5, runner: 3, spitter: 2, brute: 1.5 }).filter(([k]) => n >= TOWER_ENEMIES[k].from);
+    const BASE = { walker: 5, runner: 3, spitter: 2, brute: 1.5 };
+    const necros = enemies.filter((e) => e.kind === 'necro' && e.hp > 0).length + R.queue.filter((k) => k === 'necro').length;
+    const w = Object.entries(TOWER_ENEMIES)
+      .filter(([k, d]) => k !== 'animal' && n >= d.from && (k !== 'necro' || necros < 2)) // Necro-Witch 最多 2 隻
+      .map(([k, d]) => [k, d.weight ?? BASE[k] ?? 1]);
     const total = w.reduce((s, [, x]) => s + x, 0);
     let r = Math.random() * total;
     return (w.find(([, x]) => (r -= x) < 0) || w[0])[0];
@@ -902,11 +970,12 @@ export function createWitchTower(ctx) {
       kind: boss ? (giant ? 'giant' : 'king') : kind, isAnimal, boss, giant, g, model, corr, animal, size,
       hp, maxHp: hp, speed: baseSpeed * speedMul(n) * (0.9 + Math.random() * 0.2),
       state: 'rise', t: 0, cd: rand(0.8, 1.6), atk: 0, dir: V(0, 0, -1), flashT: 0, bar: null, label: null, specialT: boss ? 4 : 0, summonT: boss ? 8 : 0, groanT: rand(2, 6),
-      reach: (boss ? 2.6 : kind === 'brute' ? 1.9 : 1.35) + (isAnimal ? Math.max(size.x, size.z) * 0.35 : 0),
-      radius: isAnimal ? Math.max(0.6, Math.max(size.x, size.z) * 0.38) : (boss ? 1.4 : kind === 'brute' ? 0.85 : 0.55),
+      reach: (boss ? 2.6 : kind === 'brute' ? 1.9 : kind === 'splitter' || kind === 'shield' ? 1.6 : kind === 'mini' ? 1.1 : 1.35) + (isAnimal ? Math.max(size.x, size.z) * 0.35 : 0),
+      radius: isAnimal ? Math.max(0.6, Math.max(size.x, size.z) * 0.38) : (boss ? 1.4 : kind === 'brute' ? 0.85 : kind === 'splitter' ? 0.75 : kind === 'shield' ? 0.7 : kind === 'mini' ? 0.38 : 0.55),
+      healT: rand(2.5, 4), sumT: rand(5, 7), slowT: 0, slowMul: 1,
     };
     if (!boss) {
-      e.bar = hpBar(isAnimal ? 1.3 : kind === 'brute' ? 1.5 : 1.1);
+      e.bar = hpBar(isAnimal ? 1.3 : kind === 'brute' || kind === 'splitter' ? 1.5 : kind === 'mini' ? 0.75 : 1.1);
       e.bar.g.position.y = (isAnimal ? size.y : model.userData.height) + 0.45;
       g.add(e.bar.g);
       e.bar.set(1, isAnimal ? 0xea80fc : 0x76ff03);
@@ -927,7 +996,11 @@ export function createWitchTower(ctx) {
       parts: () => {
         const wx = A.x + g.position.x;
         const wz = A.z + g.position.z;
-        if (!isAnimal) return model.userData.parts().map((p) => ({ pos: V(wx, g.position.y + p.y, wz), radius: p.radius, mult: p.mult, crit: p.crit }));
+        if (!isAnimal) {
+          const fx = -Math.sin(g.rotation.y); // 模型面向 -z：fwd = 喺前面幾遠（🛡️ 盾牌）
+          const fz = -Math.cos(g.rotation.y);
+          return model.userData.parts().map((p) => ({ pos: V(wx + fx * (p.fwd || 0), g.position.y + p.y, wz + fz * (p.fwd || 0)), radius: p.radius, mult: p.mult, crit: p.crit, block: p.block }));
+        }
         const fwd = e.dir;
         return [
           { pos: V(wx, g.position.y + size.y * 0.45, wz), radius: Math.max(size.x, size.y, size.z) * 0.45, mult: 1 },
@@ -935,8 +1008,23 @@ export function createWitchTower(ctx) {
         ];
       },
       alive: () => e.hp > 0 && e.state !== 'gone',
-      onHit(dmg) {
+      onHit(dmg, info = {}) {
         if (e.hp <= 0) return false;
+        // 🛡️ Shield Zombie：打中塊盾 = 擋咗（爆炸、閃電繞得過）
+        if (info.part?.block && !info.splash && !info.chain) {
+          play('shieldClang');
+          e.shieldFlash = 0.2;
+          if (!R.run?.toldShield) {
+            if (R.run) R.run.toldShield = true;
+            popup('🛡️ The shield blocks your shots! Aim for its HEAD or go round its BACK (explosions get round it too)');
+          }
+          return false;
+        }
+        // ❄️ Frost Wand：慢落嚟（Boss 慢少啲）
+        if (info.slow) {
+          e.slowT = info.slow.time;
+          e.slowMul = e.boss ? 1 - (1 - info.slow.mult) * 0.5 : info.slow.mult;
+        }
         e.hp -= dmg;
         e.flashT = 0.14;
         if (e.hp <= 0) {
@@ -954,6 +1042,11 @@ export function createWitchTower(ctx) {
   }
   function removeEnemy(e) {
     e.target?.remove();
+    e.beam?.removeFromParent();
+    e.jumpWarn?.removeFromParent();
+    e.lineM?.removeFromParent();
+    e.iceFx?.removeFromParent();
+    for (const m of e.summonMarks || []) m.removeFromParent();
     e.g.removeFromParent();
     if (e.corr) e.corr.dispose();
     else e.model.userData.dispose?.();
@@ -968,7 +1061,8 @@ export function createWitchTower(ctx) {
     for (const e of [...enemies]) removeEnemy(e);
     for (const s of shots) {
       s.g.removeFromParent();
-      s.warn.removeFromParent();
+      s.warn?.removeFromParent();
+      s.warn2?.removeFromParent();
     }
     shots.length = 0;
     for (const w of waves) w.m.removeFromParent();
@@ -988,7 +1082,129 @@ export function createWitchTower(ctx) {
       R.run.bosses += 1;
       bagAdd(rollAmount(TOWER_PER_BOSS, R.floor, R.mode));
     }
+    const wp = V(A.x + e.g.position.x, 0, A.z + e.g.position.z);
+    // ✂️ Splitter：一開二 → 兩隻 Mini Zombie
+    if (e.kind === 'splitter') {
+      play('splitPop');
+      const side = V(-e.dir.z, 0, e.dir.x);
+      for (const sx of [-1, 1]) {
+        const m = spawnEnemy('mini', { at: { x: wp.x + side.x * sx * 0.9, z: wp.z + side.z * sx * 0.9, glow: 0 } });
+        m.state = 'walk';
+        m.g.position.y = 0;
+        m.cd = 0.8;
+        m.hop = 0.45; // 彈出嚟
+      }
+      sparkle(V(wp.x, 1.5, wp.z), 0xffeb3b, 16, 4, 0.7, 0.6);
+      if (!R.run.toldSplit) {
+        R.run.toldSplit = true;
+        popup('✂️ The Splitter Zombie split into 2 Mini Zombies!');
+      }
+    }
+    // 📦 Weapon Crate：5% 機會（Boss 一定跌）
+    const chance = e.boss ? 1 : R.crateChance ?? TOWER_CRATE_CHANCE;
+    if (Math.random() < chance) dropCrate(wp);
   }
+
+  // ================= 📦 Weapon Crate（Issue #14）=================
+  function dropCrate(p) {
+    const m = buildWeaponCrate();
+    m.position.set(p.x - A.x, 0, p.z - A.z);
+    tmp.set(p.x, 0, p.z);
+    clampTower(tmp, 1.2);
+    const to = V(tmp.x - A.x, 0, tmp.z - A.z);
+    arena.g.add(m);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 9, 20, 1, true), ADDM(0xe040fb, 0.18));
+    beam.position.y = 4.5;
+    m.add(beam);
+    const label = makeLabel([{ text: '📦 WEAPON CRATE', color: '#ffd740' }, { text: 'Walk over it!', color: '#ffffff' }], 0.8);
+    label.position.y = 2.2;
+    m.add(label);
+    crates.push({ m, beam, label, from: m.position.clone(), to, t: 0, open: -1 });
+    play('crateDrop');
+    sparkle(V(p.x, 1, p.z), 0xe040fb, 14, 3, 0.8, 0.6);
+    if (!R.run?.toldCrate) {
+      if (R.run) R.run.toldCrate = true;
+      popup('📦 A zombie dropped a WEAPON CRATE! Walk over it to get a new weapon!');
+    }
+  }
+  function rollWeapon() {
+    const have = R.run?.loadout || [];
+    const pool = Object.values(WEAPONS).filter((w) => !have.includes(w.id));
+    if (!pool.length) return null;
+    const wt = (w) => WEAPON_RARITY[w.rarity]?.weight ?? 10;
+    let r = Math.random() * pool.reduce((a, w) => a + wt(w), 0);
+    return pool.find((w) => (r -= wt(w)) < 0) || pool[pool.length - 1];
+  }
+  function giveRunWeapon(def) {
+    if (!R.run || !def) return;
+    if (!R.run.loadout.includes(def.id)) R.run.loadout.push(def.id);
+    weapons.setLoadout('tower', R.run.loadout);
+    weapons.select(def.id);
+    R.run.found.push(def.id);
+  }
+  function openCrate(c) {
+    c.open = 0;
+    play('crateOpen');
+    const def = rollWeapon();
+    const wp = V(A.x + c.m.position.x, 1.2, A.z + c.m.position.z);
+    if (!def) {
+      weapons.refill();
+      floatText(V(wp.x, 2.6, wp.z), [{ text: '🔋 FULL AMMO!', color: '#69f0ae' }, { text: 'You have every weapon!', color: '#fff' }], 1);
+      popup('📦 You already have every weapon, so the crate refills all your ammo!');
+      return;
+    }
+    const rar = WEAPON_RARITY[def.rarity] || WEAPON_RARITY.common;
+    giveRunWeapon(def);
+    const col = parseInt(rar.color.slice(1), 16);
+    sparkle(wp, col, 30, 5, 1, 0.8);
+    sparkle(wp, 0xffffff, 12, 3, 0.8, 0.5);
+    floatText(V(wp.x, 2.8, wp.z), [{ text: `${def.emoji} ${def.name}`, color: rar.color }, { text: `${rar.name} weapon!`, color: '#ffffff' }], 1.1, 2.2);
+    bigText(`${def.emoji} ${def.name.toUpperCase()}!`, `📦 NEW ${rar.name.toUpperCase()} WEAPON for this tower run · press ${R.run.loadout.length} to switch`, rar.color);
+  }
+  function updateCrates(dt, time) {
+    const pp = playerPos();
+    for (let i = crates.length - 1; i >= 0; i--) {
+      const c = crates[i];
+      c.t += dt;
+      if (c.t < 0.6) { // 彈出嚟：拋物線
+        const k = c.t / 0.6;
+        c.m.position.lerpVectors(c.from, c.to, k);
+        c.m.position.y = Math.sin(k * PI) * 2.2;
+      } else c.m.position.y = 0;
+      c.m.userData.animate(time);
+      c.beam.material.opacity = 0.12 + Math.sin(time * 4) * 0.06;
+      if (c.open < 0) {
+        const d = Math.hypot(pp.x - A.x - c.m.position.x, pp.z - A.z - c.m.position.z);
+        if (c.t > 0.6 && d < 1.8 && player.feetY < 2.5 && R.ko < 0 && R.run) openCrate(c);
+        if (Math.random() < dt * 5) sparkle(V(A.x + c.m.position.x, 0.6, A.z + c.m.position.z), 0xffd740, 1, 1, 0.8, 0.4);
+        continue;
+      }
+      c.open += dt;
+      c.m.userData.open(Math.min(1, c.open / 0.25));
+      const k = c.open / 0.7;
+      c.m.scale.setScalar(Math.max(0.01, 1 - Math.max(0, k - 0.4) / 0.6));
+      c.label.material.opacity = Math.max(0, 1 - k * 2);
+      if (k >= 1) removeCrate(c);
+    }
+  }
+  function removeCrate(c) {
+    c.m.removeFromParent();
+    c.m.userData.dispose();
+    c.beam.geometry.dispose();
+    c.beam.material.dispose();
+    c.label.material.map?.dispose();
+    const i = crates.indexOf(c);
+    if (i >= 0) crates.splice(i, 1);
+  }
+  function drawWeaponList() {
+    if (!R.run) return;
+    const html = `<b>🔫 Tower weapons</b>${R.run.loadout.map((id, i) => {
+      const w = WEAPONS[id];
+      return `<div style="color:${WEAPON_RARITY[w.rarity]?.color || '#fff'}">${i + 1} · ${w.emoji} ${w.name}</div>`;
+    }).join('')}<div style="opacity:.75">📦 Crates: ${Math.round((R.crateChance ?? TOWER_CRATE_CHANCE) * 100)}% per zombie</div>`;
+    if (ui.wpn.innerHTML !== html) ui.wpn.innerHTML = html;
+  }
+
   // 💚 救返：腐化爆走 → 變返正常 → 開心咁跑走
   function cure(e) {
     e.state = 'cured';
@@ -1046,6 +1262,95 @@ export function createWitchTower(ctx) {
       popup('⚠️ JUMP over the shockwave! (Space)');
     }
   }
+  // 💣 Bomber：南瓜炸彈（紅色實心圈 = 會爆嘅範圍，越嚟越紅）
+  const BOMB_R = 2.6;
+  function throwBomb(e) {
+    const pp = playerPos();
+    const from = V(e.g.position.x, 2.6 * (e.model.scale.x || 1), e.g.position.z);
+    tmp.set(pp.x + rand(-0.6, 0.6), 0, pp.z + rand(-0.6, 0.6));
+    clampTower(tmp, 1);
+    const to = V(tmp.x - A.x, 0.25, tmp.z - A.z);
+    const sg = new THREE.Group();
+    const bomb = projectileModel('pumpkin', 0xff6d00);
+    bomb.scale.setScalar(1.6);
+    sg.add(bomb);
+    arena.g.add(sg);
+    const warn = new THREE.Mesh(new THREE.CircleGeometry(BOMB_R, 40), ADDM(0xff1744, 0));
+    warn.rotation.x = -PI / 2;
+    warn.position.set(to.x, 0.07, to.z);
+    arena.g.add(warn);
+    const warn2 = new THREE.Mesh(new THREE.RingGeometry(BOMB_R - 0.15, BOMB_R, 40), ADDM(0xff5252, 0.9));
+    warn2.rotation.x = -PI / 2;
+    warn2.position.set(to.x, 0.08, to.z);
+    arena.g.add(warn2);
+    shots.push({ type: 'bomb', g: sg, ball: bomb, warn, warn2, from, to, t: 0, dur: 1.45 });
+    play('bombThrow');
+    play('bombFuse');
+    if (!R.run.toldBomb) {
+      R.run.toldBomb = true;
+      popup('💣 Pumpkin bomb! Get OUT of the red circle before it goes BOOM!');
+    }
+  }
+  // ❄️ Frost：直線飛嘅冰波（地上藍色線 = 會飛嘅路線）；打中 = 慢落嚟
+  function throwIce(e) {
+    const pp = playerPos();
+    const from = V(e.g.position.x, 1.3 * e.model.scale.x, e.g.position.z);
+    const dir = V(pp.x - A.x - from.x, 0, pp.z - A.z - from.z).normalize();
+    const sg = new THREE.Group();
+    const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 0), new THREE.MeshStandardMaterial({ color: 0xb3f0ff, emissive: 0x40c4ff, emissiveIntensity: 1.8, roughness: 0.15, flatShading: true }));
+    sg.add(ball);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: towerGlowTex(), color: 0x80e8ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
+    halo.scale.setScalar(1.8);
+    sg.add(halo);
+    sg.position.copy(from);
+    arena.g.add(sg);
+    shots.push({ type: 'ice', g: sg, ball, halo, vel: dir.multiplyScalar(13), t: 0, dur: 2.4, owner: e });
+    play('iceThrow');
+  }
+  function lineWarn(e, len, color) {
+    if (!e.lineM) {
+      e.lineM = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), ADDM(color, 0));
+      e.lineM.rotation.x = -PI / 2;
+      arena.g.add(e.lineM);
+    }
+    const pp = playerPos();
+    const dx = pp.x - A.x - e.g.position.x;
+    const dz = pp.z - A.z - e.g.position.z;
+    const d = Math.hypot(dx, dz) || 1;
+    e.lineM.scale.set(0.9, len, 1);
+    e.lineM.position.set(e.g.position.x + (dx / d) * len * 0.5, 0.06, e.g.position.z + (dz / d) * len * 0.5);
+    e.lineM.rotation.z = Math.atan2(dx / d, dz / d);
+    e.lineM.visible = true;
+    return e.lineM;
+  }
+  // 🧙 Necro-Witch：綠色光束醫朋友
+  const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true).rotateX(PI / 2);
+  function orbPos(e) {
+    const o = e.model.userData.orb;
+    if (!o) return V(e.g.position.x, 2.6, e.g.position.z);
+    o.getWorldPosition(tmp);
+    return V(tmp.x - A.x, tmp.y, tmp.z - A.z);
+  }
+  function setBeam(e, to) {
+    if (!e.beam) {
+      e.beam = new THREE.Group();
+      e.beam.add(new THREE.Mesh(beamGeo, ADDM(0xccffd8, 0.95)), new THREE.Mesh(beamGeo, ADDM(0x00e676, 0.6)));
+      e.beam.children[0].scale.set(0.06, 0.06, 1);
+      e.beam.children[1].scale.set(0.25, 0.25, 1);
+      arena.g.add(e.beam);
+    }
+    const from = orbPos(e);
+    const len = from.distanceTo(to);
+    e.beam.position.copy(from).lerp(to, 0.5);
+    e.beam.lookAt(tmp.copy(to).add(arena.g.position));
+    e.beam.scale.set(1, 1, len);
+    e.beam.visible = true;
+  }
+  function slowPlayer(mult, time) {
+    R.slowT = Math.max(R.slowT, time);
+    R.slowMul = mult;
+    play('iceHit');
+  }
   function dashWarn(e, len) {
     if (!e.warnM) {
       e.warnM = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), ADDM(0xff1744, 0));
@@ -1062,6 +1367,40 @@ export function createWitchTower(ctx) {
 
   // ---- 每隻敵人每格 ----
   function updateEnemy(e, dt, time) {
+    // ❄️ 俾 Frost Wand 凍住：成隻慢鏡（藍色冰光）
+    if (e.slowT > 0 && e.state !== 'poof' && e.state !== 'cured') {
+      e.slowT -= dt;
+      dt *= e.slowMul;
+      if (!e.iceFx) {
+        // 淡淡藍光 + 腳下冰圈 + 一圈冰柱（凍住咗嘅樣）
+        e.iceFx = new THREE.Group();
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: towerGlowTex(), color: 0x40c4ff, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending }));
+        const h = e.isAnimal ? e.size.y : e.model.userData.height;
+        s.scale.set(Math.max(1.6, h * 0.9), h * 1.2, 1);
+        s.position.y = h * 0.5;
+        const ringM = new THREE.Mesh(new THREE.RingGeometry(e.radius + 0.2, e.radius + 0.5, 24), ADDM(0xb3f0ff, 0.7));
+        ringM.rotation.x = -PI / 2;
+        ringM.position.y = 0.08;
+        e.iceFx.add(s, ringM);
+        const iceM = new THREE.MeshStandardMaterial({ color: 0xb3f0ff, emissive: 0x40c4ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, roughness: 0.1, flatShading: true });
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * PI * 2 + rand(-0.2, 0.2);
+          const c = new THREE.Mesh(new THREE.ConeGeometry(0.12 + rand(0, 0.08), 0.5 + rand(0, 0.5), 5), iceM);
+          c.position.set(Math.cos(a) * (e.radius + 0.25), 0.25, Math.sin(a) * (e.radius + 0.25));
+          c.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4);
+          e.iceFx.add(c);
+        }
+        e.g.add(e.iceFx);
+      }
+      e.iceFx.visible = true;
+      e.iceFx.children[0].material.opacity = 0.16 + Math.sin(time * 8) * 0.06;
+      if (Math.random() < dt * 8) sparkle(V(A.x + e.g.position.x + rand(-0.5, 0.5), rand(0.5, 2), A.z + e.g.position.z + rand(-0.5, 0.5)), 0xe1f5fe, 1, 0.6, 0.6, 0.3);
+    } else if (e.iceFx) e.iceFx.visible = false;
+    if (e.shieldFlash > 0) e.shieldFlash -= dt;
+    if (e.hop > 0) { // 細殭屍彈出嚟
+      e.hop -= dt;
+      e.g.position.y = Math.max(0, Math.sin((1 - e.hop / 0.45) * PI) * 0.9);
+    }
     e.t += dt;
     const g = e.g;
     const pp = playerPos();
@@ -1176,6 +1515,9 @@ export function createWitchTower(ctx) {
   }
   function updateZombie(e, dt, time, dx, dz, dist, face, move) {
     const u = e.model.userData;
+    const px = () => e.g.position.x + dx + A.x; // 玩家（世界座標）
+    const pz = () => e.g.position.z + dz + A.z;
+    const g = e.g;
     const nx = dist > 0.01 ? dx / dist : 0;
     const nz = dist > 0.01 ? dz / dist : 0;
     e.dir.set(nx, 0, nz);
@@ -1197,18 +1539,42 @@ export function createWitchTower(ctx) {
         play('chargeUp');
       }
     }
+    const RANGED = { spitter: [7, 11, 22], bomber: [9, 14, 20], frost: [6, 11, 16], necro: [10, 15, 0] }; // [太近就退, 太遠就行近, 幾近先攻擊]
     switch (e.state) {
       case 'walk': {
-        face(dx, dz);
-        if (e.kind === 'spitter') {
-          // 企遠遠掟 Slime
-          const want = dist > 11 ? 1 : dist < 7 ? -0.8 : 0;
+        face(dx, dz, e.kind === 'shield' ? 2.2 : 8); // 🛡️ 轉身慢：繞去佢後面！
+        const rg = RANGED[e.kind];
+        if (rg) {
+          // 企遠遠掟嘢
+          const want = dist > rg[1] ? 1 : dist < rg[0] ? -0.8 : 0;
           if (want) move(nx * want, nz * want, e.speed);
           u.animate(time, Math.abs(want), 0);
-          if (e.cd <= 0 && dist < 22) {
+          if (e.kind === 'necro') { necroThink(e, dt); return; }
+          if (e.cd <= 0 && dist < rg[2]) {
             e.state = 'windup';
             e.t = 0;
           }
+          return;
+        }
+        // 🦘 Leaper：唔太近又唔太遠 → 踎低，準備撲
+        if (e.kind === 'leaper' && e.cd <= 0 && dist < 11 && dist > 3) {
+          e.state = 'crouch';
+          e.t = 0;
+          tmp.set(px(), 0, pz());
+          clampTower(tmp, 1);
+          e.jumpFrom = V(g.position.x, 0, g.position.z);
+          e.jumpTo = V(tmp.x - A.x, 0, tmp.z - A.z);
+          if (!e.jumpWarn) {
+            e.jumpWarn = new THREE.Group();
+            const fill = new THREE.Mesh(new THREE.CircleGeometry(1.9, 32), ADDM(0xff1744, 0.2));
+            const edge = new THREE.Mesh(new THREE.RingGeometry(1.75, 1.9, 32), ADDM(0xff5252, 0.9));
+            fill.rotation.x = edge.rotation.x = -PI / 2;
+            e.jumpWarn.add(fill, edge);
+            arena.g.add(e.jumpWarn);
+          }
+          e.jumpWarn.position.set(e.jumpTo.x, 0.07, e.jumpTo.z);
+          e.jumpWarn.visible = true;
+          play('leapCrouch');
           return;
         }
         if (dist > e.reach * 0.85) move(nx, nz, e.speed);
@@ -1222,11 +1588,19 @@ export function createWitchTower(ctx) {
       }
       case 'windup': {
         face(dx, dz, 10);
-        const wind = e.kind === 'spitter' ? 0.6 : e.boss ? 0.7 : 0.5;
+        const wind = e.kind === 'spitter' || e.kind === 'frost' ? 0.6 : e.kind === 'bomber' ? 0.85 : e.boss ? 0.7 : 0.5;
         u.animate(time, 0, Math.min(0.6, (e.t / wind) * 0.6));
+        if (u.bomb) u.bomb.visible = true; // 💣 舉起個南瓜炸彈
+        if (e.kind === 'frost') lineWarn(e, Math.min(16, dist + 2), 0x80e8ff).material.opacity = 0.15 + (e.t / wind) * 0.4;
         if (e.t >= wind) {
           if (e.kind === 'spitter') spit(e);
-          else if (dist < e.reach + 0.6) {
+          else if (e.kind === 'bomber') {
+            u.bomb.visible = false;
+            throwBomb(e);
+          } else if (e.kind === 'frost') {
+            if (e.lineM) e.lineM.visible = false;
+            throwIce(e);
+          } else if (dist < e.reach + 0.6) {
             const push = e.boss || e.kind === 'brute' ? { x: (dx / Math.max(0.1, dist)) * 10, y: 5, z: (dz / Math.max(0.1, dist)) * 10 } : null;
             hitPlayer(e.boss ? 'The Zombie King smashed you' : `A ${TOWER_ENEMIES[e.kind]?.name || 'zombie'} bonked you`, push);
           }
@@ -1237,10 +1611,90 @@ export function createWitchTower(ctx) {
       }
       case 'recover': {
         u.animate(time, 0, Math.min(1, 0.6 + (e.t / 0.4) * 0.4));
-        if (e.t > 0.45) {
+        if (e.t > (e.recoverDur || 0.45)) {
           e.state = 'walk';
           e.t = 0;
-          e.cd = (e.kind === 'spitter' ? 3.2 : e.boss ? 1.6 : 1.3) / Math.sqrt(speedMul(R.floor));
+          e.recoverDur = 0;
+          const CD = { spitter: 3.2, bomber: 3.8, frost: 3, leaper: 2.6, necro: 1.5 };
+          e.cd = (CD[e.kind] ?? (e.boss ? 1.6 : 1.3)) / Math.sqrt(speedMul(R.floor));
+        }
+        return;
+      }
+      case 'crouch': { // 🦘 踎低（紅圈 = 會撲落嚟嘅位）
+        face(e.jumpTo.x - g.position.x, e.jumpTo.z - g.position.z, 10);
+        u.crouch = Math.min(1, e.t / 0.3);
+        u.animate(time, 0, 0);
+        g.position.x += Math.sin(e.t * 50) * 0.01;
+        e.jumpWarn.children[0].material.opacity = 0.15 + (e.t / 0.8) * 0.35 + Math.sin(e.t * 22) * 0.06;
+        if (e.t >= 0.8) {
+          e.state = 'pounce';
+          e.t = 0;
+          u.crouch = 0;
+          play('chargeGo');
+        }
+        return;
+      }
+      case 'pounce': { // 🦘 撲！（拋物線飛過去）
+        const k = Math.min(1, e.t / 0.6);
+        g.position.x = THREE.MathUtils.lerp(e.jumpFrom.x, e.jumpTo.x, k);
+        g.position.z = THREE.MathUtils.lerp(e.jumpFrom.z, e.jumpTo.z, k);
+        g.position.y = Math.sin(k * PI) * 3.4;
+        u.animate(time, 0, 0.5);
+        if (k >= 1) {
+          g.position.y = 0;
+          e.jumpWarn.visible = false;
+          play('leapLand');
+          shake = Math.max(shake, 0.25);
+          sparkle(V(A.x + g.position.x, 0.3, A.z + g.position.z), 0xb0bec5, 14, 4, 0.5, 0.7);
+          const pp = playerPos();
+          const ddx = pp.x - A.x - g.position.x;
+          const ddz = pp.z - A.z - g.position.z;
+          const d = Math.hypot(ddx, ddz);
+          if (d < 2.0 && player.feetY < 1.2) hitPlayer('The Leaper Zombie POUNCED on you', { x: (ddx / Math.max(0.1, d)) * 9, y: 5, z: (ddz / Math.max(0.1, d)) * 9 });
+          e.state = 'recover';
+          e.t = 0;
+          e.recoverDur = 1.0; // 落地之後暈一暈：快啲打佢！
+        }
+        return;
+      }
+      case 'heal': { // 🧙 綠光醫朋友
+        const o = e.healTarget;
+        if (!o || o.hp <= 0 || !enemies.includes(o) || e.t > 1.6) {
+          if (e.beam) e.beam.visible = false;
+          e.state = 'recover';
+          e.t = 0;
+          e.healT = rand(5, 7);
+          return;
+        }
+        face(o.g.position.x - g.position.x, o.g.position.z - g.position.z, 8);
+        u.animate(time, 0, 0.35 + Math.sin(e.t * 10) * 0.05);
+        const h = o.isAnimal ? o.size.y : o.model.userData.height;
+        setBeam(e, V(o.g.position.x, o.g.position.y + h * 0.6, o.g.position.z));
+        const heal = ((TOWER_ENEMIES.necro.heal || 160) * hpMul(R.floor) / 1.6) * dt;
+        o.hp = Math.min(o.maxHp, o.hp + heal);
+        if (Math.random() < dt * 14) sparkle(V(A.x + o.g.position.x, o.g.position.y + h * rand(0.2, 1), A.z + o.g.position.z), 0x69f0ae, 1, 1.2, 0.8, 0.45);
+        if (Math.random() < dt * 3) floatText(V(A.x + o.g.position.x, h + 0.8, A.z + o.g.position.z), [{ text: '💚 +HEAL', color: '#69f0ae' }], 0.6, 0.8);
+        return;
+      }
+      case 'summon': { // 🧙 叫 Mini Zombie：地上兩個綠色魔法陣 → 爬出嚟
+        u.animate(time, 0, Math.min(0.6, e.t));
+        for (const m of e.summonMarks) {
+          m.rotation.z += dt * 3;
+          m.material.opacity = Math.min(0.9, e.t);
+        }
+        if (Math.random() < dt * 10) {
+          const m = e.summonMarks[Math.floor(Math.random() * e.summonMarks.length)];
+          sparkle(V(A.x + m.position.x, 0.3, A.z + m.position.z), 0x69f0ae, 1, 1.5, 0.8, 0.5);
+        }
+        if (e.t >= 1.1) {
+          for (const m of e.summonMarks) {
+            spawnEnemy('mini', { at: { x: A.x + m.position.x, z: A.z + m.position.z, glow: 0 } });
+            m.removeFromParent();
+          }
+          e.summonMarks = [];
+          e.state = 'recover';
+          e.t = 0;
+          e.sumT = rand(10, 13);
         }
         return;
       }
@@ -1266,6 +1720,49 @@ export function createWitchTower(ctx) {
         }
         return;
       }
+    }
+  }
+  // 🧙 Necro-Witch：醫朋友（扣咗血嗰隻）或者叫 Mini Zombie
+  function necroThink(e, dt) {
+    e.healT -= dt;
+    e.sumT -= dt;
+    if (e.healT <= 0) {
+      const g = e.g.position;
+      const hurt = enemies.filter((o) => o !== e && !o.isAnimal && o.hp > 0 && o.hp < o.maxHp * 0.9 && o.state !== 'poof' && Math.hypot(o.g.position.x - g.x, o.g.position.z - g.z) < 18)
+        .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (hurt) {
+        e.state = 'heal';
+        e.t = 0;
+        e.healTarget = hurt;
+        play('necroHeal');
+        if (!R.run.toldNecro) {
+          R.run.toldNecro = true;
+          popup('🧙 The Necro-Witch Zombie is HEALING its friends with a green beam! Poof it first!');
+        }
+        return;
+      }
+      e.healT = 1.5;
+    }
+    if (e.sumT <= 0) {
+      const alive = enemies.filter((o) => o.state !== 'poof' && o.state !== 'cured').length;
+      if (alive >= TOWER_MAX_AT_ONCE + 2) {
+        e.sumT = 3;
+        return;
+      }
+      e.state = 'summon';
+      e.t = 0;
+      play('necroSummon');
+      const tex = arena.portals[0].mesh.material.map;
+      e.summonMarks = [-1, 1].map((sx) => {
+        const m = new THREE.Mesh(new THREE.CircleGeometry(1.1, 28), ADDM(0x69f0ae, 0));
+        m.material.map = tex;
+        m.rotation.x = -PI / 2;
+        tmp.set(A.x + e.g.position.x - e.dir.z * sx * 2 + e.dir.x * 1.5, 0, A.z + e.g.position.z + e.dir.x * sx * 2 + e.dir.z * 1.5);
+        clampTower(tmp, 1);
+        m.position.set(tmp.x - A.x, 0.06, tmp.z - A.z);
+        arena.g.add(m);
+        return m;
+      });
     }
   }
   // 😵 腐化動物：行近 → 停低刨地（地上紅色路線）→ 直線衝 → 暈一暈
@@ -1391,7 +1888,59 @@ export function createWitchTower(ctx) {
     for (let i = shots.length - 1; i >= 0; i--) {
       const s = shots[i];
       s.t += dt;
+      if (s.type === 'ice') { // ❄️ 直線飛
+        s.g.position.addScaledVector(s.vel, dt);
+        s.ball.rotation.x += dt * 6;
+        s.ball.rotation.y += dt * 4;
+        if (Math.random() < dt * 25) sparkle(V(A.x + s.g.position.x, s.g.position.y, A.z + s.g.position.z), 0xe1f5fe, 1, 0.4, 0.5, 0.35);
+        const hd = Math.hypot(pp.x - A.x - s.g.position.x, pp.z - A.z - s.g.position.z);
+        const hitMe = hd < 0.95 && Math.abs(s.g.position.y - (player.feetY + 0.9)) < 1.2;
+        const out = !inTowerArena(A.x + s.g.position.x, A.z + s.g.position.z) || Math.hypot(s.g.position.x, s.g.position.z) > A.r - 1;
+        if (hitMe || out || s.t > s.dur) {
+          sparkle(V(A.x + s.g.position.x, s.g.position.y, A.z + s.g.position.z), 0x80e8ff, 12, 3, 0.6, 0.55);
+          if (hitMe && hitPlayer('Brrr! An ice ball froze you')) {
+            const d = TOWER_ENEMIES.frost;
+            slowPlayer(d.slow ?? 0.5, d.slowTime ?? 2.5);
+          }
+          s.g.removeFromParent();
+          s.ball.geometry.dispose();
+          s.halo.material.dispose();
+          shots.splice(i, 1);
+        }
+        continue;
+      }
       const k = Math.min(1, s.t / s.dur);
+      if (s.type === 'bomb') { // 💣 拋物線 + 紅圈越嚟越紅 → BOOM
+        s.g.position.lerpVectors(s.from, s.to, k);
+        s.g.position.y += Math.sin(k * PI) * 6;
+        s.ball.userData.fly(null, s.t, dt);
+        s.warn.material.opacity = 0.12 + k * k * 0.45 + (k > 0.7 ? Math.sin(s.t * 30) * 0.08 : 0);
+        s.warn2.scale.setScalar(1.15 - k * 0.15);
+        if (k >= 1) {
+          play('bombBoom');
+          shake = Math.max(shake, 0.35);
+          const wp = V(A.x + s.to.x, 0.6, A.z + s.to.z);
+          candyBurst(wp, 22, 1.1);
+          sparkle(wp, 0xff9100, 24, 6, 0.6, 0.9);
+          sparkle(wp, 0xffeb3b, 12, 4, 0.5, 0.6);
+          const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 40), ADDM(0xff9100, 0.9));
+          ring.rotation.x = -PI / 2;
+          ring.position.set(s.to.x, 0.1, s.to.z);
+          particle(ring, { life: 0.4, grav: 0, shrink: false, fade: (o, kk) => { o.scale.setScalar(BOMB_R * (1.2 - kk)); o.material.opacity = kk * 0.9; } });
+          const ddx = pp.x - A.x - s.to.x;
+          const ddz = pp.z - A.z - s.to.z;
+          const d = Math.hypot(ddx, ddz);
+          if (d < BOMB_R && player.feetY < 2.2) hitPlayer('BOOM! A pumpkin bomb got you', { x: (ddx / Math.max(0.1, d)) * 8, y: 6, z: (ddz / Math.max(0.1, d)) * 8 });
+          s.g.removeFromParent();
+          s.ball.userData.dispose();
+          s.warn.removeFromParent();
+          s.warn2.removeFromParent();
+          s.warn.geometry.dispose();
+          s.warn2.geometry.dispose();
+          shots.splice(i, 1);
+        }
+        continue;
+      }
       s.ball.position.lerpVectors(s.from, s.to, k);
       s.ball.position.y += Math.sin(k * PI) * 4.5;
       s.warn.material.opacity = 0.3 + k * 0.45;
@@ -1580,19 +2129,21 @@ export function createWitchTower(ctx) {
     R.ko = -1;
     R.knock.set(0, 0, 0);
     R.bossCount = Math.floor((floor - 1) / TOWER_BOSS_EVERY);
-    R.run = { floorsCleared: floor - 1, startFloor: floor, zombies: 0, cured: 0, bosses: 0, bag: new Map(), banked: [], curedNames: [], newBest: false, toldJump: false, mode: R.mode };
+    R.run = { floorsCleared: floor - 1, startFloor: floor, zombies: 0, cured: 0, bosses: 0, bag: new Map(), banked: [], curedNames: [], newBest: false, toldJump: false, mode: R.mode, loadout: [TOWER_STARTER_WEAPON], found: [] };
     state.towerStats = { runs: 0, zombies: 0, cured: 0, ...(state.towerStats || {}) };
     state.towerStats.runs += 1;
     save();
+    // Issue #14：每次入塔淨係得一支武器（Candy Pistol）；📦 Weapon Crate 先有新武器（淨係呢次入塔用）
+    // 舊嘅 3 支照送（永久擁有，Pumpkin Reaper 大廳用），但塔入面唔用
+    ['soulBlaster', 'candyPistol', 'slingshot'].forEach((id) => weapons.give(id));
+    weapons.setLoadout('tower', R.run.loadout);
     weapons.setZone('tower', true);
-    const fresh = ['soulBlaster', 'candyPistol', 'slingshot'].filter((id) => weapons.give(id));
     weapons.refill();
-    if (fresh.length) {
-      setTimeout(() => {
-        announce(`🎁 The Witch gives you ${fresh.length === 3 ? '3 magic weapons' : 'new magic weapons'}: ${fresh.map((id) => `${weapons.WEAPONS[id].emoji} ${weapons.WEAPONS[id].name}`).join(' · ')}! Press 1–3 to switch`);
-        play('upgrade');
-      }, 3000);
-    }
+    const sw = WEAPONS[TOWER_STARTER_WEAPON];
+    setTimeout(() => {
+      if (!R.run) return;
+      announce(`🧙 You start with ONE weapon: ${sw.emoji} ${sw.name}! Poofed zombies can drop a 📦 WEAPON CRATE (${Math.round(TOWER_CRATE_CHANCE * 100)}%) with a new weapon`);
+    }, 3000);
     const best = bestOf(R.mode);
     announce(`🗼 THE WITCH TOWER · ${TOWER_MODES[R.mode].emoji} ${TOWER_MODES[R.mode].name} · 🏆 Best: Floor ${best}`);
     startFloor(floor);
@@ -1613,10 +2164,15 @@ export function createWitchTower(ctx) {
     state.towerStats.zombies += run.zombies;
     state.towerStats.cured += run.cured;
     save();
-    R.results = { how, mode: run.mode, floor: R.floor, cleared: run.floorsCleared, startFloor: run.startFloor, zombies: run.zombies, cured: run.cured, bosses: run.bosses, given, banked: run.banked, newBest: run.newBest, best: bestOf(run.mode), keep, curedNames: run.curedNames };
+    R.results = { how, mode: run.mode, floor: R.floor, cleared: run.floorsCleared, startFloor: run.startFloor, zombies: run.zombies, cured: run.cured, bosses: run.bosses, given, banked: run.banked, newBest: run.newBest, best: bestOf(run.mode), keep, curedNames: run.curedNames, found: run.found };
     R.run = null;
     clearEnemies();
+    for (const c of [...crates]) removeCrate(c);
     weapons.setZone('tower', false);
+    weapons.setLoadout('tower', null);
+    R.slowT = 0;
+    moveOpts.speedMul = 1;
+    ui.frost.style.opacity = '0';
     R.inside = false;
     R.phase = 'idle';
     R.knock.set(0, 0, 0);
@@ -1648,7 +2204,7 @@ export function createWitchTower(ctx) {
     };
     return `<div class="tower-panel"><p class="tp-intro">🧙‍♀️ "Climb my endless tower, hero! Poof the zombies 🧟 and CURE the corrupted animals 💚. The higher you go, the cooler the prizes!"</p>
       <div class="tower-modes">${TOWER_MODE_ORDER.map(card).join('')}</div>
-      <p class="tp-note">👑 Every ${TOWER_BOSS_EVERY} floors: a MINI-BOSS and a 🏆 big prize · 🎒 leave by the door to keep your whole bag (knocked out = keep ${Math.round(TOWER_KO_KEEP * 100)}%) · You have ${TOWER_HEARTS} ❤️</p></div>`;
+      <p class="tp-note">🔫 You start with ONE weapon (${WEAPONS[TOWER_STARTER_WEAPON].emoji} ${WEAPONS[TOWER_STARTER_WEAPON].name}). Poofed zombies can drop a 📦 Weapon Crate with a new one!<br>👑 Every ${TOWER_BOSS_EVERY} floors: a MINI-BOSS and a 🏆 big prize · 🎒 leave by the door to keep your whole bag (knocked out = keep ${Math.round(TOWER_KO_KEEP * 100)}%) · You have ${TOWER_HEARTS} ❤️</p></div>`;
   }
   function resultsHtml() {
     const r = R.results;
@@ -1666,6 +2222,7 @@ export function createWitchTower(ctx) {
         <div><b>${r.cured}</b><span>💚 Animals cured</span></div>
         <div class="${r.newBest ? 'newbest' : ''}"><b>${r.best}</b><span>🏆 Best floor${r.newBest ? ' — NEW BEST!' : ''}</span></div>
       </div>
+      ${r.found?.length ? `<p>📦 Weapons found this run: ${r.found.map((id) => `${WEAPONS[id].emoji} ${WEAPONS[id].name}`).join(', ')} <small>(they stay in the tower)</small></p>` : ''}
       ${r.curedNames.length ? `<p>💚 You saved: ${r.curedNames.slice(0, 8).join(', ')}${r.curedNames.length > 8 ? '...' : ''}</p>` : ''}
       <h3>🎁 Rewards</h3>
       ${all.length ? `<ul>${all.map(li).join('')}</ul>` : '<p>No rewards this time. Beat a floor to fill your 🎒 bag!</p>'}
@@ -1773,6 +2330,7 @@ export function createWitchTower(ctx) {
   }
 
   function update(dt, time, { paused = false, frozen = false, view = camera } = {}) {
+    dt = Math.max(0, dt || 0); // 時鐘偶然倒退：當 0
     const pos = camera.position;
     const inside = inTowerArena(pos.x, pos.z);
     if (arena) arena.g.visible = inside || R.inside;
@@ -1781,7 +2339,12 @@ export function createWitchTower(ctx) {
     // 冇經門口入嚟（例如控制台傳送）：照樣開始
     if (inside && !R.inside && !R.travelling && arena && R.phase === 'idle') startRun(1);
     updateUi();
-    if (!R.inside || !arena) return;
+    ui.wpn.hidden = !(R.inside && R.run);
+    if (!R.inside || !arena) {
+      if (moveOpts.speedMul !== 1 && !R.inside) moveOpts.speedMul = 1;
+      return;
+    }
+    drawWeaponList();
     // 第三身鏡頭唔好退出牆外
     if (view !== camera) {
       const dx = view.position.x - A.x;
@@ -1796,8 +2359,13 @@ export function createWitchTower(ctx) {
       scene.fog.near = 26;
       scene.fog.far = 120;
     }
+    // ❄️ 俾 Frost Zombie 凍親：行慢啲
+    if (!paused && !frozen) R.slowT = Math.max(0, R.slowT - dt);
+    moveOpts.speedMul = R.slowT > 0 ? R.slowMul : 1;
+    ui.frost.style.opacity = R.slowT > 0 ? String(Math.min(1, R.slowT * 1.5)) : '0';
     if (paused || frozen) return;
     animateDecor(dt, time);
+    updateCrates(dt, time);
     updateFx(dt);
     shake = Math.max(0, shake - dt * 1.5);
     // 暈低
@@ -1906,22 +2474,60 @@ export function createWitchTower(ctx) {
     lift: () => startLift(),
     spawn: (kind = 'walker', o = {}) => spawnEnemy(kind, o),
     // 影相用：所有款殭屍企成一排
-    lineup(walk = true) {
+    // 影相用：所有款殭屍企成兩排（前排：舊款；後排：Issue #14 新款）
+    lineup(walk = true, kinds = null) {
       R.calm = walk ? 'walk' : true;
       clearEnemies();
-      const kinds = ['walker', 'walker', 'runner', 'spitter', 'brute', 'walker'];
-      kinds.forEach((k, i) => {
-        const e = spawnEnemy(k, { at: { x: A.x - 6.25 + i * 2.5, z: A.z - 3, glow: 0 } });
+      const rows = kinds ? [kinds] : [['walker', 'runner', 'spitter', 'brute', 'mini'], ['leaper', 'shield', 'bomber', 'frost', 'splitter', 'necro']];
+      rows.forEach((row, r) => row.forEach((k, i) => {
+        const e = spawnEnemy(k, { at: { x: A.x - ((row.length - 1) * 2.8) / 2 + i * 2.8, z: A.z - 2 - r * 3.6, glow: 0 } });
         e.state = 'walk';
         e.g.position.y = 0;
         e.g.rotation.y = PI;
-      });
-      const king = spawnEnemy('king', { boss: true, at: { x: A.x, z: A.z - 9, glow: 0 } });
+      }));
+      if (kinds) return enemies.length;
+      const king = spawnEnemy('king', { boss: true, at: { x: A.x, z: A.z - 11, glow: 0 } });
       king.state = 'walk';
       king.g.position.y = 0;
       king.g.rotation.y = PI;
       return enemies.length;
     },
+    // 📦 喺玩家前面跌一個 Weapon Crate
+    crate(dist = 4) {
+      const fwd = V();
+      camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      fwd.normalize();
+      dropCrate(V(camera.position.x + fwd.x * dist, 0, camera.position.z + fwd.z * dist));
+      return crates.length;
+    },
+    giveWeapon(id) { if (WEAPONS[id]) giveRunWeapon(WEAPONS[id]); return R.run?.loadout; },
+    // 測試一款敵人：清晒、唔再出新嘅，喺玩家前面 dist 米出 n 隻（照打）
+    only(kind = 'leaper', n = 1, dist = 10) {
+      clearEnemies();
+      R.phase = 'fight';
+      R.bossPending = null;
+      const fwd = V();
+      camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      fwd.normalize();
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const side = (i - (n - 1) / 2) * 2.5;
+        tmp.set(camera.position.x + fwd.x * dist - fwd.z * side, 0, camera.position.z + fwd.z * dist + fwd.x * side);
+        clampTower(tmp, 1.5);
+        const e = spawnEnemy(kind, { at: { x: tmp.x, z: tmp.z, glow: 0 } });
+        e.state = 'walk';
+        e.g.position.y = 0;
+        out.push(e);
+      }
+      return out;
+    },
+    set crateChance(v) { R.crateChance = v; },
+    get crateChance() { return R.crateChance ?? TOWER_CRATE_CHANCE; },
+    get crates() { return crates; },
+    get shots() { return shots; },
+    slowMe: (t = 2.5) => slowPlayer(0.5, t),
     set god(v) { R.god = v; },
     get god() { return R.god; },
     set calm(v) { R.calm = v; },

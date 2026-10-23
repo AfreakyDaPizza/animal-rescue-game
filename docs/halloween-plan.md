@@ -230,7 +230,7 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
 - **Getting in:** talk to the 🧙‍♀️ Witch, walk to the 🗼 tower door (east of the castle courtyard) and press E → pick a mode:
   🟢 **Easy** (weaker, slower enemies, smaller rewards) · 🟡 **Medium** · 🔴 **Hard** (tougher, faster enemies, hits hurt sooner, DOUBLE rewards and rarer drops). Your 🏆 best floor is kept for each mode (`state.towerBestByMode`, overall `state.towerBest`).
 - **Inside** (`src/towerShape.js` = map, far west at x -3200; `src/witchTower.js` = everything else): a round stone room with bubbling cauldrons, floating candles, bookshelves with potions, purple fire torches, spell circles, moonlit windows, a flying broom and a big **FLOOR N** sign. Every floor changes the fire colour.
-- **Weapons:** the Witch gives you all three (💠 Soul Blaster, 🍭 Candy Pistol, 🎯 Spooky Slingshot) the first time. Phones: FIRE / AIM / RELOAD.
+- **Weapons:** the Witch gives you all three (💠 Soul Blaster, 🍭 Candy Pistol, 🎯 Spooky Slingshot) the first time (yours to keep for the Reaper hall). Inside the tower you now start with only the Candy Pistol — see Issue #14 below. Phones: FIRE / AIM / RELOAD.
 - **Enemies** come out of glowing portals in the floor:
   - 🧟 **Zombies** (cute blocky ones, `src/towerModels.js`): Zombie (shambles and swipes), Speedy Zombie (floor 4+), Slime Zombie (floor 7+, throws green slime: a red circle shows where it lands), Big Zombie (floor 9+). Beaten = **POOF!** into candy sparkles.
   - 😵 **Corrupted endangered animals** (floor 2+): dark purple with red glowing eyes and purple smoke. They scrape the floor (a red line shows where they will run) and CHARGE. They are never hurt: at 0 HP the corruption bursts off, they turn back to normal, "💚 Cured!" and run away happily.
@@ -244,3 +244,21 @@ The kid asked: "make the ghost town more abandoned town vibe" and "make more sca
 - **Numbers:** `TOWER_*` in balance.js — enemies on floor N = 3 + 0.8 × N (max 18, 8 at once); HP × (1 + 0.15 × (N − 1)); speed × (1 + 0.025 × (N − 1)) up to ×1.6; corrupted share 15% + 3% per floor (max 50%); mini-boss HP 5,000 (King) / 6,000 (Giant), +35% each time.
 - **Control Panel:** 🌍 Teleport → 🗼 Witch Tower: Easy / Medium / Hard, and "⏩ Jump to floor N" (no Witch / World 2 lock needed).
 - **Test in the console:** `game.tower.enter('hard', 1)`, `game.tower.floor(10)`, `game.tower.clear()`, `game.tower.god = true`, `game.tower.ko()`, `game.tower.leave()`, `game.tower.lift()`, `game.tower.spawn('brute')`, `game.tower.lineup()` (all zombie kinds in a row, for photos), `game.tower.state`.
+
+## ✅ Built: 🧟 More zombies + 📦 Weapon Crates + 🔫 new weapons (Issue #14, 2026-10-23)
+- **New zombies** (`src/towerModels.js` looks, `src/witchTower.js` attacks, numbers in `TOWER_ENEMIES` in balance.js — `from` = first floor, `weight` = how often):
+  - 🦘 **Leaper Zombie** (floor 3+, red headband): crouches, a **red circle** appears where it will land, then it POUNCES. Move out of the circle! After landing it is dizzy for a second.
+  - 🛡️ **Shield Zombie** (floor 5+, bucket helmet + big wooden shield with a pumpkin): shots on the shield say **BLOCKED**. Hit its **head**, run round to its **back** (it turns slowly), or use explosions / lightning.
+  - 💣 **Bomber Zombie** (floor 6+, pumpkin helmet + pumpkin bombs on a strap): throws a pumpkin bomb; a **red circle** fills up where it will go BOOM.
+  - ❄️ **Frost Zombie** (floor 8+, icicle crown, scarf, glowing blue hands): a blue line shows where it throws an **ice ball**. A hit = 1 ❤️ and you are **slow** for 2.5 s (frosty screen).
+  - ✂️ **Splitter Zombie** (floor 10+, half green / half purple with a big stitch): poof it and it **splits into 2 Mini Zombies** (small and fast).
+  - 🧙 **Necro-Witch Zombie** (floor 12+, max 2 at once, witch hat + green staff): **heals** hurt zombies with a green beam and **summons Mini Zombies** from green circles. Poof it first!
+- **One weapon to start:** every tower run starts with only the 🍭 **Candy Pistol** (`TOWER_STARTER_WEAPON` in `src/data/weapons.js`). Poofed zombies have a **5% chance** (`TOWER_CRATE_CHANCE` in balance.js) to drop a glowing 📦 **Weapon Crate** (mini-bosses always drop one). Walk over it = a random **new weapon** for this run (rarer = harder to get, `WEAPON_RARITY`). It goes in the next hotbar slot; the list is on the left. Tower weapons stay in the tower (gone when you leave).
+- **New weapons** (all in `src/data/weapons.js`, models in `src/weaponModels.js`):
+  - 🎃 **Pumpkin Launcher** (Legendary): lobs a jack-o'-lantern that explodes in a big splash (hits everything nearby, even round shields).
+  - ❄️ **Frost Wand** (Rare): hold for an icy beam; frozen enemies move in slow motion (ice spikes round their feet).
+  - ⚡ **Lightning Staff** (Legendary): a zigzag bolt that jumps to 4 more enemies.
+  - 👻 **Ghost Shotgun** (Rare): 8 spirit pellets, short range — get close!
+  - 🦇 **Bat Swarm Bow** (Epic): 3 bat arrows that fly after enemies by themselves.
+  - Old ones in the crate too: 💠 Soul Blaster (Epic), 🎯 Spooky Slingshot (Common), 🍭 Candy Pistol (Common).
+- **Test in the console:** `game.tower.only('leaper', 1, 10)` (just that enemy in front of you), `game.tower.spawn('necro')`, `game.tower.lineup()` (old row + new row), `game.tower.crate()`, `game.tower.crateChance = 1`, `game.tower.giveWeapon('lightningStaff')`.

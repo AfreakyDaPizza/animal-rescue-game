@@ -15,6 +15,8 @@
 //   flashScale   槍嘴閃光大細（1 = 正常）
 //   hip / adsZ   第一身腰射位置／開鏡時槍離鏡頭幾遠（瞄準鏡要貼近眼）
 //   Slingshot：pouch（皮兜）、ammo（皮兜入面嘅南瓜籽）、setPull(0–1)
+// Issue #14 新加：🎃 Pumpkin Launcher、❄️ Frost Wand、⚡ Lightning Staff、👻 Ghost Shotgun、🦇 Bat Swarm Bow
+//   + projectileModel('pumpkin' | 'bat', color)：會飛嘅彈個樣（userData.fly(v, t, dt)、dispose()）
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -845,7 +847,622 @@ function slingshot() {
   return g;
 }
 
-const BUILDERS = { soulBlaster, candyPistol, slingshot };
+// ================= Issue #14：新魔法武器（淨係喺女巫塔 📦 Weapon Crate 抽到）=================
+// 同上面三支一樣：玩具魔法款、發光、圓角；槍管向 -z
+
+// 蝙蝠翼形狀（平面，向 +x 伸出去，下面一個個扇形凹位）
+function batWingShape(span = 1, h = 0.45) {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0.1 * h);
+  s.quadraticCurveTo(span * 0.45, h * 1.05, span, h * 0.7);
+  s.lineTo(span * 0.92, h * 0.1);
+  const n = 3;
+  for (let i = 0; i < n; i++) { // 扇形凹位（翼骨中間）
+    const x0 = span * (0.92 - (i * 0.92) / n);
+    const x1 = span * (0.92 - ((i + 1) * 0.92) / n);
+    s.quadraticCurveTo((x0 + x1) / 2, h * 0.42, x1, i === n - 1 ? -0.05 * h : h * 0.05);
+  }
+  s.lineTo(0, 0.1 * h);
+  return s;
+}
+
+// ---------- 🎃 Pumpkin Launcher（藤蔓纏住嘅大炮筒 + 玻璃斗入面有粒發光南瓜）----------
+function pumpkinLauncher() {
+  const g = new THREE.Group();
+  const orange = M(0xff8f00, { roughness: 0.4, metalness: 0.1 });
+  const orangeDeep = M(0xe65100, { roughness: 0.45, metalness: 0.1 });
+  const vineM = M(0x2e7d32, { roughness: 0.6, metalness: 0 });
+  const leafM = M(0x66bb6a, { roughness: 0.5, metalness: 0, side: THREE.DoubleSide });
+  const purple = M(0x4a2a6a, { roughness: 0.5, metalness: 0.2 });
+  const iron = METAL(0x3b3346, { metalness: 0.75, roughness: 0.35 });
+  const gold = METAL(0xffc94d, { metalness: 0.9, roughness: 0.25 });
+  const fire = GLOW(0xffb300, 2.6);
+  const eyeGlow = GLOW(0xffe082, 3);
+
+  // ── 炮筒：南瓜色一節節（好似南瓜坑紋）+ 鐵圈 ──
+  const barrel = new THREE.Group();
+  g.add(barrel);
+  cyl(barrel, 0.1, 0.11, 0.62, orange, 0, 0.05, -0.28, 20);
+  for (let i = 0; i < 8; i++) { // 坑紋
+    const a = (i / 8) * Math.PI * 2;
+    const r = rbox(barrel, 0.03, 0.03, 0.6, orangeDeep, Math.cos(a) * 0.1, 0.05 + Math.sin(a) * 0.1, -0.28, 0.5);
+    r.rotation.z = a;
+  }
+  for (const z of [-0.02, -0.3, -0.56]) cyl(barrel, 0.122, 0.122, 0.035, iron, 0, 0.05, z, 20);
+  // 炮口：喇叭形 + 發光內圈（好似南瓜燈個口）
+  cyl(barrel, 0.16, 0.12, 0.12, orangeDeep, 0, 0.05, -0.64, 20);
+  const mouthRing = ring(barrel, 0.14, 0.022, fire, 0, 0.05, -0.705);
+  const mouthCore = cyl(barrel, 0.11, 0.11, 0.02, GLOW(0xff6d00, 1.8), 0, 0.05, -0.69, 20);
+  // 炮口上面三角眼（南瓜燈個樣）
+  for (const sx of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.045, 3), eyeGlow);
+    eye.position.set(sx * 0.055, 0.135, -0.665);
+    eye.rotation.set(Math.PI / 2, 0, Math.PI);
+    barrel.add(eye);
+  }
+  // ── 藤蔓纏住 + 葉 ──
+  helix(barrel, 0.125, 0.52, 2.2, 0.012, vineM, 0, 0.05, -0.3);
+  const leaves = [];
+  for (let i = 0; i < 4; i++) {
+    const a = i * 1.7 + 0.4;
+    const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.045, 6), leafM);
+    leaf.scale.set(1, 0.55, 1);
+    leaf.position.set(Math.cos(a) * 0.14, 0.05 + Math.sin(a) * 0.14, -0.1 - i * 0.13);
+    leaf.rotation.set(0.3, a, 0.6);
+    barrel.add(leaf);
+    leaves.push(leaf);
+  }
+  // ── 上面嘅玻璃斗：入面有粒發光細南瓜（彈藥）──
+  const hopper = new THREE.Group();
+  hopper.position.set(0, 0.2, -0.02);
+  g.add(hopper);
+  vcyl(hopper, 0.07, 0.05, 0.08, gold, 0, -0.04, 0, 14);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.085, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), GLASS(0xffcc80));
+  hopper.add(dome);
+  const ammo = new THREE.Group();
+  hopper.add(ammo);
+  const pumpkinBall = ball(ammo, 0.05, GLOW(0xff9100, 1.4), 0, 0.04, 0, 12);
+  pumpkinBall.scale.set(1, 0.8, 1);
+  vcyl(ammo, 0.008, 0.01, 0.03, vineM, 0, 0.09, 0, 6);
+  // ── 機身、手柄、托 ──
+  rbox(g, 0.15, 0.12, 0.3, purple, 0, -0.05, 0.08, 0.3);
+  rbox(g, 0.16, 0.02, 0.31, gold, 0, 0.01, 0.08, 0.3);
+  const grip = rbox(g, 0.08, 0.2, 0.1, purple, 0, -0.17, 0.1, 0.35);
+  grip.rotation.x = 0.25;
+  rbox(g, 0.09, 0.03, 0.11, gold, 0, -0.27, 0.13, 0.3).rotation.x = 0.25;
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.01, 6, 14, Math.PI), iron);
+  guard.rotation.set(0, Math.PI / 2, Math.PI);
+  guard.position.set(0, -0.11, 0.02);
+  g.add(guard);
+  // 前手柄（扶手）+ 後托（膊頭）
+  rbox(g, 0.06, 0.13, 0.07, purple, 0, -0.08, -0.36, 0.4);
+  rbox(g, 0.13, 0.16, 0.22, purple, 0, -0.04, 0.32, 0.35);
+  rbox(g, 0.14, 0.17, 0.03, M(0x1a1426, { roughness: 0.85 }), 0, -0.04, 0.44, 0.3);
+  // 側面：一細粒南瓜燈（發光眼口）
+  const side = new THREE.Group();
+  side.position.set(0.1, -0.02, 0.1);
+  g.add(side);
+  ball(side, 0.05, orange, 0, 0, 0, 12).scale.set(0.7, 0.85, 1);
+  for (const sz of [-1, 1]) rbox(side, 0.01, 0.018, 0.018, eyeGlow, 0.036, 0.015, sz * 0.018, 0.2);
+  rbox(side, 0.01, 0.012, 0.045, eyeGlow, 0.036, -0.02, 0, 0.2);
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.05, -0.74);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, mag: hopper, glows: [fire], magRest: hopper.position.clone(), ammo, aimY: -0.2,
+    hip: { x: 0.24, y: -0.24, z: -0.5 }, flashScale: 1.2,
+  };
+  g.userData.fire = () => (fired = true);
+  // 換彈：一粒新南瓜由上面跌入玻璃斗
+  g.userData.reload = (k) => {
+    ammo.position.set(0, 0, 0);
+    ammo.visible = true;
+    if (k <= 0) return;
+    if (k < 0.35) ammo.visible = false;
+    else {
+      const q = ease(clamp01((k - 0.35) / 0.5));
+      ammo.position.y = (1 - q) * 0.3 + Math.sin(q * Math.PI) * 0.03;
+      ammo.rotation.y = q * 6;
+    }
+  };
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.25);
+    barrel.position.z = f * 0.08;
+    mouthRing.scale.setScalar(1 + f * 0.5);
+    mouthCore.material.emissiveIntensity = 1.6 + Math.sin(t * 4) * 0.5 + f * 4;
+    eyeGlow.emissiveIntensity = 2.5 + Math.sin(t * 7) * 0.6 + f * 3;
+    ammo.scale.setScalar(1 + Math.sin(t * 5) * 0.04);
+    leaves.forEach((l, i) => (l.rotation.z = 0.6 + Math.sin(t * 2 + i) * 0.15));
+  };
+  return g;
+}
+
+// ---------- ❄️ Frost Wand（白銀魔杖 + 冰晶頭 + 轉緊嘅雪花圈）----------
+function frostWand() {
+  const g = new THREE.Group();
+  const ICE = 0x80e8ff;
+  const silver = METAL(0xe3f2fd, { metalness: 0.85, roughness: 0.2 });
+  const wood = M(0xf1f8ff, { roughness: 0.4, metalness: 0.1 });
+  const wrap = M(0x1e88e5, { roughness: 0.5, metalness: 0.1 });
+  const ice = GLOW(ICE, 2.2);
+  const iceSoft = GLOW(0xb3f0ff, 1.2, { transparent: true, opacity: 0.85 });
+  const glass = GLASS(0xb3f0ff, { opacity: 0.45 });
+
+  // ── 手柄：白色杖身 + 藍色繃帶纏住 ──
+  cyl(g, 0.032, 0.04, 0.5, wood, 0, 0, -0.1, 12);
+  for (let i = 0; i < 6; i++) cyl(g, 0.043, 0.043, 0.025, wrap, 0, 0, 0.06 - i * 0.045, 12).rotation.z = 0.2;
+  ball(g, 0.05, silver, 0, 0, 0.17, 12); // 尾球
+  ball(g, 0.025, ice, 0, 0, 0.215, 8);
+  // 護手：雪花形銀片
+  const guard = new THREE.Group();
+  guard.position.z = -0.22;
+  g.add(guard);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const arm = rbox(guard, 0.02, 0.1, 0.02, silver, Math.cos(a) * 0.05, Math.sin(a) * 0.05, 0, 0.4);
+    arm.rotation.z = a - Math.PI / 2;
+  }
+  cyl(g, 0.05, 0.035, 0.06, silver, 0, 0, -0.27, 14);
+  cyl(g, 0.028, 0.035, 0.18, wood, 0, 0, -0.38, 12);
+  // ── 冰晶頭（換彈時縮細再大返）──
+  const crystal = new THREE.Group();
+  crystal.position.z = -0.52;
+  g.add(crystal);
+  const main = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), ice);
+  main.scale.set(0.8, 0.8, 1.7);
+  crystal.add(main);
+  const shell = new THREE.Mesh(new THREE.OctahedronGeometry(0.1, 0), glass);
+  shell.scale.set(0.8, 0.8, 1.6);
+  crystal.add(shell);
+  for (let i = 0; i < 5; i++) { // 細冰柱圍住
+    const a = (i / 5) * Math.PI * 2;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.12, 5), iceSoft);
+    c.position.set(Math.cos(a) * 0.05, Math.sin(a) * 0.05, 0.02);
+    c.rotation.set(-Math.PI / 2 + Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+    crystal.add(c);
+  }
+  // ── 雪花圈（兩個轉緊嘅圈 + 圍住飛嘅雪花碎）──
+  const halo = new THREE.Group();
+  halo.position.z = -0.5;
+  g.add(halo);
+  const r1 = ring(halo, 0.12, 0.007, ice, 0, 0, 0, 40);
+  const r2 = ring(halo, 0.09, 0.005, iceSoft, 0, 0, 0, 40);
+  const flakes = [];
+  for (let i = 0; i < 6; i++) {
+    const f = new THREE.Group();
+    for (let k = 0; k < 3; k++) rbox(f, 0.006, 0.04, 0.004, ice, 0, 0, 0, 0.3).rotation.z = (k * Math.PI) / 3;
+    halo.add(f);
+    flakes.push(f);
+  }
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0, -0.66);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, mag: crystal, glows: [ice], magRest: crystal.position.clone(), aimY: -0.16,
+    hip: { x: 0.22, y: -0.2, z: -0.48 }, flashScale: 0.6,
+    tracer: { width: 0.08, length: 7, head: 0.55, speed: 260 },
+  };
+  g.userData.fire = () => (fired = true);
+  g.userData.reload = (k) => {
+    const s = k <= 0 ? 1 : k < 0.4 ? 1 - ease(k / 0.4) * 0.9 : 0.1 + ease(clamp01((k - 0.4) / 0.55)) * 0.9;
+    crystal.scale.setScalar(s);
+  };
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.1);
+    r1.rotation.z = t * 1.5;
+    r1.rotation.x = Math.sin(t * 1.3) * 0.4;
+    r2.rotation.z = -t * 2.2;
+    r2.rotation.y = Math.cos(t * 1.1) * 0.4;
+    flakes.forEach((fl, i) => {
+      const a = t * (1.2 + f * 3) + (i / 6) * Math.PI * 2;
+      fl.position.set(Math.cos(a) * 0.15, Math.sin(a) * 0.15, Math.sin(t * 2 + i) * 0.05);
+      fl.rotation.z = t * 3 + i;
+    });
+    main.rotation.z = t * 0.8;
+    ice.emissiveIntensity = 2 + Math.sin(t * 3) * 0.4 + f * 2.5;
+    crystal.position.z = g.userData.magRest.z + f * 0.025;
+  };
+  return g;
+}
+
+// ---------- ⚡ Lightning Staff（深色木杖 + 金色爪抓住一粒閃電球）----------
+function lightningStaff() {
+  const g = new THREE.Group();
+  const wood = M(0x3e2a1e, { roughness: 0.8, metalness: 0 });
+  const gold = METAL(0xffc94d, { metalness: 0.9, roughness: 0.22 });
+  const dark = METAL(0x2a2440, { metalness: 0.6, roughness: 0.35 });
+  const volt = GLOW(0xffee58, 2.6);
+  const voltSoft = GLOW(0xfff59d, 1.4);
+  const arcM = new THREE.MeshBasicMaterial({ color: 0xfffde7, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+
+  // ── 杖身（彎彎哋嘅樹枝）+ 金圈 ──
+  branch(g, [[0, -0.02, 0.32], [0.01, 0, 0.1], [-0.01, 0.01, -0.15], [0, 0.02, -0.42]], 0.035, 0.03, wood, 0.12, 7);
+  for (const z of [0.22, -0.02, -0.3]) cyl(g, 0.042, 0.042, 0.03, gold, 0, 0.005, z, 14);
+  // 手柄位：深色皮 + 金色閃電標誌
+  cyl(g, 0.045, 0.045, 0.14, dark, 0, 0, 0.08, 14);
+  const badge = new THREE.Shape();
+  badge.moveTo(0.01, 0.05); badge.lineTo(-0.02, 0); badge.lineTo(0.005, 0); badge.lineTo(-0.012, -0.05); badge.lineTo(0.025, 0.008); badge.lineTo(0, 0.008); badge.lineTo(0.02, 0.05);
+  const bm = new THREE.Mesh(new THREE.ExtrudeGeometry(badge, { depth: 0.008, bevelEnabled: false }), volt);
+  bm.position.set(0.047, 0, 0.08);
+  bm.rotation.y = Math.PI / 2;
+  g.add(bm);
+  // ── 金爪（三隻）抓住閃電球 ──
+  const head = new THREE.Group();
+  head.position.set(0, 0.02, -0.5);
+  g.add(head);
+  cyl(head, 0.05, 0.035, 0.07, gold, 0, 0, 0.06, 14);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
+    const claw = new THREE.Group();
+    claw.position.set(Math.cos(a) * 0.04, Math.sin(a) * 0.04, 0.03);
+    claw.rotation.set(-Math.sin(a) * 0.5, Math.cos(a) * 0.5, 0);
+    head.add(claw);
+    cyl(claw, 0.012, 0.016, 0.1, gold, 0, 0, -0.05, 8);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 6), gold);
+    tip.rotation.x = -Math.PI / 2 - 0.7;
+    tip.position.set(-Math.cos(a) * 0.015, -Math.sin(a) * 0.015, -0.11);
+    claw.add(tip);
+  }
+  const orb = new THREE.Group();
+  orb.position.z = -0.08;
+  head.add(orb);
+  const core = ball(orb, 0.045, volt, 0, 0, 0, 14);
+  const shell = ball(orb, 0.065, GLASS(0xfff176, { opacity: 0.35 }), 0, 0, 0, 16);
+  // 電弧：細細條白光，每格隨機重新擺位
+  const arcs = [];
+  for (let i = 0; i < 5; i++) {
+    const a = rbox(orb, 0.005, 0.005, 0.06, arcM, 0, 0, 0, 0.2);
+    arcs.push(a);
+  }
+  // 浮喺杖頭附近嘅細電球
+  const sparksG = [];
+  for (let i = 0; i < 3; i++) sparksG.push(ball(head, 0.012, voltSoft, 0, 0, 0, 6));
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.02, -0.6);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  let charge = 1;
+  g.userData = {
+    muzzle, mag: orb, glows: [volt], magRest: orb.position.clone(), aimY: -0.15,
+    hip: { x: 0.22, y: -0.22, z: -0.46 }, flashScale: 0.9,
+  };
+  g.userData.fire = () => (fired = true);
+  g.userData.reload = (k) => (charge = k <= 0 ? 1 : k < 0.3 ? 1 - k / 0.3 : (k - 0.3) / 0.7);
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.15);
+    orb.scale.setScalar(0.3 + charge * 0.7 + f * 0.3);
+    core.material.emissiveIntensity = (1.8 + Math.sin(t * 25) * 0.6) * (0.3 + charge * 0.7) + f * 4;
+    shell.rotation.y = t * 2;
+    arcs.forEach((a) => {
+      a.visible = Math.random() < 0.3 + charge * 0.5 + f;
+      a.position.set((Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08);
+      a.rotation.set(Math.random() * 6, Math.random() * 6, 0);
+      a.scale.z = 0.6 + Math.random() * (1 + f * 2);
+    });
+    sparksG.forEach((s, i) => {
+      const a = t * 4 + (i * Math.PI * 2) / 3;
+      s.position.set(Math.cos(a) * 0.1, Math.sin(a) * 0.1, -0.06 + Math.sin(t * 6 + i) * 0.03);
+    });
+  };
+  return g;
+}
+
+// ---------- 👻 Ghost Shotgun（雙管 + 玻璃艙入面有隻細鬼仔）----------
+function ghostShotgun() {
+  const g = new THREE.Group();
+  const SPIRIT = 0xb9f6ff;
+  const wood = M(0x5e3a6e, { roughness: 0.55, metalness: 0.1 });
+  const plate = METAL(0x7e8fb8, { metalness: 0.7, roughness: 0.3 });
+  const trim = METAL(0xd1d9ff, { metalness: 0.9, roughness: 0.2 });
+  const spirit = GLOW(SPIRIT, 2.3);
+  const spiritSoft = GLOW(0xe0f7fa, 1.2, { transparent: true, opacity: 0.8 });
+  const dark = M(0x14101e, { roughness: 0.7 });
+
+  // ── 雙管（換彈時「啪」一聲向下摺）──
+  const barrels = new THREE.Group();
+  barrels.position.set(0, 0.04, -0.06);
+  g.add(barrels);
+  for (const sx of [-1, 1]) {
+    cyl(barrels, 0.045, 0.045, 0.56, plate, sx * 0.048, 0.02, -0.3, 16);
+    cyl(barrels, 0.032, 0.032, 0.01, dark, sx * 0.048, 0.02, -0.585, 12);
+    ring(barrels, 0.047, 0.012, spirit, sx * 0.048, 0.02, -0.58, 20);
+    cyl(barrels, 0.05, 0.05, 0.04, trim, sx * 0.048, 0.02, -0.06, 16);
+  }
+  rbox(barrels, 0.03, 0.03, 0.5, trim, 0, 0.075, -0.3, 0.4); // 中間條肋
+  // 槍管下面：鬼魂煙（發光波浪片）
+  const wisps = [];
+  for (let i = 0; i < 3; i++) {
+    const w = ball(barrels, 0.03, spiritSoft, 0, -0.04, -0.15 - i * 0.14, 8);
+    w.scale.set(1.6, 0.6, 1.2);
+    wisps.push(w);
+  }
+  // ── 機身 + 玻璃艙（入面隻鬼仔）──
+  rbox(g, 0.15, 0.15, 0.24, plate, 0, 0.0, 0.06, 0.3);
+  rbox(g, 0.155, 0.03, 0.245, trim, 0, 0.06, 0.06, 0.3);
+  const pod = new THREE.Group();
+  pod.position.set(0, 0.13, 0.06);
+  g.add(pod);
+  vcyl(pod, 0.06, 0.06, 0.02, trim, 0, -0.04, 0, 16);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), GLASS(SPIRIT, { opacity: 0.3 }));
+  dome.position.y = -0.035;
+  pod.add(dome);
+  const ghost = new THREE.Group();
+  pod.add(ghost);
+  ball(ghost, 0.032, spirit, 0, 0, 0, 12);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.04, 10), spirit);
+  tail.position.y = -0.025;
+  tail.rotation.x = Math.PI;
+  ghost.add(tail);
+  for (const sx of [-1, 1]) ball(ghost, 0.007, dark, sx * 0.012, 0.006, -0.028, 6);
+  ball(ghost, 0.008, dark, 0, -0.01, -0.03, 6).scale.set(1, 1.3, 0.5); // 「O」嘴
+  // ── 槍托 + 手柄 ──
+  const stock = rbox(g, 0.1, 0.15, 0.3, wood, 0, -0.06, 0.3, 0.35);
+  stock.rotation.x = 0.12;
+  rbox(g, 0.105, 0.16, 0.03, dark, 0, -0.08, 0.45, 0.3).rotation.x = 0.12;
+  for (let i = 0; i < 3; i++) ball(g, 0.012, spirit, 0.052, -0.05 - i * 0.03, 0.26 + i * 0.03, 6); // 鬼火燈
+  const grip = rbox(g, 0.075, 0.17, 0.09, wood, 0, -0.12, 0.16, 0.35);
+  grip.rotation.x = 0.35;
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.009, 6, 14, Math.PI), trim);
+  guard.rotation.set(0, Math.PI / 2, Math.PI);
+  guard.position.set(0, -0.08, 0.08);
+  g.add(guard);
+  rbox(g, 0.09, 0.06, 0.24, wood, 0, -0.04, -0.3, 0.4); // 前手托
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.06, -0.66);
+  g.add(muzzle);
+  const eject = new THREE.Object3D();
+  eject.position.set(0, 0.08, -0.04);
+  g.add(eject);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, mag: barrels, glows: [spirit], magRest: barrels.position.clone(), aimY: -0.16,
+    hip: { x: 0.24, y: -0.23, z: -0.5 }, flashScale: 1.1,
+    eject, shell: { colors: [SPIRIT, 0xe1bee7], size: 0.03 },
+    tracer: { width: 0.035, length: 1.4, head: 0.42, speed: 150 },
+  };
+  g.userData.fire = () => (fired = true);
+  // 換彈：槍管向下摺（break-action）→ 兩粒鬼魂彈飛入 → 摺返上
+  g.userData.reload = (k) => {
+    const o = k <= 0 ? 0 : k < 0.25 ? ease(k / 0.25) : k < 0.75 ? 1 : 1 - ease((k - 0.75) / 0.25);
+    barrels.rotation.x = -o * 0.55;
+  };
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.3);
+    ghost.position.y = Math.sin(t * 3) * 0.008 + f * 0.02;
+    ghost.rotation.y = Math.sin(t * 1.5) * 0.6;
+    ghost.scale.setScalar(1 + f * 0.3); // 射嘢時鬼仔嚇一嚇
+    spirit.emissiveIntensity = 2 + Math.sin(t * 4) * 0.4 + f * 3;
+    wisps.forEach((w, i) => {
+      w.position.y = -0.04 + Math.sin(t * 3 + i * 1.3) * 0.012;
+      w.material.opacity = 0.5 + Math.sin(t * 4 + i) * 0.25;
+    });
+    if (barrels.rotation.x === 0) barrels.position.z = g.userData.magRest.z + f * 0.04;
+  };
+  return g;
+}
+
+// ---------- 🦇 Bat Swarm Bow（蝙蝠翼十字弓 + 發光弦 + 搭住一支蝙蝠箭）----------
+function batBow() {
+  const g = new THREE.Group();
+  const BAT = 0xd05cff;
+  const wood = M(0x2a1638, { roughness: 0.6, metalness: 0.1 });
+  const wingM = M(0x3a1d52, { roughness: 0.55, metalness: 0.1, side: THREE.DoubleSide });
+  const bone = M(0x8a6aa8, { roughness: 0.5, metalness: 0.2 });
+  const silver = METAL(0xcfc4e8, { metalness: 0.85, roughness: 0.25 });
+  const glow = GLOW(BAT, 2.4);
+  const eyeM = GLOW(0xff4081, 3);
+
+  // ── 弓身（長嘅木托）──
+  rbox(g, 0.08, 0.08, 0.62, wood, 0, 0, -0.12, 0.35);
+  rbox(g, 0.085, 0.02, 0.6, silver, 0, 0.045, -0.12, 0.3);
+  helix(g, 0.05, 0.18, 2.5, 0.006, glow, 0, 0, 0.1);
+  // 頭：一個蝙蝠頭（耳 + 發光眼）
+  const headG = new THREE.Group();
+  headG.position.set(0, 0.0, -0.45);
+  g.add(headG);
+  ball(headG, 0.055, wood, 0, 0, 0, 12).scale.set(1.1, 0.95, 1.1);
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.06, 4), wood);
+    ear.position.set(sx * 0.03, 0.06, 0);
+    ear.rotation.z = -sx * 0.3;
+    headG.add(ear);
+    ball(headG, 0.011, eyeM, sx * 0.022, 0.01, -0.048, 6);
+  }
+  // ── 兩隻蝙蝠翼 = 弓臂 ──
+  const wings = [];
+  const wGeo = new THREE.ShapeGeometry(batWingShape(0.34, 0.16));
+  for (const sx of [-1, 1]) {
+    const w = new THREE.Group();
+    w.position.set(sx * 0.04, 0.0, -0.4);
+    w.scale.x = sx;
+    g.add(w);
+    const mesh = new THREE.Mesh(wGeo, wingM);
+    mesh.rotation.x = -Math.PI / 2; // 平放（翼向兩邊伸）
+    mesh.rotation.z = 0;
+    w.add(mesh);
+    // 翼骨
+    for (let i = 0; i < 3; i++) {
+      const b = rbox(w, 0.3 - i * 0.07, 0.01, 0.01, bone, (0.3 - i * 0.07) / 2, 0.006, -0.02 + i * 0.045, 0.3);
+      b.rotation.y = -0.25 + i * 0.25;
+    }
+    ball(w, 0.014, glow, 0.34, 0, -0.11, 8); // 翼尖發光
+    wings.push(w);
+  }
+  // ── 弦（由兩邊翼尖去中間）──
+  const strings = [];
+  const nock = new THREE.Object3D();
+  nock.position.set(0, 0.06, -0.12);
+  g.add(nock);
+  const strMat = GLOW(0xf3c5ff, 2.4);
+  for (const sx of [-1, 1]) {
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1, 6), strMat);
+    s.userData.tip = new THREE.Vector3(sx * 0.37, 0.0, -0.51);
+    g.add(s);
+    strings.push(s);
+  }
+  // ── 搭住嘅蝙蝠箭 ──
+  const arrow = new THREE.Group();
+  g.add(arrow);
+  cyl(arrow, 0.008, 0.008, 0.36, silver, 0, 0.06, -0.3, 6);
+  const bat = projectileModel('bat', BAT);
+  bat.scale.setScalar(0.35);
+  bat.position.set(0, 0.07, -0.5);
+  arrow.add(bat);
+  const up = new THREE.Vector3(0, 1, 0);
+  const tmp = new THREE.Vector3();
+  const placeStrings = () => strings.forEach((s) => {
+    tmp.copy(nock.position).sub(s.userData.tip);
+    s.position.copy(s.userData.tip).addScaledVector(tmp, 0.5);
+    s.scale.set(1, tmp.length(), 1);
+    s.quaternion.setFromUnitVectors(up, tmp.normalize());
+  });
+  placeStrings();
+  // ── 手柄 ──
+  const grip = rbox(g, 0.07, 0.17, 0.09, wood, 0, -0.1, 0.07, 0.35);
+  grip.rotation.x = 0.3;
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.009, 6, 14, Math.PI), silver);
+  guard.rotation.set(0, Math.PI / 2, Math.PI);
+  guard.position.set(0, -0.06, -0.01);
+  g.add(guard);
+  rbox(g, 0.09, 0.12, 0.16, wood, 0, -0.03, 0.24, 0.35); // 托
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.07, -0.56);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, mag: arrow, glows: [glow, strMat], magRest: arrow.position.clone(), ammo: arrow, aimY: -0.2,
+    hip: { x: 0.22, y: -0.22, z: -0.48 }, flashScale: 0.6,
+  };
+  g.userData.fire = () => (fired = true);
+  // 換彈：新蝙蝠箭由後面飛返上弦
+  g.userData.reload = (k) => {
+    arrow.position.copy(g.userData.magRest);
+    if (k <= 0) return;
+    const q = ease(clamp01((k - 0.2) / 0.7));
+    arrow.position.z += (1 - q) * 0.3;
+    arrow.position.y += (1 - q) * 0.12;
+  };
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const s = t - fireT;
+    const f = clamp01(1 - s / 0.2);
+    // 弦：拉後；射完彈前少少再返
+    nock.position.z = -0.12 + (s < 0.5 ? -Math.sin(s * 30) * Math.exp(-s * 8) * 0.06 : 0) + (1 - f) * 0.0;
+    placeStrings();
+    wings.forEach((w, i) => (w.rotation.z = (i ? -1 : 1) * (Math.sin(t * 2.5) * 0.08 - f * 0.25)));
+    bat.userData.fly?.(null, t, 0);
+    glow.emissiveIntensity = 2 + Math.sin(t * 3) * 0.5 + f * 3;
+  };
+  return g;
+}
+
+// ---------- 會飛嘅彈：🎃 南瓜燈 · 🦇 蝙蝠（weapons.js 用 projectileModel）----------
+//   userData.fly(v, t, dt)：每格叫（v = 速度，可以係 null）· userData.dispose()
+export function projectileModel(kind, color = 0xff8f00) {
+  const g = new THREE.Group();
+  const mats = [];
+  const keep = (m) => (mats.push(m), m);
+  if (kind === 'pumpkin') {
+    const skin = keep(new THREE.MeshStandardMaterial({ color: 0xff8f00, emissive: 0xff6d00, emissiveIntensity: 0.5, roughness: 0.4 }));
+    const face = keep(GLOW(0xffe082, 3.2));
+    const stem = keep(M(0x2e7d32, { roughness: 0.6 }));
+    const body = new THREE.Group();
+    g.add(body);
+    for (let i = 0; i < 6; i++) { // 一瓣瓣
+      const lobe = ball(body, 0.2, skin, 0, 0, 0, 12);
+      lobe.scale.set(0.55, 0.85, 1);
+      lobe.rotation.y = (i / 6) * Math.PI;
+    }
+    vcyl(body, 0.025, 0.035, 0.1, stem, 0, 0.2, 0, 6);
+    // 南瓜燈個樣：三角眼 + 鋸齒嘴（發光）
+    for (const sx of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.06, 3), face);
+      eye.position.set(sx * 0.07, 0.05, -0.18);
+      eye.rotation.x = Math.PI / 2;
+      eye.rotation.y = Math.PI;
+      body.add(eye);
+    }
+    rbox(body, 0.18, 0.04, 0.03, face, 0, -0.06, -0.185, 0.3);
+    for (const x of [-0.05, 0.05]) rbox(body, 0.035, 0.035, 0.03, face, x, -0.03, -0.19, 0.2);
+    const halo = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })));
+    halo.scale.setScalar(0.9);
+    g.add(halo);
+    g.userData.fly = (v, t, dt) => {
+      body.rotation.x += dt * 9;
+      body.rotation.y += dt * 4;
+      face.emissiveIntensity = 2.5 + Math.sin(t * 20) * 0.8;
+    };
+  } else { // 🦇 bat
+    const fur = keep(M(0x2a1638, { roughness: 0.6 }));
+    const wingM = keep(new THREE.MeshStandardMaterial({ color: 0x4a2470, emissive: color, emissiveIntensity: 0.6, roughness: 0.5, side: THREE.DoubleSide }));
+    const eyes = keep(GLOW(0xff4081, 3.2));
+    const body = ball(g, 0.09, fur, 0, 0, 0, 10);
+    body.scale.set(0.9, 0.85, 1.3);
+    ball(g, 0.07, fur, 0, 0.03, -0.1, 10);
+    for (const sx of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 4), fur);
+      ear.position.set(sx * 0.035, 0.1, -0.1);
+      g.add(ear);
+      ball(g, 0.014, eyes, sx * 0.028, 0.045, -0.16, 6);
+    }
+    const wGeo = new THREE.ShapeGeometry(batWingShape(0.36, 0.22));
+    const wings = [-1, 1].map((sx) => {
+      const w = new THREE.Group();
+      w.position.set(sx * 0.05, 0.02, 0);
+      w.scale.x = sx;
+      g.add(w);
+      const m = new THREE.Mesh(wGeo, wingM);
+      m.rotation.x = -Math.PI / 2;
+      m.position.z = 0.1;
+      w.add(m);
+      return w;
+    });
+    const halo = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })));
+    halo.scale.setScalar(0.8);
+    g.add(halo);
+    const look = new THREE.Vector3();
+    g.userData.fly = (v, t) => {
+      const flap = Math.sin(t * 32) * 0.9;
+      wings[0].rotation.z = flap;
+      wings[1].rotation.z = -flap;
+      if (v) g.lookAt(look.copy(g.position).sub(v)); // 個頭（-z）向住飛嘅方向
+    };
+    wingM.userData.keep = true;
+  }
+  g.userData.dispose = () => mats.forEach((m) => m.dispose());
+  return g;
+}
+
+const BUILDERS = { soulBlaster, candyPistol, slingshot, pumpkinLauncher, frostWand, lightningStaff, ghostShotgun, batBow };
 export function buildWeaponModel(id) {
   const g = (BUILDERS[id] || soulBlaster)();
   g.traverse((o) => {
