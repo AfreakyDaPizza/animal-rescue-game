@@ -542,7 +542,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   const proj = new THREE.Vector3();
   function update(dt, { view = camera, third = false, time = 0, paused = false } = {}) {
     const sel = selectedHotbarItem();
-    const def = !paused && sel?.item.weapon ? WEAPONS[sel.item.weapon] : null;
+    const def = !paused && zones.size > 0 && sel?.item.weapon ? WEAPONS[sel.item.weapon] : null; // 戰鬥區以外一定唔拎槍（小朋友 Issue #13）
     if (def !== current) {
       charge = -1;
       reloading = 0;
