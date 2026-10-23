@@ -40,7 +40,12 @@ export const CAULDRON = { x: HX - 7, z: -163.2 };
 export const WITCH_CAT = { x: HX - 4.4, z: -165.4 };
 export const TOWER = { x: HX + 41, z: -171, r: 6.5, h: 64 }; // 🗼 Witch Tower：城堡東邊（庭園東牆有缺口去）
 export const TOWER_DOOR = { x: HX + 34.2, z: -171 }; // 門喺塔嘅西面（向住庭園）
-export const CASTLE_PORTAL = { x: HX - 22, z: -158 }; // 🌀 城堡嗰邊都有傳送門返 Halloween World（唔使再跳返轉頭）
+// 🌀 城堡正門 = 返 Halloween World 嘅傳送門（Issue #14：「The castle door at the front should be the portal」）
+//   漩渦喺閘口內面（z）；由庭園行出閘口穿過漩渦 = 返去，或者企喺閘口撳 E；由外面行入嚟就照常入城堡
+export const CASTLE_PORTAL = { x: HX, z: CASTLE_GATE_Z - 1.6, w: 3.3 };
+// 🌳 Witch's Skill Tree（女巫隔籬）同 🛒 Castle Shop（庭園東邊）—— Issue #14
+export const SKILL_TREE = { x: HX - 15, z: -162.5, ry: 0.75 };
+export const CASTLE_SHOP = { x: HX + 18.5, z: -158.5, ry: -1.0 };
 
 // 行唔入嘅長方形（城堡、城牆）：只計喺城堡島上面（跌落熔岩已經燒走咗）
 export const HELL_BLOCKS = [

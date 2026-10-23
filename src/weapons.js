@@ -306,8 +306,11 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     return best;
   }
   function applyHit(hit, point, damage, def) {
-    const crit = !!hit.sp.crit;
-    const dmg = Math.round(damage * (hit.sp.mult ?? 1));
+    // 🌳 Skill Tree（Issue #14，skillTree.js）：Spell Power 加傷害、Lucky Crit 有機會 ×1.5 爆擊
+    const sk = window.__skills;
+    const lucky = !hit.sp.crit && Math.random() < (sk?.mult('crit') || 0);
+    const crit = !!hit.sp.crit || lucky;
+    const dmg = Math.round(damage * (hit.sp.mult ?? 1) * (lucky ? 1.5 : 1) * (sk?.mult('damage') ?? 1));
     const res = hit.tg.onHit?.(dmg, { point, crit, weapon: def.id });
     if (res === false) {
       damageNumber(point, 'BLOCKED', 'blocked');
@@ -574,7 +577,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     flashK = Math.max(0, flashK - dt * 18);
     if (def) {
       if (reloading > 0) {
-        reloading += dt;
+        reloading += dt * (window.__skills?.mult('reload') ?? 1); // 🌳 Quick Hands：換快啲
         if (reloading >= def.reload) {
           reloading = 0;
           ammo[def.id] = def.mag;

@@ -697,10 +697,21 @@ export function createWitchTower(ctx) {
   const animalShare = (n) => (n < TOWER_ENEMIES.animal.from ? 0 : Math.min(TOWER_ANIMAL_SHARE_MAX, TOWER_ANIMAL_SHARE + n * TOWER_ANIMAL_SHARE_GROWTH));
   const bestOf = (mode) => state.towerBestByMode?.[mode] || 0;
 
+  // ---- 🌳 Skill Tree（Issue #14，skillTree.js）：心數、回心、開局盾、獎品 ----
+  const skill = (id, none = 1) => window.__skills?.mult(id) ?? none;
+  const maxHearts = () => Math.max(1, Math.round(TOWER_HEARTS * skill('health')));
+  const regenTime = () => TOWER_HEART_REGEN / skill('regen');
+  const lootAmount = (r) => {
+    if (['demonicSkin', 'demonicBossSkin'].includes(r.type)) return r.amount;
+    const m = skill('loot') * (['candyCorn', 'souls'].includes(r.type) ? skill('souls') : 1);
+    return m === 1 ? r.amount : Math.max(1, Math.round(r.amount * m));
+  };
+
   // ---- 🎒 袋 ----
   function bagAdd(r) {
     if (!R.run || !r) return;
-    R.run.bag.set(r.type, (R.run.bag.get(r.type) || 0) + r.amount);
+    const amount = lootAmount(r);
+    R.run.bag.set(r.type, (R.run.bag.get(r.type) || 0) + amount);
   }
   const lookOf = (type) => TOWER_REWARD_LOOK[type] || ['🎁', type];
   const rewardText = (r) => {
@@ -719,15 +730,23 @@ export function createWitchTower(ctx) {
   let lostT = 0;
   function drawHearts() {
     let html = '';
-    for (let i = 0; i < TOWER_HEARTS; i++) {
+    for (let i = 0; i < maxHearts(); i++) {
       const full = i < R.hearts;
-      const filling = i === R.hearts && R.hearts < TOWER_HEARTS;
+      const filling = i === R.hearts && R.hearts < maxHearts();
       html += `<span class="h ${full ? 'full' : 'empty'}${lostT > 0 && i >= lostAt && i < lostAt + 2 ? ' lost' : ''}${filling ? ' filling' : ''}">${full ? '❤️' : '🖤'}</span>`;
     }
+    for (let i = 0; i < (R.shield || 0); i++) html += '<span class="h">🛡️</span>';
     if (html !== heartsHtml) ui.hearts.innerHTML = heartsHtml = html;
   }
   function hitPlayer(what, push = null) {
     if (R.safeT > 0 || R.ko >= 0 || R.god || !['fight', 'intro'].includes(R.phase)) return false;
+    if (R.shield > 0) { // 🛡️ Starting Shield 擋一下
+      R.shield -= 1;
+      R.safeT = TOWER_HIT_SAFE;
+      play('heartBack');
+      popup(`🛡️ Your shield blocked the ${what}!${R.shield ? ` ${R.shield} 🛡️ left` : ''}`);
+      return true;
+    }
     const n = hitHearts();
     R.hearts = Math.max(0, R.hearts - n);
     R.safeT = TOWER_HIT_SAFE;
@@ -1496,7 +1515,7 @@ export function createWitchTower(ctx) {
       play('demonic');
     }
     save();
-    R.hearts = Math.min(TOWER_HEARTS, R.hearts + 1); // 打完一層：+1 ❤️
+    R.hearts = Math.min(maxHearts(), R.hearts + 1); // 打完一層：+1 ❤️
     play('floorClear');
     bigText('FLOOR CLEARED!', ms ? `🏆 Floor ${n} milestone prize!` : '✨ Step on the magic circle to go UP', '#69f0ae');
     showRewardCard(n, items, ms);
@@ -1575,7 +1594,8 @@ export function createWitchTower(ctx) {
   }
   function startRun(floor = 1) {
     R.inside = true;
-    R.hearts = TOWER_HEARTS;
+    R.hearts = maxHearts();
+    R.shield = Math.round(skill('shield', 0)); // 🛡️
     R.safeT = 2;
     R.ko = -1;
     R.knock.set(0, 0, 0);
@@ -1648,7 +1668,7 @@ export function createWitchTower(ctx) {
     };
     return `<div class="tower-panel"><p class="tp-intro">🧙‍♀️ "Climb my endless tower, hero! Poof the zombies 🧟 and CURE the corrupted animals 💚. The higher you go, the cooler the prizes!"</p>
       <div class="tower-modes">${TOWER_MODE_ORDER.map(card).join('')}</div>
-      <p class="tp-note">👑 Every ${TOWER_BOSS_EVERY} floors: a MINI-BOSS and a 🏆 big prize · 🎒 leave by the door to keep your whole bag (knocked out = keep ${Math.round(TOWER_KO_KEEP * 100)}%) · You have ${TOWER_HEARTS} ❤️</p></div>`;
+      <p class="tp-note">👑 Every ${TOWER_BOSS_EVERY} floors: a MINI-BOSS and a 🏆 big prize · 🎒 leave by the door to keep your whole bag (knocked out = keep ${Math.round(TOWER_KO_KEEP * 100)}%) · You have ${maxHearts()} ❤️</p></div>`;
   }
   function resultsHtml() {
     const r = R.results;
@@ -1722,7 +1742,7 @@ export function createWitchTower(ctx) {
       ui.boss.querySelector('i').style.width = `${(boss.hp / boss.maxHp) * 100}%`;
       ui.boss.querySelector('span').textContent = `${short(Math.ceil(boss.hp))} / ${short(boss.maxHp)}`;
     }
-    ui.hearts.style.setProperty('--regen', R.hearts < TOWER_HEARTS ? (R.regenT / TOWER_HEART_REGEN).toFixed(2) : '0');
+    ui.hearts.style.setProperty('--regen', R.hearts < maxHearts() ? (R.regenT / regenTime()).toFixed(2) : '0');
     drawHearts();
   }
   function animateDecor(dt, time) {
@@ -1812,9 +1832,9 @@ export function createWitchTower(ctx) {
     R.t += dt;
     R.safeT = Math.max(0, R.safeT - dt);
     lostT = Math.max(0, lostT - dt);
-    if (R.hearts < TOWER_HEARTS && R.phase === 'fight') {
+    if (R.hearts < maxHearts() && R.phase === 'fight') {
       R.regenT += dt;
-      if (R.regenT >= TOWER_HEART_REGEN) {
+      if (R.regenT >= regenTime()) {
         R.regenT = 0;
         R.hearts += 1;
         play('heartBack');
