@@ -11,6 +11,7 @@ import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall, buildSaveStall } from './hubBuildings.js';
 import { addFireAura } from './fireAura.js';
 import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
+import { buildPrehistoric, animatePrehistoric, prehistoricTexture } from './prehistoric.js'; // Lv16 Prehistoric Age（Issue #14）
 import { fuseMachine } from './hubPark.js';
 import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { boost } from './events.js';
@@ -19,7 +20,7 @@ import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
-import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation } from './data/animals.js';
+import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation, hasMutation } from './data/animals.js';
 import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
 import { plotGroundTexture } from './hubFloor.js'; // 🐾 地塊地面紋理（Issue #8）
 
@@ -57,8 +58,9 @@ export const TIERS = [
   { name: 'Luminous', base: 0x0d1b2a, trim: 0x80deea, metal: 0.3, glow: 0x18ffff, emissive: 0x0a3d4a, extra: 'luminous' },
   { name: 'Mountain Magic', base: 0x5d4e6d, trim: 0xb39ddb, metal: 0.4, glow: 0xb388ff, extra: 'mountain' },
   { name: 'Astral', base: 0x1a0b3d, trim: 0xb388ff, metal: 0.5, glow: 0xea80fc, emissive: 0x12052e, extra: 'astral' },
-  // Lv16（小朋友 2026-10-17）：宇宙皇國 —— 星空機身 + 金色城堡塔、皇冠、礦石、星星
-  { name: "Astral King's Kingdom", base: 0x1a0b3d, trim: 0xffd54f, metal: 0.9, glow: 0xffd740, emissive: 0x12052e, extra: 'kingdom' },
+  // Lv16：本來係 Astral King's Kingdom（小朋友 2026-10-17）；Issue #14（2026-10-23）改做 Prehistoric Age ——
+  // 化石石頭機身、骨色邊、琥珀色燈（等級同 x6 加成冇變）
+  { name: 'Prehistoric Age', base: 0x6b4f36, trim: 0xefe3c8, metal: 0.1, glow: 0xffa000, extra: 'prehistoric' },
   // Lv17（小朋友 2026-10-18）：Inferno Sanctuary —— 黑曜石機身 + 熔岩、四條火柱、火球、火花
   { name: 'Inferno Sanctuary', base: 0x1a0d0a, trim: 0xff6d00, metal: 0.5, glow: 0xff3d00, emissive: 0x4a0e00, extra: 'inferno' },
 ].map((t, i) => ({ ...t, minLevel: i + 1 }));
@@ -104,11 +106,12 @@ function applyTier(station, level = state[station.levelKey]) {
   station.sparkles.material.color.setHex(tier.glow || 0xffffff);
   station.ring.visible = index >= 4; // Neon 起：地上有圈光
   station.sparkles.visible = index >= 3; // Golden Steel 起：有閃粉
-  for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra || (tier.extra === 'kingdom' && name === 'astral'); // 皇國：連埋 Astral 嘅宇宙特效
-  // Astral：機身變星空；Inferno：機身變火山石 + 發光熔岩裂紋，金屬邊發橙光
-  const starry = tier.extra === 'astral' || tier.extra === 'kingdom' ? starTexture() : null;
+  for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra;
+  // Astral：機身變星空；Prehistoric：化石石頭；Inferno：機身變火山石 + 發光熔岩裂紋，金屬邊發橙光
+  const starry = tier.extra === 'astral' ? starTexture() : null;
+  const fossil = tier.extra === 'prehistoric' ? prehistoricTexture() : null;
   const fiery = tier.extra === 'inferno' ? infernoTexture() : null;
-  const skin = starry || fiery;
+  const skin = starry || fossil || fiery;
   if (station.baseMat.map !== skin) {
     station.baseMat.map = skin;
     station.baseMat.emissiveMap = skin;
@@ -117,7 +120,7 @@ function applyTier(station, level = state[station.levelKey]) {
   if (skin) {
     station.baseMat.color.setHex(0xffffff);
     station.baseMat.emissive.setHex(0xffffff);
-    station.baseMat.emissiveIntensity = fiery ? 0.9 : 0.6;
+    station.baseMat.emissiveIntensity = fiery ? 0.9 : fossil ? 0.12 : 0.6;
   } else station.baseMat.emissiveIntensity = 1;
   station.trimMat.emissive.setHex(fiery ? 0xff5a00 : 0x000000);
   station.trimMat.emissiveIntensity = fiery ? 0.7 : 1;
@@ -414,53 +417,8 @@ function addFancyBits(station, group, y) {
   astral.add(corona);
   astral.userData.corona = corona;
 
-  // ---- Astral King's Kingdom（Lv16）：四座金色城堡塔、浮喺頭頂嘅皇冠、發光礦石、圍住轉嘅星星 ----
-  const kingdom = make('kingdom');
-  {
-    const gold = M(0xffc107, { metalness: 0.95, roughness: 0.2, emissive: 0x5d3a00, emissiveIntensity: 0.4 });
-    const stone = M(0x2a1b4d, { metalness: 0.3, roughness: 0.5 });
-    const flags = [];
-    for (const [x, z] of corners) {
-      add(kingdom, new THREE.CylinderGeometry(0.32, 0.38, 2.6, 8), stone, x * 1.12, 1.3, z * 1.08);
-      add(kingdom, new THREE.CylinderGeometry(0.42, 0.42, 0.3, 8), gold, x * 1.12, 2.7, z * 1.08);
-      for (let k = 0; k < 4; k++) add(kingdom, new THREE.BoxGeometry(0.16, 0.22, 0.16), gold, x * 1.12 + Math.cos((k / 4) * Math.PI * 2) * 0.34, 2.95, z * 1.08 + Math.sin((k / 4) * Math.PI * 2) * 0.34); // 城垛
-      add(kingdom, new THREE.ConeGeometry(0.36, 0.9, 8), M(0x6a1b9a, { emissive: 0x4a148c, emissiveIntensity: 0.6 }), x * 1.12, 3.5, z * 1.08);
-      add(kingdom, new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4), gold, x * 1.12, 4.3, z * 1.08);
-      const flag = add(kingdom, new THREE.BoxGeometry(0.5, 0.3, 0.03), glowMat(0xffd740, 1.2), x * 1.12 + 0.26, 4.55, z * 1.08);
-      flags.push(flag);
-    }
-    // 礦石：黑石 + 金礦、鑽石、紫水晶
-    const oreColors = [0xffd740, 0x80deea, 0xea80fc, 0x69f0ae];
-    const ores = [];
-    [[-2.6, 0], [2.6, 0.4], [0, -3.3], [-1.2, 3.4], [1.3, 3.3]].forEach(([x, z], i) => {
-      add(kingdom, new THREE.DodecahedronGeometry(0.45, 0), M(0x37474f, { flatShading: true }), x, 0.3, z);
-      for (let k = 0; k < 3; k++) {
-        const c = oreColors[(i + k) % oreColors.length];
-        const gem = add(kingdom, new THREE.OctahedronGeometry(0.16 + k * 0.03), glowMat(c, 1.8), x + (k - 1) * 0.22, 0.55 + (k % 2) * 0.15, z + 0.15);
-        gem.scale.y = 1.7;
-        ores.push(gem);
-      }
-    });
-    // 浮喺頭頂嘅大皇冠（有寶石）
-    const crown = new THREE.Group();
-    const band = add(crown, new THREE.CylinderGeometry(0.8, 0.8, 0.35, 16, 1, true), gold, 0, 0, 0);
-    band.material.side = THREE.DoubleSide;
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      add(crown, new THREE.ConeGeometry(0.13, 0.45, 4), gold, Math.cos(a) * 0.8, 0.38, Math.sin(a) * 0.8);
-      add(crown, new THREE.SphereGeometry(0.08, 8, 6), glowMat(oreColors[k % 4], 2), Math.cos(a) * 0.82, 0.02, Math.sin(a) * 0.82);
-    }
-    crown.position.set(0, 6.2, 0);
-    kingdom.add(crown);
-    // 圍住轉嘅金色星星
-    const stars = [];
-    for (let k = 0; k < 10; k++) {
-      const st = add(kingdom, new THREE.OctahedronGeometry(0.14), glowMat(k % 2 ? 0xfff59d : 0xffd740, 2.5), 0, 0, 0);
-      st.castShadow = false;
-      stars.push(st);
-    }
-    kingdom.userData = { crown, stars, flags, ores };
-  }
+  // ---- Prehistoric Age（Lv16；Issue #14 由 Astral King's Kingdom 改）：見 prehistoric.js（火山、蕨、巨型菇、骨、琥珀、恐龍蛋、翼龍……）----
+  buildPrehistoric(make('prehistoric'));
 
   // ---- Inferno Sanctuary（Lv17）：見 inferno.js（火山石門、熔岩瀑布、火龍捲、火焰圈、BB 火龍……）----
   buildInferno(make('inferno'));
@@ -754,18 +712,7 @@ function animateExtras(station, time) {
   });
   if (e.mountain.visible) e.mountain.userData.rune.rotation.z = time * 0.5;
   if (e.inferno?.visible) animateInferno(e.inferno, station, time);
-  if (e.kingdom.visible) {
-    const u = e.kingdom.userData;
-    u.crown.rotation.y = time * 0.6;
-    u.crown.position.y = 6.2 + Math.sin(time * 1.5) * 0.2;
-    u.stars.forEach((st, i) => {
-      const a = time * 0.9 + (i / u.stars.length) * Math.PI * 2;
-      st.position.set(Math.cos(a) * 3.2, 3.5 + Math.sin(time * 2 + i) * 0.6, Math.sin(a) * 3.6);
-      st.rotation.y = time * 3;
-    });
-    u.flags.forEach((f, i) => (f.rotation.y = Math.sin(time * 4 + i) * 0.4));
-    u.ores.forEach((g, i) => (g.material.emissiveIntensity = 1.4 + Math.sin(time * 3 + i) * 0.6));
-  }
+  if (e.prehistoric.visible) animatePrehistoric(e.prehistoric, time);
   if (e.astral.visible) {
     const u = e.astral.userData;
     u.galaxy.rotation.y = time * 0.35;
@@ -1000,7 +947,8 @@ function drawUpgradeSign(station) {
 const DL = {};
 const dlMat = (key, make) => (DL[key] ??= make());
 const STD = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...extra });
-function dragonMats() {
+function dragonMats(theme = 'fire') {
+  if (theme === 'meteor') return meteorDragonMats();
   return {
     scale: dlMat('scale', () => STD(0x8e0e0e, { roughness: 0.35, metalness: 0.25 })),
     belly: dlMat('belly', () => STD(0xffb74d, { roughness: 0.5 })),
@@ -1021,11 +969,95 @@ function dragonMats() {
     smoke: dlMat('smoke', () => STD(0x616161, { transparent: true, opacity: 0.6 })),
   };
 }
+// ☄️ Meteoric Dragon's Lair（繁殖機 Lv6，Issue #14）：同一條龍，但係深藍隕石龍 —— 藍色發光眼、冰藍裂縫、
+// 隕石水晶代替金幣、龍蛋變做有藍色裂紋嘅隕石，煙係藍灰色
+function meteorDragonMats() {
+  const K = (key, make) => dlMat(`m-${key}`, make);
+  return {
+    scale: K('scale', () => STD(0x1a2a5e, { roughness: 0.3, metalness: 0.4 })),
+    belly: K('belly', () => STD(0x90caf9, { roughness: 0.5 })),
+    dark: K('dark', () => STD(0x0b1026)),
+    horn: K('horn', () => STD(0xb3e5fc, { roughness: 0.3, emissive: 0x01579b, emissiveIntensity: 0.4 })),
+    rock: K('rock', () => STD(0x2c3140, { roughness: 0.95, flatShading: true })),
+    rock2: K('rock2', () => STD(0x3d4356, { roughness: 0.95, flatShading: true })),
+    lava: K('lava', () => STD(0x18ffff, { emissive: 0x00b0ff, emissiveIntensity: 2 })),
+    eye: K('eye', () => STD(0x80d8ff, { emissive: 0x2979ff, emissiveIntensity: 4 })),
+    pupil: K('pupil', () => STD(0xffffff, { emissive: 0xe1f5fe, emissiveIntensity: 2 })),
+    wing: K('wing', () => STD(0x283593, { emissive: 0x0d1b5e, emissiveIntensity: 0.7, side: THREE.DoubleSide, transparent: true, opacity: 0.93 })),
+    gold: K('gold', () => STD(0x90a4ae, { metalness: 0.8, roughness: 0.3 })),
+    gemR: K('gemR', () => STD(0x7c4dff, { emissive: 0x651fff, emissiveIntensity: 1.6, flatShading: true })),
+    gemB: K('gemB', () => STD(0x40c4ff, { emissive: 0x00b0ff, emissiveIntensity: 2, flatShading: true })),
+    gemG: K('gemG', () => STD(0x18ffff, { emissive: 0x00e5ff, emissiveIntensity: 1.8, flatShading: true })),
+    egg: K('egg', () => STD(0x263238, { roughness: 0.9, flatShading: true })),
+    eggSpot: K('eggSpot', () => STD(0x40c4ff, { emissive: 0x00b0ff, emissiveIntensity: 2.4 })),
+    smoke: K('smoke', () => STD(0x546e8a, { transparent: true, opacity: 0.6 })),
+  };
+}
 const dlBox = (w, h, d) => (DL[`b${w},${h},${d}`] ??= new RoundedBoxGeometry(w, h, d, 2, Math.min(w, h, d) * 0.2));
 const dlGeo = (key, make) => (DL[`g${key}`] ??= make());
 
-function buildDragonLair() {
-  const M = dragonMats();
+// 隕石水晶簇：幾條尖尖嘅發光水晶由一點向外生
+function meteorCrystals(parent, M, x, y, z, size = 1, tilt = 0) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  g.rotation.z = tilt;
+  parent.add(g);
+  [[0, 0, 1.0, M.gemB], [0.5, 0.35, 0.7, M.gemG], [-0.55, -0.3, 0.75, M.gemR], [0.15, -0.6, 0.55, M.gemG]].forEach(([rx, rz, h, m]) => {
+    const c = add(g, dlGeo('mcrystal', () => new THREE.OctahedronGeometry(0.26, 0)), m, 0, 0, 0);
+    c.scale.set(size, size * 3.2 * h, size);
+    c.rotation.set(rx, 0, rz);
+    c.position.set(Math.sin(rz) * -0.2 * size, 0.25 * size * h, Math.sin(rx) * 0.2 * size);
+  });
+  return g;
+}
+
+// ☄️ Meteoric Dragon's Lair 獨有：後面變做一個岩石山洞口（洞入面黑麻麻，一對大藍眼喺入面望出嚟）、
+// 隕石水晶、頭頂一粒拖住藍火尾嘅細隕石圍住轉
+function addMeteorCave(dragon, M) {
+  const cave = new THREE.Group();
+  cave.position.set(0, 0, 1.55);
+  dragon.add(cave);
+  // 洞入面：黑色半圓 + 兩邊石牆 + 石屋頂（頂唔好高過 3 米）
+  const dark = add(cave, dlGeo('cavehole', () => new THREE.CircleGeometry(1.75, 24, 0, Math.PI)), dlMat('m-cavehole', () => new THREE.MeshBasicMaterial({ color: 0x02030a, side: THREE.DoubleSide })), 0, 0.02, 0.35);
+  dark.rotation.y = Math.PI;
+  dark.scale.y = 1.45;
+  for (const [x, y, z, r] of [[-2.1, 1.0, 0.8, 0.9], [2.1, 1.0, 0.8, 0.9], [-1.4, 2.6, 0.9, 0.85], [1.4, 2.6, 0.9, 0.85], [0, 2.95, 1.0, 0.95], [-2.3, 0.5, 1.6, 1.0], [2.3, 0.5, 1.6, 1.0]]) {
+    const rk = add(cave, dlGeo('rock1', () => new THREE.DodecahedronGeometry(1, 0)), x > 0 ? M.rock : M.rock2, x, y, z);
+    rk.scale.set(r, r * 0.9, r);
+    rk.rotation.set(x, z, y);
+  }
+  // 洞入面嘅大龍眼（好似有隻更大嘅龍喺入面）
+  const eyes = [-1, 1].map((sx) => {
+    const e = add(cave, dlGeo('caveeye', () => new THREE.SphereGeometry(0.17, 12, 8)), M.eye, sx * 0.45, 1.75, 0.3);
+    e.scale.set(1.5, 0.55, 0.4);
+    e.rotation.z = sx * -0.25;
+    return e;
+  });
+  // 隕石水晶（拱門上面、地下）
+  const crystals = [
+    meteorCrystals(cave, M, -1.9, 2.0, -0.4, 1.1, 0.5),
+    meteorCrystals(cave, M, 1.85, 2.3, -0.4, 1.0, -0.5),
+    meteorCrystals(cave, M, 0.3, 3.2, -0.2, 0.8, 0.15),
+    meteorCrystals(dragon, M, 1.0, 0.05, -1.75, 1.1, 0.1),
+    meteorCrystals(dragon, M, 1.55, 0.05, -1.25, 0.8, -0.3),
+    meteorCrystals(dragon, M, -1.75, 0.05, -0.9, 0.7, 0.4),
+  ];
+  // 頭頂圍住轉嘅細隕石 + 藍火尾
+  const meteor = new THREE.Group();
+  dragon.add(meteor);
+  const rock = add(meteor, dlGeo('mrock', () => new THREE.DodecahedronGeometry(0.22, 0)), M.egg, 0, 0, 0);
+  const trail = [0, 1, 2, 3, 4].map((i) => {
+    const t = add(meteor, dlGeo('mtrail', () => new THREE.SphereGeometry(0.16, 8, 6)), dlMat(`m-trail${i}`, () => new THREE.MeshBasicMaterial({ color: 0x40c4ff, transparent: true, opacity: 0.6 - i * 0.11, depthWrite: false, blending: THREE.AdditiveBlending })), 0, 0, 0);
+    t.scale.setScalar(1 - i * 0.16);
+    t.castShadow = false;
+    return t;
+  });
+  return { eyes, crystals, meteor, rock, trail };
+}
+
+function buildDragonLair(theme = 'fire') {
+  const M = dragonMats(theme);
+  const meteoric = theme === 'meteor';
   const dragon = new THREE.Group();
   const put = (parent, geo, m, x, y, z) => add(parent, geo, m, x, y, z);
 
@@ -1118,15 +1150,15 @@ function buildDragonLair() {
     return { p, sx };
   });
 
-  // ---- 前面一堆金幣同寶石 ----
+  // ---- 前面一堆金幣同寶石（隕石龍穴：改做隕石水晶，見 addMeteorCave）----
   const coin = dlGeo('coin', () => new THREE.CylinderGeometry(0.11, 0.11, 0.03, 10));
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < (meteoric ? 0 : 26); i++) {
     const a = (i * 2.4) % (Math.PI * 2);
     const r = (i % 7) * 0.09;
     const c = put(dragon, coin, M.gold, 0.85 + Math.cos(a) * r, 0.04 + Math.floor(i / 7) * 0.05, -1.75 + Math.sin(a) * r);
     c.rotation.set(i * 0.6, 0, i * 0.3);
   }
-  put(dragon, dlGeo('chest', () => new THREE.BoxGeometry(0.5, 0.32, 0.36)), M.gold, 1.25, 0.18, -1.45).rotation.y = -0.4; // 金箱
+  if (!meteoric) put(dragon, dlGeo('chest', () => new THREE.BoxGeometry(0.5, 0.32, 0.36)), M.gold, 1.25, 0.18, -1.45).rotation.y = -0.4; // 金箱
   [M.gemR, M.gemB, M.gemG, M.gemR].forEach((m, i) => {
     const gem = put(dragon, dlGeo('gem', () => new THREE.OctahedronGeometry(0.11, 0)), m, 0.55 + i * 0.22, 0.16, -1.95 + (i % 2) * 0.2);
     gem.scale.y = 1.5;
@@ -1152,7 +1184,7 @@ function buildDragonLair() {
   const pos = new Float32Array(N * 3);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const embers = new THREE.Points(geo, dlMat('emberMat', () => new THREE.PointsMaterial({ color: 0xffab40, size: 0.13, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+  const embers = new THREE.Points(geo, dlMat(`emberMat${theme}`, () => new THREE.PointsMaterial({ color: meteoric ? 0x80d8ff : 0xffab40, size: 0.13, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
   embers.frustumCulled = false;
   dragon.add(embers);
   const smoke = [0, 1, 2, 3].map((i) => {
@@ -1162,13 +1194,13 @@ function buildDragonLair() {
     return { m, phase: i / 4 };
   });
 
-  dragon.userData = { wings, head, jaw, segs, tail, tailA: TAIL_A, egg, pos, geo, smoke, lava: M.lava, eggMat: M.eggSpot };
+  dragon.userData = { wings, head, jaw, segs, tail, tailA: TAIL_A, egg, pos, geo, smoke, lava: M.lava, eggMat: M.eggSpot, cave: meteoric ? addMeteorCave(dragon, M) : null, eyeMat: M.eye };
   return dragon;
 }
 
 // 每格畫面郁龍穴（updateHub 叫）
-function animateDragonLair(m, time) {
-  const u = m.dragon.userData;
+function animateDragonLair(m, time, lair = m.dragon) {
+  const u = lair.userData;
   const t = time + m.index * 1.3;
   // 翼：慢慢扇，間中大力張開
   const open = 0.5 + Math.sin(t * 0.7) * 0.5; // 0 收埋 → 1 張開
@@ -1204,6 +1236,20 @@ function animateDragonLair(m, time) {
     s.m.scale.setScalar(0.6 + k * 1.6);
     s.m.material.opacity = 0.55 * (1 - k);
   }
+  // ☄️ 隕石龍穴：洞入面對眼眨吓眨吓、水晶閃、細隕石圍住部機頂轉（拖住藍火尾）
+  const c = u.cave;
+  if (!c) return;
+  const blink = (t % 4.2) < 0.15 ? 0.1 : 1;
+  for (const e of c.eyes) e.scale.y = 0.55 * blink;
+  u.eyeMat.emissiveIntensity = 3 + Math.sin(time * 2.5) * 1.2;
+  c.crystals.forEach((g, i) => (g.rotation.y = Math.sin(t * 0.8 + i) * 0.15));
+  const a = t * 1.3;
+  c.meteor.position.set(Math.cos(a) * 1.7, 3.0 + Math.sin(t * 2.6) * 0.15, Math.sin(a) * 1.7);
+  c.rock.rotation.set(t * 3, t * 2, 0);
+  c.trail.forEach((tr, i) => {
+    const b = a - (i + 1) * 0.16;
+    tr.position.set(Math.cos(b) * 1.7 - c.meteor.position.x, 0, Math.sin(b) * 1.7 - c.meteor.position.z);
+  });
 }
 
 function buildMachine(scene, index, x, z) {
@@ -1281,6 +1327,10 @@ function buildMachine(scene, index, x, z) {
   const dragon = buildDragonLair();
   dragon.visible = false;
   g.add(dragon);
+  // ☄️ Meteoric Dragon's Lair（Lv6，Issue #14）：藍色隕石龍 + 山洞口 + 隕石水晶
+  const meteorLair = buildDragonLair('meteor');
+  meteorLair.visible = false;
+  g.add(meteorLair);
 
   // 進度燈（綠色光圈）
   const light = new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0x000000, emissiveIntensity: 1.5 });
@@ -1301,7 +1351,7 @@ function buildMachine(scene, index, x, z) {
     heart.visible = false;
     hearts.push({ heart, phase: i / 4 });
   }
-  return { index, x, z, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, rune, orb, pink };
+  return { index, x, z, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, meteorLair, rune, orb, pink };
 }
 
 export function machineStatus(i) {
@@ -1843,6 +1893,7 @@ export function updateHub(hub, dt, time, px, pz) {
   ]);
   for (const m of hub.machines) {
     if (m.dragon.visible) animateDragonLair(m, time);
+    if (m.meteorLair.visible) animateDragonLair(m, time, m.meteorLair);
     if (m.mountain.visible) {
       m.rune.rotation.z = time * 0.6;
       m.orb.position.y = 2.6 + Math.sin(time * 2 + m.index) * 0.2;
@@ -2002,7 +2053,8 @@ function applyMachineLook(m, level) {
   m.mountain.visible = level === 3;
   m.combo.visible = level === 4;
   m.dragon.visible = level === 5;
-  m.pink.color.setHex([0xec407a, 0x66bb6a, 0x9575cd, 0xffc107, 0xd84315][level - 1]);
+  m.meteorLair.visible = level === 6;
+  m.pink.color.setHex([0xec407a, 0x66bb6a, 0x9575cd, 0xffc107, 0xd84315, 0x2979ff][level - 1]);
 }
 
 export function applyMachineLevel(hub) {
@@ -2031,6 +2083,7 @@ export function fillMachine(machine, item) {
   return second;
 }
 
+export const newlyMeteoric = new WeakSet(); // 啱啱喺 Meteoric Dragon's Lair 變咗 ☄️ 嘅寵物
 // 攞寵物：回傳一個 list（La Combination 可能有兩隻）；La Combination 有 20% 機會變大 1–10 倍
 export function collectPet(machine) {
   const m = state.machines[machine.index];
@@ -2041,7 +2094,11 @@ export function collectPet(machine) {
     if (a.sizeMul) pet.sizeMul = a.sizeMul; // 巨型入、巨型出（之前會變返細）
     if (a.mutation) pet.mutation = a.mutation;
     if (a.flipped) pet.flipped = true;
-    if (level.fireChance && Math.random() < level.fireChance) pet.mutation = addMutation(pet, 'fire'); // Dragon's Lair：🔥 Fire 變異（疊落去）
+    // Issue #14：繁殖機唔再出 🔥 Fire（本身有 Fire 嘅照樣保留）；☄️ Meteoric Dragon's Lair 有機會出 ☄️ Meteoric（疊落去）
+    if (level.meteoricChance && !hasMutation(pet, 'meteoric') && Math.random() < level.meteoricChance) {
+      pet.mutation = addMutation(pet, 'meteoric');
+      newlyMeteoric.add(pet); // main.js 用嚟出「METEORIC MUTATION!」公告（唔存檔）
+    }
     if (level.giantChance && Math.random() < level.giantChance) {
       const extra = Math.max(1.5, Math.round((1 + Math.random() * 9) * 10) / 10);
       pet.sizeMul = Math.round((pet.sizeMul || 1) * extra * 10) / 10;

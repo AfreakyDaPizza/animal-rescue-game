@@ -228,3 +228,10 @@ src/data/questions.js ← 野生動物問題
 - 分頁：🔮 Future（提早開 Fuse + 王國 = `state.bigButton`；提早開 Gym = `state.gymEarly`）、🐾 Pets（揀任何寵物 + 稀有度 + 巨型 + Fire/Eclipse）、📖 Index（全開）、⚡ Max（跑步機／學生桌／繁殖機／地塊 MAX，之後重新載入；錢 Speed IQ Jump Power 變超多）、🎉 Events（任何活動 + Crazy Pet Frenzy + 喺指定生態區出指定稀有度）、💾 Safety（第一次改嘢之前備份真存檔 `animal-rescue-save-v1-backup`，一撳還原）。
 - 公園大閘（去實驗室）以前要撳紅掣先開；而家行到閘前面撳 E「Break the chains」就開（唔係咁就打唔到 Boss、去唔到沙灘）。
 - 王國開門動畫：日期到咗（或者提早開咗）而未睇過嘅玩家，一入遊戲（開場、選裝置、教學之後）1.5 秒就自動播一次，播完返返原位；行到閘門前面就照舊即刻播 + 傳送去樓梯。
+
+## Issue #14（小朋友 2026-10-23）：Eclipse 卡牆、升級加價、Prehistoric Age、Meteoric Dragon's Lair
+- 🌑 **Eclipse 卡牆**：開場片段（`playEclipseIntro`）直接郁 `camera`（= 玩家位置），播完冇擺返，玩家留咗喺最後一個鏡頭位 (30, 60)：Hub 圍牆外面、`isWalkable` 係 false → 四邊都行唔到。修正：`startEclipseIntro`（`main.js`）開始前記低位置／高度／方向，播完（或者跳過）擺返；原位行唔到就返 Hub (0, 14)。Eclipse 活動返咗嚟但係 `adminOnly`：淨係控制台 🎉 Events 開得，唔入隨機時間表（以前嘅時間表冇變；小朋友 2026-10-18 叫刪咗佢，要唔要返入隨機活動？問小朋友）。
+- 💰 **升級加價**（數值全部喺 `src/data/balance.js`）：跑步機／學生桌升去 Lv5 或以下價錢唔變；之後每級比舊價貴 `COST_RAMP` = 1.18 倍（疊住上），最多 `COST_RAMP_MAX` = 5 倍；Lv17 Inferno `INFERNO_COST` $1B → $5B。繁殖機：Nature Growth $5.5K → $10K、Mountain Magic $75K → $250K、La Combination $1M → $4M、Dragon's Lair $15M → $75M。
+- 🦖 **Prehistoric Age**：Lv16 跑步機／學生桌（本來 Astral King's Kingdom）換晒外觀，等級同 x6 加成冇變：化石石頭機身（`prehistoricTexture`）、冒煙火山、蕨、巨型菇、蘇鐵、恐龍肋骨 + 頭骨、琥珀（入面有蚊）、石圍欄、恐龍腳印、會郁嘅恐龍蛋、翼龍剪影圍住飛。全部喺 `src/prehistoric.js`。
+- ☄️ **Meteoric Dragon's Lair**（繁殖機 Lv6，$5B）：比 Basic 快 70%（timeFactor 0.3）、一次 2 隻、答問題加速、25% 巨型、每隻寵物 15% 機會 ☄️ METEORIC（x5 錢，`meteoricChance`）。外觀：深藍隕石龍（藍色發光眼）、岩石山洞口（洞入面有對大藍眼眨眼）、隕石水晶、藍色煙同火星、頭頂一粒拖住藍火尾嘅細隕石（`buildDragonLair('meteor')` + `addMeteorCave`，`hub.js`）。
+- 🔥 繁殖機唔再出 Fire 變異（Dragon's Lair 拎走咗 `fireChance`）；本身有 Fire 嘅寵物照樣保留 x4。Index「💗 Machines」分頁顯示每級巨型 %、答問題、Meteoric %。

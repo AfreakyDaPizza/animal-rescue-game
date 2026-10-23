@@ -31,7 +31,7 @@ import {
 } from './animals.js';
 import {
   createHub, updateHub, hubInteraction, trainingStationAt, upgradeStation, fillMachine, collectPet, placePet, scrollVideo,
-  unequipPet, equipBest, sellPet, upgradePlot, upgradeMachines, refreshPlotPets,
+  unequipPet, equipBest, sellPet, upgradePlot, upgradeMachines, refreshPlotPets, newlyMeteoric,
 } from './hub.js';
 import { createHazards, updateHazards, hazardHit } from './hazards.js';
 import { createBosses, updateBosses, sendBossHome, resetBosses } from './bosses.js';
@@ -47,7 +47,7 @@ import { createEclipse, updateEclipse, applyEclipseSky, playEclipseIntro, STRIKE
 import { createMeteorEvent, updateMeteor, applyMeteorSky, meteorShake } from './meteorEvent.js'; // ☄️ Issue #10 METEORIC
 import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
-import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, FIRE_MONEY, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS, MAX_TRAINING_LEVEL, MACHINE_LEVELS, PLOT_MAX_UPGRADES } from './data/balance.js';
+import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS, MAX_TRAINING_LEVEL, MACHINE_LEVELS, PLOT_MAX_UPGRADES } from './data/balance.js';
 import { animateFireAuras } from './fireAura.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
@@ -66,7 +66,7 @@ import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, HAMMER
 import { setGateOpen, fuseMachine, PARK_GATE } from './hubPark.js';
 import { fusePets, isFuseOpen } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
-import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText } from './data/animals.js';
+import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText, mutationInfo } from './data/animals.js';
 import { inDiscord, startDiscord } from './discordActivity.js';
 import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOpenDateText, setGymPresent } from './gym.js';
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
@@ -1604,7 +1604,19 @@ function startEclipseIntro() {
   if (intro.active || movie.active) return; // 播緊其他片：淨係變天
   player.controls.unlock();
   closePanel();
-  playEclipseIntro({ ec: eclipse, camera, playMovie, once: movieOnce, shake: movieShake, play, onDone: () => resume() });
+  // Issue #14：片段郁鏡頭 = 郁玩家（第一身鏡頭就係玩家位置）。以前播完冇擺返玩家，
+  // 會留咗喺最後一個鏡頭位 (30, 60) —— Hub 圍牆外面、行唔到嘅地方 → 貼住牆郁唔到。
+  // 而家：開始前記低位置、高度、望邊度，播完（或者跳過）擺返原位
+  const back = { x: camera.position.x, z: camera.position.z, feetY: player.feetY, rot: camera.rotation.clone() };
+  playEclipseIntro({
+    ec: eclipse, camera, playMovie, once: movieOnce, shake: movieShake, play,
+    onDone: () => {
+      if (isWalkable(back.x, back.z, 0.35, back.feetY)) placePlayer(back.x, back.feetY, back.z);
+      else teleportPlayer(player, 0, 14); // 萬一原位行唔到：返 Hub 中間
+      camera.rotation.copy(back.rot);
+      resume();
+    },
+  });
 }
 // 揀激光打邊度：地塊寵物、野生動物，或者你附近（小心！）
 function eclipseTarget() {
@@ -1743,10 +1755,11 @@ function afterCollect(pets) {
   setTimeout(() => popup(`🎟️ +${tokens} Skin Tokens`), 1200);
   quest('pets', pets.length);
   const giant = pets.find((p) => p.sizeMul > 1);
-  const fire = pets.find((p) => hasMutation(p, 'fire'));
-  if (fire) announce(`🔥🔥 FIRE MUTATION! Your ${fire.name} is ON FIRE: x${FIRE_MONEY} money! 🐉`);
+  // Issue #14：繁殖機唔再出 🔥 Fire；☄️ Meteoric Dragon's Lair 有機會出 ☄️ Meteoric
+  const meteoric = pets.find((p) => newlyMeteoric.has(p));
+  if (meteoric) announce(`☄️☄️ METEORIC MUTATION! Your ${meteoric.name} glows blue: x${mutationInfo('meteoric').money} money! 🐉`);
   else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
-  play(giant || fire ? 'tierUp' : 'ding');
+  play(giant || meteoric ? 'tierUp' : 'ding');
   popup('Put it on your Plot to earn money!');
   save();
 }

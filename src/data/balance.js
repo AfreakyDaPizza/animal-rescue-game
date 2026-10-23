@@ -57,13 +57,19 @@ export const REPRODUCE_SECONDS = [30, 60, 120, 240, 480, 900, 1500, 1800, 2400, 
 // timeFactor：繁殖時間 × 幾多（0.8 = 快 20%）；cost：升去呢級要幾錢
 export const MACHINE_LEVELS = [
   { name: 'Basic', timeFactor: 1, cost: 0 },
-  { name: 'Nature Growth', timeFactor: 0.8, cost: 5500 }, // 貴 10%
-  { name: 'Mountain Magic', timeFactor: 0.65, cost: 75000 }, // 加強：快 35%（本來 25%）
+  // Issue #14 (kid 2026-10-23): ALL machine upgrades cost more. Before → now:
+  // Nature Growth $5.5K → $10K · Mountain Magic $75K → $250K · La Combination $1M → $4M · Dragon's Lair $15M → $75M
+  { name: 'Nature Growth', timeFactor: 0.8, cost: 10000 },
+  { name: 'Mountain Magic', timeFactor: 0.65, cost: 250000 }, // 加強：快 35%（本來 25%）
   // La Combination（小朋友 2026-10-11）：再快 30%（0.65 × 0.7 ≈ 快 55%）、一次放 2 隻、20% 機會寵物變大 1–10 倍
-  { name: 'La Combination', timeFactor: 0.455, cost: 1000000, double: true, giantChance: 0.2 },
-  // Dragon's Lair (kid 2026-10-17): 60% faster than Basic, 2 animals at a time, answer questions to speed up,
-  // and a chance that the pet comes out with the 🔥 FIRE mutation (fire aura + x4 money)
-  { name: "Dragon's Lair", timeFactor: 0.4, cost: 15000000, double: true, giantChance: 0.2, quiz: true, fireChance: 0.15 },
+  { name: 'La Combination', timeFactor: 0.455, cost: 4000000, double: true, giantChance: 0.2 },
+  // Dragon's Lair (kid 2026-10-17): 60% faster than Basic, 2 animals at a time, answer questions to speed up.
+  // Issue #14: machines do NOT give the 🔥 FIRE mutation any more (pets that already have Fire keep it)
+  { name: "Dragon's Lair", timeFactor: 0.4, cost: 75000000, double: true, giantChance: 0.2, quiz: true },
+  // ☄️ Meteoric Dragon's Lair (Issue #14, kid 2026-10-23): the BIG end-game machine, a blue meteor-dragon cave.
+  // 70% faster than Basic, 2 animals at a time, questions, 25% GIANT, and meteoricChance = chance (0 to 1)
+  // that each pet comes out with the ☄️ METEORIC mutation (x METEORIC_MONEY money)
+  { name: "Meteoric Dragon's Lair", timeFactor: 0.3, cost: 5000000000, double: true, giantChance: 0.25, quiz: true, meteoricChance: 0.15 },
 ];
 export const MACHINE_QUIZ_CUT = 0.3; // Right answer: cut this much of the time that is left (0.3 = 30%)...
 export const MACHINE_QUIZ_MIN_CUT = 20; // ...but always at least this many seconds
@@ -87,7 +93,7 @@ export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 400
 // 15 級，每級一個款：Basic → … → Mountain Magic（14）→ Astral（15，MAX）
 export const MAX_TRAINING_LEVEL = 17; // Lv17 Inferno Sanctuary（小朋友 2026-10-18）
 // 小朋友 2026-10-11 加強：Lv14 Mountain Magic ×1.5、Lv15 Astral ×2
-const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 6 }; // Lv16 Astral King's Kingdom: x6（小朋友 2026-10-17：再勁啲，本來 x3）
+const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 6 }; // Lv16 Prehistoric Age（本來叫 Astral King's Kingdom，Issue #14 改名）: x6（小朋友 2026-10-17：再勁啲，本來 x3）
 // Lv17 Inferno Sanctuary (kid 2026-10-18): gives a random amount between these 2 numbers every second
 export const INFERNO_GAIN = [1000000, 1500000];
 export const trainingRange = (level) => (level >= 17 ? INFERNO_GAIN : null);
@@ -98,11 +104,18 @@ export const trainingGain = (level, stat = 'iq', roll = Math.random()) =>
 // 升去 Lv2–13 貴 10%（小朋友 2026-10-11），升去 Lv14／15 價錢唔變
 // Lv13–16 cost 30% more (kid 2026-10-18). Lv17 Inferno Sanctuary costs INFERNO_COST.
 export const LATE_LEVEL_EXTRA = 1.3;
-export const INFERNO_COST = 1000000000;
+export const INFERNO_COST = 5000000000; // Issue #14: $1B → $5B
+// Issue #14 (kid 2026-10-23): Treadmill & Student Table upgrades cost MORE.
+// Up to Lv COST_RAMP_FROM: same price as before (easy start). After that each level is COST_RAMP times more
+// expensive than its old price, piling up, but never more than COST_RAMP_MAX times. To Lv8 x1.6, Lv10 x2.3, Lv13 x3.8, Lv15+ x5
+export const COST_RAMP_FROM = 5;
+export const COST_RAMP = 1.18;
+export const COST_RAMP_MAX = 5;
+const costRamp = (toLevel) => (toLevel <= COST_RAMP_FROM ? 1 : Math.min(COST_RAMP_MAX, COST_RAMP ** (toLevel - COST_RAMP_FROM)));
 // 顯示用：Lv17 係一個範圍（例如 "1M–1.5M"）
 export const trainingGainLabel = (level, stat, fmt) => (trainingRange(level) ? trainingRange(level).map(fmt).join('–') : fmt(trainingGain(level, stat)));
 export const upgradeCost = (level) =>
-  level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1));
+  level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1) * costRamp(level + 1));
 
 // ---- 🎣 HALLOWEEN FISHING (kid 2026-10-19; Issues #8 #9 2026-10-21): 15 rods, fish for eggs AND 🌽 Candy Corn ----
 // Everybody gets the Twig Rod FREE. Better rods cost 🌽 Candy Corn (you get it by fishing) and you KEEP them (saved).
