@@ -3,8 +3,9 @@
 //
 // 賣咩：
 // - 👹 Demonic Boss Skin（state.demonicBossSkin，用 demonicRewards.js 嘅 unlockDemonicBossSkin）
-// - 🦹 Meteoric Boss Skin（state.meteorBossSkin，同 ☄️ Meteoric Shop 一樣嘅記法）
-// - 😈 Demonic Ranger（unlockDemonicSkin）+ Skin Shop 啲普通護林員皮膚（state.ownedRanger / state.rangerSkin）
+// - 😈 Demonic Ranger（unlockDemonicSkin）
+// - 🔮 Demonic／Eclipse Shard、😈 Demonic Chest（入背包 Gears，可以一次買好多）
+// （小朋友 2026-10-23：唔再賣 Meteoric Boss Skin 同普通護林員皮膚）
 //   皮膚個樣由 thirdPerson.js 嘅 buildAvatar + applyRangerSkin 畫（其他人改皮膚樣，呢度自動跟）
 //
 // 用法（hellWorld.js）：
@@ -17,7 +18,11 @@ import { extraPanels } from './hud.js';
 import { RANGER_SKINS } from './skins.js';
 import { unlockDemonicSkin, unlockDemonicBossSkin } from './demonicRewards.js';
 import { buildAvatar, applyRangerSkin } from './thirdPerson.js';
-import { CASTLE_BOSS_SKINS, CASTLE_RANGER_PRICES, CASTLE_RANGER_MULT, CASTLE_RANGER_SKIP } from './data/castleShop.js';
+import { CASTLE_BOSS_SKINS, CASTLE_RANGER_PRICES, CASTLE_ITEMS } from './data/castleShop.js';
+import { gearInfo, addGear } from './data/gears.js';
+import { gearIcon } from './gearArt.js';
+import { giveChests } from './chests.js';
+import { bulkButtons, bulkCount } from './bulkBuy.js';
 import { makeSign, THEMES } from './signs.js';
 import { M, GLOW, add, box, cyl, cone, ball, halo, lightPool } from './halloweenArt.js';
 
@@ -27,11 +32,12 @@ const tokens = () => state.skeleTokens || 0;
 
 // 賣邊啲護林員皮膚（😈 Demonic 排第一）
 export function castleRangerSkins() {
-  const list = RANGER_SKINS.filter((s) => !CASTLE_RANGER_SKIP.includes(s.id) && !s.meteor && (s.cost > 0 || CASTLE_RANGER_PRICES[s.id] != null))
-    .map((s) => ({ skin: s, cost: CASTLE_RANGER_PRICES[s.id] ?? s.cost * CASTLE_RANGER_MULT }));
+  // 小朋友 2026-10-23：淨係賣 😈 Demonic（Meteoric 同普通皮膚唔喺度賣）
+  const list = RANGER_SKINS.filter((s) => CASTLE_RANGER_PRICES[s.id] != null).map((s) => ({ skin: s, cost: CASTLE_RANGER_PRICES[s.id] }));
   return list.sort((a, b) => (b.skin.id === 'demonic') - (a.skin.id === 'demonic') || a.cost - b.cost);
 }
 const bossOwned = (id) => (id === 'demonic' ? !!state.demonicBossSkin : !!state.meteorBossSkin);
+
 
 // ======================== 🖼️ 皮膚相（一個 renderer 畫晒，畫完收返）========================
 const pics = {};
@@ -82,6 +88,7 @@ const CSS = `
 .cs-card.cs-rare { border-color: #ff5252 !important; box-shadow: 0 0 16px rgba(255, 82, 82, 0.45); }
 .cs-card img { width: 100%; max-width: 130px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 4px 6px rgba(74, 20, 140, 0.45)); }
 .cs-card .cs-boss { width: 110px; height: 110px; margin: 4px auto; border-radius: 50%; display: grid; place-items: center; font-size: 58px; border: 4px solid #fff3; }
+.cs-card .cs-gear { width: 96px; height: 96px; margin: 4px auto; display: grid; place-items: center; font-size: 54px; } .cs-card .cs-gear img { width: 100%; height: 100%; object-fit: contain; }
 .cs-card .cs-price { display: block; font-weight: 800; color: #6a1b9a; }
 .cs-card p { font-size: 13px; }
 `;
@@ -119,7 +126,15 @@ function shopHtml() {
   return `<div class="cs-top"><span class="cs-tokens">☠️ ${tokens()} Skele Tokens</span><small>🧙‍♀️ "Spooky styles for brave heroes! Win more tokens in my 🗼 Witch Tower."</small></div>
     <h3 class="cs-h">👹 Boss Skins</h3><p class="hint">Buy once, then walk up to any biome Boss and press <kbd>E</kbd> to change its look.</p>
     <div class="cards cs-cards">${boss}</div>
-    <h3 class="cs-h">🧑 Ranger Skins</h3><div class="cards cs-cards">${ranger}</div>`;
+    <h3 class="cs-h">🧑 Ranger Skins</h3><div class="cards cs-cards">${ranger}</div>
+    <h3 class="cs-h">🔮 Shards & 🧰 Chests</h3><p class="hint">They go into your 🎒 Gears. Buy lots at once!</p>
+    <div class="cards cs-cards">${CASTLE_ITEMS.map((it) => {
+      const g = gearInfo(it.gear);
+      const have = (state.gears || []).filter((x) => x.type === it.gear).length;
+      return `<div class="card-animal cs-card"><div class="cs-gear">${gearIcon(it.gear) || g.emoji}</div><b>${g.emoji} ${g.name}</b>
+        <span class="cs-price">☠️ ${it.cost} each</span><p>${it.text}</p>${have ? `<small>🎒 You have ${have}</small>` : ''}
+        ${bulkButtons({ attr: `data-cshop="item" data-id="${it.gear}"`, cost: it.cost, have: tokens(), icon: '☠️' })}</div>`;
+    }).join('')}</div>`;
 }
 
 export function createCastleShopPanel({ play = () => {}, popup = () => {}, announce = () => {}, equipRanger = () => {} } = {}) {
@@ -140,7 +155,17 @@ export function createCastleShopPanel({ play = () => {}, popup = () => {}, annou
       state.skeleTokens = tokens() - cost;
       return true;
     };
-    if (kind === 'boss') {
+    if (kind === 'item') {
+      const item = CASTLE_ITEMS.find((x) => x.gear === id);
+      const count = item ? bulkCount(b.dataset.n, item.cost, tokens()) : 0;
+      if (!count || !pay(item.cost * count)) return;
+      const g = gearInfo(id);
+      if (g.chest) giveChests(id, count, { quiet: true });
+      else addGear(id, count);
+      save();
+      play('upgrade');
+      popup(`+${count} ${g.emoji} ${g.name}${count > 1 ? 's' : ''} added to your 🎒!`);
+    } else if (kind === 'boss') {
       const item = CASTLE_BOSS_SKINS.find((x) => x.id === id);
       if (!item || bossOwned(id) || !pay(item.cost)) return;
       if (id === 'demonic') unlockDemonicBossSkin();
