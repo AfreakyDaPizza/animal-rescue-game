@@ -48,7 +48,7 @@ import { createMeteorEvent, updateMeteor, applyMeteorSky, meteorShake } from './
 import { addFireAura } from './fireAura.js';
 import { TRASH } from './biomes.js';
 import { rarityInfo, TRASH_REWARD, BORROW_HEAD_START, LAB_REWARD, MACHINE_QUIZ_CUT, MACHINE_QUIZ_MIN_CUT, MACHINE_QUIZ_COOLDOWN, FUSE_MONEY_BONUS, MAX_TRAINING_LEVEL, MACHINE_LEVELS, PLOT_MAX_UPGRADES } from './data/balance.js';
-import { animateFireAuras } from './fireAura.js';
+import { animateFireAuras, setAuraQuality } from './fireAura.js';
 import { buildLab, updateLabGuide, openParkGate, lab, portalReady, podsDone, legendaryDone, smashPod, hammerModel, batModel, sparkleBurst } from './lab.js';
 import { movie, updateMovie, finishMovie, playMovie, once as movieOnce, shake as movieShake } from './movie.js';
 import { buildSecretBeach, beach, applyBeachSky, playCollab, playBeachFinale } from './secretBeach.js';
@@ -257,6 +257,7 @@ function applyQuality() {
   sun.castShadow = q >= 1;
   sun.shadow.radius = q >= 2 ? 2.5 : 1; // 高／中畫質：影嘅邊柔和啲
   setAmbienceQuality(ambience, q); // ✨ 粒子：最低 = 冇、低 = 一半
+  setAuraQuality(q); // ✨ 變異特效粒子跟畫質
   const size = q >= 2 ? 2048 : 1024;
   if (sun.shadow.mapSize.x !== size) {
     sun.shadow.mapSize.set(size, size);

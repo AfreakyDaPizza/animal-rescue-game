@@ -929,6 +929,7 @@ export function buildAnimalModel(animal) {
   const g = (HALLOWEEN_MODELS[animal.name] || ECHO_MODELS[animal.name] || METEOR_MODELS[animal.name] || DEMONIC_MODELS[animal.name] || WORST_PETS[animal.name] || ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || ENCHANTED_MODELS[animal.name] || MODELS[animal.name] || fallback)();
   g.userData.height *= g.scale.y;
   g.userData.move ??= 'walk';
+  g.userData.animalName = animal.name; // 👻 Spectral 分身形狀 cache 用
   return g;
 }
 
