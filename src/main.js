@@ -2089,7 +2089,7 @@ renderer.setAnimationLoop((timestamp) => {
     walking: player.walking, feetY: player.feetY, grounded: player.grounded, vy: player.vy,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
-    time,
+    time, quality: quality.level, // 👕 皮膚粒子跟畫質
   });
   if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
