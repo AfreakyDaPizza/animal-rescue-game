@@ -459,7 +459,16 @@ export const TOWER_ENEMIES = {
   spitter: { name: 'Slime Zombie', hp: 260, speed: 1.9, from: 7 }, // stays back and throws green slime (red circle = where it lands)
   brute: { name: 'Big Zombie', hp: 900, speed: 1.6, from: 9 }, // big, slow and tough
   animal: { name: 'Corrupted animal', hp: 420, speed: 2.6, from: 2, dash: 15 }, // runs at you (dash = charge speed). Never hurt: at 0 HP it is CURED 💚
+  // Issue #14: new zombies with cool attack skills (weight = how often it is picked, bigger = more often)
+  leaper: { name: 'Leaper Zombie', hp: 240, speed: 3.0, from: 3, weight: 2 }, // crouches, then POUNCES on the red circle
+  shield: { name: 'Shield Zombie', hp: 420, speed: 1.9, from: 5, weight: 1.8 }, // its shield blocks shots: hit its HEAD or BACK (explosions get round it)
+  bomber: { name: 'Bomber Zombie', hp: 280, speed: 2.0, from: 6, weight: 1.8 }, // throws pumpkin bombs: run out of the red circle before BOOM
+  frost: { name: 'Frost Zombie', hp: 320, speed: 2.1, from: 8, weight: 1.6, slow: 0.5, slowTime: 2.5 }, // throws ice balls: a hit makes you SLOW (slow = speed ×0.5 for slowTime seconds)
+  splitter: { name: 'Splitter Zombie', hp: 520, speed: 1.8, from: 10, weight: 1.4 }, // poof it and it splits into 2 Mini Zombies
+  mini: { name: 'Mini Zombie', hp: 110, speed: 3.6, from: 999 }, // only comes out of a Splitter
+  necro: { name: 'Necro-Witch Zombie', hp: 380, speed: 1.7, from: 12, weight: 0.9, heal: 160 }, // heals friends with a green beam + summons Mini Zombies. Poof it first!
 };
+export const TOWER_CRATE_CHANCE = 0.05; // 📦 Weapon Crate: chance a poofed zombie drops one (0.05 = 5%). Pick it up = a new random weapon for this tower run
 // Mini-bosses every TOWER_BOSS_EVERY floors: 👑 Zombie King (floor 5, 15, 25...) and a 😵 GIANT corrupted animal (floor 10, 20, 30...)
 // HP grows by TOWER_BOSS_GROWTH every time one comes back (0.35 = +35%)
 export const TOWER_BOSS_HP = { king: 5000, giant: 6000 };

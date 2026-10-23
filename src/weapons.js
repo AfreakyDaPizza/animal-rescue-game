@@ -23,6 +23,12 @@
 //              onHit(damage, { point, crit, weapon }) { ... return false = 擋咗（顯示 BLOCKED） },
 //            });
 //            t.remove() → 唔再係目標
+//   🗼 Issue #14：weapons.setLoadout('tower', ['candyPistol']) → 喺呢個區淨係用呢幾支（唔使真係擁有；出咗區就冇）
+//            weapons.setLoadout('tower', null) → 用返自己擁有嘅（state.weapons）
+//            weapons.select(id) → 揀快捷欄嗰支武器
+//   打中資料：onHit(damage, { point, crit, weapon, part, slow, splash, chain })
+//            part = 打中嗰個球（parts() 入面嘅 object，可以加 block: true = 盾牌）· slow = { mult, time }（Frost Wand）
+//            splash = 爆炸波及（Pumpkin Launcher）· chain = 閃電跳過嚟（Lightning Staff）
 //   其他：weapons.held（而家拎住嘅武器資料或者 null）、weapons.aiming（0–1）、weapons.refill()（補滿子彈）
 //         weapons.ammoOf(id)、weapons.onShot = (def) => {}（射咗一下）
 //   射擊：Hitscan（即中，畫一條發光彈道）或者 projectile（會飛、有地心吸力，例如 Slingshot）
@@ -31,9 +37,9 @@
 
 import * as THREE from 'three';
 import { WEAPONS, WEAPON_ORDER } from './data/weapons.js';
-import { buildWeaponModel, muzzleFlash, glowTexture } from './weaponModels.js';
+import { buildWeaponModel, muzzleFlash, glowTexture, projectileModel } from './weaponModels.js';
 import { state, save } from './state.js';
-import { selectedHotbarItem, selectSlot, toolFlags, popup } from './hud.js';
+import { selectedHotbarItem, selectSlot, toolFlags, popup, hotbarItems } from './hud.js';
 import { addSounds } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
@@ -66,6 +72,36 @@ addSounds({
     noise(t, 0.05, { vol: 0.25, freq: 1800, type: 'highpass' });
     tone(660, t + 0.04, 0.08, { type: 'square', vol: 0.06 });
     tone(990, t + 0.1, 0.12, { type: 'triangle', vol: 0.08 });
+  },
+  // Issue #14 新武器
+  pumpkinLaunch: (t, { tone, noise }) => {
+    tone(140, t, 0.25, { type: 'sine', vol: 0.3, slide: 0.45 });
+    noise(t, 0.18, { vol: 0.2, freq: 700, q: 0.7, type: 'bandpass' });
+    tone(520, t + 0.02, 0.2, { type: 'triangle', vol: 0.06, slide: 1.8 });
+  },
+  pumpkinBoom: (t, { tone, noise, arp }) => {
+    tone(70, t, 0.6, { type: 'sine', vol: 0.45, slide: 0.4 });
+    noise(t, 0.5, { vol: 0.45, freq: 500 });
+    arp(t + 0.08, [880, 1175, 1568], 0.05, { type: 'triangle', vol: 0.07 });
+  },
+  frostZap: (t, { tone, noise }) => {
+    tone(2600, t, 0.06, { type: 'sine', vol: 0.05, slide: 0.7 });
+    noise(t, 0.07, { vol: 0.08, freq: 6000, type: 'highpass' });
+  },
+  lightningZap: (t, { tone, noise }) => {
+    noise(t, 0.25, { vol: 0.35, freq: 3500, q: 0.5, type: 'bandpass' });
+    tone(180, t, 0.2, { type: 'sawtooth', vol: 0.12, slide: 0.5 });
+    tone(1200, t + 0.03, 0.12, { type: 'square', vol: 0.05, slide: 0.3 });
+  },
+  ghostBlast: (t, { tone, noise }) => {
+    noise(t, 0.22, { vol: 0.38, freq: 1400, q: 0.6, type: 'bandpass' });
+    tone(420, t, 0.35, { type: 'sine', vol: 0.12, slide: 0.5 });
+    tone(640, t + 0.05, 0.4, { type: 'triangle', vol: 0.06, slide: 1.3 }); // 「呼～」鬼叫
+  },
+  batScreech: (t, { tone }) => {
+    tone(2400, t, 0.08, { type: 'triangle', vol: 0.06, slide: 1.4 });
+    tone(2900, t + 0.06, 0.07, { type: 'triangle', vol: 0.05, slide: 0.8 });
+    tone(300, t, 0.15, { type: 'sine', vol: 0.12, slide: 2 });
   },
   hitMarker: (t, { tone }) => tone(2600, t, 0.04, { type: 'triangle', vol: 0.07 }),
   critMarker: (t, { tone }) => {
@@ -107,7 +143,7 @@ body.holding-weapon #crosshair { display: none; }
 #wpn-scope::after { content: ''; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid #ff5252; box-shadow: 0 0 8px #ff5252; }
 #wpn-dmg { position: fixed; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; }
 #wpn-dmg span { position: absolute; left: 0; top: 0; font-weight: 900; font-size: 22px; color: #fff; -webkit-text-stroke: 3px #1a0b2e; paint-order: stroke fill; white-space: nowrap; will-change: transform, opacity; }
-#wpn-dmg span.crit { color: #ffd740; font-size: 30px; } #wpn-dmg span.blocked { color: #b0bec5; font-size: 16px; }
+#wpn-dmg span.crit { color: #ffd740; font-size: 30px; } #wpn-dmg span.aoe { color: #ffcc80; font-size: 19px; } #wpn-dmg span.blocked { color: #b0bec5; font-size: 16px; }
 #wpn-touch { position: fixed; right: calc(118px + env(safe-area-inset-right, 0px)); bottom: calc(22vh + env(safe-area-inset-bottom, 0px)); z-index: 21; display: none; flex-direction: column; gap: 8px; align-items: center; }
 #wpn-touch .row { display: flex; gap: 8px; }
 body.mobile.holding-weapon #wpn-touch { display: flex; }
@@ -168,8 +204,9 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   const ui = buildUi();
   if (!Array.isArray(state.weapons)) state.weapons = [];
   const ammo = {}; // id → 剩幾多發
-  for (const id of WEAPON_ORDER) ammo[id] = WEAPONS[id].mag;
+  for (const id of Object.keys(WEAPONS)) ammo[id] = WEAPONS[id].mag;
   const zones = new Set();
+  const loadouts = {}; // Issue #14：區 → 呢個區用嘅武器（例如女巫塔：每次入塔得一支）
   const targets = new Set();
 
   // ---- 模型：第一身掛鏡頭，第三身掛右手 ----
@@ -298,29 +335,121 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     let best = null;
     for (const tg of targets) {
       if (tg.alive && !tg.alive()) continue;
-      for (const sp of sphereList(tg)) {
+      sphereList(tg).forEach((sp, pi) => {
         const d = raySphere(origin, dir, sp.pos, sp.radius);
-        if (d >= 0 && d <= maxDist && (!best || d < best.dist)) best = { tg, sp, dist: d };
-      }
+        if (d >= 0 && d <= maxDist && (!best || d < best.dist)) best = { tg, sp, pi, dist: d };
+      });
     }
     return best;
   }
-  function applyHit(hit, point, damage, def) {
+  // 回傳 false = 擋咗（盾牌）、否則係扣咗幾多
+  function applyHit(hit, point, damage, def, extra = {}) {
     // 🌳 Skill Tree（Issue #14，skillTree.js）：Spell Power 加傷害、Lucky Crit 有機會 ×1.5 爆擊
     const sk = window.__skills;
     const lucky = !hit.sp.crit && Math.random() < (sk?.mult('crit') || 0);
     const crit = !!hit.sp.crit || lucky;
     const dmg = Math.round(damage * (hit.sp.mult ?? 1) * (lucky ? 1.5 : 1) * (sk?.mult('damage') ?? 1));
-    const res = hit.tg.onHit?.(dmg, { point, crit, weapon: def.id });
+    const res = hit.tg.onHit?.(dmg, { point, crit, weapon: def.id, part: hit.sp, slow: def.slow || null, ...extra });
     if (res === false) {
       damageNumber(point, 'BLOCKED', 'blocked');
       sparkBurst(point, 0xb0bec5, 4, 0.4);
-      return;
+      return false;
     }
-    damageNumber(point, String(typeof res === 'number' ? res : dmg), crit ? 'crit' : '');
+    damageNumber(point, String(typeof res === 'number' ? res : dmg), crit ? 'crit' : extra.splash || extra.chain ? 'aoe' : '');
     hitMarker(crit);
     play(crit ? 'critMarker' : 'hitMarker');
     sparkBurst(point, def.color, crit ? 10 : 6, crit ? 0.8 : 0.55);
+    if (def.slow) sparkBurst(point, 0xe1f5fe, 3, 0.45); // ❄️ 雪花粒
+    return typeof res === 'number' ? res : dmg;
+  }
+  // ---- Issue #14：🎃 爆炸（打中附近所有目標，越近中間扣越多）----
+  const tmpC = new THREE.Vector3();
+  const centerOf = (tg) => tmpC.copy(tg.getPos());
+  function splashAt(point, def) {
+    const P = def.projectile;
+    boom(point, def.color, P.splash);
+    play('pumpkinBoom');
+    for (const tg of [...targets]) {
+      if (tg.alive && !tg.alive()) continue;
+      const c = centerOf(tg);
+      const d = Math.max(0, c.distanceTo(point) - (tg.radius ?? 1) * 0.6);
+      if (d > P.splash) continue;
+      const dmg = P.splashDamage * (1 - 0.6 * (d / P.splash));
+      applyHit({ tg, sp: { mult: 1 } }, c.clone().lerp(point, 0.3), dmg, def, { splash: true });
+    }
+  }
+  // 爆炸畫面：光球 + 擴散光圈 + 南瓜碎粒
+  const rings = [];
+  const ringGeo = new THREE.RingGeometry(0.8, 1, 40);
+  function boom(p, color, r) {
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(p.x, Math.max(0.08, p.y - 0.4), p.z);
+    m.frustumCulled = false;
+    scene.add(m);
+    const flashS = new THREE.Mesh(sparkGeo, new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffe082, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    flashS.position.copy(p);
+    flashS.frustumCulled = false;
+    scene.add(flashS);
+    rings.push({ m, flashS, t: 0, r });
+    sparkBurst(p, color, 18, 0.9);
+    sparkBurst(p, 0xffeb3b, 10, 0.6);
+    sparkBurst(p, 0x76ff03, 4, 0.5); // 南瓜蒂（綠色）
+  }
+  // ---- ⚡ 閃電（之字形，一閃一閃）----
+  const bolts = [];
+  function bolt(from, to, color) {
+    const g = new THREE.Group();
+    const n = Math.max(4, Math.min(12, Math.round(from.distanceTo(to) / 1.2)));
+    const dir = to.clone().sub(from);
+    const side = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+    const up = new THREE.Vector3().crossVectors(side, dir).normalize();
+    let a = from.clone();
+    for (let i = 1; i <= n; i++) {
+      const b = from.clone().addScaledVector(dir, i / n);
+      if (i < n) {
+        const j = Math.min(0.6, dir.length() * 0.05);
+        b.addScaledVector(side, (Math.random() - 0.5) * 2 * j).addScaledVector(up, (Math.random() - 0.5) * 2 * j);
+      }
+      const len = a.distanceTo(b);
+      for (const [mat, w] of [[tracerCoreMat(color), 0.05], [tracerGlowMat(color), 0.22]]) {
+        const seg = new THREE.Mesh(tracerGeo, mat);
+        seg.position.copy(a).lerp(b, 0.5);
+        seg.lookAt(b);
+        seg.scale.set(w, w, len);
+        seg.frustumCulled = false;
+        g.add(seg);
+      }
+      a = b;
+    }
+    scene.add(g);
+    bolts.push({ g, t: 0 });
+    sparkBurst(to, color, 6, 0.6);
+  }
+  function chainFrom(firstTg, point, damage, def) {
+    const C = def.chain;
+    const done = new Set([firstTg]);
+    let at = point.clone();
+    let dmg = damage;
+    for (let j = 0; j < C.jumps; j++) {
+      let best = null;
+      let bd = C.range;
+      for (const tg of targets) {
+        if (done.has(tg) || (tg.alive && !tg.alive())) continue;
+        const d = centerOf(tg).distanceTo(at);
+        if (d < bd) {
+          bd = d;
+          best = tg;
+        }
+      }
+      if (!best) break;
+      done.add(best);
+      dmg *= C.falloff;
+      const c = centerOf(best).clone();
+      bolt(at, c, def.color);
+      applyHit({ tg: best, sp: { mult: 1 } }, c, dmg, def, { chain: true });
+      at = c;
+    }
   }
 
   // ---- 輸入 ----
@@ -427,36 +556,75 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     const m = modelsOf(def.id);
     (third ? m.tp : m.fp).userData.muzzle.getWorldPosition(muzzleW);
     const damage = def.charge ? Math.round(THREE.MathUtils.lerp(def.charge.minDamage, def.charge.maxDamage, chargeK)) : def.damage;
+    const range = def.range || RANGE;
     if (def.projectile) {
       // 會飛嘅彈：由槍嘴飛向準星對住嘅位
+      const P = def.projectile;
       const hit = rayHit(origin, aimDir);
-      const aimPoint = tmpV.copy(origin).addScaledVector(aimDir, hit ? hit.dist : 60);
-      const speed = def.projectile.speed * (0.55 + chargeK * 0.45);
-      const v = aimPoint.clone().sub(muzzleW).normalize().multiplyScalar(speed);
-      v.y += def.projectile.gravity * (muzzleW.distanceTo(aimPoint) / speed) * 0.5; // 預返地心吸力
-      const s = new THREE.Mesh(sparkGeo, sparkMat(def.color));
-      s.scale.setScalar(0.6 + chargeK * 0.6);
-      s.position.copy(muzzleW);
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.09 + chargeK * 0.06, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffa000, emissiveIntensity: 2.5 }));
-      s.add(core);
-      scene.add(s);
-      shots.push({ s, v, def, damage, t: 0, gravity: def.projectile.gravity });
-    } else {
-      const hit = rayHit(origin, aimDir);
-      let end;
-      if (hit) {
-        end = origin.clone().addScaledVector(aimDir, hit.dist);
-        applyHit(hit, end, damage, def);
-      } else {
-        // 打唔中：去到地面或者好遠
-        let d = RANGE * 0.4;
-        if (aimDir.y < -0.01) d = Math.min(d, (origin.y - 0.02) / -aimDir.y);
-        end = origin.clone().addScaledVector(aimDir, d);
-        if (aimDir.y < -0.01 && d < RANGE * 0.4) sparkBurst(end, def.color, 3, 0.35);
+      const aimPoint = tmpV.copy(origin).addScaledVector(aimDir, hit ? hit.dist : 60).clone();
+      const speed = P.speed * (def.charge ? 0.55 + chargeK * 0.45 : 1);
+      const side = new THREE.Vector3(1, 0, 0).applyQuaternion(view.quaternion);
+      for (let k = 0; k < (P.count || 1); k++) {
+        const v = aimPoint.clone().sub(muzzleW).normalize().multiplyScalar(speed);
+        v.y += P.gravity * (muzzleW.distanceTo(aimPoint) / speed) * 0.5; // 預返地心吸力
+        if (P.count > 1) { // 🦇 幾隻蝙蝠：散開少少飛出去（之後自己追敵人）
+          v.addScaledVector(side, (k - (P.count - 1) / 2) * speed * 0.35);
+          v.y += (k % 2 ? 1 : -0.3) * speed * 0.12;
+        }
+        let s;
+        if (P.model) {
+          s = projectileModel(P.model, def.color);
+          if (!third) s.scale.multiplyScalar(0.8);
+        } else {
+          s = new THREE.Mesh(sparkGeo, sparkMat(def.color));
+          s.scale.setScalar(0.6 + chargeK * 0.6);
+          const core = new THREE.Mesh(new THREE.SphereGeometry(0.09 + chargeK * 0.06, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffa000, emissiveIntensity: 2.5 }));
+          s.add(core);
+        }
+        s.position.copy(muzzleW);
+        s.traverse((o) => (o.frustumCulled = false));
+        scene.add(s);
+        shots.push({ s, v, def, damage, t: 0, gravity: P.gravity, model: !!P.model, homing: P.homing || 0, delay: k * 0.07 });
       }
-      // 第一身：光由槍嘴前面少少開始（太近鏡頭會好大條）
-      if (!third) muzzleW.addScaledVector(tmpV.copy(end).sub(muzzleW).normalize(), Math.min(1.2, muzzleW.distanceTo(end) * 0.5));
-      tracer(muzzleW, end, def.color, (third ? m.tp : m.fp).userData.tracer);
+    } else {
+      // Hitscan：Ghost Shotgun 一下幾粒（每隻敵人每個部位加埋先出一個數）
+      const pellets = def.pellets || 1;
+      const agg = new Map();
+      for (let k = 0; k < pellets; k++) {
+        const dir = aimDir.clone();
+        if (pellets > 1 && k > 0) {
+          const a = Math.random() * Math.PI * 2;
+          const r = Math.sqrt(Math.random()) * Math.tan(spread);
+          dir.addScaledVector(spreadRight.set(1, 0, 0).applyQuaternion(view.quaternion), Math.cos(a) * r).addScaledVector(spreadUp.set(0, 1, 0).applyQuaternion(view.quaternion), Math.sin(a) * r).normalize();
+        }
+        const hit = rayHit(origin, dir, range);
+        let end;
+        if (hit) {
+          end = origin.clone().addScaledVector(dir, hit.dist);
+          if (pellets > 1) {
+            if (!agg.has(hit.tg)) agg.set(hit.tg, new Map());
+            const parts = agg.get(hit.tg);
+            const a = parts.get(hit.pi) || { hit, point: end, dmg: 0 };
+            a.dmg += damage;
+            parts.set(hit.pi, a);
+          } else {
+            const res = applyHit(hit, end, damage, def);
+            if (def.chain && res !== false) chainFrom(hit.tg, end, damage, def);
+          }
+        } else {
+          // 打唔中：去到地面或者好遠
+          let d = Math.min(range, RANGE * 0.4);
+          if (dir.y < -0.01) d = Math.min(d, (origin.y - 0.02) / -dir.y);
+          end = origin.clone().addScaledVector(dir, d);
+          if (dir.y < -0.01 && d < range) sparkBurst(end, def.color, 3, 0.35);
+        }
+        // 第一身：光由槍嘴前面少少開始（太近鏡頭會好大條）
+        const from = muzzleW.clone();
+        if (!third) from.addScaledVector(tmpV.copy(end).sub(from).normalize(), Math.min(1.2, from.distanceTo(end) * 0.5));
+        if (def.chain) bolt(from, end, def.color);
+        else tracer(from, end, def.color, (third ? m.tp : m.fp).userData.tracer);
+      }
+      for (const parts of agg.values()) for (const a of parts.values()) applyHit(a.hit, a.point, a.dmg, def);
     }
     // 後座力：鏡頭向上彈少少（隨機左右）
     const rec = def.recoil * DEG * (1 - aimK * 0.5);
@@ -468,7 +636,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     m.fp.userData.fire?.();
     m.tp.userData.fire?.();
     ejectShells(third ? m.tp : m.fp, view, third);
-    play(def.id === 'soulBlaster' ? 'blasterShot' : def.id === 'candyPistol' ? 'pistolShot' : 'slingShot');
+    play(def.sound || 'blasterShot');
     for (const g of [m.fp, m.tp]) for (const mat of g.userData.glows) mat.emissiveIntensity = 5;
     api.onShot?.(def);
     if (ammo[def.id] <= 0) setTimeout(() => current === def && ammo[def.id] <= 0 && startReload(), 250); // 冇子彈：自動換
@@ -541,6 +709,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
 
   const proj = new THREE.Vector3();
   function update(dt, { view = camera, third = false, time = 0, paused = false } = {}) {
+    dt = Math.max(0, dt || 0); // 時鐘偶然倒退（dt < 0）：閃光／後座力會變到好大（成個畫面白晒），當 0 算
     const sel = selectedHotbarItem();
     const def = !paused && zones.size > 0 && sel?.item.weapon ? WEAPONS[sel.item.weapon] : null; // 戰鬥區以外一定唔拎槍（小朋友 Issue #13）
     if (def !== current) {
@@ -663,33 +832,89 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     // 會飛嘅彈
     for (let i = shots.length - 1; i >= 0; i--) {
       const sh = shots[i];
+      if (sh.delay > 0) { // 🦇 一隻跟一隻飛出去
+        sh.delay -= dt;
+        sh.s.visible = false;
+        continue;
+      }
       sh.t += dt;
+      sh.s.visible = true;
       const from = sh.s.position.clone();
+      // 🦇 追敵人：揾前面最近嘅目標，慢慢轉彎
+      if (sh.homing && sh.t > 0.12) {
+        let best = null;
+        let bd = 30;
+        const sp = sh.v.length();
+        const fwd = tmpV.copy(sh.v).normalize();
+        for (const tg of targets) {
+          if (tg.alive && !tg.alive()) continue;
+          const c = centerOf(tg);
+          const d = c.distanceTo(from);
+          if (d < bd && fwd.dot(c.clone().sub(from).normalize()) > 0.1) {
+            bd = d;
+            best = c.clone();
+          }
+        }
+        if (best) {
+          const want = best.sub(from).normalize().multiplyScalar(sp);
+          sh.v.lerp(want, Math.min(1, sh.homing * dt)).setLength(sp);
+        }
+      }
       sh.v.y -= sh.gravity * dt;
       sh.s.position.addScaledVector(sh.v, dt);
-      sh.s.quaternion.copy(view.quaternion);
+      if (sh.model) sh.s.userData.fly?.(sh.v, sh.t, dt);
+      else sh.s.quaternion.copy(view.quaternion);
       // Issue #12：飛行時留低一串發光尾巴
       sh.trail = (sh.trail || 0) + dt;
       if (sh.trail > 0.02) {
         sh.trail = 0;
         const tp = new THREE.Mesh(sparkGeo, sparkMat(sh.def.color));
         tp.position.copy(sh.s.position);
-        tp.scale.setScalar(0.35 + Math.random() * 0.15);
+        tp.scale.setScalar((sh.model ? 0.25 : 0.35) + Math.random() * 0.15);
         scene.add(tp);
         sparks.push({ s: tp, v: new THREE.Vector3().randomDirection().multiplyScalar(0.4), life: 0.3, t: 0, size: tp.scale.x });
       }
       const step = sh.s.position.distanceTo(from);
       const dir = sh.s.position.clone().sub(from).normalize();
       const hit = rayHit(from, dir, step);
+      let p = null;
       if (hit) {
-        const p = from.addScaledVector(dir, hit.dist);
+        p = from.clone().addScaledVector(dir, hit.dist);
         applyHit(hit, p, sh.damage, sh.def);
       }
       if (hit || sh.s.position.y < 0 || sh.t > 4) {
-        if (!hit) sparkBurst(sh.s.position, sh.def.color, 5, 0.4);
+        if (sh.def.projectile.splash) splashAt(p || sh.s.position.clone().setY(Math.max(0.3, sh.s.position.y)), sh.def);
+        else if (!hit) sparkBurst(sh.s.position, sh.def.color, 5, 0.4);
         scene.remove(sh.s);
-        sh.s.children[0].geometry.dispose();
+        if (sh.model) sh.s.userData.dispose?.();
+        else sh.s.children[0].geometry.dispose();
         shots.splice(i, 1);
+      }
+    }
+    // 🎃 爆炸光圈 + ⚡ 閃電（Issue #14）
+    for (let i = rings.length - 1; i >= 0; i--) {
+      const r = rings[i];
+      r.t += dt;
+      const k = r.t / 0.45;
+      r.m.scale.setScalar(0.5 + k * r.r);
+      r.m.material.opacity = 0.9 * (1 - k);
+      r.flashS.quaternion.copy(view.quaternion);
+      r.flashS.scale.setScalar(r.r * 1.6 * (1 - k * 0.5));
+      r.flashS.material.opacity = Math.max(0, 1 - k * 2);
+      if (k >= 1) {
+        scene.remove(r.m, r.flashS);
+        r.m.material.dispose();
+        r.flashS.material.dispose();
+        rings.splice(i, 1);
+      }
+    }
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i];
+      b.t += dt;
+      b.g.visible = b.t < 0.06 || Math.sin(b.t * 90) > -0.3; // 一閃一閃
+      if (b.t > 0.2) {
+        scene.remove(b.g);
+        bolts.splice(i, 1);
       }
     }
     // 彈殼粒（Issue #12）
@@ -749,7 +974,8 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   function refreshHotbar() {
     const armed = zones.size > 0;
     const before = toolFlags.weapons?.join(',') || '';
-    toolFlags.weapons = armed ? WEAPON_ORDER.filter((id) => state.weapons.includes(id)) : [];
+    const lo = [...zones].map((z) => loadouts[z]).find(Boolean); // Issue #14：呢個區有自己嘅武器（例如女巫塔）
+    toolFlags.weapons = !armed ? [] : lo ? lo.filter((id) => WEAPONS[id]) : WEAPON_ORDER.filter((id) => state.weapons.includes(id));
     if (toolFlags.weapons.join(',') !== before && toolFlags.weapons.length) selectSlot(0);
   }
   function setZone(name, on) {
@@ -769,6 +995,14 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     refreshHotbar();
     return true;
   }
+  function setLoadout(zone, ids) {
+    loadouts[zone] = ids ? [...ids] : null;
+    refreshHotbar();
+  }
+  function select(id) {
+    const i = hotbarItems().findIndex((x) => x?.item?.weapon === id);
+    if (i >= 0) selectSlot(i);
+  }
   function registerTarget(t) {
     targets.add(t);
     t.remove = () => targets.delete(t);
@@ -776,15 +1010,15 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   }
 
   const api = {
-    update, setZone, give, registerTarget,
+    update, setZone, give, registerTarget, setLoadout, select,
     has: (id) => state.weapons.includes(id),
-    refill: () => WEAPON_ORDER.forEach((id) => (ammo[id] = WEAPONS[id].mag)),
+    refill: () => Object.keys(WEAPONS).forEach((id) => (ammo[id] = WEAPONS[id].mag)),
     ammoOf: (id) => ammo[id],
     get reloading() { return reloading > 0; },
     get armed() { return zones.size > 0; },
     held: null, aiming: 0, onShot: null,
     targets, WEAPONS,
-    debugFx: () => ({ tracers: tracers.map((t) => [t.t.toFixed(2), t.len.toFixed(1)]), shots: shots.length, sparks: sparks.length, flash: flashK }),
+    debugFx: () => ({ tracers: tracers.map((t) => [t.t.toFixed(2), t.len.toFixed(1)]), shots: shots.length, sparks: sparks.length, flash: flashK, booms: rings.length, bolts: bolts.length }),
   };
   return api;
 }
