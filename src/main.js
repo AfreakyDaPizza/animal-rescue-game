@@ -1854,7 +1854,7 @@ let lastLocation = null;
 let booted = false; // 第一格畫好先收起第一次嘅載入畫面
 renderer.setAnimationLoop((timestamp) => {
   timer.update(timestamp);
-  const dt = Math.min(timer.getDelta(), 0.1); // 卡機都唔好一下飛太遠
+  const dt = Math.max(0, Math.min(timer.getDelta(), 0.1)); // 卡機都唔好一下飛太遠；第一格個 timer 可能倒退（負數）→ 隕石閃光同震動會越變越大（藍色畫面震，小朋友 2026-10-23）
   time += dt;
 
   // 暫停：成個世界停低（開場動畫除外）；繁殖機倒數都暫停（返嚟時補返暫停咗嘅時間）
