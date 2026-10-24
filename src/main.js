@@ -1230,13 +1230,10 @@ setAdminActions({
   },
   // 🔧 測試開關（Issue #10）：撳一下開／關
   flags: () => [
-    { id: 'bigButton', label: '🧪👑 Fuse + Kingdom unlocked', on: !!state.bigButton },
     { id: 'gymEarly', label: '💪 Gym open early', on: !!state.gymEarly },
     { id: 'halloweenEarly', label: '🎃 Halloween open early', on: !!state.halloweenEarly },
-    { id: 'meteorEarly', label: '☄️ Meteoric Shop open early', on: !!state.meteorEarly, hint: 'The METEORIC event still starts on its date - use the Events tab to try it now' },
     { id: 'echoQuestsEarly', label: "🐕 Echo's Quests open early", on: !!state.echoQuestsEarly, hint: 'Echo the dog: Halloween questline (opens 24 October)' },
     { id: 'world2Unlocked', label: '🔥 Halloween World 2 (Hell) unlocked', on: !!state.world2Unlocked, hint: 'Normally costs 5 🍬 Soul Candy at the World Expedition map' },
-    { id: 'kingdomDebug', label: '👑 Kingdom gate open (test)', on: kingdomDebug, hint: 'Only for this visit' },
     { id: 'tutorialDone', label: '🎓 Tutorial finished', on: !!state.tutorialDone },
     { id: 'mute', label: '🔇 Sound muted', on: isMuted() },
     { id: 'hidePets', label: '🙈 Pets hidden', on: petsHidden },

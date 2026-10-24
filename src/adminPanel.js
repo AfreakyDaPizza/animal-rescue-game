@@ -260,11 +260,9 @@ function skinsHtml() {
 // open：到咗日期未；early：提早開咗未
 const ECHO_QUESTS_DATE = '2026-10-24';
 const FUTURE = [
-  { emoji: '🧪', name: 'Fuse Machine', date: FUSE_OPEN_DATE, open: (s) => s.fuseDate, early: () => state.bigButton },
-  { emoji: '👑', name: 'Enchanted Kingdom', date: NEW_BIOME_DATE, open: (s) => s.kingdomDate, early: () => state.bigButton },
+  // 🧪 Fuse、👑 Enchanted Kingdom、☄️ Meteoric 已經出咗（小朋友 2026-10-24：控制面板唔使再有佢哋嘅提早開）
   { emoji: '💪', name: 'Ranger Gym', date: GYM_OPEN_DATE, open: (s) => s.gymDate, early: () => state.gymEarly && actions.status().gymPresent },
   { emoji: '🎃', name: 'Halloween World', date: HALLOWEEN_OPEN_DATE, open: (s) => s.halloweenDate, early: () => state.halloweenEarly },
-  { emoji: '☄️', name: 'Meteoric Shop + Event', date: METEOR_OPEN_DATE, open: (s) => s.meteorDate, early: () => state.meteorEarly },
   // 🐕 Echo 嘅 Halloween 任務（另一個幫手整緊；state.echoQuestsEarly = 提早開）
   { emoji: '🐕', name: "Echo's Halloween Quests", date: ECHO_QUESTS_DATE, open: () => new Date().toLocaleDateString('en-CA') >= ECHO_QUESTS_DATE && !state.echoQuestsEarly, early: () => state.echoQuestsEarly },
 ];
@@ -277,7 +275,6 @@ function futureHtml() {
   return `${section('📅 Coming soon', `<div class="admin-table"><table>${FUTURE.map(row).join('')}</table></div>
     <div class="pet-actions">${allDone ? '<button class="grey" data-admin="noop">✔ Everything is unlocked!</button>' : s.gymPresent ? '<button data-admin="unlockAll" class="sell big-unlock">🚀 Unlock ALL future updates</button>' : confirmButton('unlockAll', '🚀 Unlock ALL future updates (skips the Lab boss!)', 'class="big-unlock"')}</div>
     <div class="pet-actions">
-      <button data-admin="unlock" ${state.bigButton ? 'class="grey"' : ''}>${state.bigButton ? '✔ Fuse + Kingdom unlocked' : '🔓 Unlock Fuse Machine + Enchanted Kingdom'}</button>
       ${s.gymPresent ? '<button data-admin="gotoGym">🏃 Take me to the Gym</button>' : confirmButton('gotoGym', '🏃 Take me to the Gym (skips the Lab boss!)')}
     </div>`, s.gymPresent ? '' : 'The Gym is where the Lab is. Going there now skips the Mutated Scientist Poacher fight, and the Lab will be gone.')}
     ${section('🔧 Test switches', `<div class="admin-flags">${flags.map((f) => `<button data-admin="flag" data-id="${f.id}" class="admin-flag ${f.on ? 'on' : ''}" title="${f.hint || ''}"><span class="admin-switch"></span>${f.label}<small>${f.on ? 'ON' : 'OFF'}</small></button>`).join('')}</div>`, 'Tap a switch to turn it on or off.')}`;
