@@ -473,3 +473,11 @@ export const TOWER_CRATE_CHANCE = 0.05; // 📦 Weapon Crate: chance a poofed zo
 // HP grows by TOWER_BOSS_GROWTH every time one comes back (0.35 = +35%)
 export const TOWER_BOSS_HP = { king: 5000, giant: 6000 };
 export const TOWER_BOSS_GROWTH = 0.35;
+// ---- Issue #15 (kid): more zombies, 5 new bosses, shields, angry spell ----
+export const TOWER_SHIELD_DROP = 0.04; // 🛡️ chance ANY poofed zombie / cured animal drops a shield (0.04 = 4%). Walk over it = blocks 1 hit
+export const TOWER_SHIELD_MAX = 5; // most 🛡️ shields you can carry
+export const TOWER_ANGRY_DAMAGE = 150; // 😡 Angry Spell: how much an angry zombie hurts its friends per hit (grows every floor like HP)
+// New MINI-BOSSES. hp = HP the first time (grows by TOWER_BOSS_GROWTH every boss) · speed = metres per second
+export const TOWER_BOSSES = {};
+// Which boss comes on floor 5, 10, 15... (goes round and round). 'king' = 👑 Zombie King, 'giant' = 😵 GIANT animal
+export const TOWER_BOSS_ORDER = ['king', 'giant'];

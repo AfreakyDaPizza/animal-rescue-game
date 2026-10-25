@@ -44,12 +44,17 @@ import {
   TOWER_HEARTS, TOWER_HEART_REGEN, TOWER_HIT_SAFE, TOWER_KO_KEEP, TOWER_BASE_ENEMIES, TOWER_ENEMIES_PER_FLOOR, TOWER_MAX_ENEMIES,
   TOWER_MAX_AT_ONCE, TOWER_HP_GROWTH, TOWER_SPEED_GROWTH, TOWER_MAX_SPEED_MULT, TOWER_DOUBLE_DAMAGE_FLOOR, TOWER_BOSS_EVERY,
   TOWER_ANIMAL_SHARE, TOWER_ANIMAL_SHARE_GROWTH, TOWER_ANIMAL_SHARE_MAX, TOWER_ENEMIES, TOWER_BOSS_HP, TOWER_BOSS_GROWTH, TOWER_CRATE_CHANCE,
+  TOWER_BOSSES, TOWER_BOSS_ORDER, TOWER_SHIELD_DROP, TOWER_SHIELD_MAX, TOWER_ANGRY_DAMAGE,
 } from './data/balance.js';
 import {
   TOWER_MODES, TOWER_MODE_ORDER, TOWER_REWARD_LOOK, TOWER_RARE_TYPES, TOWER_PER_ZOMBIE, TOWER_PER_CURE, TOWER_PER_BOSS,
   rollFloorRewards, milestoneRewards, rollAmount,
 } from './data/towerRewards.js';
 import { short } from './format.js';
+// 🧩 Issue #15：擴充模組（每個自己一個檔，用 K 工具箱，見 createWitchTower 入面「擴充 API」）
+import { installTowerZombies } from './towerZombies2.js';
+import { installTowerBosses } from './towerBosses.js';
+import { installTowerFloors } from './towerFloors.js';
 
 const $ = (id) => document.getElementById(id);
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -744,13 +749,19 @@ export function createWitchTower(ctx) {
     run: null, panel: 'modes', results: null, travelling: false, bossCount: 0,
     slowT: 0, slowMul: 1, crateChance: null,
   };
+  // 🧩 擴充（Issue #15）：kinds = 新殭屍、bosses = 新 Boss、floor = 每層唔同嘅地圖；updates／clears = 每格／清場要做嘅嘢
+  const EXT = { kinds: {}, bosses: {}, floor: null, updates: [], clears: [] };
+  const extOf = (kind) => EXT.kinds[kind] || EXT.bosses[kind] || null;
+  // 而家邊個喺度攻擊（😡 Angry Spell：攻擊目標變咗佢嘅朋友；🦇 加咗 buff 嘅打多 ❤️）
+  let attacker = null;
+  let angryVictim = null;
   const crates = []; // 📦 Weapon Crate（Issue #14）
   const enemies = [];
   const shots = []; // 🟢 Slime 彈
   const waves = []; // 💥 震波
   const fx = []; // 粒子
   const tmp = V();
-  const playerPos = () => V(camera.position.x, player.feetY, camera.position.z);
+  const playerPos = () => (angryVictim ? V(A.x + angryVictim.g.position.x, angryVictim.g.position.y, A.z + angryVictim.g.position.z) : V(camera.position.x, player.feetY, camera.position.z));
   const modeInfo = () => TOWER_MODES[R.mode] || TOWER_MODES.medium;
   const isBossFloor = (n) => n % TOWER_BOSS_EVERY === 0;
   const hpMul = (n) => (1 + TOWER_HP_GROWTH * (n - 1)) * modeInfo().hp;
@@ -803,6 +814,16 @@ export function createWitchTower(ctx) {
     if (html !== heartsHtml) ui.hearts.innerHTML = heartsHtml = html;
   }
   function hitPlayer(what, push = null) {
+    // 😡 嬲咗嘅殭屍：打中佢嘅朋友，唔係你
+    if (angryVictim) {
+      const v = angryVictim;
+      if (v.hp > 0 && v.target) {
+        const dmg = Math.round(TOWER_ANGRY_DAMAGE * hpMul(R.floor));
+        v.target.onHit(dmg, { angryHit: true });
+        floatText(V(A.x + v.g.position.x, (v.isAnimal ? v.size.y : v.model.userData.height) + 0.6, A.z + v.g.position.z), [{ text: `😡 -${dmg}`, color: '#ff5252' }], 0.7, 0.9);
+      }
+      return true;
+    }
     if (R.safeT > 0 || R.ko >= 0 || R.god || !['fight', 'intro'].includes(R.phase)) return false;
     if (R.shield > 0) { // 🛡️ Starting Shield 擋一下
       R.shield -= 1;
@@ -811,7 +832,7 @@ export function createWitchTower(ctx) {
       popup(`🛡️ Your shield blocked the ${what}!${R.shield ? ` ${R.shield} 🛡️ left` : ''}`);
       return true;
     }
-    const n = hitHearts();
+    const n = hitHearts() + (attacker?.buffT > 0 ? attacker.buff.hearts || 0 : 0);
     R.hearts = Math.max(0, R.hearts - n);
     R.safeT = TOWER_HIT_SAFE;
     R.regenT = 0;
@@ -973,6 +994,10 @@ export function createWitchTower(ctx) {
       corr = corrupt(model);
       g.add(corr.aura);
       size = new THREE.Box3().setFromObject(model).getSize(V());
+    } else if (extOf(kind)) { // 🧩 擴充殭屍／Boss：build() 回傳一個好似 buildZombie 嘅 model（userData.animate/parts/height/flash/dispose）
+      model = extOf(kind).build({ seed: seedN++, boss, floor: n, mode: R.mode });
+      g.add(model);
+      size = model.userData.size || V(0.9, model.userData.height, 0.6);
     } else {
       model = buildZombie(kind, { seed: seedN++ });
       g.add(model);
@@ -981,25 +1006,34 @@ export function createWitchTower(ctx) {
     arena.g.add(g);
     g.position.x -= A.x;
     g.position.z -= A.z;
+    const xk = extOf(kind);
+    const bdef = boss ? TOWER_BOSSES[kind] : null; // 🧩 新 Boss 數值（balance.js TOWER_BOSSES）
     const def = boss ? null : TOWER_ENEMIES[isAnimal ? 'animal' : kind];
-    let hp = def ? def.hp * hpMul(n) : (giant ? TOWER_BOSS_HP.giant : TOWER_BOSS_HP.king) * (1 + TOWER_BOSS_GROWTH * R.bossCount) * modeInfo().hp;
+    let hp = def ? def.hp * hpMul(n) : (bdef ? bdef.hp : giant ? TOWER_BOSS_HP.giant : TOWER_BOSS_HP.king) * (1 + TOWER_BOSS_GROWTH * R.bossCount) * modeInfo().hp;
     hp = Math.round(hp);
-    const baseSpeed = boss ? (giant ? 3.2 : 1.9) : def.speed;
+    const baseSpeed = boss ? (bdef ? bdef.speed : giant ? 3.2 : 1.9) : def.speed;
     const e = {
-      kind: boss ? (giant ? 'giant' : 'king') : kind, isAnimal, boss, giant, g, model, corr, animal, size,
+      kind: boss ? (giant ? 'giant' : kind) : kind, isAnimal, boss, giant, g, model, corr, animal, size, xk,
+      bossTitle: boss ? (giant ? `😵 GIANT CORRUPTED ${animal.name.toUpperCase()}` : bdef ? `${bdef.emoji} ${bdef.name.toUpperCase()}` : '👑 ZOMBIE KING') : null,
+      buffT: 0, buff: null, angryT: 0,
       hp, maxHp: hp, speed: baseSpeed * speedMul(n) * (0.9 + Math.random() * 0.2),
       state: 'rise', t: 0, cd: rand(0.8, 1.6), atk: 0, dir: V(0, 0, -1), flashT: 0, bar: null, label: null, specialT: boss ? 4 : 0, summonT: boss ? 8 : 0, groanT: rand(2, 6),
       reach: (boss ? 2.6 : kind === 'brute' ? 1.9 : kind === 'splitter' || kind === 'shield' ? 1.6 : kind === 'mini' ? 1.1 : 1.35) + (isAnimal ? Math.max(size.x, size.z) * 0.35 : 0),
       radius: isAnimal ? Math.max(0.6, Math.max(size.x, size.z) * 0.38) : (boss ? 1.4 : kind === 'brute' ? 0.85 : kind === 'splitter' ? 0.75 : kind === 'shield' ? 0.7 : kind === 'mini' ? 0.38 : 0.55),
       healT: rand(2.5, 4), sumT: rand(5, 7), slowT: 0, slowMul: 1,
     };
+    if (xk) { // 🧩 擴充：自己嘅打中範圍大細
+      if (xk.reach != null) e.reach = typeof xk.reach === 'function' ? xk.reach(e) : xk.reach;
+      if (xk.radius != null) e.radius = typeof xk.radius === 'function' ? xk.radius(e) : xk.radius;
+      e.flying = !!xk.flying;
+    }
     if (!boss) {
       e.bar = hpBar(isAnimal ? 1.3 : kind === 'brute' || kind === 'splitter' ? 1.5 : kind === 'mini' ? 0.75 : 1.1);
       e.bar.g.position.y = (isAnimal ? size.y : model.userData.height) + 0.45;
       g.add(e.bar.g);
       e.bar.set(1, isAnimal ? 0xea80fc : 0x76ff03);
     } else {
-      e.label = makeLabel([{ text: giant ? `😵 GIANT Corrupted ${animal.name}` : '👑 ZOMBIE KING', color: giant ? '#ea80fc' : '#ffd740' }, { text: '', color: '#fff' }], 1.6);
+      e.label = makeLabel([{ text: giant ? `😵 GIANT Corrupted ${animal.name}` : bdef ? `${bdef.emoji} ${bdef.name.toUpperCase()}` : '👑 ZOMBIE KING', color: giant ? '#ea80fc' : bdef?.color || '#ffd740' }, { text: '', color: '#fff' }], 1.6);
       e.label.position.y = (isAnimal ? size.y : model.userData.height) + 1.2;
       g.add(e.label);
     }
@@ -1029,6 +1063,14 @@ export function createWitchTower(ctx) {
       alive: () => e.hp > 0 && e.state !== 'gone',
       onHit(dmg, info = {}) {
         if (e.hp <= 0) return false;
+        // 🧩 擴充：可以擋（return false）或者改傷害（return 數字）
+        if (xk?.onHit) {
+          const r = xk.onHit(e, dmg, info);
+          if (r === false) return false;
+          if (typeof r === 'number') dmg = r;
+        }
+        // 😡 Angry Spell：變嬲，去打佢嘅朋友（Boss 唔受影響）
+        if (info.angry && !e.boss) setAngry(e, info.angry.time);
         // 🛡️ Shield Zombie：打中塊盾 = 擋咗（爆炸、閃電繞得過）
         if (info.part?.block && !info.splash && !info.chain) {
           play('shieldClang');
@@ -1057,9 +1099,13 @@ export function createWitchTower(ctx) {
     portal.glow = 1.2;
     play('portalRise');
     enemies.push(e);
+    xk?.init?.(e);
     return e;
   }
   function removeEnemy(e) {
+    e.xk?.remove?.(e);
+    e.buffFx?.removeFromParent();
+    e.angryFx?.removeFromParent();
     e.target?.remove();
     e.beam?.removeFromParent();
     e.jumpWarn?.removeFromParent();
@@ -1087,6 +1133,8 @@ export function createWitchTower(ctx) {
     for (const w of waves) w.m.removeFromParent();
     waves.length = 0;
     R.queue.length = 0;
+    for (const p of [...pickups]) removePickup(p);
+    for (const f of EXT.clears) f();
   }
 
   // 🧟 打散：變糖果閃粉
@@ -1102,6 +1150,8 @@ export function createWitchTower(ctx) {
       bagAdd(rollAmount(TOWER_PER_BOSS, R.floor, R.mode));
     }
     const wp = V(A.x + e.g.position.x, 0, A.z + e.g.position.z);
+    e.xk?.onPoof?.(e, wp);
+    maybeShield(wp);
     // ✂️ Splitter：一開二 → 兩隻 Mini Zombie
     if (e.kind === 'splitter') {
       play('splitPop');
@@ -1215,6 +1265,101 @@ export function createWitchTower(ctx) {
     const i = crates.indexOf(c);
     if (i >= 0) crates.splice(i, 1);
   }
+  // ================= 😡 Angry + 🦇 Buff（Issue #15）=================
+  function setAngry(e, time) {
+    e.angryT = Math.max(e.angryT, time);
+    if (!e.angryFx) {
+      e.angryFx = makeLabel([{ text: '😡 ANGRY!', color: '#ff5252' }], 0.75);
+      e.g.add(e.angryFx);
+    }
+    e.state = e.state === 'rise' ? 'rise' : 'walk';
+    e.t = 0;
+    sparkle(V(A.x + e.g.position.x, 1.6, A.z + e.g.position.z), 0xff1744, 12, 3, 0.6, 0.6);
+  }
+  function angryTargetOf(e) {
+    if (e.angryVictim && e.angryVictim.hp > 0 && enemies.includes(e.angryVictim) && e.angryVictim.state !== 'cured' && e.angryVictim.state !== 'poof') return e.angryVictim;
+    let best = null;
+    let bd = Infinity;
+    for (const o of enemies) {
+      if (o === e || o.hp <= 0 || o.state === 'poof' || o.state === 'cured' || o.state === 'rise') continue;
+      const d = Math.hypot(o.g.position.x - e.g.position.x, o.g.position.z - e.g.position.z);
+      if (d < bd) {
+        bd = d;
+        best = o;
+      }
+    }
+    e.angryVictim = best;
+    return best;
+  }
+  // 🦇 令敵人變強一陣：{ time 秒, speed 快幾多倍, hearts 打中多扣幾多 ❤️, color }
+  function buffEnemy(e, { time = 10, speed = 1.5, hearts = 1, color = 0xff1744 } = {}) {
+    if (!e || e.hp <= 0 || e.state === 'poof' || e.state === 'cured') return;
+    e.buffT = Math.max(e.buffT, time);
+    e.buff = { speed, hearts };
+    if (!e.buffFx) {
+      const h = e.isAnimal ? e.size.y : e.model.userData.height;
+      e.buffFx = new THREE.Sprite(new THREE.SpriteMaterial({ map: towerGlowTex(), color, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+      e.buffFx.scale.set(Math.max(1.8, h), h * 1.3, 1);
+      e.buffFx.position.y = h * 0.5;
+      e.g.add(e.buffFx);
+    } else e.buffFx.material.color.setHex(color);
+  }
+
+  // ================= 🛡️ 盾牌掉落（Issue #15：打散／救返任何敵人 4%）=================
+  const pickups = [];
+  function maybeShield(p) {
+    if (!R.run || Math.random() >= (R.shieldChance ?? TOWER_SHIELD_DROP)) return;
+    const g = new THREE.Group();
+    tmp.set(p.x, 0, p.z);
+    clampTower(tmp, 1.2);
+    g.position.set(tmp.x - A.x, 0.9, tmp.z - A.z);
+    const em = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 6), new THREE.MeshStandardMaterial({ color: 0x64b5f6, emissive: 0x2979ff, emissiveIntensity: 1.2, metalness: 0.6, roughness: 0.3 }));
+    em.rotation.x = PI / 2;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffd740, emissive: 0xffab00, emissiveIntensity: 0.8, metalness: 0.8 }));
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: towerGlowTex(), color: 0x82b1ff, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.scale.setScalar(2.2);
+    const spin = new THREE.Group();
+    spin.add(em, rim);
+    g.add(spin, glow);
+    arena.g.add(g);
+    pickups.push({ g, spin, glow, t: 0 });
+    play('crateDrop');
+    sparkle(V(p.x, 1, p.z), 0x82b1ff, 12, 3, 0.7, 0.5);
+    if (!R.run.toldShieldDrop) {
+      R.run.toldShieldDrop = true;
+      popup('🛡️ A SHIELD dropped! Walk over it: it blocks 1 hit');
+    }
+  }
+  function removePickup(p) {
+    p.g.removeFromParent();
+    p.g.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
+    const i = pickups.indexOf(p);
+    if (i >= 0) pickups.splice(i, 1);
+  }
+  function updatePickups(dt, time) {
+    const pp = playerPos();
+    for (const p of [...pickups]) {
+      p.t += dt;
+      p.spin.rotation.y += dt * 2.5;
+      p.g.position.y = 0.9 + Math.sin(time * 3 + p.t) * 0.2;
+      p.glow.material.opacity = 0.5 + Math.sin(time * 5) * 0.2;
+      const d = Math.hypot(pp.x - A.x - p.g.position.x, pp.z - A.z - p.g.position.z);
+      if (d < 1.6 && player.feetY < 2.5 && R.ko < 0) {
+        const max = TOWER_SHIELD_MAX;
+        if ((R.shield || 0) >= max) {
+          if (!p.told) popup(`🛡️ You already have ${max} shields (the most)!`);
+          p.told = true;
+          continue;
+        }
+        R.shield = (R.shield || 0) + 1;
+        play('heartBack');
+        sparkle(V(A.x + p.g.position.x, 1, A.z + p.g.position.z), 0x82b1ff, 20, 4, 0.8, 0.6);
+        floatText(V(A.x + p.g.position.x, 2, A.z + p.g.position.z), [{ text: '+1 🛡️ SHIELD', color: '#82b1ff' }], 0.9);
+        removePickup(p);
+      } else if (p.t > 30) removePickup(p); // 30 秒冇人執就消失
+    }
+  }
+
   function drawWeaponList() {
     if (!R.run) return;
     const html = `<b>🔫 Tower weapons</b>${R.run.loadout.map((id, i) => {
@@ -1237,6 +1382,7 @@ export function createWitchTower(ctx) {
       bagAdd(rollAmount(TOWER_PER_BOSS, R.floor, R.mode));
     }
     const p = V(A.x + e.g.position.x, e.size.y * 0.6, A.z + e.g.position.z);
+    maybeShield(V(p.x, 0, p.z));
     sparkle(p, 0xd500f9, e.boss ? 40 : 18, e.boss ? 7 : 4, 0.9, e.boss ? 1.6 : 0.8);
     sparkle(p, 0x69f0ae, e.boss ? 24 : 10, 2, 1.4, 0.5);
     e.bar?.g.removeFromParent();
@@ -1265,7 +1411,7 @@ export function createWitchTower(ctx) {
     warn.rotation.x = -PI / 2;
     warn.position.set(to.x, 0.07, to.z);
     arena.g.add(warn);
-    shots.push({ g: sg, ball, warn, from, to, t: 0, dur: 1.15 });
+    shots.push({ g: sg, ball, warn, from, to, t: 0, dur: 1.15, owner: e, angry: angryVictim });
     play('slimeSpit');
   }
   function shockwave(e, maxR = 15) {
@@ -1273,7 +1419,7 @@ export function createWitchTower(ctx) {
     m.rotation.x = -PI / 2;
     m.position.set(e.g.position.x, 0.1, e.g.position.z);
     arena.g.add(m);
-    waves.push({ m, r: 1, max: maxR, hit: false });
+    waves.push({ m, r: 1, max: maxR, hit: false, owner: e });
     play('shockwave');
     shake = Math.max(shake, 0.6);
     if (!R.run.toldJump) {
@@ -1302,7 +1448,7 @@ export function createWitchTower(ctx) {
     warn2.rotation.x = -PI / 2;
     warn2.position.set(to.x, 0.08, to.z);
     arena.g.add(warn2);
-    shots.push({ type: 'bomb', g: sg, ball: bomb, warn, warn2, from, to, t: 0, dur: 1.45 });
+    shots.push({ type: 'bomb', g: sg, ball: bomb, warn, warn2, from, to, t: 0, dur: 1.45, owner: e, angry: angryVictim });
     play('bombThrow');
     play('bombFuse');
     if (!R.run.toldBomb) {
@@ -1323,7 +1469,7 @@ export function createWitchTower(ctx) {
     sg.add(halo);
     sg.position.copy(from);
     arena.g.add(sg);
-    shots.push({ type: 'ice', g: sg, ball, halo, vel: dir.multiplyScalar(13), t: 0, dur: 2.4, owner: e });
+    shots.push({ type: 'ice', g: sg, ball, halo, vel: dir.multiplyScalar(13), t: 0, dur: 2.4, owner: e, angry: angryVictim });
     play('iceThrow');
   }
   function lineWarn(e, len, color) {
@@ -1416,6 +1562,25 @@ export function createWitchTower(ctx) {
       if (Math.random() < dt * 8) sparkle(V(A.x + e.g.position.x + rand(-0.5, 0.5), rand(0.5, 2), A.z + e.g.position.z + rand(-0.5, 0.5)), 0xe1f5fe, 1, 0.6, 0.6, 0.3);
     } else if (e.iceFx) e.iceFx.visible = false;
     if (e.shieldFlash > 0) e.shieldFlash -= dt;
+    // 🦇 Buff（快啲 + 打多 ❤️）：成隻快鏡 + 紅光
+    if (e.buffT > 0 && e.state !== 'poof' && e.state !== 'cured') {
+      e.buffT -= dt;
+      dt *= e.buff.speed || 1;
+      if (e.buffFx) {
+        e.buffFx.visible = true;
+        e.buffFx.material.opacity = 0.35 + Math.sin(time * 10) * 0.12;
+      }
+    } else if (e.buffFx) e.buffFx.visible = false;
+    // 😡 Angry：頭頂嬲嬲樣，倒數
+    if (e.angryT > 0) {
+      e.angryT -= dt;
+      if (e.angryFx) e.angryFx.position.y = (e.isAnimal ? e.size.y : e.model.userData.height) + 1.1 + Math.sin(time * 8) * 0.1;
+      if (e.angryT <= 0) {
+        e.angryFx?.removeFromParent();
+        e.angryFx = null;
+        e.model.userData.flash?.(0);
+      } else e.model.userData.angryTint?.(1);
+    }
     if (e.hop > 0) { // 細殭屍彈出嚟
       e.hop -= dt;
       e.g.position.y = Math.max(0, Math.sin((1 - e.hop / 0.45) * PI) * 0.9);
@@ -1475,8 +1640,8 @@ export function createWitchTower(ctx) {
         if (e.t >= 0.28) {
           const p = V(A.x + g.position.x, (e.boss ? 2.5 : 1) * 1.1, A.z + g.position.z);
           candyBurst(p, e.boss ? 70 : e.kind === 'brute' ? 40 : 26, e.boss ? 2.2 : e.kind === 'brute' ? 1.4 : 1);
-          floatText(V(p.x, p.y + 1.2, p.z), [{ text: e.boss ? '👑 POOF!!' : 'POOF! 🍬', color: '#ff80ab' }], e.boss ? 1.6 : 0.9);
-          if (e.boss) popup('👑 The ZOMBIE KING went POOF into candy! 🍬');
+          floatText(V(p.x, p.y + 1.2, p.z), [{ text: e.boss ? `${e.bossTitle.split(' ')[0]} POOF!!` : 'POOF! 🍬', color: '#ff80ab' }], e.boss ? 1.6 : 0.9);
+          if (e.boss) popup(`${e.bossTitle} went POOF into candy! 🍬`);
           removeEnemy(e);
         }
         return;
@@ -1523,7 +1688,8 @@ export function createWitchTower(ctx) {
       e.groanT = rand(4, 9);
       if (dist < 16) play('zombieGroan');
     }
-    if (e.isAnimal) updateCharger(e, dt, time, dx, dz, dist);
+    if (e.xk?.update) e.xk.update(e, dt, time, { dx, dz, dist, face, move });
+    else if (e.isAnimal) updateCharger(e, dt, time, dx, dz, dist);
     else updateZombie(e, dt, time, dx, dz, dist, face, move);
     if (e.isAnimal) {
       tmp.set(g.position.x + A.x, 0, g.position.z + A.z);
@@ -1541,7 +1707,7 @@ export function createWitchTower(ctx) {
     const nz = dist > 0.01 ? dz / dist : 0;
     e.dir.set(nx, 0, nz);
     // 👑 Zombie King：震波 + 叫細殭屍
-    if (e.boss) {
+    if (e.kind === 'king') {
       e.specialT -= dt;
       e.summonT -= dt;
       if (e.summonT <= 0) {
@@ -1621,7 +1787,7 @@ export function createWitchTower(ctx) {
             throwIce(e);
           } else if (dist < e.reach + 0.6) {
             const push = e.boss || e.kind === 'brute' ? { x: (dx / Math.max(0.1, dist)) * 10, y: 5, z: (dz / Math.max(0.1, dist)) * 10 } : null;
-            hitPlayer(e.boss ? 'The Zombie King smashed you' : `A ${TOWER_ENEMIES[e.kind]?.name || 'zombie'} bonked you`, push);
+            hitPlayer(e.boss ? `${e.bossTitle} smashed you` : `A ${TOWER_ENEMIES[e.kind]?.name || 'zombie'} bonked you`, push);
           }
           e.state = 'recover';
           e.t = 0;
@@ -1903,9 +2069,11 @@ export function createWitchTower(ctx) {
     }
   }
   function updateShots(dt) {
-    const pp = playerPos();
     for (let i = shots.length - 1; i >= 0; i--) {
       const s = shots[i];
+      attacker = s.owner || null;
+      angryVictim = s.angry && s.angry.hp > 0 && enemies.includes(s.angry) ? s.angry : null;
+      const pp = playerPos();
       s.t += dt;
       if (s.type === 'ice') { // ❄️ 直線飛
         s.g.position.addScaledVector(s.vel, dt);
@@ -1974,6 +2142,8 @@ export function createWitchTower(ctx) {
         shots.splice(i, 1);
       }
     }
+    attacker = null;
+    angryVictim = null;
   }
   function updateWaves(dt) {
     const pp = playerPos();
@@ -1981,6 +2151,7 @@ export function createWitchTower(ctx) {
     const pz = pp.z - A.z;
     for (let i = waves.length - 1; i >= 0; i--) {
       const w = waves[i];
+      attacker = w.owner || null;
       w.r += dt * 13;
       w.m.scale.setScalar(w.r);
       w.m.material.opacity = 0.85 * (1 - w.r / w.max);
@@ -1995,6 +2166,7 @@ export function createWitchTower(ctx) {
         waves.splice(i, 1);
       }
     }
+    attacker = null;
   }
 
   // ================= 一層層 =================
@@ -2011,11 +2183,19 @@ export function createWitchTower(ctx) {
     for (let i = 0; i < count; i++) R.queue.push(Math.random() < share ? 'animal' : zombieKindFor(n));
     // 最少有一隻動物（第 2 層起）
     if (n >= TOWER_ENEMIES.animal.from && !R.queue.includes('animal')) R.queue[R.queue.length - 1] = 'animal';
-    R.bossPending = boss ? ((n / TOWER_BOSS_EVERY) % 2 === 1 ? 'king' : 'giant') : null;
+    R.bossPending = boss ? bossFor(n) : null;
     applyTheme(n - 1);
+    EXT.floor?.start?.(n, R.mode);
     drawSign();
     bigText(boss ? `FLOOR ${n}` : `FLOOR ${n}`, boss ? '👑 MINI-BOSS FLOOR!' : `${count} enemies · ${TOWER_MODES[R.mode].emoji} ${TOWER_MODES[R.mode].name}`, boss ? '#ff4081' : '#d500f9');
     if (boss) play('bossIntro');
+  }
+  // 👑 Boss 輪住嚟：Zombie King → GIANT 動物 → 新 Boss（TOWER_BOSS_ORDER 次序，見 balance.js）
+  function bossFor(n) {
+    const list = ['king', 'giant', ...Object.keys(EXT.bosses)];
+    const order = TOWER_BOSS_ORDER?.filter((k) => list.includes(k));
+    const use = order?.length ? order : list;
+    return use[(Math.round(n / TOWER_BOSS_EVERY) - 1) % use.length];
   }
   function bigText(a, b = '', c = '#d500f9') {
     ui.big.querySelector('b').textContent = a;
@@ -2156,13 +2336,20 @@ export function createWitchTower(ctx) {
     // Issue #14：每次入塔淨係得一支武器（Candy Pistol）；📦 Weapon Crate 先有新武器（淨係呢次入塔用）
     // 舊嘅 3 支照送（永久擁有，Pumpkin Reaper 大廳用），但塔入面唔用
     ['soulBlaster', 'candyPistol', 'slingshot'].forEach((id) => weapons.give(id));
+    // 🌳 Skill Tree「Double Holster」（Issue #15）：每級多一支隨機武器開局
+    for (let i = 0; i < (window.__skills?.level('slots') || 0); i++) {
+      const w = rollWeapon();
+      if (w) R.run.loadout.push(w.id);
+    }
     weapons.setLoadout('tower', R.run.loadout);
     weapons.setZone('tower', true);
     weapons.refill();
     const sw = WEAPONS[TOWER_STARTER_WEAPON];
     setTimeout(() => {
       if (!R.run) return;
-      announce(`🧙 You start with ONE weapon: ${sw.emoji} ${sw.name}! Poofed zombies can drop a 📦 WEAPON CRATE (${Math.round(TOWER_CRATE_CHANCE * 100)}%) with a new weapon`);
+      const more = R.run.loadout.slice(1).map((id) => `${WEAPONS[id].emoji} ${WEAPONS[id].name}`);
+      announce(more.length ? `🧙 You start with ${R.run.loadout.length} weapons: ${sw.emoji} ${sw.name} + ${more.join(' + ')}! Poofed zombies can drop a 📦 WEAPON CRATE with more`
+        : `🧙 You start with ONE weapon: ${sw.emoji} ${sw.name}! Poofed zombies can drop a 📦 WEAPON CRATE (${Math.round(TOWER_CRATE_CHANCE * 100)}%) with a new weapon`);
     }, 3000);
     const best = bestOf(R.mode);
     announce(`🗼 THE WITCH TOWER · ${TOWER_MODES[R.mode].emoji} ${TOWER_MODES[R.mode].name} · 🏆 Best: Floor ${best}`);
@@ -2188,6 +2375,7 @@ export function createWitchTower(ctx) {
     R.run = null;
     clearEnemies();
     for (const c of [...crates]) removeCrate(c);
+    EXT.floor?.reset?.();
     weapons.setZone('tower', false);
     weapons.setLoadout('tower', null);
     R.slowT = 0;
@@ -2295,7 +2483,7 @@ export function createWitchTower(ctx) {
     const boss = alive.find((e) => e.boss);
     ui.boss.hidden = !boss;
     if (boss) {
-      ui.boss.querySelector('b').textContent = boss.giant ? `😵 GIANT CORRUPTED ${boss.animal.name.toUpperCase()}` : '👑 ZOMBIE KING';
+      ui.boss.querySelector('b').textContent = boss.bossTitle;
       ui.boss.querySelector('i').style.width = `${(boss.hp / boss.maxHp) * 100}%`;
       ui.boss.querySelector('span').textContent = `${short(Math.ceil(boss.hp))} / ${short(boss.maxHp)}`;
     }
@@ -2375,7 +2563,7 @@ export function createWitchTower(ctx) {
     }
     // 塔入面嘅霧
     if (scene.fog) {
-      scene.fog.color.lerp(new THREE.Color(THEMES[arena.theme].fog), 0.6);
+      scene.fog.color.lerp(new THREE.Color(EXT.floor?.fog ?? THEMES[arena.theme].fog), 0.6);
       scene.fog.near = 26;
       scene.fog.far = 120;
     }
@@ -2426,10 +2614,11 @@ export function createWitchTower(ctx) {
       R.t = 0;
       R.spawnT = 0;
       if (R.bossPending) {
-        const b = spawnEnemy(R.bossPending === 'giant' ? 'animal' : 'king', { boss: true, giant: R.bossPending === 'giant', at: pickSpawn(16) });
+        const bk = R.bossPending;
+        const b = spawnEnemy(bk === 'giant' ? 'animal' : bk, { boss: true, giant: bk === 'giant', at: pickSpawn(16) });
         R.bossCount += 1;
         R.bossPending = null;
-        announce(b.giant ? `😵 MINI-BOSS: a GIANT corrupted ${b.animal.name}! Cure it! 💚` : '👑 MINI-BOSS: the ZOMBIE KING! Jump over his shockwaves!');
+        announce(b.giant ? `😵 MINI-BOSS: a GIANT corrupted ${b.animal.name}! Cure it! 💚` : bk === 'king' ? '👑 MINI-BOSS: the ZOMBIE KING! Jump over his shockwaves!' : `${b.bossTitle}: ${TOWER_BOSSES[bk]?.intro || 'MINI-BOSS!'}`);
       }
     }
     if (R.phase === 'fight') {
@@ -2447,9 +2636,23 @@ export function createWitchTower(ctx) {
       if (R.liftHold > 1.4) startLift();
     }
     if (R.phase === 'lift') updateLift(dt);
-    for (const e of [...enemies]) updateEnemy(e, dt, time);
+    for (const e of [...enemies]) {
+      attacker = e;
+      angryVictim = e.angryT > 0 ? angryTargetOf(e) : null;
+      if (e.angryT > 0 && !angryVictim && R.phase === 'fight' && e.state === 'walk') { // 😡 冇朋友打：企定喺度發脾氣
+        e.angryT -= dt;
+        e.model.userData.animate?.(time, 0, 0);
+        continue;
+      }
+      updateEnemy(e, dt, time);
+    }
+    attacker = null;
+    angryVictim = null;
     updateShots(dt);
     updateWaves(dt);
+    updatePickups(dt, time);
+    for (const f of EXT.updates) f(dt, time);
+    EXT.floor?.update?.(dt, time);
   }
   const shakeV = V();
   function shakeOffset() {
@@ -2465,6 +2668,42 @@ export function createWitchTower(ctx) {
     }
     if (R.phase === 'clear' && Math.hypot(pos.x - TOWER_LIFT.x, pos.z - TOWER_LIFT.z) < TOWER_LIFT.r) return { prompt: `<kbd>E</kbd> ⬆️ Go up to FLOOR ${R.floor + 1}`, action: startLift };
     return null;
+  }
+
+  // ================= 🧩 擴充 API（Issue #15）=================
+  // 擴充模組 install(K) 回傳 { kinds?, bosses?, floor?, update?, clear? }：
+  //   kinds[kind] / bosses[kind] = {
+  //     build({ seed, boss, floor, mode }) → THREE.Object3D，userData 要有：
+  //        height（米）、animate(time, moving 0-1, attack 0-1)、parts() → [{ y, radius, mult, crit?, block?, fwd? }]（打中範圍，相對腳底）
+  //        flash?(k)（打中白一白）、dispose?()、size?（Vector3，冇就用 0.9×height×0.6）
+  //     init?(e)：出咗嚟之後（e = 敵人資料，見 spawnEnemy）
+  //     update?(e, dt, time, { dx, dz, dist, face(x, z, k), move(nx, nz, speed) })：冇 = 普通殭屍（行近 + 打）
+  //        可以叫 K.baseUpdate(e, dt, time, { dx, dz, dist, face, move }) 用返普通殭屍嘅行路 + 打人
+  //     onHit?(e, dmg, info) → false = 擋咗、數字 = 改傷害 · onPoof?(e, worldPos) · remove?(e)
+  //     reach? radius?（數字或者 (e) => 數字）· flying?（true = 唔會被推落地）
+  //   }
+  //   數值：普通殭屍 → balance.js TOWER_ENEMIES[kind]（hp/speed/from/weight）；Boss → TOWER_BOSSES[kind]（hp/speed/name/emoji/color/intro）
+  //   floor = { start(n, mode), update(dt, time), reset(), fog?（顏色，蓋過 THEMES）}
+  //   e 常用：e.g（Group，位置相對 K.A）、e.model、e.hp/maxHp、e.state（'walk' 等，自己加新嘅都得）、e.t（呢個 state 幾耐）、e.cd、e.dir、e.speed
+  const K = {
+    A, R, enemies, shots, THEMES,
+    get arena() { return arena; },
+    player, camera, play, popup, announce, bigText, tmp,
+    playerPos, hitPlayer, spawnEnemy, removeEnemy, pickSpawn, poof, buffEnemy, setAngry, slowPlayer,
+    sparkle, candyBurst, floatText, particle, shockwave, dashWarn, lineWarn, spit, throwBomb, throwIce,
+    clampTower, hpMul, speedMul, modeInfo, hitHearts, ADDM, rand,
+    baseUpdate: (e, dt, time, o) => updateZombie(e, dt, time, o.dx, o.dz, o.dist, o.face, o.move),
+    alive: () => enemies.filter((o) => o.state !== 'poof' && o.state !== 'cured'),
+    addShake: (v) => (shake = Math.max(shake, v)),
+    maxAtOnce: TOWER_MAX_AT_ONCE,
+  };
+  for (const install of [installTowerZombies, installTowerBosses, installTowerFloors]) {
+    const x = install(K) || {};
+    Object.assign(EXT.kinds, x.kinds || {});
+    Object.assign(EXT.bosses, x.bosses || {});
+    if (x.floor) EXT.floor = x.floor;
+    if (x.update) EXT.updates.push(x.update);
+    if (x.clear) EXT.clears.push(x.clear);
   }
 
   // ---- 測試／控制台 ----
@@ -2544,6 +2783,14 @@ export function createWitchTower(ctx) {
       return out;
     },
     set crateChance(v) { R.crateChance = v; },
+    set shieldChance(v) { R.shieldChance = v; }, // 🛡️ 測試：1 = 每隻都跌
+    boss(kind = 'king') { // 👑 測試：即刻出一隻 Boss（'king'、'giant' 或者新 Boss）
+      R.phase = 'fight';
+      const b = spawnEnemy(kind === 'giant' ? 'animal' : kind, { boss: true, giant: kind === 'giant', at: pickSpawn(10) });
+      return b;
+    },
+    angry(t = 8) { for (const e of enemies) if (!e.boss) setAngry(e, t); },
+    get ext() { return EXT; },
     get crateChance() { return R.crateChance ?? TOWER_CRATE_CHANCE; },
     get crates() { return crates; },
     get shots() { return shots; },
