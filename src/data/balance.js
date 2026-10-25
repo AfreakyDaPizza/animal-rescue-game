@@ -484,6 +484,39 @@ export const TOWER_SHIELD_DROP = 0.04; // 🛡️ chance ANY poofed zombie / cur
 export const TOWER_SHIELD_MAX = 5; // most 🛡️ shields you can carry
 export const TOWER_ANGRY_DAMAGE = 150; // 😡 Angry Spell: how much an angry zombie hurts its friends per hit (grows every floor like HP)
 // New MINI-BOSSES. hp = HP the first time (grows by TOWER_BOSS_GROWTH every boss) · speed = metres per second
-export const TOWER_BOSSES = {};
+export const TOWER_BOSSES = {
+  // 🐗 Zombie Rider: a zombie on a big hog. The hog CHARGES in straight lines (red lane = move out!), then turns and charges again
+  // charge = charge speed · chargeLen = how far one charge goes (metres) · chargesInARow = charges before it stops for a rest
+  // chargeEvery = seconds between charge attacks · jumpOffAt = the rider jumps off at this much HP (0.5 = half) and they BOTH fight
+  rider: { name: 'Zombie Rider', emoji: '🐗', color: '#ffab40', hp: 5200, speed: 2.4, intro: "Dodge the hog's charge! Get out of the red lane!",
+    charge: 17, chargeLen: 24, chargesInARow: 2, chargeEvery: 5, jumpOffAt: 0.5 },
+  // 🧹 Magical Witch: casts slow magic bolts, flies on her broom, makes 💨 Dustlers (hit one = your screen gets VERY dusty)
+  // dustlers = how many each time · maxDustlers = most at once · summonEvery / boltEvery / flyEvery = seconds · flyTime = seconds on the broom
+  // boltSpeed = how fast her magic bolt flies · dustTime = seconds of dust when you hit a Dustler
+  witch: { name: 'Magical Witch', emoji: '🧹', color: '#b2ff59', hp: 4600, speed: 2.0, intro: 'Careful: hitting her DUSTLERS makes everything dusty!',
+    dustlers: 3, maxDustlers: 6, summonEvery: 11, boltEvery: 3.2, boltSpeed: 8, flyEvery: 15, flyTime: 7, dustTime: 4 },
+  // 🧛 Vampiro: summons bats, splashes red VAMPIRE POTION puddles (zombies in it get faster), bat-mist DASH and a big SPLASH jump
+  // bats = bats each time · batEvery / potionEvery / specialEvery = seconds · puddleTime = seconds a puddle stays
+  // puddleSpeed = zombies in a puddle are this many times faster · dashSpeed / dashLen = the mist dash · splashR = size of the splash circle
+  vampiro: { name: 'Vampiro', emoji: '🧛', color: '#ff5252', hp: 5600, speed: 2.6, intro: 'Watch out for his bat-mist DASH and his big SPLASH jump!',
+    bats: 3, batEvery: 13, potionEvery: 9, puddleTime: 10, puddleSpeed: 1.6, dashSpeed: 24, dashLen: 22, splashR: 4.5, specialEvery: 5.5 },
+  // 🎃 Pumpkin Brothers: hp = the BIG brother (the little one gets littleHp × that). The big one THROWS the little one at you,
+  // or carries him on his shoulders. A poofed brother bursts into smallPumpkins small pumpkins
+  // throwEvery / rideEvery = seconds · rideTime = seconds of piggyback · throwR = size of the landing circle · throwWave = shockwave size
+  pumpkinBros: { name: 'Pumpkin Brothers', emoji: '🎃', color: '#ff9100', hp: 4000, speed: 2.2, intro: 'The big brother THROWS the little one at you! Watch the red circle!',
+    littleHp: 0.6, throwEvery: 8, rideEvery: 14, rideTime: 8, throwR: 2.8, throwWave: 8, smallPumpkins: 4 },
+  // 👻 Banshee Queen: SCREAMS in a cone (get out of the red cone!), turns invisible and makes FAKE copies (one hit = poof)
+  // screamEvery / trickEvery = seconds · screamLen = how far the scream goes · screamAngle = how wide (degrees) · screamWind = warning time
+  // copies = fakes each time (copiesLow when she is below half HP) · copyLife = seconds before a fake fades away
+  banshee: { name: 'Banshee Queen', emoji: '👻', color: '#84ffff', hp: 5400, speed: 2.4, intro: 'Get OUT of the scream cone! Only the REAL queen loses health.',
+    screamEvery: 6.5, screamLen: 17, screamAngle: 70, screamWind: 1.3, copies: 2, copiesLow: 3, trickEvery: 13, copyLife: 12 },
+};
+// The helpers these bosses bring (from: 999 = they never show up on normal floors)
+Object.assign(TOWER_ENEMIES, {
+  riderZombie: { name: 'Hog Rider Zombie', hp: 900, speed: 2.7, from: 999 }, // the Zombie Rider after he jumps off his hog
+  dustler: { name: 'Dustler', hp: 130, speed: 2.9, from: 999 }, // 💨 the witch's dust zombie: hit it = dusty screen
+  smallPumpkin: { name: 'Small Pumpkin', hp: 110, speed: 3.6, from: 999 }, // 🎃 a poofed Pumpkin Brother bursts into these
+  bansheeCopy: { name: 'Fake Banshee', hp: 1, speed: 2.2, from: 999 }, // 👻 the Banshee Queen's fake copies (one hit = poof)
+});
 // Which boss comes on floor 5, 10, 15... (goes round and round). 'king' = 👑 Zombie King, 'giant' = 😵 GIANT animal
-export const TOWER_BOSS_ORDER = ['king', 'giant'];
+export const TOWER_BOSS_ORDER = ['king', 'rider', 'giant', 'witch', 'vampiro', 'pumpkinBros', 'banshee'];

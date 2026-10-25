@@ -2493,9 +2493,13 @@ export function createWitchTower(ctx) {
     const boss = alive.find((e) => e.boss);
     ui.boss.hidden = !boss;
     if (boss) {
-      ui.boss.querySelector('b').textContent = boss.bossTitle;
-      ui.boss.querySelector('i').style.width = `${(boss.hp / boss.maxHp) * 100}%`;
-      ui.boss.querySelector('span').textContent = `${short(Math.ceil(boss.hp))} / ${short(boss.maxHp)}`;
+      // 🎃 一組 Boss（Pumpkin Brothers）：e.bossGroup = { title, maxHp }，HP 條 = 加埋
+      const grp = boss.bossGroup;
+      const bhp = grp ? alive.filter((e) => e.bossGroup === grp).reduce((s, e) => s + e.hp, 0) : boss.hp;
+      const bmax = grp ? grp.maxHp || boss.maxHp : boss.maxHp;
+      ui.boss.querySelector('b').textContent = grp?.title || boss.bossTitle;
+      ui.boss.querySelector('i').style.width = `${(bhp / bmax) * 100}%`;
+      ui.boss.querySelector('span').textContent = `${short(Math.ceil(bhp))} / ${short(bmax)}`;
     }
     ui.hearts.style.setProperty('--regen', R.hearts < maxHearts() ? (R.regenT / regenTime()).toFixed(2) : '0');
     drawHearts();
