@@ -235,3 +235,13 @@ src/data/questions.js ← 野生動物問題
 - 🦖 **Prehistoric Age**：Lv16 跑步機／學生桌（本來 Astral King's Kingdom）換晒外觀，等級同 x6 加成冇變：化石石頭機身（`prehistoricTexture`）、冒煙火山、蕨、巨型菇、蘇鐵、恐龍肋骨 + 頭骨、琥珀（入面有蚊）、石圍欄、恐龍腳印、會郁嘅恐龍蛋、翼龍剪影圍住飛。全部喺 `src/prehistoric.js`。
 - ☄️ **Meteoric Dragon's Lair**（繁殖機 Lv6，$5B）：比 Basic 快 70%（timeFactor 0.3）、一次 2 隻、答問題加速、25% 巨型、每隻寵物 15% 機會 ☄️ METEORIC（x5 錢，`meteoricChance`）。外觀：深藍隕石龍（藍色發光眼）、岩石山洞口（洞入面有對大藍眼眨眼）、隕石水晶、藍色煙同火星、頭頂一粒拖住藍火尾嘅細隕石（`buildDragonLair('meteor')` + `addMeteorCave`，`hub.js`）。
 - 🔥 繁殖機唔再出 Fire 變異（Dragon's Lair 拎走咗 `fireChance`）；本身有 Fire 嘅寵物照樣保留 x4。Index「💗 Machines」分頁顯示每級巨型 %、答問題、Meteoric %。
+
+## 🗼 Witch Tower 大更新（小朋友 2026-10-25，喺對話度講，冇開 Issue）
+- 擴充 API：`witchTower.js`「擴充 API」— 新殭屍 `src/towerZombies2.js`（模型 `towerModels2.js`）、新 Boss `src/towerBosses.js`（模型 `towerBossModels.js`）、每層地圖 `src/towerFloors.js`（貼圖 `towerFloorArt.js`）。
+- 新殭屍：🦇 Bat（打散 = 附近殭屍 10 秒快 ×1.5 + 打中扣 2 ❤️）、🚩 Zombie Leader、🧛 Draculo、🎈 Zombie Balloon、💥 Zombie Cannon（數值 `TOWER_ENEMIES`）。
+- 5 個新 Boss（`TOWER_BOSSES`、輪住次序 `TOWER_BOSS_ORDER`）：🐗 Zombie Rider、🧹 Magical Witch（Dustlers：打中 = 塵滿畫面）、🧛 Vampiro（「blood」改做紅色吸血鬼藥水，殭屍踩到快啲）、🎃 Pumpkin Brothers（掟細佬、打散變 4 個細南瓜）、👻 Banshee Queen（第 5 個係小朋友叫我哋揀）。
+- 🛡️ 任何敵人 4% 跌盾（`TOWER_SHIELD_DROP`，最多 `TOWER_SHIELD_MAX`）；😡 嬲咗嘅殭屍打朋友（`TOWER_ANGRY_DAMAGE`）。
+- 9 款樓層主題，每次入塔隨機、越高越恐怖（`game.towerFloors.list()`）。
+- 新武器（魔法名，同 Soul Blaster 一樣規矩）：flamethrower → 🐉 Dragon Breath、daggers → 🗡️ Spirit Daggers、molotov → 🧪 Fire Potion、rocket launcher → 🎆 Firework Launcher、😡 Angry Spell（15 秒冷卻）。
+- Skill Tree 新增：🎒 Double Holster（`slots`，開局 2 支武器）、📦 Crate Finder、🔰 Shield Finder、🔥 Hot Hot Hot、⏳ Spell Master、🔋 Big Pockets。
+- 測試：`game.tower.boss('vampiro')`、`game.tower.only('bat', 3)`、`game.tower.angry()`、`game.tower.shieldChance = 1`、`game.towerFloors.theme('lava', 20)`。

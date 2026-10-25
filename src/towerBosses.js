@@ -799,6 +799,7 @@ export function installTowerBosses(K) {
               const a = g.rotation.y + PI / 2 + (i - (n - 1) / 2) * 0.9;
               const at = clampL(g.position.x - Math.sin(a) * 2.2, g.position.z - Math.cos(a) * 2.2, 1.2);
               const b = spawnEnemy(kind, { at: { x: A.x + at.x, z: A.z + at.z, glow: 0 } });
+              b.packDone = true; // 🦇 Vampiro 自己叫 3 隻：唔好每隻再帶一群
               b.state = 'walk';
               b.g.position.y = 0;
               b.hop = 0.45;
