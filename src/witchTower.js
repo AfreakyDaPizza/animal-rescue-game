@@ -774,6 +774,7 @@ export function createWitchTower(ctx) {
 
   // ---- 🌳 Skill Tree（Issue #14，skillTree.js）：心數、回心、開局盾、獎品 ----
   const skill = (id, none = 1) => window.__skills?.mult(id) ?? none;
+  const skillAdd = (id) => (window.__skills?.mult(id) ?? 1) - 1; // 加法嘅 skill（例如 crateLuck：每級 +1% = per 0.01）
   const maxHearts = () => Math.max(1, Math.round(TOWER_HEARTS * skill('health')));
   const regenTime = () => TOWER_HEART_REGEN / skill('regen');
   const lootAmount = (r) => {
@@ -1170,7 +1171,7 @@ export function createWitchTower(ctx) {
       }
     }
     // 📦 Weapon Crate：5% 機會（Boss 一定跌）
-    const chance = e.boss ? 1 : R.crateChance ?? TOWER_CRATE_CHANCE;
+    const chance = e.boss ? 1 : R.crateChance ?? TOWER_CRATE_CHANCE + skillAdd('crateLuck');
     if (Math.random() < chance) dropCrate(wp);
   }
 
@@ -1308,7 +1309,7 @@ export function createWitchTower(ctx) {
   // ================= 🛡️ 盾牌掉落（Issue #15：打散／救返任何敵人 4%）=================
   const pickups = [];
   function maybeShield(p) {
-    if (!R.run || Math.random() >= (R.shieldChance ?? TOWER_SHIELD_DROP)) return;
+    if (!R.run || Math.random() >= (R.shieldChance ?? TOWER_SHIELD_DROP + skillAdd('shieldLuck'))) return;
     const g = new THREE.Group();
     tmp.set(p.x, 0, p.z);
     clampTower(tmp, 1.2);
@@ -1365,7 +1366,7 @@ export function createWitchTower(ctx) {
     const html = `<b>🔫 Tower weapons</b>${R.run.loadout.map((id, i) => {
       const w = WEAPONS[id];
       return `<div style="color:${WEAPON_RARITY[w.rarity]?.color || '#fff'}">${i + 1} · ${w.emoji} ${w.name}</div>`;
-    }).join('')}<div style="opacity:.75">📦 Crates: ${Math.round((R.crateChance ?? TOWER_CRATE_CHANCE) * 100)}% per zombie</div>`;
+    }).join('')}<div style="opacity:.75">📦 Crates: ${Math.round((R.crateChance ?? TOWER_CRATE_CHANCE + skillAdd('crateLuck')) * 100)}% per zombie</div>`;
     if (ui.wpn.innerHTML !== html) ui.wpn.innerHTML = html;
   }
 
