@@ -1,4 +1,7 @@
 // 🔫 魔法武器系統（Issue #11）：Soul Blaster、Candy Pistol、Spooky Slingshot
+//   Issue #14：Pumpkin Launcher、Frost Wand、Lightning Staff、Ghost Shotgun、Bat Swarm Bow
+//   Issue #15：🐉 Dragon Breath（cone 噴火）、🗡️ Spirit Daggers（fan 飛刀、headMult）、🧪 Fire Potion（puddle 火灘）、
+//              🎆 Firework Launcher（彩色爆炸）、😡 Angry Spell（spell 冷卻、maxRange 落點圈、angry）—— 全部用 data 選項（見 data/weapons.js 頂）
 // 可以重用：Pumpkin Reaper Dragon（src/reaperBoss.js）用緊，之後嘅 Endless Tower 都會用
 // 數值喺 src/data/weapons.js；模型喺 src/weaponModels.js
 //
@@ -29,8 +32,12 @@
 //   打中資料：onHit(damage, { point, crit, weapon, part, slow, splash, chain })
 //            part = 打中嗰個球（parts() 入面嘅 object，可以加 block: true = 盾牌）· slow = { mult, time }（Frost Wand）
 //            splash = 爆炸波及（Pumpkin Launcher）· chain = 閃電跳過嚟（Lightning Staff）
-//   其他：weapons.held（而家拎住嘅武器資料或者 null）、weapons.aiming（0–1）、weapons.refill()（補滿子彈）
-//         weapons.ammoOf(id)、weapons.onShot = (def) => {}（射咗一下）
+//   Issue #15：onHit 打中資料仲有 angry = { time }（😡 Angry Spell：敵人變嬲）、cone（🐉 噴火）、puddle（🔥 火灘）
+//            噴火／火灘一秒打好多下：唔會擋（block 唔計），數字每 0.3 秒加埋先出
+//   其他：weapons.held（而家拎住嘅武器資料或者 null）、weapons.aiming（0–1）、weapons.refill()（補滿子彈 + 冷卻清零）
+//         weapons.ammoOf(id)、weapons.magOf(id)（🌳 Big Pockets 計埋）、weapons.cooldownOf(id)（⏳ 法術仲等幾多秒）
+//         weapons.onShot = (def) => {}（射咗一下）
+//   測試：await weapons.debugFire(ms)（扮揸住左鍵）、weapons.debugActive = true（一路當鎖住滑鼠）、weapons.debugFx()
 //   射擊：Hitscan（即中，畫一條發光彈道）或者 projectile（會飛、有地心吸力，例如 Slingshot）
 //   操作：電腦 左鍵射（Soul Blaster 揸住連射）、右鍵開鏡、R 換彈（冇子彈會自動換）
 //         手機 FIRE（揸住）/ AIM（開／關鏡）/ RELOAD 三粒掣（拎住武器先出）
@@ -103,6 +110,51 @@ addSounds({
     tone(2900, t + 0.06, 0.07, { type: 'triangle', vol: 0.05, slide: 0.8 });
     tone(300, t, 0.15, { type: 'sine', vol: 0.12, slide: 2 });
   },
+  // Issue #15 新武器
+  dragonFlame: (t, { tone, noise }) => { // 好短嘅「呼」：連住噴就變成一路噴火聲
+    noise(t, 0.14, { vol: 0.12, freq: 900, q: 0.5, type: 'bandpass' });
+    noise(t, 0.1, { vol: 0.05, freq: 300, type: 'lowpass' });
+  },
+  daggerThrow: (t, { tone, noise }) => {
+    noise(t, 0.12, { vol: 0.16, freq: 4200, q: 1.2, type: 'bandpass' });
+    tone(1600, t, 0.12, { type: 'sine', vol: 0.05, slide: 0.5 });
+    tone(2400, t + 0.04, 0.1, { type: 'triangle', vol: 0.04, slide: 0.6 });
+  },
+  potionThrow: (t, { tone, noise }) => {
+    tone(500, t, 0.18, { type: 'sine', vol: 0.08, slide: 1.6 }); // 「啵」
+    noise(t, 0.12, { vol: 0.08, freq: 1500, q: 0.8, type: 'bandpass' });
+  },
+  potionSmash: (t, { tone, noise, arp }) => {
+    noise(t, 0.18, { vol: 0.35, freq: 5200, type: 'highpass' }); // 玻璃爆
+    noise(t + 0.03, 0.5, { vol: 0.25, freq: 700 }); // 「轟」一聲着火
+    arp(t, [2600, 3100, 2200, 3500], 0.03, { type: 'triangle', vol: 0.04 });
+    tone(90, t, 0.35, { type: 'sine', vol: 0.2, slide: 0.5 });
+  },
+  fireCrackle: (t, { noise }) => {
+    noise(t, 0.04, { vol: 0.06, freq: 2500, type: 'highpass' });
+    noise(t + 0.09, 0.03, { vol: 0.05, freq: 3200, type: 'highpass' });
+  },
+  fireworkLaunch: (t, { tone, noise }) => {
+    noise(t, 0.5, { vol: 0.22, freq: 2200, q: 0.6, type: 'bandpass' }); // 「嘶～～」
+    tone(300, t, 0.5, { type: 'triangle', vol: 0.06, slide: 4 });
+    tone(110, t, 0.2, { type: 'sine', vol: 0.25, slide: 0.5 });
+  },
+  fireworkBoom: (t, { tone, noise, arp }) => {
+    tone(60, t, 0.7, { type: 'sine', vol: 0.5, slide: 0.4 });
+    noise(t, 0.6, { vol: 0.45, freq: 600 });
+    for (let i = 0; i < 6; i++) noise(t + 0.2 + i * 0.07, 0.04, { vol: 0.12, freq: 4000, type: 'highpass' }); // 噼噼啪啪
+    arp(t + 0.1, [1047, 1319, 1568, 2093], 0.06, { type: 'triangle', vol: 0.07 });
+  },
+  angryCast: (t, { tone }) => {
+    tone(220, t, 0.25, { type: 'sawtooth', vol: 0.08, slide: 1.8 });
+    tone(330, t + 0.05, 0.2, { type: 'square', vol: 0.04, slide: 1.5 });
+  },
+  angryBoom: (t, { tone, noise }) => {
+    tone(160, t, 0.4, { type: 'sawtooth', vol: 0.14, slide: 0.5 }); // 「GRRR」
+    tone(120, t + 0.08, 0.4, { type: 'sawtooth', vol: 0.12, slide: 0.7 });
+    noise(t, 0.35, { vol: 0.3, freq: 800, q: 0.6, type: 'bandpass' });
+  },
+  spellReady: (t, { arp }) => arp(t, [660, 880, 1320], 0.07, { type: 'triangle', vol: 0.08 }),
   hitMarker: (t, { tone }) => tone(2600, t, 0.04, { type: 'triangle', vol: 0.07 }),
   critMarker: (t, { tone }) => {
     tone(2200, t, 0.05, { type: 'triangle', vol: 0.09 });
@@ -155,6 +207,9 @@ body.mobile.holding-weapon #wpn-touch { display: flex; }
 body.mobile #wpn-ammo { bottom: auto; top: calc(var(--m-row2, 110px) + 4px); right: calc(var(--m-edge, 10px) + env(safe-area-inset-right, 0px)); padding: 3px 10px; min-width: 110px; border-width: 2px; }
 body.mobile #wpn-ammo .n { font-size: 20px; } body.mobile #wpn-ammo .tip { display: none; }
 body.in-movie #wpn-ammo, body.in-movie #wpn-cross, body.in-movie #wpn-touch { display: none !important; }
+#wpn-ammo.cd .n { color: #ffab91; font-size: 24px; } #wpn-ammo.ready .n { color: #b9f6ca; text-shadow: 0 0 10px #69f0ae; }
+#hotbar .slot .wpn-cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(20, 0, 10, 0.72); border-radius: 0 0 9px 9px; pointer-events: none; }
+#hotbar .slot .wpn-cdt { position: absolute; inset: 0; display: grid; place-items: center; font: 900 15px system-ui, sans-serif; color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #ff2d55; pointer-events: none; }
 `;
 
 function buildUi() {
@@ -183,7 +238,7 @@ function buildUi() {
   return {
     cross, ammo, scope, dmg, touch,
     hm: cross.querySelector('.hm'), charge: cross.querySelector('.charge'), chargeFill: cross.querySelector('.charge i'),
-    ammoName: ammo.querySelector('.nm'), ammoN: ammo.querySelector('.n'), ammoBar: ammo.querySelector('.rl i'),
+    ammoName: ammo.querySelector('.nm'), ammoN: ammo.querySelector('.n'), ammoBar: ammo.querySelector('.rl i'), ammoTip: ammo.querySelector('.tip'),
   };
 }
 
@@ -200,11 +255,18 @@ function raySphere(o, d, c, r) {
   return -b + s >= 0 ? 0 : -1; // 喺個球入面
 }
 
-export function createWeapons({ scene, camera, avatar, play, controls = null, isActive = () => true }) {
+export function createWeapons({ scene, camera, avatar, play, controls = null, isActive: isActiveRaw = () => true }) {
   const ui = buildUi();
   if (!Array.isArray(state.weapons)) state.weapons = [];
+  let debugForce = false; // 測試（無頭瀏覽器鎖唔到滑鼠）：debugFire 時當係 active
+  let debugPress = false;
+  const isActive = () => debugForce || isActiveRaw();
+  // 🌳 Big Pockets（Issue #15）：彈匣大 15%／級（法術唔計）
+  const magOf = (def) => (def.spell ? def.mag : Math.max(1, Math.round(def.mag * (window.__skills?.mult('mag') ?? 1))));
   const ammo = {}; // id → 剩幾多發
-  for (const id of Object.keys(WEAPONS)) ammo[id] = WEAPONS[id].mag;
+  for (const id of Object.keys(WEAPONS)) ammo[id] = magOf(WEAPONS[id]);
+  const spellCd = {}; // Issue #15：法術冷卻 id → 剩幾多秒（收埋都照計）
+  const spellCdMax = {};
   const zones = new Set();
   const loadouts = {}; // Issue #14：區 → 呢個區用嘅武器（例如女巫塔：每次入塔得一支）
   const targets = new Set();
@@ -299,13 +361,13 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       shells.push({ s, glow, v, spin: new THREE.Vector3(Math.random() * 20 - 10, Math.random() * 20 - 10, Math.random() * 20 - 10), t: 0, life: 0.5 + Math.random() * 0.25, g: third ? 9 : 4, size: u.shell.size * sc * (third ? 2.5 : 1.8) });
     }
   }
-  function sparkBurst(p, color, n = 6, size = 0.5) {
+  function sparkBurst(p, color, n = 6, size = 0.5, speedK = 1, lifeK = 1) {
     for (let i = 0; i < n; i++) {
       const s = new THREE.Mesh(sparkGeo, sparkMat(color));
       s.position.copy(p);
       s.scale.setScalar(size * (0.5 + Math.random()));
       scene.add(s);
-      sparks.push({ s, v: new THREE.Vector3().randomDirection().multiplyScalar(3 + Math.random() * 5), life: 0.35 + Math.random() * 0.2, t: 0, size: s.scale.x });
+      sparks.push({ s, v: new THREE.Vector3().randomDirection().multiplyScalar((3 + Math.random() * 5) * speedK), life: (0.35 + Math.random() * 0.2) * lifeK, t: 0, size: s.scale.x });
     }
   }
 
@@ -348,27 +410,55 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     const sk = window.__skills;
     const lucky = !hit.sp.crit && Math.random() < (sk?.mult('crit') || 0);
     const crit = !!hit.sp.crit || lucky;
-    const dmg = Math.round(damage * (hit.sp.mult ?? 1) * (lucky ? 1.5 : 1) * (sk?.mult('damage') ?? 1));
-    const res = hit.tg.onHit?.(dmg, { point, crit, weapon: def.id, part: hit.sp, slow: def.slow || null, ...extra });
+    const partMult = hit.sp.crit && def.headMult ? def.headMult : hit.sp.mult ?? 1; // 🗡️ headMult：飛刀中頭好痛
+    const fireK = def.fire ? sk?.mult('fireDmg') ?? 1 : 1; // 🌳 Hot Hot Hot：火系武器
+    const dmg = Math.round(damage * partMult * (lucky ? 1.5 : 1) * (sk?.mult('damage') ?? 1) * fireK);
+    const res = hit.tg.onHit?.(dmg, { point, crit, weapon: def.id, part: hit.sp, slow: def.slow || null, angry: def.angry || null, ...extra });
     if (res === false) {
-      damageNumber(point, 'BLOCKED', 'blocked');
+      if (!extra.quiet || Math.random() < 0.2) damageNumber(point, 'BLOCKED', 'blocked');
       sparkBurst(point, 0xb0bec5, 4, 0.4);
       return false;
     }
-    damageNumber(point, String(typeof res === 'number' ? res : dmg), crit ? 'crit' : extra.splash || extra.chain ? 'aoe' : '');
+    const got = typeof res === 'number' ? res : dmg;
+    if (extra.quiet) { // 🐉 噴火／🔥 火灘：一秒好多下，數字加埋先出（唔好成個畫面都係數字）
+      const q = quietNums.get(hit.tg) || { sum: 0, point: point.clone(), crit: false };
+      q.sum += got;
+      q.point.copy(point);
+      q.crit ||= crit;
+      quietNums.set(hit.tg, q);
+      if (Math.random() < 0.35) sparkBurst(point, def.color, 2, 0.45);
+      return got;
+    }
+    damageNumber(point, String(got), crit ? 'crit' : extra.splash || extra.chain ? 'aoe' : '');
     hitMarker(crit);
     play(crit ? 'critMarker' : 'hitMarker');
     sparkBurst(point, def.color, crit ? 10 : 6, crit ? 0.8 : 0.55);
     if (def.slow) sparkBurst(point, 0xe1f5fe, 3, 0.45); // ❄️ 雪花粒
-    return typeof res === 'number' ? res : dmg;
+    return got;
+  }
+  const quietNums = new Map(); // 目標 → { sum, point, crit }（每 0.3 秒出一次數字）
+  let quietT = 0;
+  function flushQuiet() {
+    let any = false, crit = false;
+    for (const q of quietNums.values()) {
+      damageNumber(q.point, String(Math.round(q.sum)), q.crit ? 'crit' : 'aoe');
+      any = true;
+      crit ||= q.crit;
+    }
+    quietNums.clear();
+    if (any) {
+      hitMarker(crit);
+      play(crit ? 'critMarker' : 'hitMarker');
+    }
   }
   // ---- Issue #14：🎃 爆炸（打中附近所有目標，越近中間扣越多）----
   const tmpC = new THREE.Vector3();
   const centerOf = (tg) => tmpC.copy(tg.getPos());
   function splashAt(point, def) {
     const P = def.projectile;
-    boom(point, def.color, P.splash);
-    play('pumpkinBoom');
+    boom(point, def.color, P.splash, P.boomColors);
+    play(P.boomSound || 'pumpkinBoom');
+    if (P.puddle) makePuddle(point, def);
     for (const tg of [...targets]) {
       if (tg.alive && !tg.alive()) continue;
       const c = centerOf(tg);
@@ -381,7 +471,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   // 爆炸畫面：光球 + 擴散光圈 + 南瓜碎粒
   const rings = [];
   const ringGeo = new THREE.RingGeometry(0.8, 1, 40);
-  function boom(p, color, r) {
+  function boom(p, color, r, colors = null) {
     const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
     m.rotation.x = -Math.PI / 2;
     m.position.set(p.x, Math.max(0.08, p.y - 0.4), p.z);
@@ -392,9 +482,164 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     flashS.frustumCulled = false;
     scene.add(flashS);
     rings.push({ m, flashS, t: 0, r });
+    if (colors) { // Issue #15：🎆 煙花／🧪 藥水／😡 法術：每隻顏色一圈碎粒，飛得遠啲、耐啲（越大爆炸越多）
+      const n = Math.round(5 + r * 3);
+      for (const c of colors) sparkBurst(p, c, n, 0.6 + r * 0.1, r / 3.2, 1.5);
+      sparkBurst(p, 0xffffff, 8, 0.55, r / 3.5, 1);
+      if (r >= 4) rings[rings.length - 1].crackle = { p: p.clone(), colors }; // 大爆炸：之後再「噼噼啪啪」閃多幾嚿
+      return;
+    }
     sparkBurst(p, color, 18, 0.9);
     sparkBurst(p, 0xffeb3b, 10, 0.6);
     sparkBurst(p, 0x76ff03, 4, 0.5); // 南瓜蒂（綠色）
+  }
+  // ---- Issue #15：🔥 魔法火（Dragon Breath 噴火、Fire Potion 火灘）----
+  const flames = [];
+  const flameMats = {};
+  const flameMat = (color) => (flameMats[color] ||= new THREE.MeshBasicMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.62, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  const FLAME_COLS = [0xffd54f, 0xffa000, 0xff6d00, 0xff3d00, 0xc62828]; // 黃 → 橙 → 紅（越燒越紅）
+  // 一粒火：由 p 出，速度 v，size0 → size1，life 秒；rise = 向上飄；drag = 慢落嚟幾快
+  function flame(p, v, size0, size1, life, rise = 2, drag = 2.2) {
+    const s = new THREE.Mesh(sparkGeo, flameMat(FLAME_COLS[0]));
+    s.position.copy(p);
+    s.frustumCulled = false;
+    s.scale.setScalar(size0);
+    scene.add(s);
+    flames.push({ s, v, t: 0, life, size0, size1, rise, drag, ci: 0, spin: (Math.random() - 0.5) * 6, rz: Math.random() * 6 });
+  }
+  // 錐形噴火：打中錐形入面所有敵人（每隻一下；盾牌擋唔到火）
+  const coneTmp = new THREE.Vector3();
+  function coneHit(from, dir, def, damage) {
+    const C = def.cone;
+    const half = C.angle * DEG;
+    for (const tg of [...targets]) {
+      if (tg.alive && !tg.alive()) continue;
+      let best = null;
+      for (const sp of sphereList(tg)) {
+        coneTmp.copy(sp.pos).sub(from);
+        const d = coneTmp.length();
+        if (d - sp.radius > C.range) continue;
+        if (d > sp.radius) { // 喺個球入面 = 一定中
+          const along = coneTmp.dot(dir);
+          if (along <= 0) continue;
+          const ang = Math.acos(Math.min(1, along / d)) - Math.atan(sp.radius / d); // 個球有幾闊都計：球邊入到錐形就中
+          if (ang > half) continue;
+        }
+        if (!best || d < best.d) best = { sp, d };
+      }
+      if (!best) continue;
+      const point = best.sp.pos.clone().addScaledVector(dir, -best.sp.radius * 0.6);
+      applyHit({ tg, sp: { ...best.sp, block: false } }, point, damage, def, { cone: true, splash: true, quiet: true });
+    }
+  }
+  // 噴火粒：由口度噴出去（第一身細粒啲，唔好遮晒畫面）
+  function breathe(from, dir, def, third) {
+    const C = def.cone;
+    const side = tmpV.set(1, 0, 0).applyQuaternion(camera.quaternion).clone();
+    const up = new THREE.Vector3().crossVectors(side, dir).normalize();
+    for (let k = 0; k < (third ? 12 : 10); k++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * Math.tan(C.angle * DEG * 0.8);
+      const v = dir.clone().addScaledVector(side, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r).normalize();
+      const sp = C.range * (2.8 + Math.random() * 0.6); // 有 drag（會慢落嚟）：大約飛到 range 咁遠
+      // 第一身：由口前面少少開始（太近鏡頭會成個畫面白晒）
+      flame(from.clone().addScaledVector(v, (third ? 0 : 0.35) + Math.random() * 0.3), v.multiplyScalar(sp), third ? 0.3 : 0.15, 1.3 + Math.random() * 1.1, 0.45 + Math.random() * 0.25, 1.2, 2.4);
+    }
+    // 近口嘅慢火（駁住條火舌同前面嗰嚿火，唔會斷開）
+    for (let k = 0; k < 4; k++) {
+      const v = dir.clone().addScaledVector(side, (Math.random() - 0.5) * 0.15).addScaledVector(up, (Math.random() - 0.5) * 0.15).normalize();
+      flame(from.clone().addScaledVector(v, (third ? 0 : 0.2) + Math.random() * 0.2), v.multiplyScalar(C.range * (0.6 + Math.random() * 0.8)), third ? 0.15 : 0.06, third ? 0.7 : 0.45, 0.3 + Math.random() * 0.15, 0.6, 2.4);
+    }
+  }
+  // 🔥 火灘（Fire Potion）：一灘發光魔法火，企喺入面嘅敵人每 tick 扣血
+  const puddles = [];
+  const puddleGeo = new THREE.CircleGeometry(1, 40);
+  function makePuddle(point, def) {
+    const P = def.projectile.puddle;
+    const g = new THREE.Group();
+    g.position.set(point.x, 0.05, point.z); // 地下 = y 0（塔、Boss 大廳）
+    const mk = (color, op, sc, y) => {
+      const m = new THREE.Mesh(puddleGeo, new THREE.MeshBasicMaterial({ map: glowTexture(), color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+      m.rotation.x = -Math.PI / 2;
+      m.scale.setScalar(P.radius * sc);
+      m.position.y = y;
+      m.frustumCulled = false;
+      g.add(m);
+      return m;
+    };
+    const outer = mk(0xff3d00, 0.85, 1.3, 0);
+    const inner = mk(0xffc400, 0.7, 0.8, 0.02);
+    const rim = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xff6d00, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    rim.rotation.x = -Math.PI / 2;
+    rim.scale.setScalar(P.radius);
+    rim.position.y = 0.03;
+    rim.frustumCulled = false;
+    g.add(rim);
+    scene.add(g);
+    puddles.push({ g, outer, inner, rim, def, P, t: 0, tick: 0, emit: 0, snd: 0 });
+  }
+  function updateFire(dt, view) {
+    for (let i = puddles.length - 1; i >= 0; i--) {
+      const pd = puddles[i];
+      const P = pd.P;
+      pd.t += dt;
+      const fade = Math.max(0, Math.min(1, pd.t / 0.15) * Math.min(1, (P.time - pd.t) / 0.6));
+      pd.outer.material.opacity = 0.85 * fade * (0.85 + Math.sin(pd.t * 13) * 0.15);
+      pd.inner.material.opacity = 0.7 * fade * (0.8 + Math.sin(pd.t * 17 + 1) * 0.2);
+      pd.rim.material.opacity = 0.8 * fade;
+      pd.rim.scale.setScalar(P.radius * (1 + Math.sin(pd.t * 6) * 0.04));
+      // 火舌由火灘入面一路冒出嚟
+      pd.emit += dt * 30 * fade;
+      while (pd.emit >= 1) {
+        pd.emit -= 1;
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * P.radius * 0.95;
+        const p = new THREE.Vector3(pd.g.position.x + Math.cos(a) * r, 0.2, pd.g.position.z + Math.sin(a) * r);
+        flame(p, new THREE.Vector3((Math.random() - 0.5) * 0.6, 1.4 + Math.random() * 1.6, (Math.random() - 0.5) * 0.6), 0.4 + Math.random() * 0.3, 1 + Math.random() * 0.7, 0.5 + Math.random() * 0.35, 1.5, 1);
+      }
+      pd.tick += dt;
+      if (pd.tick >= P.tick && pd.t < P.time) {
+        pd.tick -= P.tick;
+        for (const tg of [...targets]) {
+          if (tg.alive && !tg.alive()) continue;
+          const c = centerOf(tg);
+          const dx = c.x - pd.g.position.x, dz = c.z - pd.g.position.z;
+          if (dx * dx + dz * dz > (P.radius + (tg.radius ?? 1) * 0.4) ** 2 || c.y > 6) continue; // 企喺火灘上面（唔係飛到好高）
+          applyHit({ tg, sp: { mult: 1 } }, c.clone(), P.damage, pd.def, { splash: true, puddle: true, quiet: true });
+        }
+      }
+      pd.snd -= dt;
+      if (pd.snd <= 0) {
+        pd.snd = 0.9;
+        play('fireCrackle');
+      }
+      if (pd.t >= P.time) {
+        scene.remove(pd.g);
+        pd.g.traverse((o) => o.material?.dispose());
+        puddles.splice(i, 1);
+      }
+    }
+    for (let i = flames.length - 1; i >= 0; i--) {
+      const f = flames[i];
+      f.t += dt;
+      const k = f.t / f.life;
+      if (k >= 1) {
+        scene.remove(f.s);
+        flames.splice(i, 1);
+        continue;
+      }
+      f.v.multiplyScalar(Math.max(0, 1 - dt * f.drag)); // 慢慢停
+      f.v.y += f.rise * dt; // 熱空氣向上
+      f.s.position.addScaledVector(f.v, dt);
+      const ci = Math.min(FLAME_COLS.length - 1, Math.floor(k * FLAME_COLS.length));
+      if (ci !== f.ci) {
+        f.ci = ci;
+        f.s.material = flameMat(FLAME_COLS[ci]);
+      }
+      f.s.quaternion.copy(view.quaternion);
+      f.s.rotateZ(f.rz + f.t * f.spin);
+      f.s.scale.setScalar(THREE.MathUtils.lerp(f.size0, f.size1, k) * (k > 0.7 ? (1 - k) / 0.3 : 1)); // 越飛越大（遠啲先大）
+    }
   }
   // ---- ⚡ 閃電（之字形，一閃一閃）----
   const bolts = [];
@@ -528,7 +773,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   let lastHeld = null;
 
   function startReload() {
-    if (!current || reloading > 0 || ammo[current.id] >= current.mag) return;
+    if (!current || current.spell || reloading > 0 || ammo[current.id] >= magOf(current)) return; // 法術：自己冷卻，唔使換彈
     reloading = 0.0001;
     charge = -1;
     play('reloadStart');
@@ -541,6 +786,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   const spreadUp = new THREE.Vector3();
   function shoot(def, view, third, chargeK = 0) {
     ammo[def.id] -= 1;
+    debugPress = false;
     // 瞄準：由畫面中間（準星）射出去
     view.getWorldPosition(origin);
     view.getWorldDirection(aimDir);
@@ -557,17 +803,28 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     (third ? m.tp : m.fp).userData.muzzle.getWorldPosition(muzzleW);
     const damage = def.charge ? Math.round(THREE.MathUtils.lerp(def.charge.minDamage, def.charge.maxDamage, chargeK)) : def.damage;
     const range = def.range || RANGE;
-    if (def.projectile) {
+    if (def.cone) {
+      // 🐉 Issue #15：噴火（錐形，打中入面所有敵人）
+      const from = muzzleW.clone();
+      coneHit(origin, aimDir, def, damage);
+      breathe(from, aimDir.clone(), def, third);
+    } else if (def.projectile) {
       // 會飛嘅彈：由槍嘴飛向準星對住嘅位
       const P = def.projectile;
       const hit = rayHit(origin, aimDir);
-      const aimPoint = tmpV.copy(origin).addScaledVector(aimDir, hit ? hit.dist : 60).clone();
+      // 瞄準點：對住敵人 = 個敵人；對住地下 = 地面嗰點（Issue #15：以前會當 60 米遠，拋物線彈會飛過龍）；其他 = 60 米
+      const groundD = aimDir.y < -0.01 ? (origin.y - 0.05) / -aimDir.y : Infinity;
+      const aimPoint = P.maxRange ? landingPoint(origin, aimDir, P.maxRange) : tmpV.copy(origin).addScaledVector(aimDir, hit ? hit.dist : Math.min(60, groundD)).clone();
       const speed = P.speed * (def.charge ? 0.55 + chargeK * 0.45 : 1);
       const side = new THREE.Vector3(1, 0, 0).applyQuaternion(view.quaternion);
+      const upAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(view.quaternion);
       for (let k = 0; k < (P.count || 1); k++) {
+        // 飛 T 秒去到 aimPoint：v = 距離 ÷ T，再預返地心吸力（拋物線啱啱好跌喺 aimPoint）
         const v = aimPoint.clone().sub(muzzleW).normalize().multiplyScalar(speed);
-        v.y += P.gravity * (muzzleW.distanceTo(aimPoint) / speed) * 0.5; // 預返地心吸力
-        if (P.count > 1) { // 🦇 幾隻蝙蝠：散開少少飛出去（之後自己追敵人）
+        v.y += P.gravity * (muzzleW.distanceTo(aimPoint) / speed) * 0.5;
+        if (P.count > 1 && P.fan != null) { // 🗡️ 扇形：每支之間 fan 度
+          v.applyAxisAngle(upAxis, -(k - (P.count - 1) / 2) * P.fan * DEG);
+        } else if (P.count > 1) { // 🦇 幾隻蝙蝠：散開少少飛出去（之後自己追敵人）
           v.addScaledVector(side, (k - (P.count - 1) / 2) * speed * 0.35);
           v.y += (k % 2 ? 1 : -0.3) * speed * 0.12;
         }
@@ -584,7 +841,8 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
         s.position.copy(muzzleW);
         s.traverse((o) => (o.frustumCulled = false));
         scene.add(s);
-        shots.push({ s, v, def, damage, t: 0, gravity: P.gravity, model: !!P.model, homing: P.homing || 0, delay: k * 0.07 });
+        if (P.model) s.userData.fly?.(v, 0, 0); // 一出嚟就向住飛嘅方向
+        shots.push({ s, v, def, damage, t: 0, gravity: P.gravity, model: !!P.model, homing: P.homing || 0, delay: k * (P.stagger ?? 0.07) });
       }
     } else {
       // Hitscan：Ghost Shotgun 一下幾粒（每隻敵人每個部位加埋先出一個數）
@@ -639,7 +897,25 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     play(def.sound || 'blasterShot');
     for (const g of [m.fp, m.tp]) for (const mat of g.userData.glows) mat.emissiveIntensity = 5;
     api.onShot?.(def);
-    if (ammo[def.id] <= 0) setTimeout(() => current === def && ammo[def.id] <= 0 && startReload(), 250); // 冇子彈：自動換
+    if (def.spell) {
+      // ⏳ 法術冷卻（Issue #15）：用完就自己開始計（🌳 Spell Master 快啲）
+      if (ammo[def.id] <= 0) spellCd[def.id] = spellCdMax[def.id] = def.reload / (window.__skills?.mult('spellCd') ?? 1);
+    } else if (ammo[def.id] <= 0) setTimeout(() => current === def && ammo[def.id] <= 0 && startReload(), 250); // 冇子彈：自動換
+  }
+  // 😡 拋物線法術：準星對住地面邊度（最遠 maxRange 米）；對住敵人就去個敵人度
+  const landTmp = new THREE.Vector3();
+  function landingPoint(o, dir, maxRange) {
+    const hit = rayHit(o, dir, maxRange);
+    if (hit) return landTmp.copy(o).addScaledVector(dir, hit.dist).clone();
+    let d = maxRange;
+    if (dir.y < -0.001) d = Math.min(d, (o.y - 0.05) / -dir.y);
+    const p = landTmp.copy(o).addScaledVector(dir, d);
+    // 太遠（向天掟）：拉返去 maxRange 米內嘅地面
+    const hx = p.x - o.x, hz = p.z - o.z;
+    const hd = Math.hypot(hx, hz);
+    if (hd > maxRange) p.set(o.x + (hx / hd) * maxRange, p.y, o.z + (hz / hd) * maxRange);
+    p.y = 0.05; // 冇對住敵人：一定跌落地（塔／Boss 大廳地面 = y 0）
+    return p.clone();
   }
 
   function setFov(view, fov) {
@@ -676,6 +952,8 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       }
       if (u.setPull) u.setPull(charge >= 0 ? Math.min(1, charge / def.charge.max) : 0);
       if (u.ammo) u.ammo.visible = reloading <= 0 && ammo[def.id] > 0;
+      u.ammoCount?.(reloading > 0 ? magOf(def) : ammo[def.id], magOf(def)); // Issue #15：模型顯示剩幾多（例如後備煙花）
+      u.cooldown?.(spellCd[def.id] > 0 ? 1 - spellCd[def.id] / spellCdMax[def.id] : 1); // ⏳ 法術冷卻（1 = 用得）
       u.animate?.(time);
       for (const mat of u.glows) mat.emissiveIntensity += (2.2 - mat.emissiveIntensity) * Math.min(1, dt * 10);
     }
@@ -706,6 +984,67 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     avatar.arms[1].rotation.set(Math.PI / 2 + pitch * k - kick * 0.15, 0, -0.08);
     avatar.arms[0].rotation.set(Math.PI / 2 + pitch * k - 0.1, 0, 0.55);
   }
+
+  // 😡 落點圈（地上）：外圈 + 入面淡淡紅光
+  let aimMark = null;
+  function makeAimMark() {
+    const g = new THREE.Group();
+    g.rotation.x = -Math.PI / 2;
+    const ringM = new THREE.MeshBasicMaterial({ color: 0xff2d55, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    const fillM = new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xff2d55, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const ringMesh = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 48), ringM);
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 32), fillM);
+    g.add(fill, ringMesh);
+    for (let i = 0; i < 4; i++) { // 四粒箭咀（指向中間）
+      const tri = new THREE.Mesh(new THREE.CircleGeometry(0.12, 3), ringM);
+      const a = (i / 4) * Math.PI * 2;
+      tri.position.set(Math.cos(a) * 0.8, Math.sin(a) * 0.8, 0);
+      tri.rotation.z = a + Math.PI;
+      g.add(tri);
+    }
+    g.traverse((o) => (o.frustumCulled = false));
+    g.renderOrder = 2;
+    g.userData.set = (op, color) => {
+      ringM.opacity = op;
+      fillM.opacity = op * 0.4;
+      ringM.color.setHex(color);
+      fillM.color.setHex(color);
+    };
+    scene.add(g);
+    return g;
+  }
+  function updateHotbarCd() {
+    const ids = Object.keys(spellCd);
+    if (!ids.length && !hadCd) return;
+    hadCd = ids.length > 0;
+    const bar = document.getElementById('hotbar');
+    if (!bar) return;
+    const items = hotbarItems();
+    bar.querySelectorAll('.slot').forEach((slot) => {
+      const id = items[+slot.dataset.i]?.item?.weapon;
+      let cdEl = slot.querySelector('.wpn-cd');
+      const left = id ? spellCd[id] : 0;
+      if (!(left > 0)) {
+        if (cdEl) {
+          cdEl.remove();
+          slot.querySelector('.wpn-cdt')?.remove();
+        }
+        return;
+      }
+      if (!cdEl) {
+        cdEl = document.createElement('i');
+        cdEl.className = 'wpn-cd';
+        const t = document.createElement('b');
+        t.className = 'wpn-cdt';
+        slot.append(cdEl, t);
+      }
+      cdEl.style.height = `${(left / spellCdMax[id]) * 100}%`;
+      const txt = `${Math.ceil(left)}`;
+      const t = slot.querySelector('.wpn-cdt');
+      if (t.textContent !== txt) t.textContent = txt;
+    });
+  }
+  let hadCd = false;
 
   const proj = new THREE.Vector3();
   function update(dt, { view = camera, third = false, time = 0, paused = false } = {}) {
@@ -744,12 +1083,24 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
     cooldown = Math.max(0, cooldown - dt);
     kick = Math.max(0, kick - dt * 8);
     flashK = Math.max(0, flashK - dt * 18);
+    // ⏳ 法術冷卻（Issue #15）：收埋都照計（暫停就停）
+    if (!paused) for (const id of Object.keys(spellCd)) {
+      spellCd[id] -= dt;
+      if (spellCd[id] <= 0) {
+        delete spellCd[id];
+        ammo[id] = WEAPONS[id].mag;
+        if (zones.size) {
+          play('spellReady');
+          if (current?.id === id) sparkBurst(modelsOf(id)[third ? 'tp' : 'fp'].userData.muzzle.getWorldPosition(new THREE.Vector3()), WEAPONS[id].color, 8, third ? 0.5 : 0.15);
+        }
+      }
+    }
     if (def) {
       if (reloading > 0) {
         reloading += dt * (window.__skills?.mult('reload') ?? 1); // 🌳 Quick Hands：換快啲
         if (reloading >= def.reload) {
           reloading = 0;
-          ammo[def.id] = def.mag;
+          ammo[def.id] = magOf(def);
           play('reloadDone');
         }
       }
@@ -785,7 +1136,7 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       }
       if (third && !paused) poseArms(view);
     }
-    input.pressed = false;
+    input.pressed = debugPress && !!def; // 測試：debugFire 撳住直到真係射到
     input.released = false;
     updateHeldModels(def, third, time, dt);
     if (def && def !== lastHeld) popup(`${def.emoji} ${def.name}: ${def.desc}`);
@@ -804,13 +1155,43 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       ui.ammo.style.setProperty('--c', col);
       const nm = `${def.emoji} ${def.name}`;
       if (ui.ammoName.textContent !== nm) ui.ammoName.textContent = nm;
-      const n = reloading > 0 ? 'RELOADING' : `${ammo[def.id]}<small> / ${def.mag}</small>`;
+      const mag = magOf(def);
+      const cd = spellCd[def.id];
+      const n = def.spell ? (cd > 0 ? `⏳ ${Math.ceil(cd)}s` : 'READY!') : reloading > 0 ? 'RELOADING' : `${ammo[def.id]}<small> / ${mag}</small>`;
       if (ui.ammoN.innerHTML !== n) ui.ammoN.innerHTML = n;
-      ui.ammo.classList.toggle('low', reloading <= 0 && ammo[def.id] <= Math.ceil(def.mag * 0.2));
-      ui.ammoBar.style.width = `${reloading > 0 ? Math.min(100, (reloading / def.reload) * 100) : (ammo[def.id] / def.mag) * 100}%`;
+      ui.ammo.classList.toggle('low', !def.spell && reloading <= 0 && ammo[def.id] <= Math.ceil(mag * 0.2));
+      ui.ammo.classList.toggle('cd', !!def.spell && cd > 0);
+      ui.ammo.classList.toggle('ready', !!def.spell && !(cd > 0));
+      ui.ammoBar.style.width = `${def.spell ? (cd > 0 ? (1 - cd / spellCdMax[def.id]) * 100 : 100) : reloading > 0 ? Math.min(100, (reloading / def.reload) * 100) : (ammo[def.id] / mag) * 100}%`;
+      const tip = def.spell ? 'Click to throw · recharges by itself' : def.cone ? 'Hold to breathe fire · R reload' : 'Click shoot · Right-click aim · R reload';
+      if (ui.ammoTip.textContent !== tip) ui.ammoTip.textContent = tip;
       ui.charge.hidden = !def.charge;
       if (def.charge) ui.chargeFill.style.width = `${charge >= 0 ? (charge / def.charge.max) * 100 : 0}%`;
     }
+    // 😡 Issue #15：拋物線法術 → 地上個圈話你知會跌喺邊（最遠 maxRange 米）
+    const showMark = !!def?.projectile?.maxRange && isActive();
+    if (showMark) {
+      if (!aimMark) aimMark = makeAimMark();
+      view.getWorldPosition(origin);
+      view.getWorldDirection(aimDir);
+      if (third) origin.addScaledVector(aimDir, Math.max(0, tmpV.copy(camera.position).sub(origin).dot(aimDir)) - 0.5);
+      const p = landingPoint(origin, aimDir, def.projectile.maxRange);
+      aimMark.position.set(p.x, 0.07, p.z);
+      const r = def.projectile.puddle?.radius || def.projectile.splash || 2; // 圈 = 會打中嘅範圍
+      aimMark.scale.setScalar(r * (1 + Math.sin(time * 6) * 0.04));
+      aimMark.rotation.z = time * 0.8; // 個圈轉緊（rotation.x 已經擺平）
+      const ready = !(spellCd[def.id] > 0);
+      aimMark.userData.set(ready ? 0.9 : 0.3, ready ? def.color : 0x9e9e9e);
+    }
+    if (aimMark) aimMark.visible = showMark;
+    // ⏳ 快捷欄：法術冷卻緊 → 格仔有層黑幕 + 秒數
+    updateHotbarCd();
+    quietT += dt;
+    if (quietT > 0.3) {
+      quietT = 0;
+      flushQuiet();
+    }
+    updateFire(dt, view);
 
     // 彈道
     for (let i = tracers.length - 1; i >= 0; i--) {
@@ -868,11 +1249,13 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       sh.trail = (sh.trail || 0) + dt;
       if (sh.trail > 0.02) {
         sh.trail = 0;
-        const tp = new THREE.Mesh(sparkGeo, sparkMat(sh.def.color));
+        const cols = sh.def.projectile.boomColors; // 🎆 煙花：彩色火花尾
+        const tp = new THREE.Mesh(sparkGeo, sparkMat(cols ? cols[Math.floor(Math.random() * cols.length)] : sh.def.color));
         tp.position.copy(sh.s.position);
+        if (sh.s.userData.tail) tp.position.add(sh.s.userData.tail()); // 尾巴喺模型後面（火箭尾）
         tp.scale.setScalar((sh.model ? 0.25 : 0.35) + Math.random() * 0.15);
         scene.add(tp);
-        sparks.push({ s: tp, v: new THREE.Vector3().randomDirection().multiplyScalar(0.4), life: 0.3, t: 0, size: tp.scale.x });
+        sparks.push({ s: tp, v: new THREE.Vector3().randomDirection().multiplyScalar(cols ? 1.6 : 0.4), life: cols ? 0.55 : 0.3, t: 0, size: tp.scale.x });
       }
       const step = sh.s.position.distanceTo(from);
       const dir = sh.s.position.clone().sub(from).normalize();
@@ -901,6 +1284,15 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
       r.flashS.quaternion.copy(view.quaternion);
       r.flashS.scale.setScalar(r.r * 1.6 * (1 - k * 0.5));
       r.flashS.material.opacity = Math.max(0, 1 - k * 2);
+      if (r.crackle && r.t > 0.2) { // 🎆 第二輪：一粒粒細煙花喺周圍爆
+        for (let j = 0; j < 6; j++) {
+          const q = r.crackle.p.clone().add(tmpV.randomDirection().multiplyScalar(r.r * (0.3 + Math.random() * 0.4)));
+          q.y = Math.max(0.4, q.y);
+          sparkBurst(q, r.crackle.colors[j % r.crackle.colors.length], 7, 0.5, 0.6, 1.1);
+          sparkBurst(q, 0xffffff, 2, 0.7, 0.2, 0.6);
+        }
+        r.crackle = null;
+      }
       if (k >= 1) {
         scene.remove(r.m, r.flashS);
         r.m.material.dispose();
@@ -1012,13 +1404,38 @@ export function createWeapons({ scene, camera, avatar, play, controls = null, is
   const api = {
     update, setZone, give, registerTarget, setLoadout, select,
     has: (id) => state.weapons.includes(id),
-    refill: () => Object.keys(WEAPONS).forEach((id) => (ammo[id] = WEAPONS[id].mag)),
+    refill: () => Object.keys(WEAPONS).forEach((id) => {
+      ammo[id] = magOf(WEAPONS[id]);
+      delete spellCd[id];
+    }),
     ammoOf: (id) => ammo[id],
+    cooldownOf: (id) => spellCd[id] || 0, // ⏳ 法術仲要等幾多秒（0 = 用得）
+    magOf: (id) => magOf(WEAPONS[id]),
     get reloading() { return reloading > 0; },
     get armed() { return zones.size > 0; },
     held: null, aiming: 0, onShot: null,
     targets, WEAPONS,
-    debugFx: () => ({ tracers: tracers.map((t) => [t.t.toFixed(2), t.len.toFixed(1)]), shots: shots.length, sparks: sparks.length, flash: flashK, booms: rings.length, bolts: bolts.length }),
+    debugFx: () => ({ tracers: tracers.map((t) => [t.t.toFixed(2), t.len.toFixed(1)]), shots: shots.length, sparks: sparks.length, flash: flashK, booms: rings.length, bolts: bolts.length, flames: flames.length, puddles: puddles.length }),
+    // 測試：扮揸住左鍵 ms 毫秒（無頭瀏覽器鎖唔到滑鼠，isActive 當 true）→ Promise
+    debugFire(ms = 120) {
+      debugForce = true;
+      debugPress = true;
+      input.down = true;
+      input.pressed = true;
+      return new Promise((res) => setTimeout(() => {
+        input.down = false;
+        input.released = true;
+        let n = 0;
+        const wait = () => {
+          if (debugPress && n++ < 100) return setTimeout(wait, 50); // 未射到（畫面好慢）：等多陣（最多 5 秒）
+          debugPress = false;
+          debugForce = false;
+          res(api.debugFx());
+        };
+        setTimeout(wait, 60);
+      }, ms));
+    },
+    set debugActive(v) { debugForce = !!v; }, // 測試：一路當 active（例如睇落點圈）
   };
   return api;
 }

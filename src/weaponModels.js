@@ -17,6 +17,9 @@
 //   Slingshot：pouch（皮兜）、ammo（皮兜入面嘅南瓜籽）、setPull(0–1)
 // Issue #14 新加：🎃 Pumpkin Launcher、❄️ Frost Wand、⚡ Lightning Staff、👻 Ghost Shotgun、🦇 Bat Swarm Bow
 //   + projectileModel('pumpkin' | 'bat', color)：會飛嘅彈個樣（userData.fly(v, t, dt)、dispose()）
+// Issue #15 新加：🐉 Dragon Breath、🗡️ Spirit Daggers、🧪 Fire Potion、🎆 Firework Launcher、😡 Angry Spell
+//   + projectileModel('dagger' | 'potion' | 'firework' | 'angryOrb')；projectile 可以有 userData.tail()（尾巴火花喺邊）
+//   新 userData（可以冇）：ammoCount(n, mag) 剩幾多發（例如掛住嘅後備煙花）· cooldown(k) 法術冷卻 0–1（1 = 用得）
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -1391,7 +1394,8 @@ export function projectileModel(kind, color = 0xff8f00) {
   const g = new THREE.Group();
   const mats = [];
   const keep = (m) => (mats.push(m), m);
-  if (kind === 'pumpkin') {
+  if (['dagger', 'potion', 'firework', 'angryOrb'].includes(kind)) projectileModel15(kind, color, g, keep); // Issue #15
+  else if (kind === 'pumpkin') {
     const skin = keep(new THREE.MeshStandardMaterial({ color: 0xff8f00, emissive: 0xff6d00, emissiveIntensity: 0.5, roughness: 0.4 }));
     const face = keep(GLOW(0xffe082, 3.2));
     const stem = keep(M(0x2e7d32, { roughness: 0.6 }));
@@ -1462,7 +1466,751 @@ export function projectileModel(kind, color = 0xff8f00) {
   return g;
 }
 
-const BUILDERS = { soulBlaster, candyPistol, slingshot, pumpkinLauncher, frostWand, lightningStaff, ghostShotgun, batBow };
+// ======================== Issue #15（小朋友 2026-10-25）：再多 5 支魔法武器 ========================
+// 龍鱗紋（Dragon Breath）
+const scaleTex = () => canvasTex('dragonScale', 64, 64, (g) => {
+  g.fillStyle = '#2e7d32';
+  g.fillRect(0, 0, 64, 64);
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      const x = col * 16 + (row % 2 ? 8 : 0) - 8;
+      const y = row * 14 - 4;
+      const gr = g.createRadialGradient(x + 8, y + 4, 1, x + 8, y + 8, 12);
+      gr.addColorStop(0, '#81c784');
+      gr.addColorStop(0.7, '#388e3c');
+      gr.addColorStop(1, '#1b5e20');
+      g.fillStyle = gr;
+      g.beginPath();
+      g.arc(x + 8, y + 4, 9, 0, Math.PI);
+      g.fill();
+      g.strokeStyle = 'rgba(10,40,12,0.7)';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+  }
+}, true);
+// 煙花筒紋（紅白斜紋 + 金星）
+const fireworkTex = () => canvasTex('fireworkTube', 128, 64, (g) => {
+  g.fillStyle = '#c62828';
+  g.fillRect(0, 0, 128, 64);
+  g.fillStyle = '#fff3e0';
+  for (let i = -64; i < 160; i += 32) {
+    g.beginPath();
+    g.moveTo(i, 0);
+    g.lineTo(i + 12, 0);
+    g.lineTo(i + 44, 64);
+    g.lineTo(i + 32, 64);
+    g.fill();
+  }
+  g.fillStyle = '#ffd740';
+  const star = (cx, cy, r) => {
+    g.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2 - Math.PI / 2;
+      const rr = k % 2 ? r * 0.45 : r;
+      g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+    g.fill();
+  };
+  star(20, 18, 9); star(64, 46, 9); star(104, 16, 9);
+  g.fillStyle = '#1565c0';
+  g.fillRect(0, 0, 128, 5);
+  g.fillRect(0, 59, 128, 5);
+}, true);
+// 一條會閃嘅細火舌（兩塊交叉 plane，面向 -z 噴）：回傳 { group, mats }
+function pilotFlame(parent, x, y, z, size = 0.12) {
+  const grp = new THREE.Group();
+  grp.position.set(x, y, z);
+  parent.add(grp);
+  const mats = [];
+  for (const [col, sc] of [[0xff6d00, 1], [0xffe082, 0.55]]) {
+    for (const rz of [0, Math.PI / 2]) {
+      const m = new THREE.MeshBasicMaterial({ map: flameTexture(), color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(size * 0.6 * sc, size * 1.6 * sc), m);
+      p.rotation.order = 'ZXY';
+      p.rotation.set(-Math.PI / 2, 0, rz);
+      p.position.z = -size * 0.7 * sc;
+      grp.add(p);
+      mats.push(m);
+    }
+  }
+  return { group: grp, mats };
+}
+
+// ---------- 🐉 Dragon Breath（龍頭噴火器：後面一個岩漿玻璃球，前面龍頭，噴火時張口）----------
+function dragonBreath() {
+  const g = new THREE.Group();
+  const scales = new THREE.MeshStandardMaterial({ map: scaleTex(), roughness: 0.5, metalness: 0.15 });
+  const belly = M(0xd4e157, { roughness: 0.5, metalness: 0.05 });
+  const green = M(0x2e7d32, { roughness: 0.45, metalness: 0.15 });
+  const greenDark = M(0x1b4d20, { roughness: 0.55, metalness: 0.1 });
+  const gold = METAL(0xffc94d, { metalness: 0.9, roughness: 0.22 });
+  const horn = M(0xfff3d6, { roughness: 0.35, metalness: 0.05 });
+  const frill = M(0x8e24aa, { roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide });
+  const dark = M(0x1a1426, { roughness: 0.8 });
+  const lava = GLOW(0xff7a1a, 2.6);
+  const lavaHot = GLOW(0xffd54f, 2.4);
+  const eye = GLOW(0xffea00, 3);
+  const mouthGlow = GLOW(0xff6d00, 2.2);
+
+  // ── 身（龍鱗管）+ 金圈 ──
+  cyl(g, 0.085, 0.075, 0.5, scales, 0, 0.03, -0.12, 18);
+  for (const z of [0.08, -0.16, -0.36]) cyl(g, 0.093, 0.093, 0.03, gold, 0, 0.03, z, 18);
+  rbox(g, 0.1, 0.05, 0.44, belly, 0, -0.035, -0.12, 0.4); // 肚（淺色）
+  // 背脊尖刺
+  for (let i = 0; i < 5; i++) {
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.07 - i * 0.006, 5), frill);
+    sp.position.set(0, 0.125, 0.12 - i * 0.11);
+    sp.rotation.x = -0.4;
+    g.add(sp);
+  }
+  // ── 龍頭（向 -z）──
+  const head = new THREE.Group();
+  head.position.set(0, 0.045, -0.43);
+  head.scale.setScalar(1.3);
+  g.add(head);
+  rbox(head, 0.16, 0.12, 0.16, green, 0, 0.01, 0, 0.4); // 頭殼
+  rbox(head, 0.12, 0.07, 0.16, green, 0, 0.015, -0.12, 0.35); // 上顎（長嘴）
+  rbox(head, 0.125, 0.02, 0.15, greenDark, 0, 0.055, -0.11, 0.3); // 鼻樑
+  for (const sx of [-1, 1]) {
+    ball(head, 0.012, lavaHot, sx * 0.03, 0.04, -0.2, 6); // 鼻孔（發光）
+    // 眼：發光黃 + 黑色直瞳
+    ball(head, 0.026, eye, sx * 0.07, 0.05, -0.02, 10);
+    rbox(head, 0.006, 0.03, 0.006, dark, sx * 0.093, 0.05, -0.022, 0.3);
+    rbox(head, 0.045, 0.012, 0.04, greenDark, sx * 0.06, 0.08, -0.02, 0.3).rotation.z = sx * -0.35; // 眉骨（型啲）
+    // 角：向後彎
+    const h1 = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.16, 8), horn);
+    h1.position.set(sx * 0.05, 0.1, 0.07);
+    h1.rotation.set(1.1, 0, sx * -0.35);
+    head.add(h1);
+    const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.08, 6), horn);
+    h2.position.set(sx * 0.085, 0.06, 0.06);
+    h2.rotation.set(1.3, 0, sx * -0.9);
+    head.add(h2);
+    // 耳鰭（紫色）
+    const fr = new THREE.Shape();
+    fr.moveTo(0, 0); fr.lineTo(0.09, 0.03); fr.lineTo(0.07, -0.01); fr.lineTo(0.1, -0.04); fr.lineTo(0, -0.04);
+    const fm = new THREE.Mesh(new THREE.ShapeGeometry(fr), frill);
+    fm.position.set(sx * 0.08, 0.0, 0.05);
+    fm.rotation.set(0, sx > 0 ? -Math.PI / 2 + 0.5 : Math.PI / 2 - 0.5, 0);
+    head.add(fm);
+  }
+  // 上排牙
+  for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) {
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.025, 4), horn);
+    t.position.set(sx * 0.045, -0.025, -0.08 - i * 0.04);
+    t.rotation.x = Math.PI;
+    head.add(t);
+  }
+  // 下顎（噴火時張開）
+  const jaw = new THREE.Group();
+  jaw.position.set(0, -0.03, 0.02);
+  head.add(jaw);
+  rbox(jaw, 0.11, 0.035, 0.2, green, 0, -0.02, -0.1, 0.35);
+  rbox(jaw, 0.08, 0.01, 0.17, mouthGlow, 0, 0.0, -0.1, 0.3); // 口入面（發光）
+  for (let i = 0; i < 3; i++) for (const sx of [-1, 1]) {
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.022, 4), horn);
+    t.position.set(sx * 0.04, 0.012, -0.08 - i * 0.045);
+    jaw.add(t);
+  }
+  const throat = ball(head, 0.04, mouthGlow, 0, -0.01, -0.14, 10); // 喉嚨入面嘅火光
+  throat.scale.set(1, 0.6, 1.4);
+  const pilot = pilotFlame(head, 0, -0.005, -0.22, 0.12); // 口度一路有細火
+  // ── 後面：岩漿玻璃球（燃料）+ 金籠 ──
+  const tank = new THREE.Group();
+  tank.position.set(0, 0.075, 0.2);
+  tank.scale.setScalar(0.8);
+  g.add(tank);
+  const core = ball(tank, 0.075, lava, 0, 0, 0, 16);
+  const swirl = helix(tank, 0.06, 0.12, 2, 0.008, lavaHot, 0, 0, 0);
+  ball(tank, 0.1, GLASS(0xffab40, { opacity: 0.3 }), 0, 0, 0, 18);
+  for (let i = 0; i < 3; i++) {
+    const r = ring(tank, 0.102, 0.008, gold, 0, 0, 0, 30);
+    r.rotation.y = (i / 3) * Math.PI;
+  }
+  vcyl(tank, 0.05, 0.065, 0.04, gold, 0, -0.1, 0, 14);
+  const bubbles = [];
+  for (let i = 0; i < 4; i++) bubbles.push(ball(tank, 0.012, lavaHot, 0, 0, 0, 6));
+  // ── 手柄、扳機、前扶手、尾 ──
+  rbox(g, 0.12, 0.1, 0.2, greenDark, 0, -0.02, 0.2, 0.35);
+  const grip = rbox(g, 0.075, 0.18, 0.09, dark, 0, -0.14, 0.18, 0.35);
+  grip.rotation.x = 0.3;
+  rbox(g, 0.085, 0.025, 0.1, gold, 0, -0.23, 0.21, 0.3).rotation.x = 0.3;
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.009, 6, 14, Math.PI), gold);
+  guard.rotation.set(0, Math.PI / 2, Math.PI);
+  guard.position.set(0, -0.08, 0.1);
+  g.add(guard);
+  rbox(g, 0.06, 0.13, 0.07, dark, 0, -0.09, -0.2, 0.4).rotation.x = -0.15;
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 10), scales); // 尾（後面）
+  tail.position.set(0, 0.0, 0.4);
+  tail.rotation.x = Math.PI / 2 + 0.25;
+  g.add(tail);
+  const tailTip = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.06, 4), frill);
+  tailTip.position.set(0, -0.03, 0.52);
+  tailTip.rotation.x = Math.PI / 2 + 0.25;
+  g.add(tailTip);
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.03, -0.74);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, mag: tank, glows: [lava, mouthGlow], magRest: tank.position.clone(), aimY: -0.2,
+    hip: { x: 0.24, y: -0.25, z: -0.5 }, flashScale: 0.35,
+  };
+  g.userData.fire = () => (fired = true);
+  // 換彈：岩漿球縮細（用晒）→ 再大返、變返好光
+  g.userData.reload = (k) => {
+    const s = k <= 0 ? 1 : k < 0.3 ? 1 - ease(k / 0.3) * 0.7 : 0.3 + ease(clamp01((k - 0.3) / 0.6)) * 0.7;
+    core.scale.setScalar(s);
+    swirl.scale.setScalar(s);
+  };
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.18); // 噴緊火 ≈ 1
+    jaw.rotation.x = THREE.MathUtils.lerp(jaw.rotation.x, f > 0 ? 0.55 : 0.06 + Math.sin(t * 2) * 0.03, 0.3);
+    swirl.rotation.z = t * 4;
+    lava.emissiveIntensity = 2.2 + Math.sin(t * 5) * 0.4 + f * 1.5;
+    mouthGlow.emissiveIntensity = 1.8 + f * 3 + Math.sin(t * 17) * 0.3;
+    eye.emissiveIntensity = 2.6 + f * 2;
+    const flick = 0.8 + Math.sin(t * 31) * 0.15 + Math.sin(t * 47) * 0.1;
+    pilot.group.scale.set(flick * (1 + f * 0.8), flick * (1 + f * 0.8), flick * (1 + f * 3.5)); // 噴緊火：口度條火舌拉長
+    pilot.mats.forEach((m) => (m.opacity = 0.75 + f * 0.25));
+    bubbles.forEach((b, i) => {
+      const k = (t * 0.6 + i / 4) % 1;
+      b.position.set(Math.sin(i * 2.1 + t) * 0.03, -0.06 + k * 0.12, Math.cos(i * 1.7) * 0.03);
+      b.scale.setScalar(1 - k * 0.7);
+    });
+  };
+  return g;
+}
+
+// ---------- 🗡️ Spirit Daggers（手上一把鬼魂匕首 + 兩把喺隔籬浮住；掟晒之後再「變」返出嚟）----------
+function daggerShape(len = 0.26, w = 0.045) {
+  const s = new THREE.Shape(); // 刀身（葉形），喺 xy 平面，尖向 +y
+  s.moveTo(0, len);
+  s.quadraticCurveTo(w * 1.2, len * 0.55, w, 0.02);
+  s.lineTo(w * 0.6, 0);
+  s.lineTo(-w * 0.6, 0);
+  s.lineTo(-w, 0.02);
+  s.quadraticCurveTo(-w * 1.2, len * 0.55, 0, len);
+  return s;
+}
+// 一把匕首（刀尖向 -z）：回傳 { group, blade }
+function spiritDagger(parent, mats, len = 0.26) {
+  const d = new THREE.Group();
+  parent.add(d);
+  const bladeGeo = new THREE.ExtrudeGeometry(daggerShape(len, len * 0.22), { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.006, bevelSegments: 2 });
+  bladeGeo.translate(0, 0, -0.006);
+  const blade = new THREE.Mesh(bladeGeo, mats.blade);
+  blade.rotation.x = -Math.PI / 2; // +y → -z
+  d.add(blade);
+  const coreGeo = new THREE.ExtrudeGeometry(daggerShape(len * 0.85, len * 0.05), { depth: 0.002, bevelEnabled: false });
+  const core = new THREE.Mesh(coreGeo, mats.core);
+  core.rotation.x = -Math.PI / 2;
+  core.position.y = 0.007;
+  d.add(core);
+  // 護手：兩邊彎彎嘅銀翼 + 中間一粒寶石
+  for (const sx of [-1, 1]) {
+    const wing = rbox(d, 0.07, 0.022, 0.025, mats.silver, sx * 0.045, 0, 0.012, 0.4);
+    wing.rotation.y = sx * 0.35;
+    ball(d, 0.012, mats.core, sx * 0.08, 0, 0.03, 6);
+  }
+  ball(d, 0.018, mats.gem, 0, 0.012, 0.01, 10);
+  // 手柄（纏住）+ 尾珠
+  cyl(d, 0.017, 0.019, 0.1, mats.wrap, 0, 0, 0.07, 10);
+  for (let i = 0; i < 4; i++) cyl(d, 0.021, 0.021, 0.008, mats.silver, 0, 0, 0.03 + i * 0.026, 10);
+  ball(d, 0.024, mats.silver, 0, 0, 0.13, 10);
+  ball(d, 0.012, mats.gem, 0, 0, 0.152, 8);
+  return { group: d, blade };
+}
+function daggerMats() {
+  return {
+    blade: new THREE.MeshStandardMaterial({ color: 0xb2fbff, emissive: 0x40e0ff, emissiveIntensity: 1.2, transparent: true, opacity: 0.72, roughness: 0.1, metalness: 0.2 }),
+    core: GLOW(0xe0ffff, 2.6),
+    silver: METAL(0xdfe6f5, { metalness: 0.9, roughness: 0.2 }),
+    wrap: M(0x3a2a6a, { roughness: 0.7 }),
+    gem: GLOW(0x7c4dff, 2.4),
+  };
+}
+function spiritDaggers() {
+  const g = new THREE.Group();
+  const mats = daggerMats();
+  // 手柄位：轉緊嘅鬼火符文圈（隻手握住把刀）
+  const runeRing = ring(g, 0.06, 0.006, mats.core, 0, 0, 0.04, 30);
+  const runeRing2 = ring(g, 0.075, 0.004, mats.gem, 0, 0, 0.06, 30);
+  // 手上嗰把（中間）
+  const hand = new THREE.Group();
+  hand.position.set(0, 0, -0.02);
+  g.add(hand);
+  const main = spiritDagger(hand, mats, 0.3);
+  main.group.position.z = -0.08;
+  // 兩把浮喺隔籬（轉緊）
+  const floats = [-1, 1].map((sx) => {
+    const p = new THREE.Group();
+    p.position.set(sx * 0.13, 0.06, -0.06);
+    g.add(p);
+    const d = spiritDagger(p, mats, 0.22);
+    d.group.rotation.z = sx * 0.3;
+    return p;
+  });
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x40e0ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.setScalar(0.4);
+  halo.position.set(0, 0, -0.25);
+  g.add(halo);
+  const wisps = [];
+  for (let i = 0; i < 5; i++) wisps.push(ball(g, 0.01, mats.core, 0, 0, 0, 6));
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0, -0.42);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  let back = 1; // 0 = 啱啱掟咗（冇刀）→ 1 = 變返出嚟
+  g.userData = {
+    muzzle, glows: [mats.core, mats.gem], aimY: -0.14,
+    hip: { x: 0.22, y: -0.2, z: -0.46 }, flashScale: 0.35,
+  };
+  g.userData.fire = () => (fired = true);
+  // 換彈：三把刀由兩邊轉返入嚟
+  let reloadK = 0;
+  g.userData.reload = (k) => (reloadK = k);
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const since = t - fireT;
+    back = reloadK > 0 ? ease(clamp01((reloadK - 0.3) / 0.6)) : ease(clamp01((since - 0.08) / 0.25));
+    const spin = reloadK > 0 ? (1 - back) * 9 : 0;
+    hand.scale.setScalar(Math.max(0.001, back));
+    hand.rotation.z = spin;
+    floats.forEach((p, i) => {
+      const sx = i ? 1 : -1;
+      p.scale.setScalar(Math.max(0.001, back));
+      p.position.set(sx * (0.13 + (1 - back) * 0.2), 0.06 + Math.sin(t * 2.4 + i * 2) * 0.015, -0.06);
+      p.rotation.set(Math.sin(t * 1.7 + i) * 0.12, sx * 0.08, spin * sx);
+    });
+    mats.blade.opacity = 0.6 + Math.sin(t * 3) * 0.12;
+    mats.core.emissiveIntensity = 2.2 + Math.sin(t * 4) * 0.5 + clamp01(1 - since / 0.2) * 3;
+    halo.material.opacity = 0.25 + Math.sin(t * 3) * 0.08;
+    runeRing.rotation.set(Math.sin(t * 1.3) * 0.4, t * 2, 0);
+    runeRing2.rotation.set(t * 1.6, Math.cos(t) * 0.5, 0);
+    wisps.forEach((w, i) => {
+      const a = t * 2 + (i / 5) * Math.PI * 2;
+      w.position.set(Math.cos(a) * 0.09, Math.sin(a) * 0.09, -0.15 - Math.sin(t * 3 + i) * 0.08);
+    });
+  };
+  return g;
+}
+
+// ---------- 🧪 Fire Potion（金籠提住一樽發光岩漿藥水，木塞上面有粒細火）----------
+// 一樽藥水（樽口向 +y）：回傳 { group, liquid, bubbles, flame }
+function potionBottle(parent, s = 1) {
+  const p = new THREE.Group();
+  parent.add(p);
+  const liquidM = new THREE.MeshStandardMaterial({ color: 0xff3d00, emissive: 0xff3d00, emissiveIntensity: 1.3, roughness: 0.2 });
+  const liquidTop = GLOW(0xffd54f, 2);
+  const glass = GLASS(0xfff3e0, { opacity: 0.22, emissiveIntensity: 0.1 });
+  const cork = M(0x8d6e63, { roughness: 0.9 });
+  const label = M(0xfff3e0, { roughness: 0.8, side: THREE.DoubleSide });
+  const liquid = ball(p, 0.082 * s, liquidM, 0, -0.008 * s, 0, 16);
+  liquid.scale.y = 0.8;
+  vcyl(p, 0.066 * s, 0.066 * s, 0.006 * s, liquidTop, 0, 0.05 * s, 0, 18); // 液面（發光）
+  ball(p, 0.1 * s, glass, 0, 0, 0, 18);
+  vcyl(p, 0.03 * s, 0.035 * s, 0.09 * s, glass, 0, 0.12 * s, 0, 12);
+  vcyl(p, 0.038 * s, 0.038 * s, 0.015 * s, METAL(0xffc94d), 0, 0.165 * s, 0, 12); // 樽口金邊
+  vcyl(p, 0.028 * s, 0.024 * s, 0.05 * s, cork, 0, 0.19 * s, 0, 10);
+  // 標籤：骷髏 → 改做火焰符號（魔法藥水）
+  const lab = new THREE.Mesh(new THREE.CylinderGeometry(0.102 * s, 0.102 * s, 0.045 * s, 18, 1, true, Math.PI - 0.55, 1.1), label); // 標籤（向住玩家，+z）
+  p.add(lab);
+  const sym = new THREE.Mesh(new THREE.ConeGeometry(0.013 * s, 0.03 * s, 6), GLOW(0xff6d00, 2)); // 火焰符號
+  sym.position.set(0, 0, 0.106 * s);
+  p.add(sym);
+  const bubbles = [];
+  for (let i = 0; i < 5; i++) bubbles.push(ball(p, 0.01 * s, liquidTop, 0, 0, 0, 6));
+  const flame = pilotFlame(p, 0, 0.215 * s, 0, 0.09 * s);
+  flame.group.rotation.x = -Math.PI / 2; // 細火向上
+  return { group: p, liquid, liquidM, bubbles, flame };
+}
+function firePotion() {
+  const g = new THREE.Group();
+  const gold = METAL(0xffc94d, { metalness: 0.9, roughness: 0.22 });
+  const iron = METAL(0x3b3346, { metalness: 0.7, roughness: 0.35 });
+  const leather = new THREE.MeshStandardMaterial({ map: leatherTex(), roughness: 0.8 });
+  // 手柄（皮）+ 金托
+  const grip = rbox(g, 0.075, 0.2, 0.085, leather, 0, -0.13, 0.04, 0.4);
+  grip.rotation.x = 0.15;
+  vcyl(g, 0.11, 0.08, 0.04, gold, 0, -0.02, -0.02, 18);
+  ring(g, 0.11, 0.012, iron, 0, 0, -0.02, 30).rotation.x = Math.PI / 2;
+  // 金籠（三條彎骨）
+  const cage = new THREE.Group();
+  cage.position.set(0, 0.1, -0.02);
+  g.add(cage);
+  for (let i = 0; i < 3; i++) {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.007, 6, 24, Math.PI), gold);
+    r.rotation.y = (i / 3) * Math.PI;
+    r.position.y = -0.02;
+    cage.add(r);
+  }
+  // 藥水（彈藥）
+  const ammo = new THREE.Group();
+  ammo.position.set(0, 0.1, -0.02);
+  g.add(ammo);
+  const bottle = potionBottle(ammo, 1);
+  // 後備藥水（手柄隔籬掛住兩樽細嘅：剩幾多就見幾多）
+  const spare = [-1, 1].map((sx) => {
+    const holder = new THREE.Group();
+    holder.position.set(sx * 0.088, -0.1, 0.1);
+    g.add(holder);
+    const b = potionBottle(holder, 0.38);
+    b.flame.group.visible = false;
+    return holder;
+  });
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.12, -0.14);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, glows: [bottle.liquidM], aimY: -0.18, ammo,
+    hip: { x: 0.24, y: -0.24, z: -0.46 }, flashScale: 0.3,
+  };
+  g.userData.fire = () => (fired = true);
+  let reloadK = 0;
+  g.userData.reload = (k) => (reloadK = k);
+  g.userData.ammoCount = (n) => spare.forEach((s, i) => (s.visible = n > i + 1)); // 腰帶上仲有幾樽
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const since = t - fireT;
+    // 掟咗：樽冇咗 → 0.25 秒後由下面升返上嚟一樽新嘅
+    const k = reloadK > 0 ? ease(clamp01((reloadK - 0.4) / 0.5)) : ease(clamp01((since - 0.25) / 0.3));
+    bottle.group.position.y = (1 - k) * -0.25;
+    bottle.group.scale.setScalar(Math.max(0.001, k));
+    bottle.group.rotation.y = t * 0.6;
+    bottle.liquid.scale.set(1 + Math.sin(t * 5) * 0.03, 0.85 + Math.sin(t * 4) * 0.04, 1);
+    bottle.liquidM.emissiveIntensity = 2 + Math.sin(t * 6) * 0.5;
+    bottle.bubbles.forEach((b, i) => {
+      const q = (t * 0.8 + i / 5) % 1;
+      b.position.set(Math.sin(i * 2.3) * 0.04, -0.06 + q * 0.11, Math.cos(i * 1.9) * 0.04);
+      b.scale.setScalar(1 - q * 0.6);
+    });
+    const fl = 0.85 + Math.sin(t * 29) * 0.15;
+    bottle.flame.group.scale.setScalar(fl);
+  };
+  return g;
+}
+
+// ---------- 🎆 Firework Launcher（紅白星星煙花筒 + 前面探出個火箭頭；旁邊掛住後備煙花）----------
+// 一支煙花火箭（頭向 -z）：回傳 group（userData.exhaust）
+function fireworkRocket(parent, s = 1) {
+  const r = new THREE.Group();
+  parent.add(r);
+  const body = new THREE.MeshStandardMaterial({ map: fireworkTex(), roughness: 0.45, metalness: 0.1 });
+  const nose = M(0xffd740, { roughness: 0.3, metalness: 0.4 });
+  const fin = M(0x1565c0, { roughness: 0.4, metalness: 0.2 });
+  cyl(r, 0.045 * s, 0.045 * s, 0.22 * s, body, 0, 0, 0, 16);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.047 * s, 0.1 * s, 16), nose);
+  cone.rotation.x = -Math.PI / 2;
+  cone.position.z = -0.16 * s;
+  r.add(cone);
+  ball(r, 0.012 * s, GLOW(0xffffff, 2), 0, 0, -0.21 * s, 6);
+  for (let i = 0; i < 4; i++) {
+    const f = rbox(r, 0.006 * s, 0.05 * s, 0.06 * s, fin, 0, 0, 0.1 * s, 0.3);
+    f.position.set(Math.cos((i / 4) * Math.PI * 2) * 0.05 * s, Math.sin((i / 4) * Math.PI * 2) * 0.05 * s, 0.1 * s);
+    f.rotation.z = (i / 4) * Math.PI * 2 + Math.PI / 2;
+  }
+  cyl(r, 0.03 * s, 0.038 * s, 0.03 * s, METAL(0x9e9e9e), 0, 0, 0.125 * s, 12);
+  return r;
+}
+function fireworkLauncher() {
+  const g = new THREE.Group();
+  const tubeM = new THREE.MeshStandardMaterial({ map: fireworkTex(), roughness: 0.5, metalness: 0.1 });
+  const navy = M(0x1a237e, { roughness: 0.45, metalness: 0.25 });
+  const gold = METAL(0xffc94d, { metalness: 0.9, roughness: 0.22 });
+  const dark = M(0x15131f, { roughness: 0.8 });
+  const sparkle = GLOW(0xff4fd8, 2.4);
+  const starM = GLOW(0xffea00, 2.4);
+
+  // ── 大炮筒（扛喺膊頭）──
+  const tube = new THREE.Group();
+  g.add(tube);
+  cyl(tube, 0.09, 0.09, 0.78, tubeM, 0, 0.07, -0.14, 22);
+  cyl(tube, 0.075, 0.075, 0.79, dark, 0, 0.07, -0.14, 18, true); // 入面黑色
+  for (const z of [-0.5, 0.22]) cyl(tube, 0.1, 0.1, 0.05, gold, 0, 0.07, z, 22);
+  const mouth = ring(tube, 0.092, 0.016, sparkle, 0, 0.07, -0.535, 30); // 前面發光圈
+  ring(tube, 0.092, 0.014, GLOW(0xff6d00, 2), 0, 0.07, 0.25, 30); // 後面（火箭尾噴氣口）
+  // 前面探出嚟嘅火箭頭（彈藥）
+  const ammo = new THREE.Group();
+  ammo.position.set(0, 0.07, -0.44);
+  g.add(ammo);
+  fireworkRocket(ammo, 1.3);
+  // ── 瞄準器（星形）──
+  vcyl(g, 0.012, 0.012, 0.06, gold, 0, 0.18, -0.3, 8);
+  const star = new THREE.Mesh(new THREE.ExtrudeGeometry((() => {
+    const s = new THREE.Shape();
+    for (let k = 0; k <= 10; k++) {
+      const a = (k / 10) * Math.PI * 2 + Math.PI / 2;
+      const rr = k % 2 ? 0.014 : 0.032;
+      if (k === 0) s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      else s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    return s;
+  })(), { depth: 0.008, bevelEnabled: false }), starM);
+  star.position.set(0, 0.23, -0.3);
+  g.add(star);
+  // ── 手柄 + 扳機 + 前扶手 ──
+  rbox(g, 0.1, 0.06, 0.24, navy, 0, -0.03, 0.02, 0.35);
+  const grip = rbox(g, 0.07, 0.17, 0.085, navy, 0, -0.13, 0.08, 0.35);
+  grip.rotation.x = 0.3;
+  rbox(g, 0.08, 0.025, 0.095, gold, 0, -0.22, 0.11, 0.3).rotation.x = 0.3;
+  const guard = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.009, 6, 14, Math.PI), gold);
+  guard.rotation.set(0, Math.PI / 2, Math.PI);
+  guard.position.set(0, -0.07, 0.0);
+  g.add(guard);
+  const fore = rbox(g, 0.06, 0.14, 0.07, navy, 0, -0.08, -0.28, 0.4);
+  fore.rotation.x = -0.2;
+  // ── 側面掛住後備煙花（剩幾多發就掛幾多支）──
+  const spares = [];
+  for (let i = 0; i < 3; i++) {
+    const holder = new THREE.Group();
+    holder.position.set(0.125, 0.03 - i * 0.0, -0.05 - i * 0.09);
+    holder.rotation.x = 0;
+    g.add(holder);
+    fireworkRocket(holder, 0.55);
+    spares.push(holder);
+  }
+  rbox(g, 0.02, 0.05, 0.3, gold, 0.1, 0.03, -0.14, 0.3);
+  // 一粒粒閃光（筒身上面嘅 LED 星）
+  const leds = [];
+  for (let i = 0; i < 5; i++) {
+    const a = -0.9 + i * 0.45;
+    const l = ball(tube, 0.011, GLOW([0xff1744, 0xffea00, 0x00e5ff, 0x76ff03, 0xd500f9][i], 2.5), -Math.sin(a) * 0.094, 0.07 + Math.cos(a) * 0.094, -0.4, 6);
+    leds.push(l);
+  }
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.07, -0.6);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  g.userData = {
+    muzzle, glows: [sparkle], aimY: -0.24, ammo,
+    hip: { x: 0.26, y: -0.24, z: -0.5 }, flashScale: 1.1,
+  };
+  g.userData.fire = () => (fired = true);
+  // 換彈：新火箭由後面塞入去，滑去前面
+  let reloadK = 0;
+  g.userData.reload = (k) => (reloadK = k);
+  g.userData.ammoCount = (n) => spares.forEach((s, i) => (s.visible = i < n - 1)); // 側面嘅後備：前面嗰支以外仲有幾多支
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.3);
+    // 射咗：前面嗰支飛走咗 → 下一支由後面滑入去（換彈都係咁）
+    const q = reloadK > 0 ? ease(clamp01((reloadK - 0.3) / 0.6)) : ease(clamp01((t - fireT - 0.2) / 0.4));
+    ammo.position.z = THREE.MathUtils.lerp(0.3, -0.44, q);
+    ammo.visible = ammo.visible && q > 0.02;
+    tube.position.z = f * 0.06;
+    mouth.scale.setScalar(1 + f * 0.4);
+    sparkle.emissiveIntensity = 2 + Math.sin(t * 6) * 0.6 + f * 3;
+    star.rotation.z = Math.sin(t * 2) * 0.2;
+    leds.forEach((l, i) => (l.material.emissiveIntensity = Math.sin(t * 6 + i * 1.3) > 0 ? 3 : 0.6));
+  };
+  return g;
+}
+
+// ---------- 😡 Angry Spell（扭紋黑木杖 + 爪抓住一粒「嬲嬲」紅波，有眉有嘴，頂會出煙）----------
+// 嬲嬲波：塊嬲嬲面向 +z（向住玩家：拎住時、掟出去飛走時都睇到佢個樣）：回傳 { group, face, orbM }
+function angryOrb(parent, r = 0.08) {
+  const o = new THREE.Group();
+  parent.add(o);
+  const orbM = new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xd50000, emissiveIntensity: 1.1, roughness: 0.35 });
+  const brow = M(0x2a0a12, { roughness: 0.6 });
+  const white = GLOW(0xffffff, 1.1);
+  const pupil = M(0x14040a, { roughness: 0.5 });
+  ball(o, r, orbM, 0, 0, 0, 20);
+  const face = new THREE.Group();
+  o.add(face);
+  for (const sx of [-1, 1]) {
+    ball(face, r * 0.24, white, sx * r * 0.38, r * 0.05, r * 0.84, 10).scale.set(1, 0.75, 0.5); // 眼白
+    ball(face, r * 0.12, pupil, sx * r * 0.33, r * 0.02, r * 0.97, 8); // 眼仁（望中間：鬥雞眼咁嬲）
+    const b = rbox(face, r * 0.62, r * 0.17, r * 0.14, brow, sx * r * 0.36, r * 0.4, r * 0.86, 0.4); // 嬲眉（斜落中間）
+    b.rotation.z = sx * 0.55;
+  }
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(r * 0.32, r * 0.07, 6, 14, Math.PI), brow); // 扁嘴（倒轉 U）
+  mouth.position.set(0, -r * 0.45, r * 0.86);
+  face.add(mouth);
+  return { group: o, face, orbM };
+}
+function angrySpell() {
+  const g = new THREE.Group();
+  const wood = M(0x2b1622, { roughness: 0.8, metalness: 0 });
+  const gold = METAL(0xffb300, { metalness: 0.85, roughness: 0.25 });
+  const red = GLOW(0xff2d55, 2.4);
+  const smokeM = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffcdd2, emissiveIntensity: 0.6, transparent: true, opacity: 0.7, roughness: 0.9 });
+
+  // ── 扭紋杖身 + 金圈 + 紅色符文 ──
+  branch(g, [[0, -0.03, 0.3], [0.012, -0.01, 0.1], [-0.01, 0, -0.1], [0, 0.01, -0.26]], 0.034, 0.026, wood, 0.22, 3);
+  helix(g, 0.036, 0.42, 3, 0.006, red, 0, -0.01, 0.03);
+  for (const z of [0.22, -0.02]) cyl(g, 0.042, 0.042, 0.03, gold, 0, -0.01, z, 14);
+  ball(g, 0.04, gold, 0, -0.03, 0.32, 12);
+  ball(g, 0.018, red, 0, -0.03, 0.36, 8);
+  // ── 爪（四隻金爪抓住粒波）──
+  const clawRoot = new THREE.Group();
+  clawRoot.position.set(0, 0.015, -0.28);
+  g.add(clawRoot);
+  cyl(clawRoot, 0.045, 0.03, 0.05, gold, 0, 0, 0, 14);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.12, 6), gold);
+    c.position.set(Math.cos(a) * 0.05, Math.sin(a) * 0.05, -0.06);
+    c.rotation.set(-Math.PI / 2 - Math.sin(a) * 0.55, 0, Math.cos(a) * 0.55);
+    clawRoot.add(c);
+  }
+  // ── 嬲嬲波（彈藥）──
+  const orbHold = new THREE.Group();
+  orbHold.position.set(0, 0.015, -0.39);
+  g.add(orbHold);
+  const orb = angryOrb(orbHold, 0.075);
+  const rings = [0, 1].map((i) => {
+    const r = ring(orbHold, 0.11 + i * 0.02, 0.005, red, 0, 0, 0, 40);
+    return r;
+  });
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xff2d55, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+  halo.scale.setScalar(0.38);
+  orbHold.add(halo);
+  // 頂出「嬲到出煙」
+  const puffs = [];
+  for (let i = 0; i < 4; i++) puffs.push(ball(orbHold, 0.02, smokeM, 0, 0, 0, 8));
+
+  const muzzle = new THREE.Object3D();
+  muzzle.position.set(0, 0.015, -0.48);
+  g.add(muzzle);
+  let fireT = -9;
+  let fired = false;
+  let ready = 1; // 冷卻：0（啱啱用咗）→ 1（用得）
+  const grey = new THREE.Color(0x6d5a60);
+  const hot = new THREE.Color(0xff1744);
+  const hotE = new THREE.Color(0xd50000);
+  g.userData = {
+    muzzle, glows: [red], aimY: -0.16,
+    hip: { x: 0.22, y: -0.21, z: -0.46 }, flashScale: 0.5,
+  };
+  g.userData.fire = () => (fired = true);
+  g.userData.cooldown = (k) => (ready = k); // weapons.js：法術冷卻進度
+  g.userData.animate = (t) => {
+    if (fired) {
+      fired = false;
+      fireT = t;
+    }
+    const f = clamp01(1 - (t - fireT) / 0.25);
+    const full = ready >= 1;
+    // 冷卻緊：粒波細細粒、灰色，慢慢大返；用得 = 跳吓跳吓
+    const s = full ? 1 + Math.sin(t * 7) * 0.05 : 0.25 + ready * 0.55;
+    orb.group.scale.setScalar(s);
+    orb.orbM.color.copy(grey).lerp(hot, full ? 1 : ready * 0.6);
+    orb.orbM.emissive.copy(grey).lerp(hotE, full ? 1 : ready * 0.5);
+    orb.orbM.emissiveIntensity = full ? 1.1 + Math.sin(t * 9) * 0.3 : 0.3 + ready * 0.6;
+    orb.face.position.x = full ? Math.sin(t * 23) * 0.003 : 0; // 嬲到震
+    orb.face.visible = ready > 0.35;
+    rings.forEach((r, i) => {
+      r.visible = full;
+      r.rotation.set(t * (1.4 + i), t * (0.9 - i * 1.8), 0);
+    });
+    halo.material.opacity = full ? 0.45 + Math.sin(t * 5) * 0.15 : 0.12;
+    red.emissiveIntensity = (full ? 2.2 : 1) + f * 3;
+    puffs.forEach((p, i) => {
+      const q = (t * 0.9 + i / 4) % 1;
+      p.visible = full;
+      p.position.set((i % 2 ? 1 : -1) * (0.03 + q * 0.03), 0.07 + q * 0.12, 0.01);
+      p.scale.setScalar(0.6 + q * 1.4);
+      p.material.opacity = 0.7 * (1 - q);
+    });
+  };
+  return g;
+}
+
+// 會飛嘅彈（Issue #15）：🗡️ dagger · 🧪 potion · 🎆 firework · 😡 angryOrb
+function projectileModel15(kind, color, g, keep) {
+  const look = new THREE.Vector3();
+  const face = (v) => v && v.lengthSq() > 0.0001 && g.lookAt(look.copy(g.position).sub(v)); // -z 向住飛嘅方向
+  const haloOf = (col, sc, op = 0.6) => {
+    const h = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glowTexture(), color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false })));
+    h.scale.setScalar(sc);
+    g.add(h);
+    return h;
+  };
+  if (kind === 'dagger') {
+    const mats = daggerMats();
+    Object.values(mats).forEach(keep);
+    const spinner = new THREE.Group();
+    g.add(spinner);
+    const d = spiritDagger(spinner, mats, 0.42);
+    d.group.position.z = 0.05;
+    haloOf(color, 0.7, 0.5);
+    g.userData.fly = (v, t) => {
+      face(v);
+      spinner.rotation.z = t * 14; // 轉住飛
+    };
+  } else if (kind === 'potion') {
+    const tumble = new THREE.Group();
+    g.add(tumble);
+    const b = potionBottle(tumble, 1.5);
+    b.group.traverse((o) => o.material && keep(o.material));
+    haloOf(0xff6d00, 0.8, 0.5);
+    g.userData.fly = (v, t, dt) => {
+      tumble.rotation.x += dt * 8; // 喺空中翻筋斗
+      tumble.rotation.z += dt * 3;
+      b.liquidM.emissiveIntensity = 2.2 + Math.sin(t * 20) * 0.5;
+    };
+  } else if (kind === 'firework') {
+    const spinner = new THREE.Group();
+    g.add(spinner);
+    const r = fireworkRocket(spinner, 2.2);
+    r.traverse((o) => o.material && keep(o.material));
+    const ex = pilotFlame(spinner, 0, 0, 0.36, 0.35); // 尾噴火（向後）
+    ex.group.rotation.y = Math.PI;
+    ex.mats.forEach(keep);
+    const glow = haloOf(0xffd180, 1.1, 0.7);
+    glow.position.z = 0.4;
+    const tailV = new THREE.Vector3();
+    g.userData.tail = () => tailV.set(0, 0, 0.45).applyQuaternion(g.quaternion);
+    g.userData.fly = (v, t) => {
+      face(v);
+      spinner.rotation.z = t * 6;
+      ex.group.scale.setScalar(0.8 + Math.sin(t * 40) * 0.25);
+    };
+  } else { // 😡 angryOrb
+    const o = angryOrb(g, 0.22);
+    keep(o.orbM);
+    o.group.traverse((m) => m.material && keep(m.material));
+    const rs = [0, 1].map((i) => {
+      const m = keep(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.3 + i * 0.06, 0.012, 6, 36), m);
+      g.add(r);
+      return r;
+    });
+    haloOf(color, 1.2, 0.6);
+    g.userData.fly = (v, t) => {
+      face(v);
+      o.group.scale.setScalar(1 + Math.sin(t * 14) * 0.08);
+      rs.forEach((r, i) => r.rotation.set(t * (3 + i), t * (2 - i * 4), 0));
+    };
+  }
+}
+
+const BUILDERS = { soulBlaster, candyPistol, slingshot, pumpkinLauncher, frostWand, lightningStaff, ghostShotgun, batBow, dragonBreath, spiritDaggers, firePotion, fireworkLauncher, angrySpell };
 export function buildWeaponModel(id) {
   const g = (BUILDERS[id] || soulBlaster)();
   g.traverse((o) => {

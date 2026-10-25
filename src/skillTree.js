@@ -11,6 +11,10 @@
 //     'reload' 換彈速度 ×（換彈時間 ÷ 呢個）· 'regen' 回心速度 ×（回心時間 ÷ 呢個）· 'speed' 打架時跑步速度 ×
 //     'souls' Candy Corn／Souls 數量 ×（疊埋 loot）
 //     ⚠️ 'crit' = 爆擊機會（0–0.25，唔係 ×）；'shield' = 開局有幾多個 🛡️（0–3，每個擋一下）
+//     Issue #15 新加：
+//     ⚠️ 'slots' = 開局多幾多支隨機武器（0–1，唔係 ×；塔用 level('slots')）
+//     'crateLuck' / 'shieldLuck' = 1 + 每級 0.01 → 塔用 mult - 1 = 加幾多機會（📦 Weapon Crate 5% 起、🛡️ 盾 4% 起）
+//     'mag' 彈匣大細 ×（weapons.js magOf）· 'spellCd' 法術冷卻速度 ×（冷卻時間 ÷ 呢個）· 'fireDmg' 火系武器（def.fire）傷害 ×
 //     唔識嘅 id → 1
 //
 // 3D：buildSkillTreeStall(parent, x, y, z, ry) → { update(t, quality), pos }（hellWorld.js 叫，擺喺女巫隔籬）
@@ -39,7 +43,7 @@ export function skillMult(id) {
   const s = byId[id];
   if (!s) return 1;
   const L = skillLevel(id);
-  if (id === 'crit' || id === 'shield') return L * s.per; // 機會率／幾多個盾
+  if (id === 'crit' || id === 'shield' || id === 'slots') return L * s.per; // 機會率／幾多個盾／幾多支武器
   return 1 + L * s.per;
 }
 // 打架嘅地方（Witch Tower、Pumpkin Reaper 大廳）先快啲
@@ -69,13 +73,21 @@ export function buySkill(id) {
 window.__skills = { level: skillLevel, mult: skillMult, fightSpeed, list: SKILLS };
 
 // ======================== 面板 ========================
-// 樹嘅位（%）：底 = 🔮 種子，中間 = 3 個根技能，頂 = 6 個分支
+// 樹嘅位（%）：底 = 🔮 種子，之上 = 3 個根技能，再上 = 兩行分支（Issue #15 加咗第三行）
 const LAYOUT = {
-  health: [17, 60], regen: [7, 20], shield: [27, 20],
-  damage: [50, 60], crit: [40, 20], reload: [60, 20],
-  loot: [83, 60], souls: [73, 20], speed: [93, 20],
+  health: [16, 76], regen: [7, 47], shield: [25, 47], shieldLuck: [25, 17],
+  damage: [50, 76], crit: [37, 47], slots: [50, 47], reload: [63, 47], fireDmg: [37, 17], spellCd: [50, 17], mag: [63, 17],
+  loot: [84, 76], souls: [75, 47], speed: [93, 47], crateLuck: [75, 17],
 };
-const SEED = [50, 91];
+const SEED = [50, 93];
+// 新技能未擺位：自動放喺佢 parent 上面一行
+for (const s of SKILLS) {
+  if (LAYOUT[s.id]) continue;
+  const p = LAYOUT[s.parent] || [50, 76];
+  const sib = SKILLS.filter((o) => o.parent === s.parent && !LAYOUT[o.id]);
+  const i = sib.indexOf(s);
+  LAYOUT[s.id] = [Math.min(95, Math.max(5, p[0] + (i - (sib.length - 1) / 2) * 9)), Math.max(10, p[1] - 30)];
+}
 let selected = 'health';
 const CSS = `
 #panel[data-kind="skills"] #panel-title { background: linear-gradient(180deg, #7c4dff 0%, #4a148c 100%); border-bottom-color: #2a0a52; }
@@ -83,7 +95,7 @@ const CSS = `
 .sk-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sk-top .sk-tokens { background: #1d0b33; color: #fff; border: 2px solid #b388ff; border-radius: 999px; padding: 5px 14px; font-weight: 800; }
 .sk-top small { color: #5e4a7a; }
-.sk-tree { position: relative; width: 100%; aspect-ratio: 2.1; min-height: 230px; border-radius: 18px; overflow: hidden;
+.sk-tree { position: relative; width: 100%; aspect-ratio: 1.75; min-height: 320px; max-height: 58vh; border-radius: 18px; overflow: hidden;
   background: radial-gradient(ellipse at 50% 100%, #4a1d7a 0%, #22093d 55%, #12041f 100%); border: 3px solid #5e35b1; box-shadow: inset 0 0 40px rgba(124, 77, 255, 0.35); }
 .sk-tree::before { content: ''; position: absolute; inset: 0; opacity: 0.55; pointer-events: none;
   background-image: radial-gradient(#fff 1px, transparent 1.5px), radial-gradient(#d1c4e9 1px, transparent 1.5px); background-size: 46px 46px, 71px 71px; background-position: 0 0, 23px 31px; }
@@ -124,7 +136,10 @@ const CSS = `
 body.mobile .card .sk-tree button.sk-node { width: 44px; height: 44px; font-size: 20px; border-width: 3px; }
 body.mobile .card .sk-tree button.sk-node .nm { font-size: 9px; top: calc(100% + 8px); }
 body.mobile .sk-info { grid-template-columns: 48px 1fr; } body.mobile .sk-info .big { font-size: 32px; } body.mobile .sk-info .act { grid-column: 1 / -1; }
-@media (max-width: 640px) { .card .sk-tree button.sk-node { width: 46px; height: 46px; font-size: 21px; } .card .sk-tree button.sk-node .nm { font-size: 9px; } .sk-info { grid-template-columns: 48px 1fr; } .sk-info .act { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .card .sk-tree button.sk-node { width: 40px; height: 40px; font-size: 19px; border-width: 3px; } .card .sk-tree button.sk-node .nm { font-size: 9px; } .sk-info { grid-template-columns: 48px 1fr; } .sk-info .act { grid-column: 1 / -1; } }
+/* Issue #15：多咗技能，窄畫面淨係顯示揀咗嗰個嘅名（其他睇 emoji；名喺下面個框） */
+@media (max-width: 640px) { .card .sk-tree button.sk-node .nm { display: none; } .card .sk-tree button.sk-node.sel .nm { display: block; z-index: 2; background: rgba(18, 4, 32, 0.85); padding: 1px 5px; border-radius: 6px; } }
+body.mobile .card .sk-tree button.sk-node .nm { display: none; } body.mobile .card .sk-tree button.sk-node.sel .nm { display: block; z-index: 2; background: rgba(18, 4, 32, 0.85); padding: 1px 5px; border-radius: 6px; }
 `;
 function ensureCss() {
   if (document.getElementById('skill-tree-css')) return;
@@ -243,8 +258,11 @@ export function buildSkillTreeStall(parent, x, y, z, ry = 0) {
   for (const [dx, dz] of [[0.5, 0.2], [-0.45, 0.25], [0.1, -0.5]]) tube([V(0, 0.9, 0), V(dx * 1.3, 0.55, dz * 1.3), V(dx * 2.1, 0.52, dz * 2.1)], 0.13, bark); // 樹根
   const P = { // 節點位（同面板 LAYOUT 一樣次序）
     health: V(-1.7, 4.0, 0.15), damage: V(0, 4.5, 0.2), loot: V(1.7, 4.0, 0.15),
-    regen: V(-2.6, 5.6, 0.1), shield: V(-1.2, 6.0, 0.25), crit: V(-0.5, 6.4, 0.2), reload: V(0.55, 6.4, 0.2), souls: V(1.2, 6.0, 0.25), speed: V(2.6, 5.6, 0.1),
+    regen: V(-2.9, 5.5, 0.1), shield: V(-1.9, 6.0, 0.25), crit: V(-0.9, 6.4, 0.2), slots: V(0, 6.7, 0.25), reload: V(0.9, 6.4, 0.2), souls: V(1.9, 6.0, 0.25), speed: V(2.9, 5.5, 0.1),
+    // Issue #15：第三行
+    shieldLuck: V(-2.1, 7.6, 0.15), fireDmg: V(-1.0, 8.0, 0.2), spellCd: V(0, 8.3, 0.2), mag: V(1.0, 8.0, 0.2), crateLuck: V(2.1, 7.6, 0.15),
   };
+  for (const s of SKILLS) if (!P[s.id]) P[s.id] = (P[s.parent] || V(0, 4.5, 0.2)).clone().add(V(0, 1.6, 0)); // 新技能未擺位：parent 上面
   const top = V(0, 3.0, 0);
   const veins = [];
   const veinMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
