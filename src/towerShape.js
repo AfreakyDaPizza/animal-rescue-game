@@ -28,12 +28,17 @@ export const TOWER_PROPS = [
   ...TOWER_SHELVES.flatMap((s) => [-1, 1].map((k) => ({ ...polar(s.deg + k * 3.6, A.r - 1.2), r: 1.1 }))),
 ];
 export { polar as towerPolar };
+// 🧩 每層主題（towerFloors.js）自己加嘅撞到嘅道具（世界座標 { x, z, r }）；離開塔 = 清走
+let ACTIVE_PROPS = TOWER_PROPS;
+export function setTowerFloorProps(list = []) {
+  ACTIVE_PROPS = list.length ? TOWER_PROPS.concat(list) : TOWER_PROPS;
+}
 
 export const inTowerArena = (x, z) => Math.hypot(x - A.x, z - A.z) < A.r + 6;
 // 喺塔入面行得嘅地方：唔出牆、唔撞道具
 export function towerWalkable(x, z, radius) {
   if (Math.hypot(x - A.x, z - A.z) > A.r - radius - 0.6) return false;
-  return !TOWER_PROPS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + radius);
+  return !ACTIVE_PROPS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + radius);
 }
 // 將一個位擺返入塔入面（敵人用）：m = 離牆幾遠
 export function clampTower(p, m = 1.2) {
@@ -45,7 +50,7 @@ export function clampTower(p, m = 1.2) {
     p.x = A.x + (dx / d) * max;
     p.z = A.z + (dz / d) * max;
   }
-  for (const o of TOWER_PROPS) {
+  for (const o of ACTIVE_PROPS) {
     const ox = p.x - o.x;
     const oz = p.z - o.z;
     const od = Math.hypot(ox, oz);

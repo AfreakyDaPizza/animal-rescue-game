@@ -477,11 +477,13 @@ export function createWitchTower(ctx) {
     // 地板
     const fTex = floorTex();
     fTex.repeat.set(9, 9);
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(R + 0.8, 72), new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.92 }));
+    const floorM = new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.92 });
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(R + 0.8, 72), floorM);
     floor.rotation.x = -PI / 2;
     floor.receiveShadow = true;
     g.add(floor);
-    const edge = new THREE.Mesh(new THREE.RingGeometry(R - 1.6, R + 0.8, 72), new THREE.MeshStandardMaterial({ color: 0x241a30, roughness: 0.9 }));
+    const edgeM = new THREE.MeshStandardMaterial({ color: 0x241a30, roughness: 0.9 });
+    const edge = new THREE.Mesh(new THREE.RingGeometry(R - 1.6, R + 0.8, 72), edgeM);
     edge.rotation.x = -PI / 2;
     edge.position.y = 0.01;
     g.add(edge);
@@ -710,17 +712,21 @@ export function createWitchTower(ctx) {
     center.position.set(0, 9, 0);
     g.add(center);
     lights.push(center);
+    const cauldronLights = [];
     for (const c of TOWER_CAULDRONS) {
       const l = new THREE.PointLight(0x76ff03, 10, 14, 1.6);
       l.position.set(c.x - A.x, 3, c.z - A.z);
       g.add(l);
+      cauldronLights.push(l);
     }
     const doorLight = new THREE.PointLight(0xb388ff, 8, 14, 1.6);
     doorLight.position.set(0, 4, R - 2);
     g.add(doorLight);
-    bakeStatic(stat, g); // 書架：焊埋（快好多）
+    const shelfG = new THREE.Group(); // 🧩 書架焊埋之後放喺呢度（towerFloors.js 每層換主題時可以收埋）
+    g.add(shelfG);
+    bakeStatic(stat, shelfG); // 書架：焊埋（快好多）
     g.visible = false;
-    return { g, wall, wallM, wTex, winTex, lift, liftMat, beam, beamMat, decoCircles, portals, torches, fireMats, candles, cauldrons, flames, sky, broom, sign, signTex, center, exitGlow, theme: 0 };
+    return { g, floor, floorM, fTex, edge, edgeM, trim, top, trimM, shelfG, cauldronLights, doorLight, wall, wallM, wTex, winTex, lift, liftMat, beam, beamMat, decoCircles, portals, torches, fireMats, candles, cauldrons, flames, sky, broom, sign, signTex, center, exitGlow, theme: 0 };
   }
   function applyTheme(i) {
     if (!arena) return;
@@ -732,11 +738,12 @@ export function createWitchTower(ctx) {
     arena.beamMat.color.setHex(th.circle);
     arena.center.color.setHex(th.light);
   }
-  function drawSign() {
+  function drawSign(look = null) {
     if (!arena) return;
     const m = TOWER_MODES[R.mode];
     arena.signTex.dispose();
-    arena.signTex = floorSignTex([`FLOOR ${R.floor}`, `${m.emoji} ${m.name}${isBossFloor(R.floor) ? ' · 👑 MINI-BOSS' : ''}`], ['#ea80fc', '#b2ff59', '#80d8ff', '#ffd180', '#ff80ab'][arena.theme]);
+    const line2 = look?.name ? `${look.name}${isBossFloor(R.floor) ? ' · 👑 BOSS' : ''}` : `${m.emoji} ${m.name}${isBossFloor(R.floor) ? ' · 👑 MINI-BOSS' : ''}`;
+    arena.signTex = floorSignTex([`FLOOR ${R.floor}`, line2], look?.color || ['#ea80fc', '#b2ff59', '#80d8ff', '#ffd180', '#ff80ab'][arena.theme]);
     arena.sign.material.map = arena.signTex;
     arena.sign.material.needsUpdate = true;
   }
@@ -2186,9 +2193,10 @@ export function createWitchTower(ctx) {
     if (n >= TOWER_ENEMIES.animal.from && !R.queue.includes('animal')) R.queue[R.queue.length - 1] = 'animal';
     R.bossPending = boss ? bossFor(n) : null;
     applyTheme(n - 1);
-    EXT.floor?.start?.(n, R.mode);
-    drawSign();
-    bigText(boss ? `FLOOR ${n}` : `FLOOR ${n}`, boss ? '👑 MINI-BOSS FLOOR!' : `${count} enemies · ${TOWER_MODES[R.mode].emoji} ${TOWER_MODES[R.mode].name}`, boss ? '#ff4081' : '#d500f9');
+    const look = EXT.floor?.start?.(n, R.mode); // 🧩 { name, color }：呢層嘅主題（towerFloors.js）
+    drawSign(look);
+    const sub = boss ? '👑 MINI-BOSS FLOOR!' : `${count} enemies · ${TOWER_MODES[R.mode].emoji} ${TOWER_MODES[R.mode].name}`;
+    bigText(`FLOOR ${n}`, look?.name ? `${look.name} · ${sub}` : sub, boss ? '#ff4081' : look?.color || '#d500f9');
     if (boss) play('bossIntro');
   }
   // 👑 Boss 輪住嚟：Zombie King → GIANT 動物 → 新 Boss（TOWER_BOSS_ORDER 次序，見 balance.js）
@@ -2292,6 +2300,7 @@ export function createWitchTower(ctx) {
     }
     if (k >= 0.5 && k - dt / T < 0.5) {
       applyTheme(R.floor); // 下一層嘅顏色
+      EXT.floor?.prepare?.(R.floor + 1, R.mode); // 🧩 閃光嗰下換埋下一層嘅地圖
       flash?.();
     }
     if (k >= 1) {
@@ -2565,9 +2574,10 @@ export function createWitchTower(ctx) {
     // 塔入面嘅霧
     if (scene.fog) {
       scene.fog.color.lerp(new THREE.Color(EXT.floor?.fog ?? THEMES[arena.theme].fog), 0.6);
-      scene.fog.near = 26;
-      scene.fog.far = 120;
+      scene.fog.near = EXT.floor?.fogNear ?? 26;
+      scene.fog.far = EXT.floor?.fogFar ?? 120;
     }
+    EXT.floor?.look?.(dt, time, { paused: paused || frozen }); // 🧩 每格（暫停都做）：每層主題嘅燈光
     // ❄️ 俾 Frost Zombie 凍親：行慢啲
     if (!paused && !frozen) R.slowT = Math.max(0, R.slowT - dt);
     moveOpts.speedMul = R.slowT > 0 ? R.slowMul : 1;
@@ -2684,7 +2694,8 @@ export function createWitchTower(ctx) {
   //     reach? radius?（數字或者 (e) => 數字）· flying?（true = 唔會被推落地）
   //   }
   //   數值：普通殭屍 → balance.js TOWER_ENEMIES[kind]（hp/speed/from/weight）；Boss → TOWER_BOSSES[kind]（hp/speed/name/emoji/color/intro）
-  //   floor = { start(n, mode), update(dt, time), reset(), fog?（顏色，蓋過 THEMES）}
+  //   floor = { start(n, mode) → { name, color }?, prepare?(n, mode)（升降機閃光嗰下）, update(dt, time), look?(dt, time, { paused })（每格，暫停都叫）,
+  //             reset(), fog?（顏色，蓋過 THEMES）, fogNear?, fogFar? }
   //   e 常用：e.g（Group，位置相對 K.A）、e.model、e.hp/maxHp、e.state（'walk' 等，自己加新嘅都得）、e.t（呢個 state 幾耐）、e.cd、e.dir、e.speed
   const K = {
     A, R, enemies, shots, THEMES,
