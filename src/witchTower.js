@@ -2749,7 +2749,7 @@ export function createWitchTower(ctx) {
     lineup(walk = true, kinds = null) {
       R.calm = walk ? 'walk' : true;
       clearEnemies();
-      const rows = kinds ? [kinds] : [['walker', 'runner', 'spitter', 'brute', 'mini'], ['leaper', 'shield', 'bomber', 'frost', 'splitter', 'necro']];
+      const rows = kinds ? [kinds] : [['walker', 'runner', 'spitter', 'brute', 'mini'], ['leaper', 'shield', 'bomber', 'frost', 'splitter', 'necro'], ['bat', 'leader', 'draculo', 'balloon', 'cannon']];
       rows.forEach((row, r) => row.forEach((k, i) => {
         const e = spawnEnemy(k, { at: { x: A.x - ((row.length - 1) * 2.8) / 2 + i * 2.8, z: A.z - 2 - r * 3.6, glow: 0 } });
         e.state = 'walk';
