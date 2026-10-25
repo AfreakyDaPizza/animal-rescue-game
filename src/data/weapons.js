@@ -18,6 +18,17 @@
 // projectile.model = 飛出去個樣（'pumpkin' 南瓜 · 'bat' 蝙蝠 · 冇 = 發光粒）· projectile.count = 一下射幾隻（Bat Bow 3 隻）
 // slow = 打中令敵人慢落嚟 { mult 速度變幾多倍, time 秒 }（Frost Wand）
 // chain = 閃電跳去附近敵人 { jumps 跳幾多次, range 米, falloff 每跳傷害 ×幾多 }（Lightning Staff）
+// —— Issue #15 新加（小朋友 2026-10-25：「flamethrower、daggers、molotov、rocket launcher、angry spell」，全部可以冇）——
+// cone = 噴火：每一下打中前面一個錐形入面所有敵人 { range 米, angle 錐形闊幾多度（中間去邊）}（Dragon Breath）
+// fire = true：係火系武器（🌳 Skill Tree「Hot Hot Hot」加傷害）
+// headMult = 打中個頭（爆擊位）傷害 ×幾多（冇 = 用敵人自己嘅，通常 1.5）
+// projectile.fan = 幾支一齊飛出去時散開幾多度（每支之間）· projectile.stagger = 一支跟一支相隔幾多秒（冇 = 0.07）
+// projectile.model = 加咗 'dagger' 飛刀 · 'potion' 藥水樽 · 'firework' 煙花火箭 · 'angryOrb' 嬲嬲波
+// projectile.puddle = 落地留低一灘魔法火 { radius 米, time 燒幾多秒, tick 幾多秒扣一次, damage 每次扣幾多 }（Fire Potion）
+// projectile.boomColors = 爆炸碎粒嘅顏色（煙花：好多色）· projectile.boomSound = 爆炸聲（冇 = 'pumpkinBoom'）
+// projectile.maxRange = 最遠掟到幾遠（米）；地上會出個圈話你知會跌喺邊（Angry Spell、Fire Potion）
+// angry = 打中／波及嘅敵人變嬲 { time 秒 }：佢會去打自己嘅朋友（Boss 唔會）
+// spell = true：係法術（冷卻）：mag 用完就自動開始冷卻 reload 秒，收埋都照計；R 掣冇用（🌳「Spell Master」快啲）
 export const WEAPONS = {
   soulBlaster: {
     id: 'soulBlaster', name: 'Soul Blaster', emoji: '💠',
@@ -82,8 +93,50 @@ export const WEAPONS = {
     projectile: { speed: 26, gravity: 0, homing: 5, model: 'bat', count: 3 },
     sound: 'batScreech', rarity: 'epic',
   },
+  // ---------- Issue #15（小朋友 2026-10-25）：再多 5 支魔法武器（都係喺 📦 Weapon Crate 搵）----------
+  dragonBreath: {
+    id: 'dragonBreath', name: 'Dragon Breath', emoji: '🐉',
+    desc: 'Hold to breathe magic dragon fire! Short range, burns every zombie in front of you.',
+    damage: 24, auto: true, fireRate: 10, mag: 60, reload: 2.4, range: 9,
+    cone: { range: 9, angle: 16 }, fire: true,
+    spread: 0, aimSpread: 0, zoom: 1.15, recoil: 0.12, color: 0xff7a1a,
+    sound: 'dragonFlame', rarity: 'epic',
+  },
+  spiritDaggers: {
+    id: 'spiritDaggers', name: 'Spirit Daggers', emoji: '🗡️',
+    desc: 'Throw 3 glowing ghost daggers at once! Aim for the HEAD for huge damage.',
+    damage: 55, auto: false, fireRate: 2.6, mag: 9, reload: 1.1, headMult: 2.2,
+    spread: 0.6, aimSpread: 0.2, zoom: 1.4, recoil: 0.8, color: 0x7cf9ff,
+    projectile: { speed: 70, gravity: 2, model: 'dagger', count: 3, fan: 4, stagger: 0 },
+    sound: 'daggerThrow', rarity: 'rare',
+  },
+  firePotion: {
+    id: 'firePotion', name: 'Fire Potion', emoji: '🧪',
+    desc: 'Lob a potion! It smashes into a puddle of magic fire that burns zombies standing in it.',
+    damage: 40, auto: false, fireRate: 1.4, mag: 3, reload: 2.0, fire: true,
+    spread: 0.5, aimSpread: 0.2, zoom: 1.2, recoil: 1.2, color: 0xff5a1f,
+    projectile: { speed: 24, gravity: 18, splash: 2.6, splashDamage: 70, model: 'potion', maxRange: 26, boomSound: 'potionSmash', boomColors: [0xff6d00, 0xffd54f, 0xff1744], puddle: { radius: 3, time: 4, tick: 0.4, damage: 32 } },
+    sound: 'potionThrow', rarity: 'rare',
+  },
+  fireworkLauncher: {
+    id: 'fireworkLauncher', name: 'Firework Launcher', emoji: '🎆',
+    desc: 'Fires a sparkly firework rocket that bursts into a HUGE rainbow explosion!',
+    damage: 120, auto: false, fireRate: 1, mag: 3, reload: 2.6, fire: true,
+    spread: 0.3, aimSpread: 0.1, zoom: 1.5, recoil: 3.6, color: 0xff4fd8,
+    projectile: { speed: 46, gravity: 0, splash: 5, splashDamage: 280, model: 'firework', boomSound: 'fireworkBoom', boomColors: [0xff1744, 0xffea00, 0x00e5ff, 0x76ff03, 0xd500f9, 0xff9100] },
+    sound: 'fireworkLaunch', rarity: 'legendary',
+  },
+  angrySpell: {
+    id: 'angrySpell', name: 'Angry Spell', emoji: '😡',
+    desc: 'Throw a grumpy spell! Zombies it hits get ANGRY and attack their friends. Needs 15 s to recharge.',
+    damage: 10, auto: false, fireRate: 1, mag: 1, reload: 15, spell: true,
+    angry: { time: 8 },
+    spread: 0, aimSpread: 0, zoom: 1.2, recoil: 1, color: 0xff2d55,
+    projectile: { speed: 22, gravity: 16, splash: 5, splashDamage: 10, model: 'angryOrb', maxRange: 30, boomSound: 'angryBoom', boomColors: [0xff1744, 0xff8a80, 0x880e4f] },
+    sound: 'angryCast', rarity: 'epic',
+  },
 };
-export const WEAPON_ORDER = ['soulBlaster', 'candyPistol', 'slingshot', 'pumpkinLauncher', 'frostWand', 'lightningStaff', 'ghostShotgun', 'batBow'];
+export const WEAPON_ORDER = ['soulBlaster', 'candyPistol', 'slingshot', 'pumpkinLauncher', 'frostWand', 'lightningStaff', 'ghostShotgun', 'batBow', 'dragonBreath', 'spiritDaggers', 'firePotion', 'fireworkLauncher', 'angrySpell'];
 
 // 🗼 女巫塔：每次入塔得一支武器（TOWER_STARTER_WEAPON），打散殭屍有機會跌 📦 Weapon Crate（機會喺 balance.js TOWER_CRATE_CHANCE）
 // 執到 = 抽一支新武器（weight 越大越易抽到）
