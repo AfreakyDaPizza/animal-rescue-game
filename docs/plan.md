@@ -239,6 +239,7 @@ src/data/questions.js ← 野生動物問題
 ## 🗼 Witch Tower 大更新（小朋友 2026-10-25，喺對話度講，冇開 Issue）
 - 擴充 API：`witchTower.js`「擴充 API」— 新殭屍 `src/towerZombies2.js`（模型 `towerModels2.js`）、新 Boss `src/towerBosses.js`（模型 `towerBossModels.js`）、每層地圖 `src/towerFloors.js`（貼圖 `towerFloorArt.js`）。
 - 新殭屍：🦇 Bat（打散 = 附近殭屍 10 秒快 ×1.5 + 打中扣 2 ❤️）、🚩 Zombie Leader、🧛 Draculo、🎈 Zombie Balloon、💥 Zombie Cannon（數值 `TOWER_ENEMIES`）。
+- 2026-10-26 小朋友：「Too many bats」→ 🦇 `weight` 2.2→0.7、加 `maxAlive: 5`（同一時間最多 5 隻蝙蝠，排隊嘅都計）。
 - 5 個新 Boss（`TOWER_BOSSES`、輪住次序 `TOWER_BOSS_ORDER`）：🐗 Zombie Rider、🧹 Magical Witch（Dustlers：打中 = 塵滿畫面）、🧛 Vampiro（「blood」改做紅色吸血鬼藥水，殭屍踩到快啲）、🎃 Pumpkin Brothers（掟細佬、打散變 4 個細南瓜）、👻 Banshee Queen（第 5 個係小朋友叫我哋揀）。
 - 🛡️ 任何敵人 4% 跌盾（`TOWER_SHIELD_DROP`，最多 `TOWER_SHIELD_MAX`）；😡 嬲咗嘅殭屍打朋友（`TOWER_ANGRY_DAMAGE`）。
 - 9 款樓層主題，每次入塔隨機、越高越恐怖（`game.towerFloors.list()`）。
