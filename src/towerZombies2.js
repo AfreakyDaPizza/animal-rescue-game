@@ -208,7 +208,8 @@ export function installTowerZombies(K) {
         e.packDone = true;
         const [lo, hi] = d.pack || [2, 3];
         const n = Math.round(rand(lo, hi)) - 1;
-        for (let i = 0; i < n && K.alive().length < K.maxAtOnce + 3; i++) {
+        const batsNow = () => K.alive().filter((o) => o.kind === 'bat').length;
+        for (let i = 0; i < n && K.alive().length < K.maxAtOnce + 3 && batsNow() < (d.maxAlive ?? 5); i++) {
           const a = Math.random() * PI * 2;
           const at = clampLocal(g.position.x + Math.cos(a) * 1.6, g.position.z + Math.sin(a) * 1.6, 1.5);
           const b = K.spawnEnemy('bat', { at: { x: A.x + at.x, z: A.z + at.z, glow: 0 } });

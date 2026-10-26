@@ -468,7 +468,7 @@ export const TOWER_ENEMIES = {
   mini: { name: 'Mini Zombie', hp: 110, speed: 3.6, from: 999 }, // only comes out of a Splitter
   necro: { name: 'Necro-Witch Zombie', hp: 380, speed: 1.7, from: 12, weight: 0.9, heal: 160 }, // heals friends with a green beam + summons Mini Zombies. Poof it first!
   // Issue #15 (kid, 25 Oct): 5 more zombies (code: src/towerZombies2.js)
-  bat: { name: 'Vampire Bat', hp: 90, speed: 5.0, from: 2, weight: 2.2, pack: [2, 3], buffRange: 6, buffTime: 10 }, // flies in a group (pack = how many) and swoops at you. Poof one and zombies within buffRange metres get FAST + hit for 2 ❤️ for buffTime seconds!
+  bat: { name: 'Vampire Bat', hp: 90, speed: 5.0, from: 2, weight: 0.7, pack: [2, 3], maxAlive: 5, buffRange: 6, buffTime: 10 }, // flies in a group (pack = how many, maxAlive = most bats at once) and swoops at you. Poof one and zombies within buffRange metres get FAST + hit for 2 ❤️ for buffTime seconds!
   balloon: { name: 'Zombie Balloon', hp: 320, speed: 2.2, from: 6, weight: 1.3, popAt: 0.4 }, // floats high and drops pumpkin bombs (red circle). Shoot its 4 balloons (or get it under popAt = 40% HP) and it falls down
   cannon: { name: 'Zombie Cannon', hp: 480, speed: 1.4, from: 8, weight: 1.1, blast: 3.6, reload: 5.5 }, // stays far away and fires BIG cannonballs (blast = boom size in metres, reload = seconds). It turns slowly: run round its side!
   draculo: { name: 'Draculo', hp: 450, speed: 2.4, from: 9, weight: 1.1, heal: 0.12 }, // turns into bat mist and pops up next to you (red mark), then swipes its cape. Heals (heal = 12% HP) when it hits you

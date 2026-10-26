@@ -969,8 +969,10 @@ export function createWitchTower(ctx) {
   function zombieKindFor(n) {
     const BASE = { walker: 5, runner: 3, spitter: 2, brute: 1.5 };
     const necros = enemies.filter((e) => e.kind === 'necro' && e.hp > 0).length + R.queue.filter((k) => k === 'necro').length;
+    const bats = enemies.filter((e) => e.kind === 'bat' && e.hp > 0).length + R.queue.filter((k) => k === 'bat').length * 2;
     const w = Object.entries(TOWER_ENEMIES)
       .filter(([k, d]) => k !== 'animal' && n >= d.from && (k !== 'necro' || necros < 2)) // Necro-Witch 最多 2 隻
+      .filter(([k, d]) => k !== 'bat' || bats < (d.maxAlive ?? 5)) // 蝙蝠一群群出：同一時間最多 maxAlive 隻
       .map(([k, d]) => [k, d.weight ?? BASE[k] ?? 1]);
     const total = w.reduce((s, [, x]) => s + x, 0);
     let r = Math.random() * total;
