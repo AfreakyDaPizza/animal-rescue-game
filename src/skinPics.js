@@ -3,7 +3,9 @@
 
 import * as THREE from 'three';
 import { buildAvatar, applyRangerSkin } from './thirdPerson.js';
-import { RANGER_SKINS } from './skins.js';
+import { RANGER_SKINS, PET_SKINS, applyPetSkin, animateSkins } from './skins.js';
+import { buildAnimalModel } from './animalModels.js';
+import { findAnimal } from './data/animals.js';
 
 const W = 180;
 const H = 210;
@@ -27,6 +29,46 @@ export function rangerSkinPic(skin) {
   }
   const bg = `linear-gradient(160deg, ${hex(skin.hat)}55, ${hex(skin.shirt)}88 60%, ${hex(skin.pants)}aa)`;
   return `<div class="skin-pic" data-skin-pic="${skin.id}" style="--skin-bg:${bg}">${url ? `<img src="${url}" alt="">` : ''}</div>`;
+}
+
+// 🐾 寵物皮膚個相（2026-11-03 小朋友：寵物皮膚都要睇到）：一隻熊貓著住嗰款皮膚；swatch = 未影好時嘅底色
+const PET_PIC_ANIMAL = 'Giant Panda';
+const PET_PIC_TURN = -0.55; // 少少側身，望到塊面
+export function petSkinPic(skin, swatch = ['#cfd8dc', '#90a4ae']) {
+  const key = `pet:${skin.id}`;
+  const url = cache.get(key);
+  if (!url && !queue.includes(key)) {
+    queue.push(key);
+    schedule();
+  }
+  const bg = `linear-gradient(160deg, ${swatch.map((c) => `${c}aa`).join(', ')})`;
+  return `<div class="skin-pic" data-skin-pic="${key}" style="--skin-bg:${bg}">${url ? `<img src="${url}" alt="">` : ''}</div>`;
+}
+
+function shootPet(id) {
+  const model = buildAnimalModel(findAnimal(PET_PIC_ANIMAL));
+  // 先量大細同擺正（未加皮膚特效，唔係粒子會令個框好大）
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const s = 2.3 / Math.max(size.x, size.y, size.z);
+  model.scale.multiplyScalar(s);
+  const box2 = new THREE.Box3().setFromObject(model);
+  const mid = box2.getCenter(new THREE.Vector3());
+  model.position.x -= mid.x;
+  model.position.z -= mid.z;
+  model.position.y -= box2.min.y;
+  const holder = new THREE.Group();
+  holder.add(model);
+  holder.rotation.y = PET_PIC_TURN;
+  applyPetSkin(model, id);
+  animateSkins(1.3);
+  scene.add(holder);
+  camera.position.set(0, 2.2, -7.2);
+  camera.lookAt(0, 1.0, 0);
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL('image/png');
+  scene.remove(holder);
+  return url;
 }
 
 function setup() {
@@ -80,7 +122,7 @@ function step() {
     let url = cache.get(id);
     if (!url) {
       try {
-        url = shoot(id);
+        url = id.startsWith('pet:') ? shootPet(id.slice(4)) : shoot(id);
       } catch (e) {
         console.warn('Could not draw skin', id, e);
         continue;

@@ -7,7 +7,7 @@ import { formatTime, nextNightClock } from './daynight.js';
 import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
-import { rangerSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
+import { rangerSkinPic, petSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
 import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
@@ -736,7 +736,7 @@ function shopHtml() {
     html += `<div class="cards">${RANGER_SKINS.map((s, i) => card(rangerSkinPic(s), s.name, s.cost, // 🧑 真公仔相（skinPics.js，Issue #14）
       state.ownedRanger.includes(s.id), state.rangerSkin === s.id, 'ranger', i)).join('')}</div>`;
   } else {
-    html += `<p class="reward">A pet skin changes the look of ALL your pets.</p><div class="cards">${PET_SKINS.map((s, i) => card(swatch(PET_SWATCH[s.id]), s.name, s.cost,
+    html += `<p class="reward">A pet skin changes the look of ALL your pets.</p><div class="cards">${PET_SKINS.map((s, i) => card(petSkinPic(s, PET_SWATCH[s.id]), s.name, s.cost,
       state.ownedPet.includes(s.id), state.petSkin === s.id, 'pet', i)).join('')}</div>`;
   }
   return html;
