@@ -16,6 +16,7 @@ import { buildOwner } from './owner.js';
 import { shimmerTexture } from './ambience.js';
 import { fenceLine } from './fences.js'; // 🪵 前院白色木欄
 import { pathStrip, centralPlaza, tilePad, roundPad } from './hubFloor.js';
+import { HALLOWEEN_ON } from './data/balance.js';
 
 // 位置（開場動畫都會用）
 export const FOUNTAIN = { x: HUB.cx, z: HUB.cz };
@@ -727,7 +728,11 @@ export function buildHubPark(root, live) {
   lab.rotation.y = Math.PI;
   live.add(lab);
 
-  // 噴水池：2026-10-19 小朋友叫 Halloween 傳送門取代佢（halloweenWorld.js buildHubPortal，main.js 起）
+  // 噴水池：2026-10-19 小朋友叫 Halloween 傳送門取代佢（halloweenWorld.js buildHubPortal，main.js 起）；Issue #15 收埋 Halloween 就擺返
+  if (!HALLOWEEN_ON) {
+    updates.push(buildFountain(root, live));
+    addCollider(FOUNTAIN.x, FOUNTAIN.z, 4.6);
+  }
   flowerBeds(live);
   buildStatues(root);
   buildHammock(root, live);

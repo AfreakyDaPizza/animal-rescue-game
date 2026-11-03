@@ -19,7 +19,7 @@ import { boost } from './events.js';
 import { buildBiomeBorders } from './biomeBorders.js';
 import { buildMeteorDecor } from './meteorDecor.js'; // ☄️ Issue #10：Hub 圍牆頂同生態區山丘嘅發光隕石、水晶
 import { makeSign, dynamicSign, signOnPosts, THEMES } from './signs.js';
-import { BOSSES, BIOME_BASE_MONEY } from './data/balance.js';
+import { BOSSES, BIOME_BASE_MONEY, METEOR_EVENT_ON } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
@@ -162,7 +162,7 @@ export function buildWorld(scene) {
   decorateWall(staticRoot, -HUB_TOP_HALF, 0, STEM.minX, 0, 0, 1, wallMaterial, 0);
   decorateWall(staticRoot, STEM.maxX, 0, HUB_TOP_HALF, 0, 0, 1, wallMaterial, 1);
   buildBiomeBorders(staticRoot);
-  animators.push(buildMeteorDecor(staticRoot, { scene, sky, bake: bakeStatic })); // 2026-10-22：仲有撞擊坑、裂縫、地標、飄浮水晶、巨型隕石、北極光
+  if (METEOR_EVENT_ON) animators.push(buildMeteorDecor(staticRoot, { scene, sky, bake: bakeStatic })); // 2026-10-22：仲有撞擊坑、裂縫、地標、飄浮水晶、巨型隕石、北極光
   const a0 = Math.asin(-HUB.cz / HUB.r); // 右上角（z = 0）嘅角度
   const a1 = Math.PI - a0; // 左上角
   const SEGMENTS = 60;

@@ -10,7 +10,7 @@ import { addCollider, addPlatform, bakeStatic } from './world.js';
 import { makeSign, dynamicSign, THEMES } from './signs.js';
 import { seededRandom } from './spawnRoll.js';
 import { state } from './state.js';
-import { HALLOWEEN_OPEN_DATE, HALLOWEEN_FOG_NEAR, HALLOWEEN_FOG_FAR } from './data/balance.js';
+import { HALLOWEEN_ON, HALLOWEEN_OPEN_DATE, HALLOWEEN_FOG_NEAR, HALLOWEEN_FOG_FAR } from './data/balance.js';
 import {
   HW_X, RUINS, RUINS_SAFE_R, HW_PORTAL, HW_BIOMES, MANOR, MANOR_GATE_Z, EGG_GRAVEYARD, EGG_SLOTS, STATION, STATION_PLATFORM, TRACK_X,
   GHOST_WORLD, GHOST_TRAIN_STOP, STATUE_OF_HALLOWEEN, VACUUM_SHOP, LAKE_WATER, LAKE_SHORE, DOCK, FISH_SPOT, ROD_SHOP,
@@ -36,7 +36,7 @@ const openDate = () => {
   return new Date(y, m - 1, d);
 };
 // 開咗未：到咗日期，或者秘密控制台提早開（state.halloweenEarly）
-export const isHalloweenOpen = (now = new Date()) => !!state.halloweenEarly || now >= openDate();
+export const isHalloweenOpen = (now = new Date()) => HALLOWEEN_ON && (!!state.halloweenEarly || now >= openDate()); // Issue #15：HALLOWEEN_ON = false 就收埋
 export const halloweenOpenText = () => openDate().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 export function halloweenCountdown(now = new Date()) {
   const ms = Math.max(0, openDate() - now);

@@ -72,6 +72,7 @@ import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOp
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
 import { createFishing, fishingInteraction, fishingPress, fishingBusy, updateFishing, stopFishing, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋 + 🌽 Candy Corn）
 import { setRodShopActions } from './rodShop.js';
+import { HALLOWEEN_ON } from './data/balance.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { buildHell, setWitchTowerEntry } from './hellWorld.js'; // 🔥 Halloween World 2：Hell + 飛天熔岩石 + Witch Castle（Issue #11）
@@ -155,7 +156,7 @@ const crazy = createCrazyButton(scene); // 🤪 Crazy Pet Frenzy 掣（秘密沙
 const statueBtn = buildStatueButton(scene); // 🦏 犀牛像後面嘅掣
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
-const hubPortal = buildHubPortal(scene, FOUNTAIN.x, FOUNTAIN.z); // 🎃 Hub 中間嘅 Halloween 傳送門（取代噴水池）
+const hubPortal = HALLOWEEN_ON ? buildHubPortal(scene, FOUNTAIN.x, FOUNTAIN.z) : null; // Issue #15：收埋就變返噴水池（hubPark.js） // 🎃 Hub 中間嘅 Halloween 傳送門（取代噴水池）
 let hwWorld = null; // 🎃 Halloween 世界：第一次入去先起（載入畫面）
 let hwEggs = null; // 🥚 Halloween 蛋同 Boss（同 hwWorld 一齊起）
 let echo = null; // 🐕 Echo 嘅 Zombified Chest 舖（同 hwWorld 一齊起）
@@ -935,7 +936,7 @@ setPetActions({
 function currentInteraction() {
   const pos = camera.position;
   // 🎃 Halloween 傳送門：Hub 中間（未開就話幾時開）；Halloween 世界出生點嗰道返 Hub
-  if (hubPortal.near(pos)) {
+  if (hubPortal?.near(pos)) {
     if (!isHalloweenOpen()) return { prompt: `🔒 🎃 The Halloween World opens in ${halloweenCountdown()}` };
     if (rescue.carrying) return { prompt: '🐾 Bring your animal to the Hub first, then enter the Halloween World!' };
     return { prompt: '<kbd>E</kbd> 🎃 Enter the HALLOWEEN WORLD 👻', action: enterHalloween };
@@ -2148,7 +2149,7 @@ renderer.setAnimationLoop((timestamp) => {
   if (!inTowerArena(camera.position.x, camera.position.z)) weapons.setZone('tower', false);
   if (!inReaperHall(camera.position.x, camera.position.z)) weapons.setZone('reaper', false);
   weapons.update(dt, { view: viewCam, third: viewCam !== camera, time, paused: isPaused() || inMovie });
-  hubPortal.update(time, isHalloweenOpen());
+  hubPortal?.update(time, isHalloweenOpen());
   hwWorld?.update(dt, time, camera.position, quality.level);
   hell?.update(dt, time, { pos: camera.position, player, paused: isPaused() || frozen || !!fling, quality: quality.level }); // 🔥 飛天熔岩石（載住你郁）、跌落熔岩
   expedition?.update(dt, time, camera.position); // 🗺️
