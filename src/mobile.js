@@ -31,7 +31,8 @@ export function showDeviceChooser(onChosen) {
 
 // ---------- 手機控制 ----------
 // controls：MouseLook；onUse = 撳 E；onPause = 暫停；onZoom(±1)；isPaused()
-export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
+// onSlow() = 撳 M（回傳 true/false = 慢行開咗未）；isSlow()；onAdmin() = 撳 Q；adminUnlocked() = 打啱過密碼未（先有 🛠️ 掣）
+export function setupMobile({ controls, onUse, onPause, onZoom, isPaused, onSlow, isSlow, onAdmin, adminUnlocked }) {
   document.body.classList.add('mobile');
   controls.virtual = true;
   const ui = document.createElement('div');
@@ -46,6 +47,10 @@ export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
       <button id="t-zoom-in">＋</button>
       <button id="t-zoom-out">－</button>
       <button id="t-pause">⏸</button>
+    </div>
+    <div id="touch-extra">
+      <button id="t-slow" title="Slow walk">🐢</button>
+      <button id="t-admin" title="Control Panel" hidden>🛠️</button>
     </div>`;
   document.body.appendChild(ui);
 
@@ -72,6 +77,18 @@ export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
   tap('t-pause', (down) => down && onPause());
   tap('t-zoom-in', (down) => down && onZoom(-1));
   tap('t-zoom-out', (down) => down && onZoom(1));
+  // 🐢 慢行（同 M 掣一樣）同 🛠️ 控制面板（同 Q 掣一樣；打啱過密碼先出，小朋友 2026-11-03）
+  const slowBtn = $('t-slow');
+  const adminBtn = $('t-admin');
+  const showSlow = () => slowBtn.classList.toggle('on', !!isSlow?.());
+  tap('t-slow', (down) => down && (onSlow?.(), showSlow()));
+  tap('t-admin', (down) => down && onAdmin?.());
+  const refreshExtra = () => {
+    showSlow();
+    adminBtn.hidden = !adminUnlocked?.();
+  };
+  refreshExtra();
+  setInterval(refreshExtra, 1000); // 喺電腦撳 M／喺面板打密碼之後都會跟住變
 
   // 搖桿
   const base = $('joy-base');
@@ -113,7 +130,7 @@ export function setupMobile({ controls, onUse, onPause, onZoom, isPaused }) {
   let lookId = null;
   let lx = 0;
   let ly = 0;
-  const onUi = (el) => el.closest('button, .slot, #hotbar-wrap, #hud-buttons, #panel, #quiz, .overlay, #joy-base, #touch-buttons, #touch-top');
+  const onUi = (el) => el.closest('button, .slot, #hotbar-wrap, #hud-buttons, #panel, #quiz, .overlay, #joy-base, #touch-buttons, #touch-top, #touch-extra');
   window.addEventListener('touchstart', (e) => {
     for (const t of e.changedTouches) {
       if (lookId !== null || t.identifier === joyId || onUi(t.target)) continue;
