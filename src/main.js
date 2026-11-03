@@ -72,7 +72,7 @@ import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOp
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
 import { createFishing, fishingInteraction, fishingPress, fishingBusy, updateFishing, stopFishing, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋 + 🌽 Candy Corn）
 import { setRodShopActions } from './rodShop.js';
-import { HALLOWEEN_ON } from './data/balance.js';
+import { HALLOWEEN_ON, NEW_BIOME_ON } from './data/balance.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { buildHell, setWitchTowerEntry } from './hellWorld.js'; // 🔥 Halloween World 2：Hell + 飛天熔岩石 + Witch Castle（Issue #11）
@@ -1896,7 +1896,7 @@ renderer.setAnimationLoop((timestamp) => {
   if (!frozen) updateGym(dt, time, pos);
   // Biome 7：NEW_BIOME_DATE 到咗先開；第一次行到閘門前面就播開門動畫
   // 小朋友 2026-10-18：倒數到 0（或者提早開咗）→ 未睇過開門動畫嘅玩家一入遊戲就會播（喺邊度都得）；行到閘門前面都即刻播
-  const kingdomReady = isNewBiomeOpen() || kingdomDebug || state.bigButton;
+  const kingdomReady = NEW_BIOME_ON && (isNewBiomeOpen() || kingdomDebug || state.bigButton); // 2026-11-03：NEW_BIOME_ON = false 就收埋
   kingdom.open = kingdomReady && (state.kingdomSeen || movie.active);
   const atKingdomGate = pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10;
   const revealOk = kingdomReady && !state.kingdomSeen && !movie.active && !intro.active && startScreen.hidden && !isPanelOpen() && !isQuizOpen()

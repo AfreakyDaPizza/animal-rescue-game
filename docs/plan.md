@@ -248,3 +248,4 @@ src/data/questions.js ← 野生動物問題
 - 測試：`game.tower.boss('vampiro')`、`game.tower.only('bat', 3)`、`game.tower.angry()`、`game.tower.shieldChance = 1`、`game.towerFloors.theme('lava', 20)`。
 
 - 2026-11-03：Issue #15：收埋（唔係刪）Halloween 同 Meteor：`balance.js` 開關 `HALLOWEEN_ON`（Hub 傳送門 → 變返噴水池，`isHalloweenOpen` 一齊 false）、`METEOR_EVENT_ON`（METEORIC 活動 + `buildMeteorDecor`）、`METEOR_SHOP_ON`。玩家擁有嘅嘢照留。
+- 2026-11-03：小朋友（對話）：收埋 Enchanted Kingdom（Biome 7）：`NEW_BIOME_ON = false`（閘門鎖住、牌寫 🔒 CLOSED；Kingdom 寵物照留）。另外做緊：Index 3D 寵物檢視器、變異動畫、⏳ Time Shard + TIME 變異。

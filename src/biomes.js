@@ -7,7 +7,7 @@ import { state } from './state.js';
 import { enchanted } from './enchanted.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
 import { dynamicSign, makeLabel, THEMES } from './signs.js';
-import { NEW_BIOME_DATE } from './data/balance.js';
+import { NEW_BIOME_DATE, NEW_BIOME_ON } from './data/balance.js';
 import { shimmerTexture } from './ambience.js';
 // 裝飾全部可以行穿（小朋友話太多嘢擋路）
 
@@ -728,6 +728,7 @@ function coolMountain(scene, live, rect, rand) {
 // 橋面係一塊薄台（addPlatform 有 bottom），下面嘅人照行得過（去攞山後面嘅鎚仔）
 // 新生態區開咗未（日期到咗）
 export function isNewBiomeOpen(now = new Date()) {
+  if (!NEW_BIOME_ON) return false; // 2026-11-03 小朋友：收埋 Enchanted Kingdom
   const [y, m, d] = NEW_BIOME_DATE.split('-').map(Number);
   return now >= new Date(y, m - 1, d);
 }
@@ -1021,12 +1022,19 @@ function buildBridge(scene, live, rect) {
       }
       G.pGeo.attributes.position.needsUpdate = true;
     }
-    if (Math.floor(t) !== lastCheck && (kingdom.open || state.bigButton || isNewBiomeOpen())) {
+    if (Math.floor(t) !== lastCheck && (kingdom.open || (NEW_BIOME_ON && state.bigButton) || isNewBiomeOpen())) {
       lastCheck = Math.floor(t);
       sign.draw(THEMES.purple, [
         { text: '👑 THE ENCHANTED KINGDOM 👑', size: 0.14, color: '#fff59d' },
         { text: 'IS OPEN!', size: 0.22 },
         { text: 'Walk through the gate...', size: 0.08, color: '#e1bee7' },
+      ]);
+    } else if (Math.floor(t) !== lastCheck && !NEW_BIOME_ON) {
+      lastCheck = Math.floor(t);
+      sign.draw(THEMES.purple, [
+        { text: '👑 THE ENCHANTED KINGDOM 👑', size: 0.14, color: '#fff59d' },
+        { text: '🔒 CLOSED', size: 0.22 },
+        { text: 'The gate is locked for now...', size: 0.08, color: '#e1bee7' },
       ]);
     } else if (Math.floor(t) !== lastCheck) {
       lastCheck = Math.floor(t);

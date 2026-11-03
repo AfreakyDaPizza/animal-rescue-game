@@ -199,6 +199,7 @@ export const SELL_SECONDS = 60;
 
 // ---- New biome countdown (Issue #4): the wall at the end of the mountain bridge counts down to this day ----
 export const NEW_BIOME_DATE = '2026-10-24';
+export const NEW_BIOME_ON = false; // 👑 Enchanted Kingdom (Biome 7) (2026-11-03 kid: hidden, the gate stays shut). true = bring it back. Your Kingdom pets stay yours!
 
 // ---- 🧪 FUSE MACHINE (Issue #4): put in 3 pets, get 1 special fuse-only pet ----
 // The day the Fuse Machine opens (year-month-day). Before this day it shows a countdown.
