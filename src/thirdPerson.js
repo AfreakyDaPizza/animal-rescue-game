@@ -442,10 +442,18 @@ function applyLocomotion(avatar, a, { feetY, held, t }) {
   g.position.y = feetY + bob;
 }
 
+// ✋ 單手拎嘢（Shard、寶箱、鎚仔…，heldItem.js）：淨係右手舉起向前，左手照擺
+// 行路時右手跟住步伐輕輕擺少少，企定好慢咁上下
+function poseOneHand(arm, a, t) {
+  const m = a.move;
+  const s = Math.sin(a.phase);
+  arm.rotation.set(0.95 + s * 0.08 * m + Math.sin(t * 1.6) * 0.03 * (1 - m), 0, 0.08);
+}
+
 const fwd = new THREE.Vector3();
 
-// held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；回傳要用嚟畫畫面嘅鏡頭
-export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3 }) {
+// held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；oneHand：右手單手拎緊細嘢；回傳要用嚟畫畫面嘅鏡頭
+export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3 }) {
   const { eye, avatar, view } = tp;
   tp.smoothZoom += (tp.zoom - tp.smoothZoom) * Math.min(1, dt * 10);
   const third = tp.zoom > 0;
@@ -516,6 +524,7 @@ export function updateThirdPerson(tp, dt, { held, item, walking, feetY, grounded
   avatar.outfit?.animate(t, anim, quality); // 👕 皮膚嘅細動畫（披風、翼、羽毛、粒子…；粒子跟畫質）
   if (tp.cosmic) animateCosmic(avatar, t, anim); // 🌠 披風、細隕石、裂紋閃
   if (tp.demonic && !sitting && !gymStation) animateDemonic(avatar, t, anim, !!held); // 😈 行路 = 飛、拍翼
+  if (oneHand && !held && !sitting && !gymStation) poseOneHand(avatar.arms[1], anim, t); // ✋ 右手拎住 Shard／寶箱／鎚仔
 
   // 鏡頭：喺公仔後面；寵物越大，退得越後，等你睇得晒
   eye.getWorldDirection(fwd);

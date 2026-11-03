@@ -84,7 +84,7 @@ import { createExpedition, EXPEDITION_SPOT } from './worldExpedition.js'; // �
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
-import { shardModel } from './gearArt.js'; // 💎 手上嘅 Shard 3D 模型
+import { createHandHold } from './heldItem.js'; // ✋ 單手拎 Shard／寶箱／鎚仔
 import { createInventory } from './inventory.js'; // 🎒 背包：Animals／Endangered Animals／Gears（Issue #10）
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { createEchoShop, giveCandyCorn } from './echoShop.js'; // 🐕 Echo 隻狗 + 🧟 Zombified Chest（Issue #8）
@@ -307,19 +307,21 @@ const fishing = createFishing({ scene, camera, avatar: thirdPerson.avatar, view:
 const fishUI = { play: (n) => play(n), popup: (t) => popup(t), announce: (t) => announce(t), save: () => save(), flash: () => flashScreen() };
 setRodShopActions({ buy: (i) => buyRod(i, fishUI) });
 if (!Number.isInteger(state.rod)) state.rod = 0; // 舊存檔（以前魚竿會斷，係 null）：每個人都有免費 Twig Rod
-// Issue #2：手上嘅鎚仔（第一身掛喺鏡頭；第三身掛喺公仔右手）
+// ✋ 單手拎嘢（小朋友 2026-11-03）：Shard、寶箱、鎚仔拎喺右手手掌；第一身畫面右下角有隻手（src/heldItem.js）
+const handHold = createHandHold({ camera, avatar: thirdPerson.avatar });
+// Issue #2：手上嘅鎚仔（第一身／第三身都喺手掌：手柄下面嗰截喺手入面）
 const handHammer = hammerModel();
-handHammer.position.set(0.45, -0.45, -0.8);
-handHammer.rotation.set(-0.5, 0, 0.4);
-handHammer.scale.setScalar(0.32);
+handHammer.scale.setScalar(0.3);
+handHammer.position.set(0, 0.3 * 0.3, 0);
+handHammer.rotation.set(-0.35, 0, 0.1); // 鎚頭少少向前
 handHammer.visible = false;
-camera.add(handHammer);
+handHold.fpHand.add(handHammer);
 const avatarHammer = hammerModel();
-avatarHammer.position.set(0.22, -0.7, -0.15);
-avatarHammer.rotation.set(-0.35, 0, -0.25); // 鎚頭向上，喺手臂旁邊（後面都睇到）
-avatarHammer.scale.setScalar(1.3);
+avatarHammer.scale.setScalar(1.05);
+avatarHammer.position.set(0, 0.3 * 1.05, 0);
+avatarHammer.rotation.set(-0.75, 0, 0); // 鎚頭向前（唔好遮住塊面）
 avatarHammer.visible = false;
-thirdPerson.avatar.arms[1].add(avatarHammer);
+handHold.tpHand.add(avatarHammer);
 const handBat = batModel();
 handBat.position.set(0.45, -0.45, -0.8);
 handBat.scale.setScalar(0.4);
@@ -330,26 +332,6 @@ avatarBat.position.set(0.22, -0.7, -0.15);
 avatarBat.scale.setScalar(1.4);
 avatarBat.visible = false;
 thirdPerson.avatar.arms[1].add(avatarBat);
-// 💎 手上嘅 Shard（快捷欄揀咗 Shard gear，src/gearArt.js）：第一身掛喺鏡頭，第三身掛喺右手
-const handShard = new THREE.Group();
-handShard.position.set(0.3, -0.2, -0.7);
-handShard.rotation.set(0.15, 0, -0.15);
-handShard.scale.setScalar(0.14);
-camera.add(handShard);
-const avatarShard = new THREE.Group();
-avatarShard.position.set(0.05, -0.9, -0.35);
-avatarShard.scale.setScalar(1.3);
-thirdPerson.avatar.arms[1].add(avatarShard);
-let heldShard = null; // 而家手上邊種 Shard
-function holdShard(type) {
-  if (type === heldShard) return;
-  heldShard = type;
-  for (const [holder, slot] of [[handShard, 'hand'], [avatarShard, 'avatar']]) {
-    holder.clear();
-    const m = type && shardModel(type, slot);
-    if (m) holder.add(m);
-  }
-}
 applyRangerSkin(thirdPerson, RANGER_SKINS.find((s) => s.id === state.rangerSkin) || RANGER_SKINS[0]);
 setDemonicHooks({ equipRanger: (skin) => applyRangerSkin(thirdPerson, skin) }); // 🧙 Witch Tower 送皮膚即刻着
 // ---- 🎃 Halloween：Phantom Express、捉鬼、Halloween Shard ----
@@ -2085,13 +2067,10 @@ renderer.setAnimationLoop((timestamp) => {
   // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
   const showTool = sel?.kind === 'tool' && !rescue.carrying && !sel.item.weapon; // 🔫 武器模型喺 weapons.js
   const bat = !!sel?.item.bat;
-  handHammer.visible = showTool && !bat && thirdPerson.zoom === 0;
-  avatarHammer.visible = showTool && !bat;
+  handHammer.visible = avatarHammer.visible = showTool && !bat; // ✋ 喺 handHold 隻手度（第一身／第三身 handHold.update 揀）
+  handHold.tool = showTool && !bat;
   handBat.visible = showTool && bat && thirdPerson.zoom === 0;
-  holdShard(sel?.kind === 'gear' && !rescue.carrying && !vacuumOut && !hwEggs?.isCarrying() ? sel.item.gear : null); // 💎
-  handShard.visible = !!heldShard && thirdPerson.zoom === 0;
-  avatarShard.visible = !!heldShard;
-  if (heldShard) for (const h of [handShard, avatarShard]) h.children[0]?.userData.animate?.(time);
+  handHold.setGear(sel?.kind === 'gear' && !rescue.carrying && !vacuumOut && !hwEggs?.isCarrying() ? sel.item.gear : null); // 💎 🧰
   avatarBat.visible = showTool && bat;
   batSwing = Math.max(0, batSwing - dt);
   const k = batSwing > 0 ? Math.sin((1 - batSwing / 0.25) * Math.PI) : 0; // 揮棒
@@ -2108,12 +2087,14 @@ renderer.setAnimationLoop((timestamp) => {
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
     held: rescue.carrying?.model || hwEggs?.carryModel() || rescue.holding?.model || null,
     item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
+    oneHand: handHold.active, // ✋ 右手舉起拎住 Shard／寶箱／鎚仔
     walking: player.walking, feetY: player.feetY, grounded: player.grounded, vy: player.vy,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
     time, quality: quality.level, // 👕 皮膚粒子跟畫質
   });
   if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
+  handHold.update({ time, third: thirdPerson.zoom > 0, show: !inMovie, walking: player.walking }); // ✋ 要喺 updateThirdPerson（擺好右手）之後
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
   if (!inMovie && viewCam !== camera && !labStatus.gone && inLab(camera.position.x, camera.position.z)) {
     viewCam.position.z = THREE.MathUtils.clamp(viewCam.position.z, LAB.minZ + 1.3, LAB.maxZ - 1.3);
