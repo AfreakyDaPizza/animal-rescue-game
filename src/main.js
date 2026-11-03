@@ -18,7 +18,7 @@ import { showDeviceChooser, setupMobile } from './mobile.js';
 import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
-  selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setSightings, setPetActions, setShopActions, setPortalActions,
+  selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setPetActions, setShopActions, setPortalActions,
   extraPanels,
 } from './hud.js';
 import { initSideBoxes, toggleSideBox, updateSideBoxes, sideBoxOpen } from './sideBoxes.js'; // 右邊中間：🐾 地塊寵物、⏱️ 繁殖機時間（小朋友 2026-10-18）
@@ -26,6 +26,7 @@ import { state, save, SAVE_KEY } from './state.js';
 import { account, uploadSave } from './account.js';
 import './saveToast.js'; // 💾 「Saved!」提示
 import { setAdminActions } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
+import { adminUnlocked } from './adminGate.js'; // 🔐 打啱過密碼先有手機 🛠️ 掣
 import {
   createRescue, spawnAnimal, nearestAnimal, borrow, deliver, loseAnimal, setHolding, updateRescue,
 } from './animals.js';
@@ -439,9 +440,26 @@ function spawnAll() {
   refillCrazy(crazy, rescue); // 🤪 瘋狂寵物活動緊：入夜都唔會冇咗
   announceSpecials(specials.filter((e) => e?.special && (e.biome !== 6 || kingdom.open)));
 }
+// 小朋友 2026-11-03：Legendary+ 出現淨係講一次（同一隻唔好 reload／換日又再講），亦唔再有箭咀
+// 有 seed 嘅記喺 localStorage（最多 60 個）；控制台 spawn 冇 seed，用 group 認
+const ANNOUNCED_KEY = 'animal-rescue-announced-specials';
+let announcedSeeds = [];
+try { announcedSeeds = JSON.parse(localStorage.getItem(ANNOUNCED_KEY) || '[]'); } catch { announcedSeeds = []; }
+const announcedGroups = new WeakSet();
+function firstTimeSpecial(e) {
+  if (e.seed) {
+    if (announcedSeeds.includes(e.seed)) return false;
+    announcedSeeds = [...announcedSeeds, e.seed].slice(-60);
+    try { localStorage.setItem(ANNOUNCED_KEY, JSON.stringify(announcedSeeds)); } catch { /* 存唔到都算 */ }
+    return true;
+  }
+  if (announcedGroups.has(e.group)) return false;
+  announcedGroups.add(e.group);
+  return true;
+}
 function announceSpecials(specials) {
   if (introRunning) return; // 開場動畫完咗先講（見 intro.onDone）
-  specials.forEach((e, i) => setTimeout(() => {
+  specials.filter(firstTimeSpecial).forEach((e, i) => setTimeout(() => {
     if (e.rarity === 'Eternal') {
       // 小朋友：Eternal 出現要有打鼓聲同水晶聲
       play('drumroll');
@@ -540,6 +558,12 @@ const isPaused = () => intro.active || movie.active || loading.active || !startS
 
 // 手機版：觸控（搖桿、拖動轉鏡頭、掣），畫質預設低啲
 let mobileOn = false;
+// 🐢 慢行模式（M 掣同手機 🐢 掣共用）
+function toggleSlowWalk() {
+  moveOpts.slow = !moveOpts.slow;
+  play('click');
+  popup(moveOpts.slow ? `🐢 Slow walk ON (${mobileOn ? 'tap 🐢' : 'press M'} again to run fast)` : '⚡ Slow walk OFF - full speed!');
+}
 function enableMobile() {
   if (mobileOn) return;
   mobileOn = true;
@@ -555,6 +579,10 @@ function enableMobile() {
       player.controls.unlock();
     },
     onZoom: (dir) => zoomCamera(thirdPerson, dir),
+    onSlow: toggleSlowWalk,
+    isSlow: () => moveOpts.slow,
+    onAdmin: () => togglePanel('admin'), // 同 Q 掣一樣
+    adminUnlocked,
   });
   if (quality.auto && quality.level > 1) {
     quality.level = 1;
@@ -692,11 +720,7 @@ window.addEventListener('keydown', (e) => {
     toggleMute();
     showMute();
   }
-  if (e.code === 'KeyM') { // 🐢 慢行模式：朋友玩太快會頭暈
-    moveOpts.slow = !moveOpts.slow;
-    play('click');
-    popup(moveOpts.slow ? '🐢 Slow walk ON (press M again to run fast)' : '⚡ Slow walk OFF - full speed!');
-  }
+  if (e.code === 'KeyM') toggleSlowWalk(); // 🐢 慢行模式：朋友玩太快會頭暈
   if (isPaused()) return;
   if (e.code === 'KeyE' && !(e.repeat && fishingBusy(fishing))) interact(); // 🎣 釣緊魚：長撳嘅自動重複唔算狂撳
   const digit = e.code.match(/^Digit(\d)$/);
@@ -2025,7 +2049,7 @@ renderer.setAnimationLoop((timestamp) => {
       play('alarm');
       popup('⚠️ The Boss is chasing you! RUN!');
     }
-    setSightings(inHalloween(pos.x, pos.z) ? [] : rescue.wild.filter((w) => w.special && (w.biome !== 6 || kingdom.open)), camera); // Biome 7 未開唔好講；🎃 Halloween 世界入面唔講普通世界嘅動物
+    // 稀有動物箭咀（setSightings）：小朋友 2026-11-03 話唔要，淨係出一次公告 + 光柱
     // 背景音樂跟住情況轉：俾 Boss 追 > 夜晚 > 生態區 > Hub
     const labHit = updateLabFight(fight, dt, time, {
       x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Boss Arena', safe: safeTime > 0 || !!fling || labDebug.god,

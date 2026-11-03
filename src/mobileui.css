@@ -77,6 +77,17 @@ body.mobile #touch-buttons {
 }
 body.mobile #t-jump { width: var(--m-jump); height: var(--m-jump); font-size: 15px; border-width: 2px; }
 body.mobile #t-use { width: var(--m-use); height: var(--m-use); font-size: 15px; border-width: 2px; margin-bottom: calc(var(--m-jump) * 0.6) !important; }
+/* 🐢 慢行 + 🛠️ 控制面板（小朋友 2026-11-03）：USE 上面一行細掣，靠右 */
+body.mobile #touch-extra {
+  position: absolute; display: flex; flex-direction: row-reverse; gap: var(--m-gap);
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--m-joy-bottom, var(--m-bottom)) + var(--m-jump) * 0.6 + var(--m-use) + 12px);
+}
+body.mobile #touch-extra button {
+  width: var(--m-btn); height: var(--m-btn); border: 2px solid rgba(255, 255, 255, 0.7); border-radius: 12px;
+  font-size: 19px; background: rgba(0, 0, 0, 0.45); color: #fff; padding: 0;
+}
+body.mobile #touch-extra button.on { background: rgba(102, 187, 106, 0.85); border-color: #fff; box-shadow: 0 0 8px rgba(165, 214, 167, 0.9); }
 /* 掣嘅撳得到範圍大過個樣少少（手指唔使撳得好準） */
 body.mobile #touch-ui button { position: relative; }
 body.mobile #touch-ui button::after { content: ''; position: absolute; inset: -6px; border-radius: inherit; }
