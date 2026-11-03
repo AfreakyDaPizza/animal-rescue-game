@@ -5,7 +5,8 @@
 //   b. 叫腐化咗嘅瀕危動物追你 30 秒，之後變灰燼
 //   c. 開傳送門，生態區 Boss 出嚟追你 1 分鐘，之後返入傳送門
 //   d. 用手拍你：地上紅框跟住你 3 秒（小朋友 2026-10-15），之後停低，隻手就拍落嚟
-// 出完晒招佢會攰（tired）：佢會用「懶散拍」拍你企嘅位 → 帶佢隻手拍落 Solar Energy Capsule！拍中 4 次就贏
+// Phase 3（小朋友 2026-11-03）：機械人爆開，佢縮埋做 POD BALL 衝你 → 帶個波撞落 Solar Capsule，俾 Capsule 電 3 次就贏
+//   （波嘅模型／效果喺 labPodBall.js）
 // 俾任何嘢打中：同其他 Boss 一樣彈飛你（彈去實驗室門口，唔使行返 Hub）
 
 import * as THREE from 'three';
@@ -20,10 +21,13 @@ import { popup, announce } from './hud.js';
 import { play } from './sound.js';
 import { lab, breakCapsule, resetCapsules } from './lab.js';
 import { ARENA, BOSS_HOME, BOSS_PORTAL as PORTAL, clampArena } from './labShape.js';
+import { buildPodBall, setPodGlow, POD_COLORS, closePlates, rollPod, showAim, flash, mechDebris, sparks, bigZap, updateGroundArrow, updatePodHud } from './labPodBall.js';
 import {
   BOSSES, LAB_DRONES, LAB_CORRUPTED_ANIMALS, LAB_CORRUPTED_SECONDS, LAB_PORTAL_BOSSES, LAB_PORTAL_SECONDS,
   LAB_SQUASH_FOLLOW, LAB_SQUASH_WARNING, LAB_LIVES,
-  LAB_P1_HITS, LAB_P2_HITS, LAB_P3_CAPSULES, LAB_LAVA_EVERY, LAB_LAVA_SECONDS, LAB_P2_SPAWN_EVERY, LAB_P2_MINION_SECONDS, LAB_BAT_RANGE, LAB_BAT_COOLDOWN,
+  LAB_P1_HITS, LAB_P2_HITS, LAB_LAVA_EVERY, LAB_LAVA_SECONDS, LAB_P2_SPAWN_EVERY, LAB_P2_MINION_SECONDS, LAB_BAT_RANGE, LAB_BAT_COOLDOWN,
+  LAB_POD_CHARGE_HITS, LAB_POD_SIZE, LAB_POD_TRANSFORM_SECONDS, LAB_POD_CHARGE_SPEED, LAB_POD_ROLL_SPEED, LAB_POD_WINDUP,
+  LAB_POD_CHARGE_SECONDS, LAB_POD_TURN, LAB_POD_REST, LAB_POD_STUN,
 } from './data/balance.js';
 
 const $ = (id) => document.getElementById(id);
@@ -328,10 +332,11 @@ export function createLabFight(scene) {
   const arms = [0, 1, 2, 3].map((i) => buildArm(scene, i));
   const fx = new THREE.Group(); // 炸彈、紅框、灰燼、星星等效果
   scene.add(fx);
+  const pod = buildPodBall(scene, LAB_POD_SIZE); // Phase 3 嘅 POD BALL（未變身前收埋）
   const fight = {
-    scene, rig, group, label, arms, fx,
-    phase: state.labBossDefeated ? 'gone' : 'sleep', // sleep → wake → attack → tired → hurt → (attack …) → defeated
-    t: 0, round: 0, hp: LAB_P3_CAPSULES, runPhase: 0, stage: 1, batHits: 0, batCd: 0, flinch: 0, lavas: [], nextStage: 2,
+    scene, rig, group, label, arms, fx, pod,
+    phase: state.labBossDefeated ? 'gone' : 'sleep', // sleep → wake → attack → hurt → (attack …) → transform → ball → defeated
+    t: 0, round: 0, hp: podHits(), runPhase: 0, stage: 1, batHits: 0, batCd: 0, flinch: 0, lavas: [], nextStage: 2,
     drones: [], bombs: [], animals: [], portalBosses: [], slams: [], effects: [],
     nextSquash: 0, nextLazy: 0, events: new Set(), onDefeat: null, hitInfo: null,
     clock: 0, pending: [], away: 0, timeScale: 1, lives: LAB_LIVES, // clock：一直行嘅時鐘（傳送門 Boss 排隊出嚟用）；away：你喺實驗室外面幾耐
@@ -342,6 +347,9 @@ export function createLabFight(scene) {
 
 function hideBoss(fight) {
   fight.group.visible = false;
+  fight.podMode = false;
+  fight.pod.g.visible = fight.pod.aim.visible = fight.pod.guide.g.visible = false;
+  updatePodHud(null);
   for (const a of fight.arms) for (const m of [a.upper, a.lower, a.elbow, a.hand]) m.visible = false;
 }
 
@@ -351,6 +359,7 @@ function hideBoss(fight) {
 export function updateLabFight(fight, dt, time, player) {
   if (fight.phase === 'gone') {
     showBar(null);
+    updatePodHud(null);
     return null;
   }
   fight.hitInfo = null;
@@ -363,7 +372,7 @@ export function updateLabFight(fight, dt, time, player) {
 
   // 你離開咗 Arena：收晒招、成場重新嚟過（返嚟可以再挑戰）
   fight.away = P.inside ? 0 : fight.away + dt;
-  if (fight.away > LEAVE_RESET && ['wake', 'attack', 'tired', 'hurt'].includes(fight.phase)) {
+  if (fight.away > LEAVE_RESET && ['wake', 'attack', 'tired', 'hurt', 'transform', 'ball'].includes(fight.phase)) {
     resetFight(fight);
     return null;
   }
@@ -384,18 +393,22 @@ export function updateLabFight(fight, dt, time, player) {
     if (fight.t > 3) startStage(fight, 1);
   } else if (fight.phase === 'attack') {
     updateStage(fight, P);
-  } else if (fight.phase === 'tired') {
-    updateTired(fight, dt, P);
+  } else if (fight.phase === 'transform') {
+    updateTransform(fight, dt, time);
+  } else if (fight.phase === 'ball') {
+    updateBall(fight, dt, time, P);
   } else if (fight.phase === 'hurt') {
+    if (fight.podMode) updateBall(fight, dt, time, P); // 最後一下電：個波仲震緊
     if (fight.t > 3.2) {
       if (fight.stage === 3 && fight.hp <= 0) setPhase(fight, 'defeated');
       else if (fight.stage < 3) startStage(fight, fight.nextStage);
-      else setPhase(fight, 'tired'); // Phase 3 仲未完：繼續追
+      else setPhase(fight, 'ball'); // Phase 3 仲未完：繼續追
     }
   } else if (fight.phase === 'defeated') {
     if (once(fight, 'defeated')) {
+      if (fight.podMode) crackOpen(fight); // 個波爆開，殘咗嘅科學家機械人跌出嚟
       play('tierUp');
-      clearMinions(fight);
+      clearMinions(fight, true);
       fight.onDefeat?.();
     }
   }
@@ -465,8 +478,9 @@ export function updateLabFight(fight, dt, time, player) {
     p.scale.setScalar(0.6 + k * 1.4);
     p.material.opacity = 0.7 * (1 - k);
   });
-  // 攰咗：Capsule 頭頂有跳下跳下嘅黃色大箭咀
+  // Phase 3：Capsule 頭頂有跳下跳下嘅黃色大箭咀
   updateCapsuleArrows(fight, time);
+  updatePodGuide(fight, time, P);
   r.lenses.forEach((l) => (l.material.emissiveIntensity = tired ? 0.5 : 1.5 + Math.sin(time * 7) * 0.4));
   if (fight.phase === 'hurt') {
     r.stars.visible = true;
@@ -517,7 +531,7 @@ function hit(fight, P, what) {
 const STAGE_TEXT = {
   1: ['⚔️ PHASE 1!', `Hit him ${LAB_P1_HITS} times with your 🏏 BAT! Don't step on the lava!`],
   2: ['🌀 PHASE 2!', `He calls Bosses and animals! Hit him ${LAB_P2_HITS} times!`],
-  3: ['☀️ PHASE 3!', 'You lost your bat! He chases you... lead his slam onto a Solar Capsule!'],
+  3: ['⚡ PHASE 3!', 'His mech is breaking apart... he turns into a POD BALL! Lead it into the ☀️ Solar Capsules!'],
 };
 function startStage(fight, n) {
   fight.stage = n;
@@ -531,11 +545,7 @@ function startStage(fight, n) {
     fight.nextSquash = 2;
     fight.nextLava = 2.5;
     fight.nextSpawn = 2;
-  } else {
-    fight.hp = LAB_P3_CAPSULES;
-    setPhase(fight, 'tired');
-    fight.nextLazy = 2;
-  }
+  } else startTransform(fight);
 }
 // 舊名（debugFight 用）
 const startRound = (fight) => startStage(fight, fight.stage);
@@ -620,35 +630,321 @@ function updateLavas(fight, dt, time, P) {
   }
 }
 
-// 「懶散拍」：攰咗嗰陣，拍你企嘅位；拍中 Capsule 佢就受傷
-function updateTired(fight, dt, P) {
-  for (const c of lab.capsules) {
-    if (c.used) continue;
-    c.label.userData.setLines([{ text: '⬇ LEAD HIS HAND HERE ⬇', color: '#ffeb3b' }, { text: '☀️ SOLAR ENERGY CAPSULE', color: '#ffe082' }]);
-  }
-  if (fight.t >= fight.nextLazy && P.inside && !fight.slams.length) startSlam(fight, P, true);
-}
 function resetCapsuleLabels() {
   for (const c of lab.capsules) if (!c.used) c.label.userData.setLines([{ text: '☀️ SOLAR ENERGY CAPSULE', color: '#ffe082' }]);
 }
 
-// 拍中 Capsule！
-function capsuleHit(fight, capsule) {
-  breakCapsule(capsule);
-  fight.hp -= 1;
-  resetCapsuleLabels();
-  fight.slams.forEach((s) => s.box && (s.box.visible = false));
-  play('solar');
-  play('ouch');
-  burst(fight, V(capsule.x, 2, capsule.z), 0xffd740, 60, 9);
-  burst(fight, V(capsule.x, 2, capsule.z), 0xffffff, 25, 6);
-  fight.rig.damage[2].visible = true;
-  fight.arms[3].limp = true; // 一隻大手冇力
-  if (fight.hp > 0) announce(`☀️ SOLAR BLAST! ${fight.hp} more to go!`);
-  else announce('☀️ FINAL SOLAR BLAST! The Mutated Scientist Poacher is DEFEATED! 🎉');
-  setPhase(fight, 'hurt');
+// ================= Phase 3：⚡ POD BALL（小朋友 2026-11-03） =================
+// 機械人爆開 → 佢縮埋做一個大鐵波：滾去追你、紅線警告之後衝你；
+// 帶佢撞落 Solar Capsule → Capsule 用大電（CHARGE）電佢，暈幾秒；電夠 LAB_POD_CHARGE_HITS 次就贏
+function podHits() {
+  return Math.max(1, Math.min(LAB_POD_CHARGE_HITS, lab.capsules.length || 4));
+}
+const setPodMode = (pod, mode, rest = LAB_POD_REST) => {
+  pod.mode = mode;
+  pod.t = 0;
+  pod.restFor = rest;
+  pod.retreat = false;
+  pod.aim.visible = false;
+};
+
+function startTransform(fight) {
+  fight.hp = podHits();
+  clearMinions(fight);
+  setPhase(fight, 'transform');
+  fight.nextSpark = 0;
+  play('rumble');
+  play('alarm');
 }
 
+// 變身：頭 40% 震 + 出火花，之後「嘭」一聲爆開，盔甲板由外面合埋做一個波
+function updateTransform(fight, dt, time) {
+  const T = LAB_POD_TRANSFORM_SECONDS;
+  const breakAt = T * 0.4;
+  const t = fight.t;
+  const r = fight.rig;
+  const pos = fight.group.position;
+  if (t < breakAt) {
+    const k = t / breakAt;
+    r.root.position.x = Math.sin(time * 55) * 0.12 * k;
+    r.root.position.z = Math.cos(time * 47) * 0.12 * k;
+    if (t >= fight.nextSpark) {
+      fight.nextSpark = t + 0.12;
+      sparks(fight, V(pos.x + (Math.random() - 0.5) * 4, 3 + Math.random() * 5, pos.z + (Math.random() - 0.5) * 3), Math.random() < 0.5 ? 0xffea00 : 0x76ff03, 8);
+      if (Math.random() < 0.3) play('blip');
+    }
+    return;
+  }
+  if (once(fight, 'break')) {
+    play('boom');
+    play('thunder');
+    flash(fight, V(pos.x, 4, pos.z), 0xffffff, 12, 0.6);
+    mechDebris(fight, V(pos.x, 2, pos.z), 1.4);
+    burst(fight, V(pos.x, 4, pos.z), 0x76ff03, 40, 10);
+    enterPodMode(fight);
+    closePlates(fight.pod, 0);
+    announce('💥 His mech BROKE APART... he curled into a POD BALL!');
+  }
+  const pod = fight.pod;
+  const k = Math.min(1, (t - breakAt) / Math.max(0.3, T - breakAt - 0.4));
+  closePlates(pod, k);
+  pod.spin.rotation.y += dt * 14 * (1 - k * 0.8);
+  pod.g.position.set(pos.x, pod.R + Math.abs(Math.sin(t * 9)) * 0.6 * (1 - k), pos.z);
+  setPodGlow(pod, POD_COLORS.normal, 1 + k * 2);
+  if (k >= 1 && once(fight, 'clank')) {
+    play('slam');
+    flash(fight, pod.g.position.clone(), 0x76ff03, 6, 0.4);
+  }
+  if (t >= T) startBall(fight);
+}
+
+// 機械人收埋，個波出現（變身／測試用）
+function enterPodMode(fight) {
+  const pod = fight.pod;
+  const pos = fight.group.position;
+  fight.podMode = true;
+  fight.rig.g.visible = false;
+  fight.rig.root.position.set(0, 0, 0);
+  for (const a of fight.arms) for (const m of [a.upper, a.lower, a.elbow, a.hand]) m.visible = false;
+  clampArena(pos, pod.R + 1);
+  pod.g.position.set(pos.x, pod.R, pos.z);
+  pod.g.visible = true;
+  pod.stars.visible = false;
+  pod.knock = V();
+  closePlates(pod, 1);
+}
+
+function startBall(fight) {
+  setPhase(fight, 'ball');
+  setPodMode(fight.pod, 'roll', 1.2);
+  play('roar');
+  announce('⚡ Lead the POD BALL into the SOLAR CAPSULES!');
+  setTimeout(() => popup('Stand next to a ☀️ capsule. When the red line flashes, jump out of the way!'), 1600);
+  setCapsuleLeadLabels();
+}
+function setCapsuleLeadLabels() {
+  for (const c of lab.capsules) if (!c.used) c.label.userData.setLines([{ text: '⬇ LEAD THE POD BALL HERE ⬇', color: '#ffeb3b' }, { text: '☀️ SOLAR ENERGY CAPSULE', color: '#ffe082' }]);
+}
+
+const tmpTo = V();
+function updateBall(fight, dt, time, P) {
+  const pod = fight.pod;
+  const R = pod.R;
+  const p = pod.g.position;
+  pod.t += dt;
+  tmpTo.set(P.x - p.x, 0, P.z - p.z);
+  const dP = tmpTo.length();
+  let speed = 0;
+  let dir = null;
+  if (pod.mode === 'stun') {
+    // 俾電緊：藍光閃、出藍色火花、頭頂有星星；俾 Capsule 彈開少少
+    setPodGlow(pod, POD_COLORS.zap, 2 + Math.random() * 4);
+    pod.stars.visible = true;
+    pod.stars.rotation.y = time * 5;
+    p.x += pod.knock.x * dt;
+    p.z += pod.knock.z * dt;
+    rollPod(pod, pod.knock.x * dt, pod.knock.z * dt);
+    pod.knock.multiplyScalar(Math.exp(-3 * dt));
+    p.y = R + Math.abs(Math.sin(time * 30)) * 0.12;
+    if (Math.random() < dt * 10) sparks(fight, p.clone().add(V().randomDirection().multiplyScalar(R)), 0x40c4ff, 6);
+    if (pod.t >= LAB_POD_STUN && fight.phase === 'ball') {
+      pod.stars.visible = false;
+      setPodMode(pod, 'roll');
+      play('engine');
+    }
+  } else if (pod.mode === 'roll') {
+    // 慢慢滾去追你
+    setPodGlow(pod, POD_COLORS.normal, 2 + Math.sin(time * 5) * 0.6);
+    p.y = R;
+    if (pod.retreat) {
+      // 啱啱撞中你：滾返去場中間（唔好喺你彈返去嘅位等你）
+      const cx = ARENA.x - p.x;
+      const cz = ARENA.z - p.z;
+      const cd = Math.hypot(cx, cz);
+      if (cd > 2) {
+        speed = LAB_POD_ROLL_SPEED * 2;
+        dir = V(cx / cd, 0, cz / cd);
+      }
+    } else if (P.inside && dP > R + 1) {
+      speed = LAB_POD_ROLL_SPEED;
+      dir = tmpTo.clone().normalize();
+    }
+    if (pod.t >= pod.restFor && P.inside) {
+      setPodMode(pod, 'windup');
+      pod.aimDir.copy(tmpTo).normalize();
+      play('alarm');
+    }
+  } else if (pod.mode === 'windup') {
+    // 準備衝：原地狂轉、紅光閃、地上紅線指住你（最後 0.35 秒定咗方向，你可以閃）
+    if (pod.t < LAB_POD_WINDUP - 0.35 && dP > 0.5) pod.aimDir.copy(tmpTo).normalize();
+    const blink = Math.sin(time * (pod.t > LAB_POD_WINDUP - 0.35 ? 40 : 16)) > 0;
+    setPodGlow(pod, POD_COLORS.angry, blink ? 4 : 1.5);
+    rollPod(pod, pod.aimDir.x * dt * 16, pod.aimDir.z * dt * 16); // 原地轉轆（好似車咁「催油」）
+    p.y = R + Math.abs(Math.sin(time * 25)) * 0.1;
+    showAim(pod, clampArena(V(p.x + pod.aimDir.x * 40, 0, p.z + pod.aimDir.z * 40), R), blink);
+    if (Math.random() < dt * 12) sparks(fight, V(p.x - pod.aimDir.x * R, 0.3, p.z - pod.aimDir.z * R), 0xff9100, 5);
+    if (pod.t >= LAB_POD_WINDUP) {
+      setPodMode(pod, 'charge');
+      pod.dir.copy(pod.aimDir);
+      play('swoosh');
+      play('engine');
+    }
+  } else if (pod.mode === 'charge') {
+    // 衝！轉少少彎追你
+    setPodGlow(pod, POD_COLORS.angry, 3.5);
+    p.y = R;
+    if (P.inside && dP > 0.5 && LAB_POD_TURN > 0) {
+      const want = Math.atan2(tmpTo.x, tmpTo.z);
+      const now = Math.atan2(pod.dir.x, pod.dir.z);
+      const diff = Math.atan2(Math.sin(want - now), Math.cos(want - now));
+      const a = now + THREE.MathUtils.clamp(diff, -LAB_POD_TURN * dt, LAB_POD_TURN * dt);
+      pod.dir.set(Math.sin(a), 0, Math.cos(a));
+    }
+    speed = LAB_POD_CHARGE_SPEED;
+    dir = pod.dir;
+    if (Math.random() < dt * 14) burst(fight, V(p.x - dir.x * R, 0.3, p.z - dir.z * R), 0xa1887f, 3, 3);
+    if (pod.t >= LAB_POD_CHARGE_SECONDS) setPodMode(pod, 'roll');
+  }
+  if (dir && speed) {
+    const dx = dir.x * speed * dt;
+    const dz = dir.z * speed * dt;
+    p.x += dx;
+    p.z += dz;
+    rollPod(pod, dx, dz);
+  }
+  // 撞牆：停低（衝緊就「嘭」一聲）
+  const fromC = Math.hypot(p.x - ARENA.x, p.z - ARENA.z);
+  if (fromC > ARENA.r - R - 0.5) {
+    clampArena(p, R + 0.5);
+    if (pod.mode === 'charge') {
+      play('slam');
+      shockwave(fight, p.x, p.z, 3);
+      setPodMode(pod, 'roll');
+    }
+  }
+  // 撞中 Capsule：未用 = 大電！用咗 = 撞返出嚟
+  if (pod.mode !== 'stun') {
+    for (const c of lab.capsules) {
+      const dx = p.x - c.x;
+      const dz = p.z - c.z;
+      const d = Math.hypot(dx, dz);
+      if (d >= R + 1.3) continue;
+      if (!c.used && fight.phase === 'ball') {
+        zapPod(fight, c);
+        break;
+      }
+      const push = R + 1.3 - d;
+      p.x += (dx / (d || 1)) * push;
+      p.z += (dz / (d || 1)) * push;
+      if (pod.mode === 'charge') setPodMode(pod, 'roll');
+    }
+  }
+  fight.group.position.set(p.x, 0, p.z); // 個牌跟住個波
+  // 撞中你：同其他招一樣彈飛你（之後休息耐啲先再衝）
+  if (pod.mode !== 'stun' && fight.phase === 'ball' && P.inside && dP < R + 0.6 && P.feetY < R * 1.5) {
+    hit(fight, P, 'the POD BALL');
+    if (fight.hitInfo) {
+      play('slam');
+      setPodMode(pod, 'roll', LAB_POD_REST * 2);
+      pod.retreat = true;
+    }
+  }
+}
+
+// ⚡ Capsule 電個波（小朋友講嘅 "charge thingy"）
+function zapPod(fight, c) {
+  const pod = fight.pod;
+  breakCapsule(c);
+  fight.hp -= 1;
+  setPodMode(pod, 'stun');
+  const top = V(c.x, 3.2, c.z);
+  pod.knock = V(pod.g.position.x - c.x, 0, pod.g.position.z - c.z).normalize().multiplyScalar(9);
+  play('thunder');
+  play('solar');
+  play('ouch');
+  bigZap(fight, top, pod, Math.min(LAB_POD_STUN, 2) * 0.8);
+  flash(fight, pod.g.position.clone(), 0x80d8ff, 9, 0.7);
+  flash(fight, top, 0xffffff, 5, 0.4);
+  burst(fight, V(c.x, 2, c.z), 0xffd740, 40, 8);
+  sparks(fight, pod.g.position.clone(), 0x40c4ff, 24);
+  const need = podHits();
+  const done = need - fight.hp;
+  fight.zapUntil = fight.clock + 2;
+  if (fight.hp > 0) {
+    announce(`⚡ CHARGE! ⚡ ${done}/${need} — lead it to another capsule!`);
+    setCapsuleLeadLabels();
+  } else {
+    announce('⚡⚡⚡ MEGA CHARGE! The POD BALL is DEFEATED! 🎉');
+    resetCapsuleLabels();
+    setPhase(fight, 'hurt');
+  }
+}
+
+// 打贏：個波爆開，殘咗嘅科學家機械人跌出嚟（之後照舊播結局）
+function crackOpen(fight) {
+  const pod = fight.pod;
+  const p = pod.g.position.clone();
+  pod.g.visible = pod.aim.visible = pod.guide.g.visible = false;
+  pod.stars.visible = false;
+  fight.podMode = false;
+  play('boom');
+  flash(fight, V(p.x, 3, p.z), 0xffffff, 14, 0.7);
+  mechDebris(fight, V(p.x, 2, p.z), 1);
+  burst(fight, V(p.x, 3, p.z), 0x76ff03, 40, 9);
+  const r = fight.rig;
+  fight.group.position.set(p.x, 0, p.z);
+  r.g.visible = true;
+  r.root.scale.setScalar(1);
+  r.root.position.set(0, 0, 0);
+  r.damage.forEach((d) => (d.visible = true));
+  for (const a of fight.arms) {
+    a.limp = true;
+    a.ready = false;
+    for (const m of [a.upper, a.lower, a.elbow, a.hand]) m.visible = true;
+  }
+}
+
+// 指路：畫面大字 + 箭咀（指去最近嘅 Capsule）+ 地上黃色箭咀
+function updatePodGuide(fight, time, P) {
+  const pod = fight.pod;
+  const show = fight.podMode && (fight.phase === 'ball' || fight.phase === 'hurt') && P.inside;
+  if (!show) {
+    pod.guide.g.visible = false;
+    if (!fight.podMode) pod.aim.visible = false;
+    updatePodHud(null);
+    return;
+  }
+  let best = null;
+  let bestD = Infinity;
+  for (const c of lab.capsules) {
+    if (c.used) continue;
+    const d = Math.hypot(c.x - P.x, c.z - P.z);
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  const need = podHits();
+  const done = need - Math.max(0, fight.hp);
+  const target = fight.phase === 'ball' ? best : null;
+  updateGroundArrow(pod, P, target, time);
+  let angle = null;
+  if (target && P.yaw != null) {
+    const fx = -Math.sin(P.yaw);
+    const fz = -Math.cos(P.yaw);
+    const tx = target.x - P.x;
+    const tz = target.z - P.z;
+    angle = Math.atan2(fx * tz - fz * tx, fx * tx + fz * tz);
+  }
+  const zap = fight.clock < (fight.zapUntil ?? 0);
+  const text = fight.phase === 'hurt' ? '⚡⚡⚡ MEGA CHARGE! ⚡⚡⚡'
+    : zap ? '⚡ ZAPPED! Now lead it to another SOLAR CAPSULE!'
+      : pod.mode === 'windup' ? '⚠️ It is about to CHARGE! Dodge the red line!'
+        : '⚡ Lead the POD BALL into the SOLAR CAPSULES!';
+  updatePodHud({ text, done, need, angle, dist: target ? bestD : null, zap: zap || fight.phase === 'hurt' });
+}
+
+// Phase 3：每個未用嘅 Capsule 頭頂一個黃色箭咀
 // 攰咗嗰陣：每個未用嘅 Capsule 頭頂一個黃色箭咀
 function updateCapsuleArrows(fight, time) {
   if (!fight.capArrows) {
@@ -666,7 +962,7 @@ function updateCapsuleArrows(fight, time) {
     });
   }
   for (const { g, c } of fight.capArrows) {
-    g.visible = fight.phase === 'tired' && !c.used && fight.playerInside;
+    g.visible = fight.phase === 'ball' && !c.used && fight.playerInside;
     g.position.y = 5.6 + Math.sin(time * 4 + c.x) * 0.35;
     g.rotation.y = time * 2;
   }
@@ -794,12 +1090,6 @@ function updateSlams(fight, dt, time, P) {
       // 打中你？（喺紅框入面、冇跳到好高）
       const half = s.size / 2 + 0.3;
       if (P.inside && Math.abs(P.x - s.x) < half && Math.abs(P.z - s.z) < half && P.feetY < 2) hit(fight, P, s.lazy ? 'his lazy slam' : 'his giant hand');
-      // 懶散拍：拍中 Capsule？
-      if (s.lazy && fight.phase === 'tired') {
-        const c = lab.capsules.find((cc) => !cc.used && Math.abs(cc.x - s.x) < s.size / 2 + 1.1 && Math.abs(cc.z - s.z) < s.size / 2 + 1.1);
-        if (c) capsuleHit(fight, c);
-        else popup('Missed! Stand right next to a ☀️ capsule!');
-      }
     } else if (s.t < s.warn + s.drop + s.hold) {
       s.handTarget.copy(ground);
     } else {
@@ -1175,10 +1465,13 @@ function updateBossLabel(fight) {
     wake: '😠 WAKING UP!',
     attack: `😈 PHASE ${fight.stage}!`,
     tired: '😡 PHASE 3: CHASING YOU!',
+    transform: '💥 TRANSFORMING!',
+    ball: { stun: '⚡ ZAPPED! ⚡', windup: '⚠️ ABOUT TO CHARGE!', charge: '🔴 CHARGING!' }[fight.pod.mode] || '🔴 POD BALL: CHASING YOU!',
     hurt: '💫 OUCH!',
     defeated: '💫 Defeated!',
   };
-  fight.label.userData.setLines([{ text: '🧪 MUTATED SCIENTIST POACHER', color: '#ea80fc' }, { text: lines[fight.phase] || '', color: fight.phase === 'tired' ? '#ffe082' : '#ffffff' }]);
+  fight.label.position.y = fight.podMode ? LAB_POD_SIZE * 2 + 1.6 : 9.6;
+  fight.label.userData.setLines([{ text: '🧪 MUTATED SCIENTIST POACHER', color: '#ea80fc' }, { text: lines[fight.phase] || '', color: fight.phase === 'ball' ? '#ffe082' : '#ffffff' }]);
 }
 
 // ================= 頂部 Boss 血條 =================
@@ -1189,11 +1482,12 @@ function showBar(fight) {
   if (!show) return;
   const need = fight.stage === 1 ? LAB_P1_HITS : LAB_P2_HITS;
   const left = fight.stage < 3 ? Math.max(0, need - fight.batHits) : fight.hp;
-  const pct = fight.stage < 3 ? Math.round((left / need) * 100) : Math.round((fight.hp / LAB_P3_CAPSULES) * 100);
+  const pct = fight.stage < 3 ? Math.round((left / need) * 100) : Math.round((fight.hp / podHits()) * 100);
   const status = {
     wake: '😠 Waking up...',
     attack: fight.stage === 1 ? `🏏 Hit him with your bat! ${left} more · 🌋 don't step on the lava!` : `🏏 Hit him! ${left} more · 🌀 Bosses and animals are coming!`,
-    tired: `☀️ No bat! Lead his slam onto a Solar Capsule! (${fight.hp} to go)`,
+    transform: '💥 His mech is breaking apart...',
+    ball: fight.pod.mode === 'stun' ? `⚡ ZAPPED! ⚡ ${podHits() - fight.hp}/${podHits()} · lead it to another capsule!` : `⚡ Lead the POD BALL into a ☀️ Solar Capsule! ⚡ ${podHits() - fight.hp}/${podHits()}`,
     hurt: '💫 OUCH!',
   }[fight.phase] || '';
   const html = `<b>🧪 MUTATED SCIENTIST POACHER · PHASE ${fight.stage}/3</b><div class="hpbar"><i style="width:${pct}%"></i></div><div class="status">${status}</div>`;
@@ -1203,6 +1497,13 @@ function showBar(fight) {
 // 第三身鏡頭鑽咗入 Boss 個身（佢好大隻）：暫時收埋個身，唔係成個畫面得一片灰
 export function avoidCameraClip(fight, camPos) {
   if (fight.phase === 'gone') return;
+  if (fight.podMode) {
+    // POD BALL：機械人收埋；個波太近鏡頭就收埋
+    fight.rig.g.visible = false;
+    for (const a of fight.arms) for (const m of [a.upper, a.lower, a.elbow, a.hand]) m.visible = false;
+    fight.pod.g.visible = camPos.distanceTo(fight.pod.g.position) > fight.pod.R * 1.1;
+    return;
+  }
   const p = fight.group.position;
   const inside = Math.hypot(camPos.x - p.x, camPos.z - p.z) < 2.2 * S * 0.75 && camPos.y < 8;
   fight.rig.g.visible = !inside;
@@ -1226,21 +1527,33 @@ export function debugFight(fight, what) {
   if (what === 'drones') launchDrones(fight, LAB_DRONES);
   if (what === 'animals') summonCorrupted(fight, LAB_CORRUPTED_ANIMALS);
   if (what === 'portal') openPortal(fight);
-  if (what === 'tired') {
+  if (what === 'tired' || what === 'stage3') {
+    // 直接跳去 Phase 3（POD BALL）
     clearMinions(fight);
-    setPhase(fight, 'tired');
-    fight.nextLazy = 1;
+    fight.lavas.length = 0;
+    fight.rig.damage[0].visible = fight.rig.damage[1].visible = true;
+    startStage(fight, 3);
   }
-  if (what === 'hit') {
-    const c = lab.capsules.find((cc) => !cc.used);
-    if (c) capsuleHit(fight, c);
+  if (what === 'ball') {
+    // 唔睇變身，即刻變 POD BALL
+    clearMinions(fight);
+    fight.stage = 3;
+    fight.hp = podHits();
+    enterPodMode(fight);
+    startBall(fight);
+  }
+  if (what === 'hit' && fight.phase === 'ball') {
+    // 好似個波撞中最近嘅 Capsule
+    const p = fight.pod.g.position;
+    const c = lab.capsules.filter((cc) => !cc.used).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
+    if (c) zapPod(fight, c);
   }
 }
 
 // 新一場（測試用／重新挑戰）
 export function resetFight(fight) {
   clearMinions(fight);
-  fight.hp = LAB_P3_CAPSULES;
+  fight.hp = podHits();
   fight.stage = 1;
   fight.batHits = 0;
   fight.lavas.length = 0;
@@ -1248,6 +1561,14 @@ export function resetFight(fight) {
   fight.rig.hairMat.color.set(0x33691e);
   fight.rig.root.rotation.set(0, 0, 0);
   fight.rig.root.position.set(0, 0, 0);
+  fight.rig.root.scale.setScalar(1);
+  fight.rig.g.visible = true;
+  fight.podMode = false;
+  fight.pod.g.visible = false;
+  fight.pod.aim.visible = false;
+  fight.pod.guide.g.visible = false;
+  fight.pod.stars.visible = false;
+  updatePodHud(null);
   fight.arms.forEach((a) => (a.limp = false));
   fight.group.visible = true;
   for (const a of fight.arms) for (const m of [a.upper, a.lower, a.elbow, a.hand]) m.visible = true;
