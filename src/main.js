@@ -85,6 +85,7 @@ import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
 import { createShards } from './halloweenShards.js'; // 🗿 Halloween 雕像 + 🔮 Shard 變異
 import { shardModel } from './gearArt.js'; // 💎 手上嘅 Shard 3D 模型
+import { createTimeShardDrop } from './timeShard.js'; // ⏳ 每 1–10 分鐘由天跌一粒 Time Shard（小朋友 2026-11-03）
 import { createInventory } from './inventory.js'; // 🎒 背包：Animals／Endangered Animals／Gears（Issue #10）
 import { createHalloweenEggs } from './halloweenEggs.js'; // 🥚 Halloween 蛋 + NO MERCY Boss + 蛋墳場
 import { createEchoShop, giveCandyCorn } from './echoShop.js'; // 🐕 Echo 隻狗 + 🧟 Zombified Chest（Issue #8）
@@ -411,6 +412,7 @@ const tower = createWitchTower({
   toCastle: () => towerToCastle(),
 });
 const chests = createChests(scene); // 🧰 開箱動畫（圍住玩家）
+const timeShard = createTimeShardDrop({ scene, isWalkable, groundAt }); // ⏳
 const inventory = createInventory({
   togglePanel: (kind) => togglePanel(kind), play,
   openChest: (type) => chests.open(type),
@@ -2161,6 +2163,9 @@ renderer.setAnimationLoop((timestamp) => {
   echoQuests?.update(dt, time, camera.position); // 🐾 任務攤位 + HUD 追蹤器
   meteorShop.update(dt, time); // ☄️ 舖頭水晶閃、隕石火尾
   chests.update(dt, { pos: camera.position, yaw: camera.rotation.y, feetY: player.feetY, third: thirdPerson.zoom > 0, hidden: inMovie }); // 🧰 開箱動畫
+  // ⏳ Time Shard：正常玩緊先計時（Boss Arena、塔、Reaper 大廳、播片、彈飛緊都唔跌）
+  const shardOk = !isPaused() && !inMovie && !loading.active && !endingRunning && !fling && whereIs(pos.x, pos.z) !== 'Boss Arena' && !inTowerArena(pos.x, pos.z) && !inReaperHall(pos.x, pos.z) && !tower.inside && !reaper.inside;
+  timeShard.update(dt, time, { pos, feetY: player.feetY, playing: shardOk });
   bossSkins.update(dt, time); // 🦹 隕石皮膚嘅細隕石轉圈
   demonicBossSkins.update(dt, time); // 😈 火球、翼
   if (halloween.sky > 0.01) {
@@ -2249,4 +2254,6 @@ const labDebug = {
 
 if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
+if (import.meta.env.DEV) window.game.timeShard = () => timeShard.force(camera.position, player.feetY); // ⏳ 測試：即刻跌一粒 Time Shard（game.timeShardDrop 睇狀態）
+if (import.meta.env.DEV) window.game.timeShardDrop = timeShard;
 if (import.meta.env.DEV) window.game.meteor = meteor; // ☄️ 測試：game.forceEvent('meteor')、game.meteor

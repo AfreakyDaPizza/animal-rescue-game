@@ -7,6 +7,8 @@
 // ☄️ Meteoric：四粒藍色細隕石（有尾巴）繞圈飛 + 地上藍水晶碎 + 藍色電火花
 // 🌌 Astral：斜斜一圈轉緊嘅星環 + 星座連線一閃一閃 + 後面一團星雲光
 // 😈 Demonic：紅黑火 + 背後一對細蝙蝠翼拍拍下 + 一對發光彎角 + 地上一個轉緊嘅紅色符文圈
+// ⏳ Time（小朋友 2026-11-03）：好可愛！頭上一對大「搖搖眼」（googly eyes，眼珠會跟住郁嚟郁去）+ 粉紅面珠
+//    + 頭頂一個金色時鐘光環（刻度 + 慢慢行嘅針，永遠面向鏡頭）+ 地上一個轉緊嘅時鐘圈 + 金色／青色星光
 //
 // 效能（地塊可以有好多隻寵物）：
 // - 粒子全部用 THREE.Points（每種一個 draw call），物料／貼圖／形狀全部共用；分身、隕石、水晶、角、翼用 InstancedMesh
@@ -138,6 +140,32 @@ function tex(name) {
         const r = Math.sqrt(fract(Math.sin(i * 12.9898) * 43758.5)) * n * 0.36;
         ctx.globalAlpha = 0.3 + 0.7 * fract(i * 0.618);
         ctx.fillRect(n / 2 + Math.cos(a) * r, n / 2 + Math.sin(a) * r, 1.5, 1.5);
+      }
+    }),
+    // ⏳ 地上時鐘圈：兩個圓 + 60 格刻度（3、6、9、12 粗啲）
+    clockDial: () => canvasTex(256, (ctx, n) => {
+      const h = n / 2;
+      ctx.translate(h, h);
+      ctx.strokeStyle = 'rgba(255,255,255,1)';
+      ctx.fillStyle = 'rgba(255,255,255,1)';
+      ctx.shadowColor = 'rgba(255,255,255,1)';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, h * 0.92, 0, TAU);
+      ctx.stroke();
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, h * 0.62, 0, TAU);
+      ctx.stroke();
+      for (let i = 0; i < 60; i++) {
+        const big = i % 15 === 0;
+        const mid = i % 5 === 0;
+        if (!mid && i % 2) continue;
+        ctx.save();
+        ctx.rotate((i / 60) * TAU);
+        ctx.fillRect(-(big ? 5 : mid ? 3 : 1.2), -h * 0.88, big ? 10 : mid ? 6 : 2.4, big ? h * 0.2 : mid ? h * 0.13 : h * 0.06);
+        ctx.restore();
       }
     }),
     // 😈 地上符文圈：兩個圓 + 一圈尖刺 + 細菱形（唔用五角星）
@@ -278,7 +306,39 @@ const MAT = {
   horn: new THREE.MeshBasicMaterial({ vertexColors: true }),
   wing: new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
   runes: additiveBasic({ color: 0xff1744, map: tex('runes'), opacity: 0.6, side: THREE.DoubleSide }),
+  // ⏳ Time：普通混色（日頭都見到）嘅金色鐘 + 白色搖搖眼
+  clockGold: new THREE.MeshBasicMaterial({ color: 0xffc400 }),
+  clockWhite: new THREE.MeshBasicMaterial({ color: 0xfffde7 }),
+  clockCyan: new THREE.MeshBasicMaterial({ color: 0x18ffff }),
+  clockGlow: additiveBasic({ color: 0xffd54f, map: tex('glow'), opacity: 0.55, side: THREE.DoubleSide }),
+  clockDial: additiveBasic({ color: 0xffd740, map: tex('clockDial'), opacity: 0.7, side: THREE.DoubleSide }),
+  eyeWhite: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  eyeRim: new THREE.MeshBasicMaterial({ color: 0x1b1b1b }),
+  eyePupil: new THREE.MeshBasicMaterial({ color: 0x0d0d0d }),
+  blush: new THREE.MeshBasicMaterial({ color: 0xff80ab, transparent: true, opacity: 0.75, depthWrite: false }),
 };
+// ⏳ 時鐘光環零件（全部共用）：圈、12 格刻度（焊埋一個形狀）、針（原點喺針尾）
+const clockRingGeo = new THREE.TorusGeometry(1, 0.07, 8, 56);
+const clockInnerGeo = new THREE.TorusGeometry(0.84, 0.025, 6, 48);
+const clockTickGeo = (() => {
+  const parts = [];
+  for (let i = 0; i < 12; i++) {
+    const big = i % 3 === 0;
+    const b = new THREE.BoxGeometry(big ? 0.09 : 0.05, big ? 0.22 : 0.13, 0.04);
+    b.translate(0, 0.84 - (big ? 0.11 : 0.065), 0);
+    b.rotateZ((i / 12) * TAU);
+    b.deleteAttribute('uv');
+    parts.push(b);
+  }
+  return mergeGeometries(parts, false);
+})();
+const handGeo = (len, w) => new THREE.BoxGeometry(w, len, 0.04).translate(0, len / 2 - 0.05, 0.03);
+const clockHourGeo = handGeo(0.48, 0.09);
+const clockMinGeo = handGeo(0.7, 0.06);
+const clockDotGeo = new THREE.CircleGeometry(0.1, 16).translate(0, 0, 0.06);
+const glowPlaneGeo = new THREE.PlaneGeometry(1, 1);
+// 搖搖眼：一粒波（壓扁），眼白、黑邊、眼珠、反光、面珠全部用佢
+const eyeBallGeo = new THREE.SphereGeometry(1, 18, 12);
 const rockGeo = new THREE.DodecahedronGeometry(1, 0);
 const crystalGeo = new THREE.OctahedronGeometry(1, 0).scale(0.32, 1, 0.32).translate(0, 0.7, 0);
 // 😈 彎角：一節節收窄，底深紅、尖端橙黃（MeshBasic = 自己發光）
@@ -827,7 +887,233 @@ const BUILD = {
       },
     };
   },
+  // ⏳ Time：可愛搖搖眼 + 時鐘光環 + 地上時鐘圈 + 星光
+  time(e) {
+    const head = findHead(e);
+    // 地上時鐘圈（慢慢轉）
+    const dial = new THREE.Mesh(unitPlane, MAT.clockDial);
+    dial.position.set(e.c.x, e.minY + (0.025 + e.layer * 0.008) * e.s, e.c.z);
+    dial.renderOrder = 1;
+    // 頭頂時鐘光環：face 永遠面向鏡頭（好似天使光環咁浮喺頭頂）
+    const hr = Math.min(Math.max(0.24 * e.s, head.w * 0.62), 0.4 * e.s);
+    const clock = new THREE.Group();
+    const face = new THREE.Group();
+    clock.add(face);
+    const glow = new THREE.Mesh(glowPlaneGeo, MAT.clockGlow);
+    glow.scale.setScalar(3.1);
+    glow.renderOrder = 1;
+    const ring = new THREE.Mesh(clockRingGeo, MAT.clockGold);
+    const inner = new THREE.Mesh(clockInnerGeo, MAT.clockWhite);
+    const ticks = new THREE.Mesh(clockTickGeo, MAT.clockGold);
+    const hourHand = new THREE.Mesh(clockHourGeo, MAT.clockGold);
+    const minHand = new THREE.Mesh(clockMinGeo, MAT.clockCyan);
+    const dot = new THREE.Mesh(clockDotGeo, MAT.clockWhite);
+    face.add(glow, ring, inner, ticks, hourHand, minHand, dot);
+    face.scale.setScalar(hr);
+    const haloY = Math.max(e.maxY, head.top) + hr * 1.05;
+    clock.position.set(head.x, haloY, head.z + head.d * 0.3);
+    const stars = cloud(e, 26, 'star', true, { colors: pal(0xffd740, 0xfff59d, 0x18ffff, 0xffffff) });
+    e.g.add(dial, clock, stars.pts);
+    // 搖搖眼：貼喺個頭（跟住個頭郁）
+    const eyes = buildGooglyEyes(e, head);
+    const born = { t: null };
+    return {
+      anchor: stars.pts,
+      secondary: [dial],
+      update(t, mul, lod = 0) {
+        if (born.t == null && t > 0) born.t = t; // 第一次真正郁先開始計（整嗰陣嗰下 t = 0 唔算）
+        const pop = born.t == null ? 0.001 : popIn(t - born.t); // 啱啱變／啱啱擺出嚟：眼同光環「啵」一聲彈出嚟
+        // 時鐘：面向鏡頭、浮下浮下、針慢慢行
+        awayDir(e);
+        face.rotation.set(0.12, Math.atan2(-_dir.x, -_dir.z), 0, 'YXZ');
+        clock.position.y = haloY + Math.sin(t * 1.6 + e.seed * 5) * 0.06 * e.s;
+        clock.scale.setScalar(pop);
+        minHand.rotation.z = -t * 1.3;
+        hourHand.rotation.z = -t * 0.11 - e.seed * 6;
+        dial.scale.setScalar(e.R * 2.4 * pop);
+        dial.rotation.y = -t * 0.3;
+        // 星光：慢慢螺旋升，一閃一閃
+        const n = cnt(26, mul);
+        const S = stars.seeds;
+        for (let i = 0; i < n; i++) {
+          emberParticle(e, stars, i, t, { speed: 0.22, rise: 1.25, size: 0.13 });
+          stars.alpha[i] *= 0.55 + 0.45 * Math.abs(Math.sin(t * (2 + 3 * S[i * 4 + 1]) + S[i * 4 + 2] * 30));
+        }
+        flush(stars, n);
+        if (eyes) {
+          eyes.box.scale.setScalar(pop);
+          if (lod < 2) wobbleEyes(eyes, t);
+        }
+      },
+    };
+  },
+
 };
+
+// ---------- ⏳ Time 用 ----------
+// 彈出嚟：0 → 大少少 → 1（大約 0.7 秒）
+function popIn(age) {
+  if (age >= 0.7) return 1;
+  const k = Math.max(0, age / 0.7);
+  return Math.max(0.001, 1 - Math.cos(k * Math.PI * 2.5) * Math.exp(-k * 5) * (1 - k * 0.2));
+}
+
+// 搵個頭：上半身最前（-z，動物全部面向 -z）嗰堆零件；用最大嗰件做「頭」（眼貼喺佢前面）
+// 回傳（寵物自己座標）：x、y（眼高度）、z（面）、w（頭闊）、top、d、size（眼大細）、parent（貼眼用）
+const _bb = new THREE.Box3();
+const _mi = new THREE.Matrix4();
+function findHead(e) {
+  const model = e.model;
+  model.updateWorldMatrix(true, true);
+  _mi.copy(model.matrixWorld).invert();
+  const parts = [];
+  model.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || !o.geometry?.attributes.position) return;
+    for (let p = o; p && p !== model; p = p.parent) if (p.userData.isMutationAura || p.visible === false) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const box = o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(_mi, o.matrixWorld));
+    if (box.isEmpty()) return;
+    const sz = box.getSize(V(0, 0, 0));
+    parts.push({ o, box, vol: Math.max(sz.x, 1e-4) * Math.max(sz.y, 1e-4) * Math.max(sz.z, 1e-4) });
+  });
+  if (!parts.length) return { x: e.c.x, y: e.minY + e.H * 0.75, z: e.c.z - e.depth * 0.5, w: e.width * 0.5, top: e.maxY, d: e.depth * 0.3, parent: model, size: 0.12 * e.s };
+  // 用零件自己計大細（e.H／e.depth 係由世界方框計返嚟，寵物斜咗嗰陣會大咗，唔準）
+  _bb.makeEmpty();
+  for (const p of parts) _bb.union(p.box);
+  const minY = _bb.min.y;
+  const H = _bb.max.y - _bb.min.y;
+  const depth = _bb.max.z - _bb.min.z;
+  const upper = parts.filter((p) => (p.box.min.y + p.box.max.y) / 2 > minY + H * 0.42);
+  const pool = upper.length ? upper : parts;
+  const front = Math.min(...pool.map((p) => p.box.min.z));
+  const reach = Math.max(0.35 * depth, 0.15 * e.s);
+  const near = pool.filter((p) => p.box.min.z < front + reach);
+  // 「頭」：前面嗰堆入面又大、又近前、又高嗰件（細細粒嘅鼻、眼唔算；身體、長頸大但喺後面／低啲，唔好揀咗佢）
+  const score = (p) => Math.sqrt(p.vol) * Math.max(0.02, 1 - (p.box.min.z - front) / reach) ** 2 * (0.3 + ((p.box.min.y + p.box.max.y) / 2 - minY) / Math.max(1e-4, H)) ** 2;
+  const big = (near.length ? near : pool).reduce((a, b) => (score(b) > score(a) ? b : a));
+  const hb = big.box;
+  const hs = hb.getSize(V(0, 0, 0));
+  _bb.makeEmpty();
+  for (const p of near) _bb.union(p.box);
+  const w = Math.max(hs.x, 0.05 * e.s);
+  return {
+    x: (hb.min.x + hb.max.x) / 2,
+    y: hb.min.y + hs.y * 0.66,
+    z: hb.min.z,
+    w,
+    top: _bb.isEmpty() ? hb.max.y : Math.max(hb.max.y, _bb.max.y),
+    d: hs.z,
+    parent: big.o.parent || model,
+    size: Math.min(Math.max(w * 0.27, 0.07 * e.s), Math.max(hs.y * 0.42, 0.06 * e.s), 0.24 * e.s),
+  };
+}
+
+// 一對搖搖眼（眼白 + 黑邊 + 眼珠 + 反光點）+ 粉紅面珠
+function buildGooglyEyes(e, head) {
+  const parent = head.parent || e.model;
+  // 容器：由寵物座標轉去個頭嘅座標（之後個頭郁，眼跟住郁）
+  const root = new THREE.Group();
+  root.userData.isMutationAura = true;
+  parent.updateMatrixWorld(true);
+  new THREE.Matrix4().copy(parent.matrixWorld).invert().multiply(e.model.matrixWorld).decompose(root.position, root.quaternion, root.scale);
+  const holder = new THREE.Group(); // 眼喺呢度（scale 用嚟「啵」出嚟）
+  holder.position.set(head.x, head.y, head.z);
+  root.add(holder);
+  const r = head.size;
+  const list = [];
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Group();
+    eye.position.set(side * r * 1.02, side * r * 0.06, -r * 0.18); // 一隻高少少：傻啲
+    eye.rotation.y = side * 0.18;
+    const rim = new THREE.Mesh(eyeBallGeo, MAT.eyeRim);
+    rim.scale.set(r * 1.1, r * 1.1, r * 0.5);
+    const white = new THREE.Mesh(eyeBallGeo, MAT.eyeWhite);
+    white.scale.set(r, r, r * 0.55);
+    white.position.z = -r * 0.04;
+    const pupil = new THREE.Group();
+    const dark = new THREE.Mesh(eyeBallGeo, MAT.eyePupil);
+    dark.scale.set(r * 0.46, r * 0.46, r * 0.18);
+    const shine = new THREE.Mesh(eyeBallGeo, MAT.eyeWhite);
+    shine.scale.set(r * 0.13, r * 0.13, r * 0.06);
+    shine.position.set(r * 0.14, r * 0.15, -r * 0.12);
+    pupil.add(dark, shine);
+    pupil.position.z = -r * 0.56;
+    eye.add(rim, white, pupil);
+    holder.add(eye);
+    // 粉紅面珠
+    const blush = new THREE.Mesh(eyeBallGeo, MAT.blush);
+    blush.scale.set(r * 0.42, r * 0.24, r * 0.08);
+    blush.position.set(side * r * 1.75, -r * 1.05, r * 0.02);
+    blush.renderOrder = 2;
+    holder.add(blush);
+    list.push({ pupil, ox: side * 0.1, oy: -0.1, vx: 0, vy: 0, side });
+  }
+  root.traverse((o) => {
+    o.castShadow = false;
+    o.receiveShadow = false;
+  });
+  parent.add(root);
+  return { box: holder, root, list, r, last: null, prevV: null, kick: 0, lastT: null };
+}
+
+// 眼珠物理：好似真嘅搖搖眼——跟住郁（慣性）、有少少地心吸力、撞到邊會彈返
+const _wp = new THREE.Vector3();
+const _wq = new THREE.Quaternion();
+const _acc = new THREE.Vector3();
+function wobbleEyes(eyes, t) {
+  const dt = eyes.lastT == null ? 0 : Math.min(0.05, Math.max(0, t - eyes.lastT));
+  eyes.lastT = t;
+  eyes.box.getWorldPosition(_wp);
+  eyes.box.getWorldQuaternion(_wq).invert();
+  const ws = _s.setFromMatrixColumn(eyes.box.matrixWorld, 0).length() || 1;
+  const eyeR = Math.max(1e-4, eyes.r * ws); // 眼喺世界有幾大
+  _acc.set(0, 0, 0);
+  if (dt > 0 && eyes.last) {
+    const vx = (_wp.x - eyes.last.x) / dt;
+    const vy = (_wp.y - eyes.last.y) / dt;
+    const vz = (_wp.z - eyes.last.z) / dt;
+    if (eyes.prevV) _acc.set((vx - eyes.prevV.x) / dt, (vy - eyes.prevV.y) / dt, (vz - eyes.prevV.z) / dt);
+    eyes.prevV = { x: vx, y: vy, z: vz };
+  }
+  eyes.last = { x: _wp.x, y: _wp.y, z: _wp.z };
+  // 世界嘅加速度（慣性：眼珠向相反方向甩）→ 眼自己嘅方向（x 右、y 上）；以眼嘅大細計（大細寵物都一樣咁傻）
+  _acc.multiplyScalar(-0.012 / eyeR).applyQuaternion(_wq);
+  const fx = Math.max(-60, Math.min(60, _acc.x));
+  const fy = Math.max(-60, Math.min(60, _acc.y)) - 1.4; // 少少地心吸力：眼珠鍾意跌落去
+  // 隔一陣自己「震一震」（企定都會郁）
+  if (t > eyes.kick) {
+    eyes.kick = t + 0.9 + Math.random() * 2.2;
+    for (const p of eyes.list) {
+      p.vx += (Math.random() - 0.5) * 5;
+      p.vy += Math.random() * 3 + 1;
+    }
+  }
+  const MAX = 0.42;
+  for (const p of eyes.list) {
+    if (dt > 0) {
+      // 好軟嘅彈簧 + 阻力 + 少少自己搖
+      p.vx += (fx - p.ox * 9 - p.vx * 2.2 + Math.sin(t * 3.1 + p.side) * 1.5) * dt;
+      p.vy += (fy - p.oy * 9 - p.vy * 2.2 + Math.cos(t * 2.3 + p.side * 2) * 1.5) * dt;
+      p.ox += p.vx * dt;
+      p.oy += p.vy * dt;
+      const d = Math.hypot(p.ox, p.oy);
+      if (d > MAX) {
+        // 撞邊：退返入去 + 反彈
+        const nx = p.ox / d;
+        const ny = p.oy / d;
+        p.ox = nx * MAX;
+        p.oy = ny * MAX;
+        const vn = p.vx * nx + p.vy * ny;
+        if (vn > 0) {
+          p.vx -= 1.6 * vn * nx;
+          p.vy -= 1.6 * vn * ny;
+        }
+      }
+    }
+    p.pupil.position.x = p.ox * eyes.r;
+    p.pupil.position.y = p.oy * eyes.r;
+  }
+}
 
 // 👻 Spectral 分身用：成隻寵物焊做一個形狀（只要位置），同一款動物共用
 const ghostCache = new Map();
@@ -898,7 +1184,7 @@ export function addFireAura(model, kind = 'fire') {
   // 量大細時唔計之前嘅特效（每層都用返寵物本身嘅大細，唔會一層大過一層）
   const prev = Object.values(model.userData.fireAuras);
   prev.forEach((g) => model.remove(g));
-  model.updateMatrixWorld(true);
+  model.updateWorldMatrix(true, true); // 連埋上面嘅 group 一齊更新（上面啱啱郁咗都計啱大細）
   const world = new THREE.Box3().setFromObject(model);
   prev.forEach((g) => model.add(g));
   if (world.isEmpty()) return;
@@ -940,6 +1226,12 @@ export function addFireAura(model, kind = 'fire') {
   model.userData.auraLayers = (model.userData.auraLayers || 0) + 1;
   fx.update(0, 1, 0); // 第一格已經有嘢睇
   all.add(e);
+  (model.userData.auraEntries ??= []).push(e);
+}
+
+// 自己畫嘅場景（例如變異動畫 src/mutateFx.js，嗰陣主畫面暫停緊）：直接郁呢隻寵物嘅特效
+export function animateModelAuras(model, time) {
+  for (const e of model.userData.auraEntries || []) e.update(time, QUALITY_MUL[quality], 0);
 }
 const _tmp2 = new THREE.Vector2();
 
