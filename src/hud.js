@@ -15,6 +15,7 @@ import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
 import { petPic } from './animalPics.js'; // Index／寵物清單嘅動物相
+import { openIndexViewer } from './indexViewer.js'; // 📖🔍 Index 撳動物 → 3D 睇圖（2026-11-03）
 import { adminHtml } from './adminPanel.js'; // 🔐 Secret Ranger Control Panel
 import { rodShopHtml, currentRod } from './rodShop.js'; // 🎣 Halloween 魚竿舖
 import { gearInfo, gearStacks } from './data/gears.js'; // ⚙️ 背包 Gears（Issue #10）
@@ -503,6 +504,8 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
   location.reload();
 });
 document.getElementById('panel-body').addEventListener('click', (e) => {
+  const viewCard = e.target.closest('[data-view]'); // 📖🔍 搵到咗嘅動物：開 3D 睇圖
+  if (viewCard && openPanelKind === 'index') return openIndexViewer(viewCard.dataset.view, { skinSwatch: PET_SWATCH });
   const tabButton = e.target.closest('button[data-tab]');
   if (tabButton && openPanelKind === 'index') {
     indexTab = tabButton.dataset.tab;
@@ -559,6 +562,7 @@ document.getElementById('panel-body').addEventListener('click', (e) => {
 
 // Index 面板有三個分頁：動物、跑步機、學生桌
 let indexTab = 'animals';
+const viewAttr = (name) => String(name).replace(/&/g, '&amp;').replace(/"/g, '&quot;'); // 卡上面 data-view = 動物名（撳開 3D）
 // 有咗嘅寵物（例如控制面板俾嘅）都當「搵到」，唔會喺 Index 顯示 ???（唔俾新物種獎金）
 function syncOwnedToIndex() {
   for (const p of [...(state.pets || []), ...(state.borrowed || [])]) if (p?.name && !state.indexFound.includes(p.name)) state.indexFound.push(p.name);
@@ -628,7 +632,7 @@ function animalIndexHtml() {
       <div class="cards">`;
     for (const a of animals) {
       html += state.indexFound.includes(a.name)
-        ? `<div class="card-animal">${petPic(a.name)}<b>${a.name}</b><small>${a.status}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name)}<b>${a.name}</b><small>${a.status}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
         : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not rescued yet</small></div>`;
     }
     html += '</div>';
@@ -648,7 +652,7 @@ function specialIndexHtml() {
     html += `<h3>${hb.emoji} ${hb.name} <span class="count">${got}/${pets.length}${got === pets.length ? ' ✅' : ''}</span></h3><div class="cards">`;
     for (const a of pets) {
       html += state.indexFound.includes(a.name)
-        ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
         : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not hatched yet</small></div>`;
     }
     html += '</div>';
@@ -659,7 +663,7 @@ function specialIndexHtml() {
     <p class="reward">Buy a Zombified Chest from 🧟🐕 Zonko at the Spawn Ruins!</p><div class="cards">`;
   for (const a of CHEST_PETS) {
     html += state.indexFound.includes(a.name)
-      ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+      ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
       : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
   }
   html += '</div>';
@@ -669,7 +673,7 @@ function specialIndexHtml() {
     <p class="reward">Open a Meteoric Chest (or buy the Cosmic Arcadragon) at the ☄️ Meteoric Shop next to the Magic Library!</p><div class="cards">`;
   for (const a of METEOR_PETS) {
     html += state.indexFound.includes(a.name)
-      ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+      ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
       : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
   }
   html += '</div>';
@@ -683,7 +687,7 @@ function specialIndexHtml() {
       <p class="reward">${how}</p><div class="cards">`;
     for (const a of list) {
       html += state.indexFound.includes(a.name)
-        ? `<div class="card-animal">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
         : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
     }
     html += '</div>';
