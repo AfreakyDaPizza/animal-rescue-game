@@ -234,7 +234,7 @@ export const LAB_LEGENDARY_NEEDED = 3; // 要交幾多隻 Legendary
 // ---- Issue #4（2026-10-17）：三個 Phase，玩家唔會扣血（俾打中只係彈返起點）----
 export const LAB_P1_HITS = 12; // Phase 1：用球棒打佢幾多下
 export const LAB_P2_HITS = 24; // Phase 2：用球棒打佢幾多下
-export const LAB_P3_CAPSULES = 1; // Phase 3：要帶佢隻手拍落幾多次 Solar Capsule
+export const LAB_P3_CAPSULES = 1; // （舊 Phase 3，冇用咗：而家 Phase 3 係 POD BALL，睇下面 LAB_POD_CHARGE_HITS）
 export const LAB_LAVA_EVERY = 5; // Phase 1：每幾秒佢腳底出一灘熔岩
 export const LAB_LAVA_SECONDS = 7; // 熔岩留幾耐
 export const LAB_P2_SPAWN_EVERY = 9; // Phase 2：每幾秒叫 1–2 個 Boss／動物
@@ -255,6 +255,19 @@ export const LAB_SQUASH_WARNING = 0.6; // 紅框停低之後，再過幾多秒�
 export const LAB_TIRED_SECONDS = 30; // 佢攰咗幾多秒（呢段時間要帶佢隻手拍落 Solar Energy Capsule）
 export const LAB_CAPSULE_HITS = 4; // 要拍中幾多次 Capsule 先打得低佢
 export const LAB_REWARD = 1000; // 打贏 Owner 俾你幾多錢
+// ---- ⚡ Phase 3: POD BALL (kid's request 2026-11-03) ----
+// The mech breaks apart and he curls into a big armoured POD BALL that charges at you.
+// Lead it into the big Solar Capsules: each capsule zaps it with a big electric CHARGE.
+export const LAB_POD_CHARGE_HITS = 3; // How many capsule CHARGES to beat the pod ball (there are 4 capsules)
+export const LAB_POD_SIZE = 2.4; // Ball radius in metres (bigger = easier to hit capsules, harder to dodge)
+export const LAB_POD_TRANSFORM_SECONDS = 3; // How long the "mech breaks into a ball" show lasts
+export const LAB_POD_CHARGE_SPEED = 24; // How fast it CHARGES at you (metres per second)
+export const LAB_POD_ROLL_SPEED = 6; // How fast it rolls after you between charges
+export const LAB_POD_WINDUP = 1.3; // Warning time before a charge (red line on the ground). Bigger = easier
+export const LAB_POD_CHARGE_SECONDS = 2.2; // Longest a single charge lasts
+export const LAB_POD_TURN = 0.5; // How much it can steer while charging (0 = straight line only)
+export const LAB_POD_REST = 1.6; // Seconds it rolls slowly after a charge, before the next warning
+export const LAB_POD_STUN = 3; // Seconds it stays stunned after a capsule CHARGE zaps it
 
 // ---- 💪 GYM（小朋友 2026-10-18）：實驗室爆炸之後喺前院隔籬出現，到呢日先開門 ----
 // 日子格式：'年-月-日'。想早啲試？改做今日嘅日子就得

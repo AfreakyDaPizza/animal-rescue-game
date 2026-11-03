@@ -190,6 +190,7 @@ src/data/questions.js ← 野生動物問題
 12. 以後加地方：前院（`YARD`）兩邊可以再開路（例如閘外海灘睇流星），秘密結局「THE COLLAB」未做。
 
 測試（開發模式 console）：`game.lab.unlock()`（好似撳紅色掣）、`game.lab.open()`、`game.lab.hammer()`、`game.lab.smashAll()`、`game.lab.legendary(3)`、`game.lab.arena()`／`game.lab.start()`（直接入 Arena 開打）、`game.lab.god = true`（唔會俾打中）、`game.lab.attack('drones'|'animals'|'portal')`、`game.lab.tired()`、`game.lab.hitCapsule()`、`game.lab.ending()`、`game.lab.fight.timeScale = 3`（快轉）、`game.lab.reset()`（清晒實驗室進度）。
+- ⚡ Phase 3 POD BALL（小朋友 2026-11-03）：Phase 2 打完 → 機械人爆開（碎片、火花、閃光）縮埋做有盔甲嘅大鐵波（`src/labPodBall.js` 模型／效果／畫面提示；玩法喺 `labBoss.js` 嘅 `updateBall`）。波會滾去追你，紅線警告（`LAB_POD_WINDUP`）之後衝你，撞中 = 彈飛（同其他招一樣），之後波滾返場中間先再追。畫面大字「⚡ Lead the POD BALL into the SOLAR CAPSULES!」+ 箭咀 + 地上黃色箭咀指去最近嘅 Capsule。波撞落未用嘅 Capsule → 大電（暈 `LAB_POD_STUN` 秒），電夠 `LAB_POD_CHARGE_HITS`（3）次 → 波爆開、科學家跌出嚟 → 照舊播結局。數值 `LAB_POD_*` 喺 balance.js（英文註解俾小朋友改）。測試：`game.lab.stage3()`（入 Arena + 睇變身）、`game.lab.stage3(true)`（即刻變波）、`game.lab.hitCapsule()`（電一下）；`game.lab.tired()` 而家都係跳去 Phase 3。
 
 ## 💪 Ranger Gym（小朋友 2026-10-18）
 1. 小朋友再改：實驗室爆炸之後**實驗室冇咗**（`labStatus.gone`，`src/labShape.js`；`lab.building` 同佢嘅撞嘢一齊拎走），Gym 喺實驗室原位（大門向前院，z = 100）。`src/gym.js` 用「設計座標」（`GYM_LOCAL`，大門向 +x）起，成座轉 90° 搬過去（`gymToWorld`／`gymToLocal`）；世界座標 `GYM`／`GYM_DOOR`／`GYM_PORTAL` 俾 main.js、world.js 用。Gym 嘅撞嘢同彈床石台未出現就唔放入世界（`setGymPresent`）。爆炸動畫：煙最濃嗰下實驗室冇咗，Gym 由地底升上嚟，之後影 Gym 大門同前院嘅傳送門，玩完企喺 Gym 門口（`GYM_FRONT`）。

@@ -2035,6 +2035,7 @@ renderer.setAnimationLoop((timestamp) => {
     // 背景音樂跟住情況轉：俾 Boss 追 > 夜晚 > 生態區 > Hub
     const labHit = updateLabFight(fight, dt, time, {
       x: pos.x, z: pos.z, feetY: player.feetY, inside: location === 'Boss Arena', safe: safeTime > 0 || !!fling || labDebug.god,
+      yaw: camera.rotation.y, // Phase 3 POD BALL：畫面箭咀要知你望邊
     });
     if (labHit) onLabHit(labHit);
     const labBattle = location === 'Boss Arena' && !['sleep', 'gone', 'defeated'].includes(fight.phase);
@@ -2229,8 +2230,13 @@ const labDebug = {
     labDebug.arena();
   },
   attack: (what) => debugFight(fight, what), // 'drones' | 'animals' | 'portal' | 'tired' | 'hit'
-  tired: () => debugFight(fight, 'tired'),
-  hitCapsule: () => debugFight(fight, 'hit'),
+  tired: () => debugFight(fight, 'tired'), // 而家 = 跳去 Phase 3（POD BALL 變身）
+  hitCapsule: () => debugFight(fight, 'hit'), // POD BALL 俾最近嘅 Capsule 電一下
+  // ⚡ 直接跳去 Phase 3：game.lab.stage3()（未喺 Arena 就先入 Arena）；game.lab.stage3(true) = 唔睇變身，即刻變波
+  stage3(skipTransform = false) {
+    if (whereIs(camera.position.x, camera.position.z) !== 'Boss Arena') labDebug.start();
+    debugFight(fight, skipTransform ? 'ball' : 'stage3');
+  },
   // 直接播結局：game.lab.ending()
   ending() {
     labDebug.open();
