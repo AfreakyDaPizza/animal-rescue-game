@@ -205,6 +205,7 @@ export const NEW_BIOME_DATE = '2026-10-24';
 export const FUSE_OPEN_DATE = '2026-10-22';
 
 // ---- ☄️ METEORIC 活動 + Meteoric Shop 開放日（小朋友 2026-10-22：同一日開）----
+export const METEOR_SHOP_ON = false; // ☄️ Meteoric Shop in the Hub (Issue #15: removed). true = bring it back. Things you already bought stay yours!
 export const METEOR_OPEN_DATE = '2026-10-24';
 // How good each rarity is when you put it IN (3 pets → score 0 to 12)
 export const FUSE_RARITY_SCORE = { Common: 0, Rare: 1, Epic: 2, Legendary: 3, Mythic: 4 };

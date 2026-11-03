@@ -15,7 +15,7 @@
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
-import { INDEX_NEW_SPECIES_REWARD, rarityInfo, METEOR_OPEN_DATE } from './data/balance.js';
+import { INDEX_NEW_SPECIES_REWARD, rarityInfo, METEOR_OPEN_DATE, METEOR_SHOP_ON } from './data/balance.js';
 
 // ☄️ 開放日（小朋友 2026-10-22：同 METEORIC 活動一齊，10 月 24 號開）；控制面板可以提早開（state.meteorEarly）
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -410,9 +410,11 @@ function ensureDom() {
 export function createMeteorShop({ scene, camera, openShop, teleport, resume, popup, announce, equipRanger }) {
   ensureDom();
   const shop = buildBuilding(scene);
+  shop.g.visible = METEOR_SHOP_ON; // Issue #15：收埋間舖（買咗嘅嘢照留）
   const api = { busy: false, openShop: () => openShop() }; // openShop：測試用（game.meteorShop.openShop()）
 
   api.update = (dt, t) => {
+    if (!METEOR_SHOP_ON) return;
     const s = shop;
     s.ring.material.opacity = 0.4 + Math.sin(t * 3) * 0.2;
     s.crystM.emissiveIntensity = 1.2 + Math.sin(t * 2.2) * 0.5;
@@ -440,7 +442,7 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
   };
 
   api.interaction = (pos) => {
-    if (api.busy) return null;
+    if (api.busy || !METEOR_SHOP_ON) return null;
     if (Math.hypot(pos.x - SHOP_SPOT.x, pos.z - SHOP_SPOT.z) > 2.6) return null;
     if (!isMeteorOpen()) return { prompt: `🔒 The Meteoric Shop opens on ${meteorOpenText()}, together with the ☄️ METEORIC event!` };
     return { prompt: `<kbd>E</kbd> ☄️ Open the Meteoric Shop (${GEM} ${short(crystalsOf())} crystals)`, action: () => { play('crystal'); openShop(); } };
