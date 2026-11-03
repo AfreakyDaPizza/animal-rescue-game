@@ -246,3 +246,5 @@ src/data/questions.js ← 野生動物問題
 - 新武器（魔法名，同 Soul Blaster 一樣規矩）：flamethrower → 🐉 Dragon Breath、daggers → 🗡️ Spirit Daggers、molotov → 🧪 Fire Potion、rocket launcher → 🎆 Firework Launcher、😡 Angry Spell（15 秒冷卻）。
 - Skill Tree 新增：🎒 Double Holster（`slots`，開局 2 支武器）、📦 Crate Finder、🔰 Shield Finder、🔥 Hot Hot Hot、⏳ Spell Master、🔋 Big Pockets。
 - 測試：`game.tower.boss('vampiro')`、`game.tower.only('bat', 3)`、`game.tower.angry()`、`game.tower.shieldChance = 1`、`game.towerFloors.theme('lava', 20)`。
+
+- 2026-11-03：Issue #15：收埋（唔係刪）Halloween 同 Meteor：`balance.js` 開關 `HALLOWEEN_ON`（Hub 傳送門 → 變返噴水池，`isHalloweenOpen` 一齊 false）、`METEOR_EVENT_ON`（METEORIC 活動 + `buildMeteorDecor`）、`METEOR_SHOP_ON`。玩家擁有嘅嘢照留。
