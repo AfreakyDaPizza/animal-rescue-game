@@ -5,6 +5,7 @@
 //   🌑 Eclipse：黑水晶 + 日蝕光圈            👻 Spectral：半透明青色 + 鬼仔 + 煙
 //   🟣 Phantom：紫羅蘭水晶 + 漩渦煙 + 新月
 //   😈 Demonic：紅黑水晶 + 頂上一對彎角 + 底下紅黑火 + 入面細惡魔笑臉（Issue #11）
+//   ⏳ Time：金色水晶 + 入面一個時鐘 + 後面一個金色時鐘圈（刻度）+ 青色星光（小朋友 2026-11-03）
 // 兩樣嘢：
 //   gearIcon(type)：2D canvas 畫 → data URL（背包卡、快捷欄、商店、控制台用）；畫一次就記住
 //   buildShardModel(type)：3D 水晶（快捷欄揀咗 Shard 時拎喺手）
@@ -25,6 +26,7 @@ const STYLES = {
   spectral: { body: ['#ffffff', '#84ffff', '#00838f'], glow: '#84ffff', accent: '#e0f7fa', motif: 'ghost', alpha: 0.78 },
   phantom: { body: ['#e1bee7', '#aa00ff', '#311b92'], glow: '#b388ff', accent: '#f3e5f5', motif: 'swirl' },
   demonic: { body: ['#ff8a80', '#d50000', '#1a0505'], glow: '#ff1744', accent: '#ffab00', motif: 'demon' }, // 😈 Issue #11
+  time: { body: ['#fffde7', '#ffca28', '#e65100'], glow: '#ffd54f', accent: '#18ffff', motif: 'clock' }, // ⏳ Time Shard
 };
 
 // 呢個 Gear 用邊個樣（冇 = null → 用 emoji）
@@ -445,6 +447,68 @@ const MOTIFS = {
   },
 };
 
+// ⏳ 時鐘：金色時鐘圈喺水晶後面（12 格刻度）+ 青色星光；水晶入面一個細鐘面
+MOTIFS.clock = {
+  back(c, st) {
+    c.save();
+    c.translate(128, 118);
+    c.shadowColor = st.glow;
+    c.shadowBlur = 16;
+    c.strokeStyle = st.glow;
+    c.lineWidth = 9;
+    c.beginPath();
+    c.arc(0, 0, 96, 0, Math.PI * 2);
+    c.stroke();
+    c.lineWidth = 3;
+    c.strokeStyle = '#fff8e1';
+    c.beginPath();
+    c.arc(0, 0, 84, 0, Math.PI * 2);
+    c.stroke();
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const r0 = i % 3 ? 78 : 70;
+      c.lineWidth = i % 3 ? 4 : 7;
+      c.strokeStyle = i % 3 ? '#ffe082' : '#ffffff';
+      c.beginPath();
+      c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+      c.lineTo(Math.cos(a) * 92, Math.sin(a) * 92);
+      c.stroke();
+    }
+    c.restore();
+    const r = rng(53);
+    for (let i = 0; i < 10; i++) sparkle(c, 20 + r() * 216, 20 + r() * 216, 4 + r() * 7, i % 2 ? st.accent : '#ffffff');
+  },
+  // 細鐘面：白底 + 兩支針（10:10，好似笑緊）
+  inside(c, st) {
+    c.save();
+    c.translate(0, 4);
+    c.shadowColor = '#ffffff';
+    c.shadowBlur = 10;
+    c.fillStyle = '#fffde7';
+    c.beginPath();
+    c.arc(0, 0, 25, 0, Math.PI * 2);
+    c.fill();
+    c.shadowBlur = 0;
+    c.lineWidth = 3;
+    c.strokeStyle = '#e65100';
+    c.stroke();
+    c.lineCap = 'round';
+    c.strokeStyle = '#3e2723';
+    for (const [a, len, w] of [[-2.1, 13, 4.5], [-1.0, 19, 3]]) {
+      c.lineWidth = w;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+      c.stroke();
+    }
+    c.fillStyle = st.accent;
+    c.beginPath();
+    c.arc(0, 0, 3.5, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  },
+};
+
 // 光環（橢圓）：from–to 角度（後半 / 前半分開畫，似圍住水晶）
 function ring(c, st, from, to) {
   c.save();
@@ -600,7 +664,37 @@ export function buildShardModel(type) {
       orbit.add(f);
     }
   }
+  let hands = null;
+  if (st.motif === 'clock') {
+    // ⏳ 一個企直嘅金色時鐘圈喺水晶後面 + 兩支會行嘅針
+    const gold = glowMaterial('#ffca28', '#ffb300', 1.5);
+    const clock = new THREE.Group();
+    clock.position.set(0, 0.1, -0.12);
+    clock.add(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.035, 6, 40), gold));
+    const tickGeo = new THREE.BoxGeometry(0.03, 0.09, 0.03);
+    for (let i = 0; i < 12; i++) {
+      const tk = new THREE.Mesh(tickGeo, i % 3 ? gold : glowMaterial('#ffffff', '#ffffff', 1.2));
+      const a = (i / 12) * TAU;
+      tk.position.set(Math.cos(a) * 0.42, Math.sin(a) * 0.42, 0);
+      tk.rotation.z = a - Math.PI / 2;
+      clock.add(tk);
+    }
+    hands = [0.3, 0.2].map((len, i) => {
+      const h = new THREE.Group();
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.035, len, 0.02), glowMaterial(i ? '#ffffff' : '#18ffff', i ? '#ffffff' : '#00e5ff', 1.4));
+      m.position.y = len / 2;
+      h.add(m);
+      h.position.z = 0.03;
+      clock.add(h);
+      return h;
+    });
+    g.add(clock);
+  }
   g.userData.animate = (t) => {
+    if (hands) {
+      hands[0].rotation.z = -t * 2.4;
+      hands[1].rotation.z = -t * 0.4;
+    }
     spin.rotation.y = t * 1.2;
     orbit.rotation.y = -t * 2;
     g.position.y = (g.userData.baseY ?? 0) + Math.sin(t * 2.4) * 0.04;

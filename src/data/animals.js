@@ -1,7 +1,7 @@
 // 50 隻瀕危動物（原稿 30 隻 + 小朋友加嘅每區 2 隻 + Biome 6 嘅 10 隻）（原稿：docs/design-prompt.md）
 // biome：0 = Biome 1 … 4 = Biome 5
 // status：IUCN 紅色名錄保育狀況（2026 年資料，有啲物種係「整體唔算瀕危，但部分族群好危險」）
-import { petMoney, FIRE_MONEY, ECLIPSE_MONEY, SPECTRAL_MONEY, PHANTOM_MONEY, METEORIC_MONEY, ASTRAL_MONEY, DEMONIC_MONEY } from './balance.js';
+import { petMoney, FIRE_MONEY, ECLIPSE_MONEY, SPECTRAL_MONEY, PHANTOM_MONEY, METEORIC_MONEY, ASTRAL_MONEY, DEMONIC_MONEY, TIME_MONEY } from './balance.js';
 import { HALLOWEEN_PETS } from './halloween.js'; // 🎃 Halloween 蛋寵物（唔喺 ANIMALS：唔會喺普通生態區出）
 export { HALLOWEEN_PETS };
 import { CHEST_PETS } from './echoChest.js'; // 🐕 Echo 嘅 Zombified Chest 寵物（淨係箱度開到）
@@ -196,7 +196,8 @@ export const formatKg = (kg) => `${kg.toLocaleString('en-US')} kg`;
 // 🎃 Halloween（Halloween Shard）：👻 Spectral ×4、🟣 Phantom ×5
 // ☄️ Meteoric ×5（Meteoric Shard）、🌌 Astral ×8（Meteoric Chest）（小朋友 Issue #10）
 // 😈 Demonic ×10（Demonic Shard，Witch Tower 獎品，小朋友 Issue #11）
-export const MUTATIONS = ['fire', 'eclipse', 'spectral', 'phantom', 'meteoric', 'astral', 'demonic'];
+// ⏳ Time ×6（Time Shard：每 1–10 分鐘由天跌落嚟，src/timeShard.js；樣：可愛大眼 + 時鐘光環，小朋友 2026-11-03）
+export const MUTATIONS = ['fire', 'eclipse', 'spectral', 'phantom', 'meteoric', 'astral', 'demonic', 'time'];
 const MUTATION_INFO = {
   fire: { emoji: '🔥', name: 'FIRE', color: '#ff6d00', money: FIRE_MONEY },
   eclipse: { emoji: '🌑', name: 'ECLIPSE', color: '#ea80fc', money: ECLIPSE_MONEY },
@@ -205,6 +206,7 @@ const MUTATION_INFO = {
   meteoric: { emoji: '☄️', name: 'METEORIC', color: '#40c4ff', money: METEORIC_MONEY },
   astral: { emoji: '🌌', name: 'ASTRAL', color: '#b388ff', money: ASTRAL_MONEY },
   demonic: { emoji: '😈', name: 'DEMONIC', color: '#ff1744', money: DEMONIC_MONEY },
+  time: { emoji: '⏳', name: 'TIME', color: '#ffd54f', money: TIME_MONEY },
 };
 export const mutationInfo = (m) => MUTATION_INFO[m];
 export const mutationList = (x) => {

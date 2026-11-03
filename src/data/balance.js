@@ -81,6 +81,11 @@ export const PHANTOM_MONEY = 5; // 🟣 PHANTOM pets (from a Halloween Shard) ea
 export const METEORIC_MONEY = 5; // ☄️ METEORIC pets (from a Meteoric Shard) earn this many times more money
 export const ASTRAL_MONEY = 8; // 🌌 ASTRAL pets earn this many times more money
 export const DEMONIC_MONEY = 10; // 😈 DEMONIC pets (Demonic Shard / Witch Tower) earn this many times more money
+export const TIME_MONEY = 6; // ⏳ TIME pets (cute googly eyes + clock halo, from a Time Shard) earn this many times more money - change it if you like!
+// ⏳ A Time Shard falls from the sky near you every random TIME_SHARD_MIN to TIME_SHARD_MAX minutes of play time
+export const TIME_SHARD_MIN = 1; // shortest wait (minutes)
+export const TIME_SHARD_MAX = 10; // longest wait (minutes)
+export const TIME_SHARD_STAY = 2; // minutes before a Time Shard on the ground fades away if nobody picks it up
 
 // ---- 圖鑑獎勵：第一次登記一種動物、集齊一個生態區 ----
 export const INDEX_NEW_SPECIES_REWARD = [20, 100, 500, 3000, 20000, 150000, 1500000, 2000000, 3000000, 5000000]; // last 3 = Halloween

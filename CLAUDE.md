@@ -66,6 +66,7 @@
 - 2026-10-23（夜）：Issue #13 修好（吸塵機淨係鬼鎮、武器出咗戰鬥區一定收埋：`weapons.update` 要 `zones.size>0`）；Issue #14 除第 11 點（全服公告要伺服器，等家長）全部上網；賣 Zombified Chest 改做 Zonko（喪屍狗，`buildZonko`），Echo 鬼魂狗留喺 questline；Castle Shop 淨係賣 demonic 皮膚 + Demonic/Eclipse Shard + Demonic Chest（`src/data/castleShop.js`）；開場藍色閃震 bug：`dt` 第一格可以係負數 → 而家 `Math.max(0, …)`。控制面板密碼 hash 喺 `src/adminGate.js`，Q 開面板、J 開 Quests。
 
 - 2026-10-25：🗼 Witch Tower 大更新（小朋友喺對話講）：擴充 API（新殭屍／Boss／樓層各自一個檔）、5 隻新殭屍、5 個新 Boss（Banshee Queen 係我哋揀）、9 款越高越恐怖嘅樓層、4% 跌盾、😡 Angry Spell 等 5 支新魔法武器、6 個新 Skill。詳情 `docs/plan.md`「Witch Tower 大更新」。
+- 2026-11-03：變異動畫（`src/mutateFx.js`：用 Shard 全畫面短片，自己一個 WebGL 畫布，可跳過）+ ⏳ TIME 變異（`TIME_MONEY`；樣喺 `fireAura.js` 嘅 `BUILD.time`：搖搖眼貼個頭 + 時鐘光環）+ Time Shard 每 1–10 分鐘由天跌（`src/timeShard.js`，`TIME_SHARD_MIN/MAX/STAY`；測試 `game.timeShard()`）。`addFireAura` 而家會先更新上面 group 嘅 matrix。
 
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。

@@ -8,12 +8,13 @@
 
 import { state, save } from './state.js';
 import { short as fmt } from './format.js';
-import { ANIMALS, findAnimal, kgOf, formatKg, itemMoney, sizeText, mutationInfo, applyMutation } from './data/animals.js';
+import { ANIMALS, findAnimal, kgOf, formatKg, itemMoney, sizeText, mutationInfo, mutationList, applyMutation } from './data/animals.js';
 import { rarityInfo } from './data/balance.js';
 import { GEARS, gearInfo, gearStacks, takeGear, isChestGear } from './data/gears.js';
 import { extraPanels, panelKind, mutationTags, hotbarItems, hotbarToolCount, assignHotbar, clearHotbar, hotbarHooks, uidOf, popup, announce, selectSlot } from './hud.js';
 import { petPic } from './animalPics.js';
 import { gearPic, gearIcon } from './gearArt.js'; // 💎 Shard 圖示
+import { playMutationFx } from './mutateFx.js'; // ✨ 變異動畫（小朋友 2026-11-03）
 
 const $ = (id) => document.getElementById(id);
 
@@ -140,10 +141,16 @@ function doMutate(pet) {
   save();
   // 🔮 Halloween Shard + 地塊上面嘅寵物：播傳送門動畫（好似 Steal an Egg）
   if (g.portal && pet.onPlot && ctx.portalMutate?.(pet, kind)) return;
-  mutatePet(pet, kind);
+  const before = mutationList(pet);
+  mutatePet(pet, kind); // 即刻改資料 + 存檔（播片中途閂網頁都唔會冇咗）
   const info = mutationInfo(kind);
-  ctx.play('shard');
-  setTimeout(() => ctx.play('magic'), 350);
+  rerender(); // 收起「揀寵物」橫額（動畫淡出時見到）
+  // ✨ 播變異動畫（src/mutateFx.js），播完先閃張卡 + 出大字
+  playMutationFx({ pet, kind, gearType: type, before, onDone: () => showMutated(pet, info) });
+}
+
+// 變異動畫播完：背包張卡閃一閃、面板頂大字
+function showMutated(pet, info) {
   burst = { pet, color: info.color };
   win = { text: `${info.emoji} ${pet.name} became <b>${info.name}</b>! (x${info.money} money)`, color: info.color };
   tab = isEndangered(pet) ? 'endangered' : 'animals';
