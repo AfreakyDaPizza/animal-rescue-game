@@ -28,7 +28,7 @@ export const multiplierCost = (mult = 1) => Math.round(MULTIPLIER_BASE_COST * MU
 //   iq: ALL IQ you get · table: Student Table gives more IQ (2x IQ + 2x Student Table = x4!)
 export const BOOSTS = [
   { id: 'speed', emoji: '⚡', name: '1.5x Speed', mult: 1.5, minutes: 5, cost: 50, text: 'Walk and run <b>1.5x faster</b>!' },
-  { id: 'money', emoji: '💰', name: 'Double Money', mult: 2, minutes: 10, cost: 120, text: 'All pets on your Plot make <b>2x money</b>!' },
+  { id: 'money', emoji: '💰', name: 'Double Money', mult: 2, minutes: 10, cost: 120, text: 'All pets in your Safety Zoo make <b>2x money</b>!' },
   { id: 'treadmill', emoji: '🏃', name: '2x Treadmill', mult: 2, minutes: 5, cost: 40, text: 'Treadmills give <b>2x Speed</b>!' },
   { id: 'iq', emoji: '🧠', name: '2x IQ', mult: 2, minutes: 5, cost: 60, text: 'Get <b>2x IQ</b> from everything!' },
   { id: 'table', emoji: '📚', name: '2x Student Table', mult: 2, minutes: 5, cost: 40, text: 'The Student Table gives <b>2x IQ</b>! With 2x IQ too it is <b>x4</b>!' },

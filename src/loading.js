@@ -38,7 +38,7 @@ const TIPS = {
   nature: [
     '🏃 Train on the Treadmill to get faster. Bosses are quick!',
     '🧠 Study at the Student Table to raise your IQ for the quizzes.',
-    '🥚 Put rescued animals in a Breeding Machine to get pets.',
+    '🥚 Put rescued animals in a Happy Machine to get pets.',
     '🌙 At night the biome gates close. Get back to the Hub in time!',
     '📖 Press I to open the Index and see every animal you saved.',
   ],

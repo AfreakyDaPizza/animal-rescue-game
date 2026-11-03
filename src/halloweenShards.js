@@ -129,7 +129,7 @@ export function createShards({ scene, camera, hub, refreshPlot, popup, announce,
       ],
       captions: [
         [0.2, '🔮 The Halloween Shard glows...'],
-        [1.3, '🌀 A Halloween portal opens above your Plot!'],
+        [1.3, '🌀 A Halloween portal opens above your Safety Zoo!'],
         [hits.length ? 5.6 : 3.4, resultText],
       ],
       update(t, dt) {

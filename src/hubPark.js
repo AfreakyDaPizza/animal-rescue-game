@@ -723,7 +723,7 @@ export function buildHubPark(root, live) {
     addCollider(s * 20.5, 40, 0.6);
   }
   add(root, rbox(42, 0.5, 0.6), pink, 0, 6.0, 40);
-  const lab = makeSign([{ text: '💗 BREEDING LAB', size: 0.5 }], 7, 1.2, THEMES.pink);
+  const lab = makeSign([{ text: '😊 HAPPY MACHINES', size: 0.5 }], 7, 1.2, THEMES.pink);
   lab.position.set(0, 6.9, 39.6);
   lab.rotation.y = Math.PI;
   live.add(lab);

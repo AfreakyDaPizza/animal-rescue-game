@@ -459,7 +459,7 @@ const dayNight = createDayNight({ scene, hemi, sun, sky }, () => {
   // 入夜：鎖住生態區，喺入面嘅人由護林員帶返 Hub
   gate.locked = true;
   play('night');
-  setTimeout(() => popup('🌙 Night bonus: Reproduce Machines are 10x faster!'), 3500);
+  setTimeout(() => popup('🌙 Night bonus: Happy Machines are 10x faster!'), 3500);
   if (camera.position.z < 0 && !inHalloween(camera.position.x, camera.position.z)) { // 🎃 Halloween 世界唔會俾人帶返 Hub
     if (rescue.carrying) {
       loseAnimal(rescue);
@@ -799,7 +799,7 @@ const hubActions = {
     const lv = upgradeMachines(hub);
     if (!lv) return;
     quest('upgrade');
-    announce(`💗 Reproduce Machines are now ${lv.name.toUpperCase()}! (${Math.round((1 - lv.timeFactor) * 100)}% faster)`);
+    announce(`💗 Happy Machines are now ${lv.name.toUpperCase()}! (${Math.round((1 - lv.timeFactor) * 100)}% faster)`);
     play('tierUp');
     save();
   },
@@ -807,7 +807,7 @@ const hubActions = {
     const skin = upgradePlot(hub);
     if (!skin) return;
     quest('upgrade');
-    announce(`🌿 Bigger Plot! New skin: ${skin.name}`);
+    announce(`🌿 Bigger Safety Zoo! New skin: ${skin.name}`);
     play('upgrade');
     save();
   },
@@ -1760,7 +1760,7 @@ function afterCollect(pets) {
   if (meteoric) announce(`☄️☄️ METEORIC MUTATION! Your ${meteoric.name} glows blue: x${mutationInfo('meteoric').money} money! 🐉`);
   else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
   play(giant || meteoric ? 'tierUp' : 'ding');
-  popup('Put it on your Plot to earn money!');
+  popup('Put it in your Safety Zoo to earn money!');
   save();
 }
 
@@ -2010,7 +2010,7 @@ renderer.setAnimationLoop((timestamp) => {
       announce(`🎉 ${animal.name} rescued!`);
       quest('rescue');
       play('rescue');
-      let extra = '<br>👉 Put it in a Reproduce Machine (bottom of the Hub)!';
+      let extra = '<br>👉 Put it in a Happy Machine (bottom of the Hub)!';
       if (reward) extra += `<br>📖 New species in your Index! +$${short(reward)}`;
       if (biomeBonus) extra += `<br>🏆 Biome complete! +$${short(biomeBonus)}`;
       showFact(animal, extra);

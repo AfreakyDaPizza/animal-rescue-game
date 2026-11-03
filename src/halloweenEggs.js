@@ -344,7 +344,7 @@ export function createHalloweenEggs(scene, camera, { teleport, onCaught } = {}) 
     hatchEffect(i, s.name, pet.rarity);
     play('crystal');
     setTimeout(() => play('rescue'), 350);
-    announce(`🐣 Your ${pet.rarity} ${s.name} hatched! It's in your backpack. Put it on your Plot in the Hub!`);
+    announce(`🐣 Your ${pet.rarity} ${s.name} hatched! It's in your backpack. Put it in your Safety Zoo in the Hub!`);
     if (reward) setTimeout(() => popup(`📖 New Halloween pet in your Index! +$${short(reward)}`), 1200);
   }
 

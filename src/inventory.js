@@ -57,7 +57,7 @@ function animalCard(e) {
   const g = mutateWith && gearInfo(mutateWith);
   const canMutate = g && e.kind === 'pet' && g.canUse(p);
   const draggable = !mutateWith && !e.onPlot;
-  const where = e.kind === 'rescued' ? '🎒 Rescued - needs a Reproduce Machine' : e.onPlot ? '🌿 On your Plot' : '🎒 In your backpack';
+  const where = e.kind === 'rescued' ? '🎒 Rescued - needs a Happy Machine' : e.onPlot ? '🌿 In your Safety Zoo' : '🎒 In your backpack';
   const cls = ['card-animal', 'inv-card', e.onPlot ? 'equipped' : '', draggable ? 'inv-drag' : '', picked === e.key ? 'inv-picked' : '', g ? (canMutate ? 'inv-can-mutate' : 'inv-no-mutate') : '', burst?.pet === p ? 'inv-burst' : ''].join(' ');
   return `<div class="${cls}" data-key="${e.key}" style="border-color:${r.color}">
     ${burst?.pet === p ? sparks(burst.color) : ''}
@@ -197,7 +197,7 @@ export function createInventory(opts) {
       }
       return;
     }
-    if (!card.classList.contains('inv-drag')) return popup('🌿 This pet is on your Plot. Unequip it first to put it in your hotbar!');
+    if (!card.classList.contains('inv-drag')) return popup('🌿 This pet is in your Safety Zoo. Unequip it first to put it in your hotbar!');
     picked = picked === card.dataset.key ? null : card.dataset.key; // 手機：撳卡 → 再撳一格
     ctx.play('click');
     rerender();

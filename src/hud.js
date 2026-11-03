@@ -319,7 +319,7 @@ export function renderHotbar() {
     : it?.kind === 'gear'
     ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - ${gearInfo(it.item.gear).chest ? (document.body.classList.contains('mobile') ? 'tap USE to open one (tap lots!)' : 'click or press E to open one (spam it!)') : 'press E or click to pick a pet to mutate!'}`
     : it
-    ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Reproduce Machine!' : 'put me on your Plot!'}`
+    ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Happy Machine!' : 'put me in your Safety Zoo!'}`
     : items.some(Boolean) ? '' : (document.body.classList.contains('mobile') ? 'Rescued animals and pets go here · tap 🎒 for your Inventory' : 'Rescued animals and pets go here · press ` for your Inventory');
 }
 
@@ -376,7 +376,7 @@ function statsHtml() {
     <p class="device-switch">🎮 Playing on: ${dev('pc', '💻 PC')} ${dev('mobile', '📱 Mobile')}</p>
     <table>
       <tr><td>💰 Money</td><td>$${fmt(state.money)}</td></tr>
-      <tr><td>💵 Plot earns</td><td>$${fmt(moneyPerSecond())} / sec</td></tr>
+      <tr><td>💵 Safety Zoo earns</td><td>$${fmt(moneyPerSecond())} / sec</td></tr>
       <tr><td>⚡ Speed</td><td>${fmt(state.speed)}</td></tr>
       <tr><td>🏃 Walk speed</td><td>${walkSpeed(state.speed).toFixed(1)} steps/sec</td></tr>
       <tr><td>🧠 IQ</td><td>${fmt(state.iq)}</td></tr>
@@ -386,10 +386,10 @@ function statsHtml() {
     </table>
     <h3>Pets (${state.pets.length})</h3>
     <ul>${list(state.pets, 'No pets yet - rescue an animal from a biome!', (p) =>
-      `<li>${findAnimal(p.name).emoji} <b style="color:${rarityInfo(p.rarity).color}">${p.rarity || 'Common'}</b> ${p.name} (${formatKg(kgOf(p))}) - ${p.onPlot ? `on Plot, $${fmt(itemMoney(p))}/sec` : `waiting to go on your Plot ($${fmt(itemMoney(p))}/sec)`}</li>`)}</ul>
+      `<li>${findAnimal(p.name).emoji} <b style="color:${rarityInfo(p.rarity).color}">${p.rarity || 'Common'}</b> ${p.name} (${formatKg(kgOf(p))}) - ${p.onPlot ? `in Safety Zoo, $${fmt(itemMoney(p))}/sec` : `waiting to go in your Safety Zoo ($${fmt(itemMoney(p))}/sec)`}</li>`)}</ul>
     <h3>Rescued, waiting for a machine (${state.borrowed.length})</h3>
     <ul>${list(state.borrowed, 'None.', (a) => `<li>${findAnimal(a.name).emoji} ${a.name} (${formatKg(kgOf(a))})</li>`)}</ul>
-    <h3>Reproduce Machines</h3>
+    <h3>Happy Machines</h3>
     <ul>${machines}</ul>
     <h3>Bosses</h3>
     <table>${BOSSES.map((b, i) => `<tr><td>Biome ${i + 1}: ${b.name}</td><td>${fmt(b.speed)} Speed · ${fmt(b.iq)} IQ</td></tr>`).join('')}</table>
@@ -407,8 +407,8 @@ function petsHtml() {
   const slots = plotSlots(state.plotLevel);
   const total = moneyPerSecond();
   const waiting = [
-    ...state.machines.filter(Boolean).map((m) => ({ ...m, where: '💗 In a Reproduce Machine' })),
-    ...state.borrowed.map((a) => ({ ...a, where: '🎒 Rescued - needs a Reproduce Machine' })),
+    ...state.machines.filter(Boolean).map((m) => ({ ...m, where: '💗 In a Happy Machine' })),
+    ...state.borrowed.map((a) => ({ ...a, where: '🎒 Rescued - needs a Happy Machine' })),
   ];
   if (!state.pets.length && !waiting.length) return '<p class="index-summary">No pets yet! Rescue an animal from a biome to get started.</p>';
   const card = (p, buttons = '') => {
@@ -416,18 +416,18 @@ function petsHtml() {
     return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
       ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
       <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>${mutationTags(p)}
-      <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.where || (p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack')}</p>${buttons}</div>`;
+      <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.where || (p.onPlot ? '🌿 In your Safety Zoo' : '🎒 In your backpack')}</p>${buttons}</div>`;
   };
   // 賺得最多排最前
   const pets = state.pets.map((p, i) => ({ p, i })).sort((a, b) => itemMoney(b.p) - itemMoney(a.p));
-  return `<p class="index-summary">Plot: <b>${used}/${slots}</b> pets · earning <b>$${fmt(total)}/sec</b>${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 Royal Kingdom x${plotMoneyMulti(state.plotLevel)}` : ''}</p>
+  return `<p class="index-summary">Safety Zoo: <b>${used}/${slots}</b> pets · earning <b>$${fmt(total)}/sec</b>${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 Royal Kingdom x${plotMoneyMulti(state.plotLevel)}` : ''}</p>
     <div class="pet-actions">
       <button data-action="best">⭐ Equip Best</button>
       <button data-action="unequip-all" class="grey">Unequip All</button>
     </div>
     <div class="cards">${pets.map(({ p, i }) => card(p, `<div class="card-buttons">
         ${p.onPlot ? `<button data-action="unequip" data-i="${i}" class="grey">Unequip</button>`
-          : `<button data-action="equip" data-i="${i}" ${used >= slots ? 'disabled title="Plot is full"' : ''}>Equip</button>`}
+          : `<button data-action="equip" data-i="${i}" ${used >= slots ? 'disabled title="Safety Zoo is full"' : ''}>Equip</button>`}
         <button data-action="sell" data-i="${i}" class="sell">${confirmSell === i ? 'Sure? Sell!' : `Sell $${fmt(sellPrice(p))}`}</button>
       </div>`)).join('')}
       ${waiting.map((p) => card(p)).join('')}</div>`;
@@ -442,14 +442,14 @@ function sellHtml() {
   const pets = state.pets.map((p, i) => ({ p, i })).sort((a, b) => sellPrice(a.p) - sellPrice(b.p));
   return `<p class="index-summary">Sell pets you don't need for 💰 cash. You have <b>$${fmt(state.money)}</b>.</p>
     <div class="pet-actions">
-      ${backpack.length ? `<button data-action="sell-backpack" class="sell">${confirmSellBackpack ? 'Sure? Sell them all!' : `Sell all ${backpack.length} backpack pets for $${fmt(backpackTotal)}`}</button>` : '<small>All your pets are on your Plot.</small>'}
+      ${backpack.length ? `<button data-action="sell-backpack" class="sell">${confirmSellBackpack ? 'Sure? Sell them all!' : `Sell all ${backpack.length} backpack pets for $${fmt(backpackTotal)}`}</button>` : '<small>All your pets are in your Safety Zoo.</small>'}
     </div>
     <div class="cards">${pets.map(({ p, i }) => {
       const r = rarityInfo(p.rarity);
       return `<div class="card-animal ${p.onPlot ? 'equipped' : ''}" style="border-color:${r.color}">
         ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
         <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>${mutationTags(p)}
-        <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
+        <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 In your Safety Zoo' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="sell" data-i="${i}" class="sell">${confirmSell === i ? 'Sure? Sell!' : `Sell $${fmt(sellPrice(p))}`}</button></div></div>`;
     }).join('')}</div>`;
 }
@@ -480,7 +480,7 @@ function fuseHtml() {
       return `<div class="card-animal ${on ? 'equipped' : ''}" style="border-color:${r.color}">
         ${petPic(p.name, { rarity: p.rarity })}<b>${p.name}</b>
         <small style="color:${r.color === '#cfd8dc' ? '#78909c' : r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>${mutationTags(p)}
-        <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 On your Plot' : '🎒 In your backpack'}</p>
+        <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${p.onPlot ? '🌿 In your Safety Zoo' : '🎒 In your backpack'}</p>
         <div class="card-buttons"><button data-action="fuse-pick" data-i="${i}" ${!on && picked.length >= 3 ? 'disabled' : ''}>${on ? '✔ Picked' : 'Pick'}</button></div></div>`;
     }).join('')}</div>`;
 }
@@ -771,7 +771,7 @@ export function setPortalActions(actions) {
 // 有邊啲 Legendary 可以交
 export function legendaryChoices() {
   return [
-    ...state.pets.map((item, i) => ({ key: `p${i}`, item, where: item.onPlot ? 'on your Plot' : 'pet' })),
+    ...state.pets.map((item, i) => ({ key: `p${i}`, item, where: item.onPlot ? 'in your Safety Zoo' : 'pet' })),
     ...state.borrowed.map((item, i) => ({ key: `b${i}`, item, where: 'waiting to breed' })),
   ].filter((c) => c.item.rarity === 'Legendary');
 }

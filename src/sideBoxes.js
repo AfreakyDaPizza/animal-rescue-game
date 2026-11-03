@@ -70,15 +70,15 @@ function renderPets(force) {
   const sig = `pets|${pets.map(({ p, i }) => `${i}:${p.name}:${p.rarity}:${p.mutation || ''}`).join(',')}|${multi}|${state.hwShards}`;
   if (force || sig !== lastSig) {
     lastSig = sig;
-    box.innerHTML = `<div class="side-head"><b>🐾 My Plot Pets</b><span class="side-total">💰 $<span id="side-total">${fmt(moneyPerSecond())}</span>/s</span></div>
+    box.innerHTML = `<div class="side-head"><b>🐾 My Safety Zoo Pets</b><span class="side-total">💰 $<span id="side-total">${fmt(moneyPerSecond())}</span>/s</span></div>
       <div class="side-list">${pets.length ? pets.map(({ p, i }) => {
         const r = rarityInfo(p.rarity);
         return `<div class="side-row">${petPic(p.name, { rarity: p.rarity })}
           <div class="side-info"><b>${p.name}</b><small style="color:${r.color}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}${mutationList(p).length ? ` · ${mutationEmoji(p)}` : ''}${p.flipped ? ' · 🙃' : ''}</small>
           <small>⚖️ ${formatKg(kgOf(p))} · <span class="money">$${fmt(itemMoney(p) * multi)}/s</span></small></div>
           <button data-unequip="${i}">Unequip</button></div>`;
-      }).join('') : '<p class="side-empty">No pets on your Plot yet.</p>'}</div>
-      <p class="side-hint">To equip a pet, put it on your Plot 🌿</p>
+      }).join('') : '<p class="side-empty">No pets in your Safety Zoo yet.</p>'}</div>
+      <p class="side-hint">To equip a pet, put it in your Safety Zoo 🌿</p>
       <button class="side-all" data-allpets="1">📋 All my pets</button>
       ${state.hwShards > 0 ? `<button class="side-all side-shard" data-shard="1">🔮 Use Halloween Shard (${state.hwShards})</button>` : ''}`;
   } else {

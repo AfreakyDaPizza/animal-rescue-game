@@ -50,7 +50,12 @@ function sha256(text) {
   return h.map((v) => v.toString(16).padStart(8, '0')).join('');
 }
 
-export const checkPassword = (text) => sha256(String(text)) === PASS_HASH;
+// 2026-11-03 小朋友話密碼唔得：手機鍵盤會自動大楷第一個字／加空格 → 去頭尾空格，第一個字大細楷都試
+export const checkPassword = (text) => {
+  const t = String(text).trim();
+  const tries = [t, t.charAt(0).toLowerCase() + t.slice(1), t.charAt(0).toUpperCase() + t.slice(1)];
+  return tries.some((x) => sha256(x) === PASS_HASH);
+};
 
 // 解鎖咗未：localStorage 有旗但存檔冇（例如還原咗舊存檔）→ 補返落存檔
 export function adminUnlocked() {
@@ -84,7 +89,7 @@ export function gateHtml(denied = false) {
     <p class="gate-kicker">RANGER HQ // SECURE TERMINAL</p>
     <h3 class="gate-title">ENTER ACCESS CODE</h3>
     <form class="gate-form" data-admin-gate autocomplete="off">
-      <input id="admin-pass" type="password" placeholder="Password" aria-label="Admin password" autocomplete="off" spellcheck="false">
+      <input id="admin-pass" type="password" placeholder="Password" aria-label="Admin password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <button type="submit" data-admin="pass">UNLOCK ▸</button>
     </form>
     <p class="gate-msg" id="admin-gate-msg" role="status">${denied ? '⛔ ACCESS DENIED' : 'Type the secret code once and the panel opens forever.'}</p>

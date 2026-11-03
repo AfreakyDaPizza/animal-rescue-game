@@ -7,7 +7,7 @@ const SLOT_MS = 15 * 60 * 1000;
 export const EVENTS = [
   { id: 'giant', emoji: '🦣', name: 'GIANT PETS', desc: 'Wild animals are 3x BIGGER! New ones every 30 seconds', duration: 300 },
   { id: 'rare', emoji: '✨', name: 'RARE RUSH', desc: 'Only Legendary & Mythic animals spawn - hurry!', duration: 30 },
-  { id: 'frenzy', emoji: '💰', name: 'PET FRENZY', desc: 'All pets on your Plot earn 10x money!', duration: 300 },
+  { id: 'frenzy', emoji: '💰', name: 'PET FRENZY', desc: 'All pets in your Safety Zoo earn 10x money!', duration: 300 },
   { id: 'training', emoji: '🏋️', name: 'TRAINING NO MERCY', desc: 'Treadmill & Student Table give 100x!', duration: 60 }, // Issue #9：20 秒 → 60 秒
   // 小朋友 2026-10-17：Troll Frenzy（好稀有嘅寵物，但 Boss 快 1,000,000 倍）同 Eclipse（日蝕：繁殖機 x20、日蝕激光）
   { id: 'troll', emoji: '🤡', name: 'TROLL FRENZY', desc: 'CRAZY rare pets everywhere... but every Boss is 1,000,000x FASTER! Good luck! 🤡', duration: 60 },
@@ -15,7 +15,7 @@ export const EVENTS = [
   // Issue #10 小朋友 2026-10-21：METEORIC（隕石雨）—— 比其他活動少啲機會（大約每 6–7 次一次），見 eventForSlot
   { id: 'meteor', emoji: '☄️', name: 'METEORIC', desc: 'Blue meteors crashed! Grab the glowing ☄️ Meteoric Crystals!', duration: 300 },
   // Issue #14（2026-10-23）：Eclipse 返嚟，但淨係 Admin 面板（🎉 Events）開得（adminOnly：唔會入隨機時間表，所以以前嘅時間表冇變）
-  { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Reproduce Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180, adminOnly: true },
+  { id: 'eclipse', emoji: '🌑', name: 'ECLIPSE', desc: 'Happy Machines are 20x faster! Eclipse lasers give pets the 🌑 ECLIPSE mutation (x6 money)... but don\'t get hit!', duration: 180, adminOnly: true },
 ];
 // （秘密拉桿同 BIG PET FRENZY：2026-10-15 小朋友叫刪走）
 

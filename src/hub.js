@@ -1803,7 +1803,7 @@ export function updateHub(hub, dt, time, px, pz) {
       m.light.color.setHex(0x333333);
       m.light.emissive.setHex(0x000000);
       m.sign.draw(THEMES.dark, [
-        { text: `REPRODUCE MACHINE ${m.index + 1}`, size: 0.2, color: '#f8bbd0' },
+        { text: `HAPPY MACHINE ${m.index + 1}`, size: 0.2, color: '#f8bbd0' },
         { text: 'Empty', size: 0.22 },
       ]);
     } else if (status.kind === 'working') {
@@ -1877,7 +1877,7 @@ export function updateHub(hub, dt, time, px, pz) {
   }
   const onPlot = petsOnPlot();
   hub.plot.sign.draw(THEMES.green, [
-    { text: 'MY PLOT', size: 0.34, color: '#fff59d' },
+    { text: 'ANIMAL SHELTER SAFETY ZOO', size: 0.17, color: '#fff59d' },
     { text: `${onPlot}/${plotSlots(state.plotLevel)} pets · $${fmt(moneyPerSecond())} / sec`, size: 0.26 },
   ]);
   const lv = MACHINE_LEVELS[state.machineLevel - 1];
@@ -1915,7 +1915,7 @@ export function updateHub(hub, dt, time, px, pz) {
 
   const maxedPlot = state.plotLevel >= PLOT_MAX_UPGRADES;
   hub.plotUpgradeSpot.sign.draw(THEMES.dark, [
-    { text: 'BIGGER PLOT', size: 0.15, color: '#ffd54f' },
+    { text: 'BIGGER SAFETY ZOO', size: 0.15, color: '#ffd54f' },
     { text: `Skin: ${PLOT_SKINS[state.plotLevel].name}`, size: 0.11, color: '#80deea' },
     { text: `Pets: ${plotSlots(state.plotLevel)} (max ${plotSlots(PLOT_MAX_UPGRADES)})${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 x${plotMoneyMulti(state.plotLevel)} money` : ''}`, size: 0.11 },
     maxedPlot
@@ -1945,7 +1945,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
     } else if (state.money >= cost) {
       options.push({ dist: d, prompt: `<kbd>E</kbd> Upgrade ${s.name} to Level ${level + 1} for $${fmt(cost)}`, action: () => actions.upgrade(s) });
     } else {
-      options.push({ dist: d, prompt: `💰 Need $${fmt(cost)} to upgrade (you have $${fmt(state.money)}) - put pets on your Plot!` });
+      options.push({ dist: d, prompt: `💰 Need $${fmt(cost)} to upgrade (you have $${fmt(state.money)}) - put pets in your Safety Zoo!` });
     }
   }
 
@@ -1957,7 +1957,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
     if (status.kind === 'empty') {
       const item = selected?.kind === 'rescued' ? selected.item : state.borrowed[0];
       const second = item && secondFor(item);
-      if (item) options.push({ dist: d, prompt: `<kbd>E</kbd> Put ${item.name}${second ? ` + ${second.name}` : ''} in the Reproduce Machine`, action: () => actions.fillMachine(m, item) });
+      if (item) options.push({ dist: d, prompt: `<kbd>E</kbd> Put ${item.name}${second ? ` + ${second.name}` : ''} in the Happy Machine`, action: () => actions.fillMachine(m, item) });
       else options.push({ dist: d, prompt: 'This machine is empty - rescue an animal from a biome first!' });
     } else if (status.kind === 'working') {
       const rec = state.machines[m.index];
@@ -1977,27 +1977,27 @@ export function hubInteraction(hub, px, pz, selected, actions) {
     const pet = selected?.kind === 'pet' ? selected.item : state.pets.find((p) => !p.onPlot);
     const used = petsOnPlot();
     const slots = plotSlots(state.plotLevel);
-    if (pet && used >= slots) options.push({ dist: gate, prompt: `🚫 Plot full (${used}/${slots})! Upgrade your Plot or unequip a pet with the 🐾 button (B)` });
-    else if (pet) options.push({ dist: gate, prompt: `<kbd>E</kbd> Put ${pet.name} on your Plot (${used}/${slots})`, action: () => actions.placePet(pet) });
-    else options.push({ dist: gate, prompt: `Plot: ${used}/${slots} pets. Get pets from the Reproduce Machines!` });
+    if (pet && used >= slots) options.push({ dist: gate, prompt: `🚫 Safety Zoo full (${used}/${slots})! Upgrade your Safety Zoo or unequip a pet with the 🐾 button (B)` });
+    else if (pet) options.push({ dist: gate, prompt: `<kbd>E</kbd> Put ${pet.name} in your Safety Zoo (${used}/${slots})`, action: () => actions.placePet(pet) });
+    else options.push({ dist: gate, prompt: `Safety Zoo: ${used}/${slots} pets. Get pets from the Happy Machines!` });
   }
 
   // 繁殖機升級牌
   const mu = near(hub.machineUpgradeSpot.x, hub.machineUpgradeSpot.z);
   if (mu < INTERACT_DISTANCE) {
     const next = MACHINE_LEVELS[state.machineLevel];
-    if (!next) options.push({ dist: mu, prompt: `★ Reproduce Machines are MAX level: ${MACHINE_LEVELS[MACHINE_LEVELS.length - 1].name}!` });
+    if (!next) options.push({ dist: mu, prompt: `★ Happy Machines are MAX level: ${MACHINE_LEVELS[MACHINE_LEVELS.length - 1].name}!` });
     else if (state.money >= next.cost) options.push({ dist: mu, prompt: `<kbd>E</kbd> Upgrade all machines to ${next.name} (${Math.round((1 - next.timeFactor) * 100)}% faster) for $${fmt(next.cost)}`, action: actions.upgradeMachines });
-    else options.push({ dist: mu, prompt: `💰 Need $${fmt(next.cost)} to upgrade the Reproduce Machines` });
+    else options.push({ dist: mu, prompt: `💰 Need $${fmt(next.cost)} to upgrade the Happy Machines` });
   }
 
   // 地塊升級牌
   const pu = near(hub.plotUpgradeSpot.x, hub.plotUpgradeSpot.z);
   if (pu < INTERACT_DISTANCE) {
     const cost = plotUpgradeCost(state.plotLevel);
-    if (state.plotLevel >= PLOT_MAX_UPGRADES) options.push({ dist: pu, prompt: `★ Your Plot is MAX size: ${plotSlots(state.plotLevel)} pets!` });
-    else if (state.money >= cost) options.push({ dist: pu, prompt: state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `<kbd>E</kbd> 👑 Upgrade to the ROYAL KINGDOM: +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money for $${fmt(cost)}` : `<kbd>E</kbd> Upgrade Plot to ${plotSlots(state.plotLevel) + 1} pets for $${fmt(cost)}`, action: actions.upgradePlot });
-    else options.push({ dist: pu, prompt: `💰 Need $${fmt(cost)} to make your Plot bigger` });
+    if (state.plotLevel >= PLOT_MAX_UPGRADES) options.push({ dist: pu, prompt: `★ Your Safety Zoo is MAX size: ${plotSlots(state.plotLevel)} pets!` });
+    else if (state.money >= cost) options.push({ dist: pu, prompt: state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `<kbd>E</kbd> 👑 Upgrade to the ROYAL KINGDOM: +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money for $${fmt(cost)}` : `<kbd>E</kbd> Upgrade Safety Zoo to ${plotSlots(state.plotLevel) + 1} pets for $${fmt(cost)}`, action: actions.upgradePlot });
+    else options.push({ dist: pu, prompt: `💰 Need $${fmt(cost)} to make your Safety Zoo bigger` });
   }
 
   // 皮膚商店

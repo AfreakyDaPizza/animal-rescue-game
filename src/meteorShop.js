@@ -319,7 +319,7 @@ function shopHtml() {
       ${card({ id: 'skin', pic: img(picture('skin', buildHelmet), '🦹'), title: '🦹 Meteoric Boss Skin', price: METEOR_BOSS_SKIN_COST, owned: state.meteorBossSkin ? 'Unlocked' : false,
         text: state.meteorBossSkin ? 'Go to any Boss and press <kbd>E</kbd> to change its skin!' : 'Then go to any Boss and press <kbd>E</kbd> to give it a cool meteor look!' })}
       ${card({ id: 'dragon', pic: petPic('Cosmic Arcadragon', { rarity: 'Eternal' }), title: '🌌 Cosmic Arcadragon', price: ARCADRAGON_COST,
-        text: `<b style="color:${rarityInfo('Eternal').color}">ETERNAL</b> pet! Makes <b>$${short(lo)}–$${short(hi)}</b> every second on your Plot!`, extra: dragons ? `<small>🐉 You have ${dragons}</small>` : '' })}
+        text: `<b style="color:${rarityInfo('Eternal').color}">ETERNAL</b> pet! Makes <b>$${short(lo)}–$${short(hi)}</b> every second in your Safety Zoo!`, extra: dragons ? `<small>🐉 You have ${dragons}</small>` : '' })}
     </div>
     ${extraCardsHtml()}
     <div class="echo-drops met-drops"><h3>🧰 What's inside the Meteoric Chest?</h3>${rows}</div>
@@ -862,7 +862,7 @@ export function createMeteorShop({ scene, camera, openShop, teleport, resume, po
         resume();
         if (drop.gear) announce('🌌 Meteoric Chest: you got an ASTRAL REROLL! Use it on a pet in your 🎒 backpack.');
         else {
-          announce(`☄️ ${drop.dragon ? 'You got' : 'Meteoric Chest: you got'} a ${drop.rarity.toUpperCase()} ${drop.name}!${money} It's in your backpack - put it on your Plot in the Hub!`);
+          announce(`☄️ ${drop.dragon ? 'You got' : 'Meteoric Chest: you got'} a ${drop.rarity.toUpperCase()} ${drop.name}!${money} It's in your backpack - put it in your Safety Zoo in the Hub!`);
           if (reward) setTimeout(() => popup(`📖 New Meteoric pet in your Index! +$${short(reward)}`), 1200);
         }
       },

@@ -46,7 +46,7 @@ const STEPS = [
     fail: (ctx) => !ctx.rescue.carrying && state.rescued <= stepData.rescued, // 冇咗隻動物：返去上一步
   },
   {
-    text: 'You saved it! 🎉 Walk to a pink <b>Reproduce Machine</b> and press <kbd>E</kbd> to put your animal inside.',
+    text: 'You saved it! 🎉 Walk to a pink <b>Happy Machine</b> and press <kbd>E</kbd> to put your animal inside.',
     target: (ctx) => {
       const m = ctx.hub.machines.find((mm, i) => !state.machines[i]) || ctx.hub.machines[2];
       return new THREE.Vector3(m.x, 0, m.z - 1.5);
@@ -67,7 +67,7 @@ const STEPS = [
     done: () => state.pets.length > 0,
   },
   {
-    text: 'Your very own pet! Take it to the <b>Plot</b> gate and press <kbd>E</kbd>. Pets on your Plot earn 💰 money every second.',
+    text: 'Your very own pet! Take it to the <b>Safety Zoo</b> gate and press <kbd>E</kbd>. Pets in your Safety Zoo earn 💰 money every second.',
     target: () => new THREE.Vector3(PLOT.minX - 1, 0, PLOT.gateZ),
     done: () => state.pets.some((p) => p.onPlot),
   },

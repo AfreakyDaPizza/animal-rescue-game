@@ -548,8 +548,8 @@ export const VIDEOS = [
     },
   },
   {
-    title: 'TIP: Plot = Money',
-    caption: 'Game tip! Put your pets on your Plot. Every pet there earns money every second. Heavier and rarer pets earn more!',
+    title: 'TIP: Safety Zoo = Money',
+    caption: 'Game tip! Put your pets in your Safety Zoo. Every pet there earns money every second. Heavier and rarer pets earn more!',
     colors: ['#c8e6c9', '#43a047'],
     pitch: 1.1, rate: 1.0, tip: true,
     draw(ctx, t) {
@@ -558,8 +558,8 @@ export const VIDEOS = [
     },
   },
   {
-    title: 'TIP: Night Is Breeding Time',
-    caption: "Game tip! At night the Reproduce Machines work 10 times faster. On the Dragon's Lair you can answer a question to speed it up!",
+    title: 'TIP: Night Is Happy Machine Time',
+    caption: "Game tip! At night the Happy Machines work 10 times faster. On the Dragon's Lair you can answer a question to speed it up!",
     colors: ['#311b92', '#1a237e'],
     pitch: 0.95, rate: 1.0, tip: true,
     draw(ctx, t) {

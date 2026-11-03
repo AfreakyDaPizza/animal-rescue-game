@@ -7,10 +7,10 @@ import { short } from './format.js';
 export const QUEST_POOL = [
   { id: 'rescue', text: 'Rescue {n} animals', counts: [2, 3, 5], reward: 6 },
   { id: 'right', text: 'Answer {n} questions right', counts: [3, 5, 8], reward: 5 },
-  { id: 'pets', text: 'Get {n} pets from the Reproduce Machines', counts: [1, 2, 4], reward: 6 },
+  { id: 'pets', text: 'Get {n} pets from the Happy Machines', counts: [1, 2, 4], reward: 6 },
   { id: 'train', text: 'Train for {n} seconds', counts: [60, 120, 240], reward: 4 },
   { id: 'upgrade', text: 'Buy {n} upgrades', counts: [1, 2, 3], reward: 5 },
-  { id: 'money', text: 'Earn ${n} from your Plot', counts: [200, 1000, 5000], reward: 5 },
+  { id: 'money', text: 'Earn ${n} from your Safety Zoo', counts: [200, 1000, 5000], reward: 5 },
   { id: 'jump', text: 'Jump {n} times', counts: [20, 40, 60], reward: 3 },
 ];
 
