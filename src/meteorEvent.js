@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import { eventStatus } from './events.js';
-import { HUB, PLOT } from './hubShape.js';
+import { HUB, PLOT, TAME_AREA } from './hubShape.js';
 import { colliders, platforms, groundAt, isWalkable, bakeStatic, kingdom, biomeRect, KINGDOM_Y } from './world.js';
 import { state, save } from './state.js';
 import { popup, announce } from './hud.js';
@@ -46,8 +46,9 @@ function regionRect(region) {
 }
 // 隕石坑位（平地、四周夠空）
 // Hub：先試呢幾個草地位（唔喺路上面、唔喺建築物旁邊）；俾人起咗嘢（有 collider）就自己再搵
-const HUB_CRATERS = [V(31, 0, 12), V(34, 0, 25.5)]; // 右上角草地、地塊右邊（圍牆前面）
-const onHubPath = (x, z, m) => Math.abs(x) < 4 + m || Math.abs(z - 24) < 3 + m || (z > 33 && z < 38 && Math.abs(x) < 26);
+const HUB_CRATERS = [V(16, 0, 52), V(-31, 0, 9)]; // Issue #16 重新排位：右下角草地、左上角（圍牆前面）
+// Issue #16：路 + 地塊四邊石路 + 左邊 Happy Machines + 右邊 🤠 Catch & Tame 都唔好
+const onHubPath = (x, z, m) => Math.abs(x) < 4 + m || Math.abs(z - 10.5) < 2 + m || (x > -22 - m && x < 13 + m && z > 12 - m && z < 35 + m) || (x > TAME_AREA.minX - 1 - m && z > TAME_AREA.minZ - 1 - m && z < TAME_AREA.maxZ + 1 + m);
 function craterSpot(region, rand, radius, avoid) {
   if (region === 0) {
     const p = HUB_CRATERS.find((c) => inHubAt(c.x, c.z, radius * 0.6) && clearAt(c.x, c.z, radius * 0.7) && !avoid.some((a) => Math.hypot(a.x - c.x, a.z - c.z) < radius * 3));
