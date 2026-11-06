@@ -18,6 +18,7 @@ import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
+import { addSaddle } from './saddle.js'; // 🐎 Issue #16
 import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation, hasMutation } from './data/animals.js';
 import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
 import { plotGroundTexture } from './hubFloor.js'; // 🐾 地塊地面紋理（Issue #8）
@@ -1427,6 +1428,10 @@ function buildPlot(realScene) {
   sign.mesh.position.set(gateX, 3.4, gateZ);
   sign.mesh.rotation.y = Math.PI; // 面向北（入口）
   realScene.add(sign.mesh); // 牌會變字，唔焊
+  // 背面木板：由 Safety Zoo 入面望出去唔會見到反轉咗嘅字（2026-11-07）
+  const back = new THREE.Mesh(new THREE.BoxGeometry(4.32, 1.32, 0.06), new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.8 }));
+  back.position.set(gateX, 3.4, gateZ + 0.07);
+  scene.add(back);
   bakeStatic(scene, realScene);
   const skins = buildPlotSkins(realScene);
   return { sign, pets: [], grassMat, wood, trim, gem, skins };
@@ -1594,6 +1599,7 @@ function addPetToPlot(plot, scene, pet) {
     body.add(flipUpsideDown(model));
     body.userData.noFireAura = model.userData.noFireAura; // Royal Skywhale 唔要火圈
   }
+  if (pet.rideable) addSaddle(model); // 🐎 Ridable Shard（Issue #16）：背脊有馬鞍（要喺變異特效之前，唔係會量埋特效）
   for (const m of mutationList(pet)) addFireAura(body, m); // 🔥 Fire：一圈火；🌑 Eclipse：黑紫火 + 白光環（可以兩樣都有）
   g.add(body);
   const kg = kgOf(pet);

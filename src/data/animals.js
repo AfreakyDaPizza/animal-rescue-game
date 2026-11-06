@@ -12,6 +12,16 @@ import { DEMONIC_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS } from './demonic.js
 export { DEMONIC_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS };
 import { TAME_ANIMALS } from './tameAnimals.js'; // 🤠 Catch & Tame 動物（Issue #16：淨係 Catch & Tame 馴服到）
 export { TAME_ANIMALS };
+import { LUMINOUS_DRAGON_BEST_MULT } from './tame.js'; // 🐉 Luminous God Dragon（Issue #16）
+import { state } from '../state.js';
+
+// 🤠 Catch & Tame 寵物（Issue #16）：淨係 ⭐ Special's Stall 用 🤠 Tame Tokens 買到（唔喺生態區、蛋、寶箱出）
+// 模型喺 src/luminousDragon.js；$/秒 = 你「最勁嗰隻其他寵物」嘅 LUMINOUS_DRAGON_BEST_MULT 倍（見下面 fixedMoney）
+export const LUMINOUS_DRAGON = 'Luminous God Dragon';
+export const TAME_PETS = [
+  { name: LUMINOUS_DRAGON, rarity: 'Eternal', kg: [6000, 9000], emoji: '🐉', bought: true,
+    fact: 'A glowing god dragon made of moonlight and purple lightning! In Chinese stories, dragons bring rain and good luck. The real Chinese Alligator, the "earth dragon", is Critically Endangered.' },
+].map((p) => ({ ...p, biome: 9, tame: true, status: 'Magical (not a real animal!)', magical: true }));
 
 // emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
 // kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
@@ -175,7 +185,7 @@ export const animalsInBiome = (biome) => (biome >= 7 ? HALLOWEEN_PETS : ANIMALS)
 
 // 舊名（2026-10-17 小朋友改名）
 const OLD_NAMES = { 'Enchanted Sunlion': 'Celestial Sunlion' };
-export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name) || TAME_ANIMALS.find((a) => a.name === name);
+export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name) || TAME_ANIMALS.find((a) => a.name === name) || TAME_PETS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {
@@ -233,11 +243,18 @@ export const mutationText = (x) => mutationList(x).map((m) => `${MUTATION_INFO[m
 // ---- 大細（sizeMul：0.25–10；冇 = 1）----
 export const sizeText = (sizeMul) => (!sizeMul || sizeMul === 1 ? '' : sizeMul < 1 ? `TINY x${sizeMul}` : `GIANT x${sizeMul}`);
 
+const LUMINOUS_DRAGON_MIN_MONEY = 1000; // 🐉 冇其他寵物嗰陣最少都有 $1000/秒
 // 一隻救返嚟嘅動物／寵物每秒賺幾多（重量 × 生態區 × 稀有度）
 export const itemMoney = (item) => (item.money ?? fixedMoney(item) ?? petMoney(kgOf(item), item.biome, item.rarity)) * mutationMoneyMulti(item);
 // 🌌 Cosmic Arcadragon（Issue #10）：每隻自己有一個隨機 $/秒（5 億–10 億），第一次計就抽、存喺 item.money（之後唔變）
 // 咁樣邊度整出嚟都啱（商店買、控制面板、繁殖機生出嚟）
 function fixedMoney(item) {
+  // 🐉 Luminous God Dragon（Issue #16）：每次計都睇返你而家最勁嗰隻「其他」寵物（唔計自己同其他 God Dragon，唔會無限循環）
+  if (item.name === LUMINOUS_DRAGON) {
+    let best = 0;
+    for (const p of state.pets || []) if (p && p.name !== LUMINOUS_DRAGON) best = Math.max(best, itemMoney(p));
+    return Math.max(LUMINOUS_DRAGON_MIN_MONEY, best * LUMINOUS_DRAGON_BEST_MULT);
+  }
   if (item.name !== 'Cosmic Arcadragon') return undefined;
   const [lo, hi] = ARCADRAGON_MONEY;
   item.money = Math.round((lo + Math.random() * (hi - lo)) / 1e6) * 1e6;

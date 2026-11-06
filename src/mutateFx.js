@@ -4,6 +4,7 @@
 //   → 第二下閃光 → 寵物變咗新樣（有變異特效）+ 大字「🔥 FIRE!」
 // ⏳ Time Shard 特別版：時鐘滴答聲、寵物縮到好細 → 「啵」一聲彈返出嚟變可愛、搖搖眼彈出嚟、時鐘光環出現、「⏳ TIME!」
 // 撳滑鼠／任何掣：跳過
+// 🐎 Ridable Shard（Issue #16）：playSaddleFx —— 寵物瞓低 → 馬鞍由天跌落嚟「啪」一聲放好 + 閃閃 → 寵物企返起身、威威哋 →「🐎 RIDABLE!」
 //
 // 用法（inventory.js）：playMutationFx({ pet, kind, gearType, before, onDone })
 //   pet：寵物資料（已經變咗異，存咗檔；呢度淨係播片，唔改資料）
@@ -18,6 +19,7 @@ import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
 import { applyPetSkin } from './skins.js';
 import { addFireAura, animateModelAuras } from './fireAura.js';
 import { buildShardModel } from './gearArt.js';
+import { addSaddle } from './saddle.js'; // 🐎 Ridable Shard
 import { play, addSounds } from './sound.js';
 
 // 🎮 數字（可以自己改）
@@ -52,6 +54,18 @@ addSounds({
     arp(t, [523, 659, 784, 1047, 1319, 1568], 0.06, { type: 'triangle', vol: 0.16 });
     noise(t, 0.9, { vol: 0.09, freq: 6000, type: 'highpass' });
     tone(2093, t + 0.36, 0.5, { type: 'sine', vol: 0.12 });
+  },
+  // 🐎 馬鞍放好：皮「啪」一聲 + 金鈴
+  saddleThump: (t, { tone, noise, arp }) => {
+    noise(t, 0.12, { vol: 0.35, freq: 900, type: 'lowpass' });
+    tone(140, t, 0.16, { type: 'sine', vol: 0.3, slide: 0.5 });
+    arp(t + 0.08, [1319, 1568, 2093], 0.06, { type: 'triangle', vol: 0.12 });
+  },
+  // 🐎 寵物企返起身：「嘶～」咁（向上滑嘅音）+ 號角
+  proudNeigh: (t, { tone, arp }) => {
+    tone(440, t, 0.35, { type: 'sawtooth', vol: 0.06, slide: 1.6 });
+    tone(660, t + 0.05, 0.3, { type: 'triangle', vol: 0.08, slide: 1.3 });
+    arp(t + 0.3, [523, 659, 784, 1047], 0.08, { type: 'square', vol: 0.07 });
   },
   // ⏳ 可愛版：「啵」+ 搖搖聲 + 鐘聲
   cutePop: (t, { tone, arp }) => {
@@ -468,6 +482,210 @@ export function playMutationFx({ pet, kind, gearType = null, before = [], onDone
     waveMat.dispose();
     beam.geometry.dispose();
     beamMat.dispose();
+    if (pb) for (const g of pb.glows) g.m.dispose();
+    renderer?.renderLists.dispose();
+    onDone?.();
+  }
+  running = { finish };
+  raf = requestAnimationFrame(step);
+  return running;
+}
+
+// ================= 🐎 Ridable Shard 動畫（小朋友 Issue #16）=================
+// 寵物彈出嚟 → 慢慢瞓低（壓扁、蹲低）→ 馬鞍由天跌落嚟、彈一彈放好 + 金色閃閃 → 寵物企返起身（彈一彈、跳一跳）→ 大字「🐎 RIDABLE!」
+// 用法（inventory.js）：playSaddleFx({ pet, onDone })；pet 已經 rideable = true、存咗檔，呢度淨係播片
+const SADDLE_LEN = 4.4;
+const LIE = [0.55, 1.15]; // 瞓低
+const DROP = [1.15, 1.85]; // 馬鞍跌落嚟（1.85 撞落背脊）
+const STAND = 2.55; // 企返起身 + 出大字
+export function playSaddleFx({ pet, onDone = null }) {
+  if (running) running.finish();
+  const colorHex = '#ffb74d';
+  const u = ensureUi();
+  const { root, renderer, camera } = u;
+  const color = new THREE.Color(colorHex);
+  root.style.setProperty('--c', colorHex);
+  root.classList.remove('revealed');
+  u.label.className = 'mfx-label';
+  u.label.innerHTML = `<b>🐎 RIDABLE!</b><small>${pet.name} has a saddle! Press <b style="display:inline;font-size:inherit;-webkit-text-stroke:0">1</b> to ride it!</small>`;
+  u.top.textContent = `🐎 ${pet.name}, lie down please...`;
+  root.hidden = false;
+  requestAnimationFrame(() => root.classList.add('on'));
+
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x443355, 2.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(2, 4, 5);
+  scene.add(sun);
+  const rim = new THREE.PointLight(color, 0, 12);
+  rim.position.set(0, 1.5, 2.5);
+  scene.add(rim);
+  const before = (pet.mutation || '').split('+').filter(Boolean);
+  const pb = buildPet({ ...pet, rideable: false }, before);
+  const stage = new THREE.Group();
+  let saddle = null;
+  let saddleY = 0;
+  let saddleFrom = 0;
+  if (pb) {
+    pb.holder.rotation.y = PI - 0.75; // 側身多啲：睇到個背
+    stage.add(pb.holder);
+    pb.holder.updateMatrixWorld(true);
+    const got = addSaddle(pb.model);
+    if (got) {
+      saddle = got.saddle;
+      saddleY = saddle.position.y;
+      const ws = pb.model.getWorldScale(new THREE.Vector3()).y || 1;
+      saddleFrom = saddleY + 2.6 / ws; // 由畫面頂跌落嚟
+      saddle.position.y = saddleFrom;
+      saddle.visible = false;
+    }
+  }
+  scene.add(stage);
+  const waveMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const wave = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64), waveMat);
+  wave.rotation.x = -PI / 2;
+  wave.visible = false;
+  scene.add(wave);
+  const parts = makeParticles(360);
+  scene.add(parts.pts);
+  const palette = ['#ffd740', '#ffffff', '#ffb74d', '#ff9e40'];
+
+  const resize = () => {
+    if (!renderer) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w / h < 0.8 ? 52 : 36;
+    camera.updateProjectionMatrix();
+  };
+  resize();
+  window.addEventListener('resize', resize);
+
+  let t = 0;
+  let last = performance.now();
+  let raf = 0;
+  let landed = false;
+  let stood = false;
+  let shake = 0;
+  const flash = () => {
+    u.flash.classList.remove('go');
+    void u.flash.offsetWidth;
+    u.flash.classList.add('go');
+  };
+  const baseY = pb ? -pb.height * 0.5 : 0; // 腳喺邊（buildPet 擺咗中心喺原點）
+  const step = () => {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    t += dt;
+    stage.scale.setScalar(Math.max(0.001, backOut(t / 0.45)));
+    // 瞓低：壓扁 + 蹲低（腳仍然貼地）；企返起身：彈返高 + 跳一跳
+    let lie = ease((t - LIE[0]) / (LIE[1] - LIE[0]));
+    let hop = 0;
+    if (t >= STAND) {
+      const k = (t - STAND) / 0.8;
+      lie = Math.max(0, 1 - elastic(k));
+      hop = Math.max(0, Math.sin(Math.min(1, k * 1.6) * PI)) * 0.35;
+    }
+    if (pb) {
+      const sy = 1 - 0.38 * lie;
+      pb.holder.scale.set(1 + 0.06 * lie, sy, 1 + 0.04 * lie);
+      pb.holder.position.y = baseY * (1 - sy) + hop; // 壓扁時腳仍然貼地
+      pb.holder.rotation.z = Math.sin(t * 2) * 0.03 * lie; // 瞓住輕輕搖
+    }
+    if (t > LIE[0] && t < LIE[0] + dt + 0.001) {
+      u.top.textContent = `🐎 Here comes the saddle!`;
+      play('swoosh');
+    }
+    // 馬鞍跌落嚟（越跌越快）→ 撞落背脊彈一彈
+    if (saddle) {
+      const k = (t - DROP[0]) / (DROP[1] - DROP[0]);
+      saddle.visible = k > 0;
+      if (k > 0 && k < 1) {
+        saddle.position.y = saddleFrom + (saddleY - saddleFrom) * k * k;
+        saddle.rotation.set(Math.sin(t * 9) * 0.25 * (1 - k), (1 - k) * 2.5, 0);
+        if (Math.random() < 0.6) parts.burst(1, saddle.getWorldPosition(new THREE.Vector3()), palette, { speed: 0.3, life: 0.5, gravity: 0 });
+      } else if (k >= 1) {
+        const b = (t - DROP[1]) / 0.5;
+        saddle.position.y = saddleY + Math.max(0, Math.sin(Math.min(1, b) * PI)) * 0.25 * (saddleFrom - saddleY) * 0.15 * (1 - Math.min(1, b));
+        saddle.rotation.set(0, 0, 0);
+        // 兩邊腳踏搖下搖下
+        for (const [i, sd] of (saddle.userData.sides || []).entries()) sd.rotation.z = Math.sin((t - DROP[1]) * 9 + i) * 0.4 * Math.exp(-(t - DROP[1]) * 2.5);
+      }
+    }
+    if (!landed && t >= DROP[1]) {
+      landed = true;
+      flash();
+      shake = 0.3;
+      const at = saddle ? saddle.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
+      parts.burst(140, at, palette, { speed: 5, life: 1.1, up: 1, gravity: -2 });
+      play('saddleThump');
+      u.top.textContent = `✨ Saddle on! ✨`;
+    }
+    if (landed) {
+      const k = (t - DROP[1]) / 0.8;
+      wave.visible = k < 1;
+      wave.position.y = baseY + 0.02;
+      wave.scale.setScalar(0.3 + ease(k) * 2.4);
+      waveMat.opacity = Math.max(0, 1 - k) * 0.9;
+    }
+    if (!stood && t >= STAND) {
+      stood = true;
+      flash();
+      root.classList.add('revealed');
+      u.label.classList.add('go');
+      u.top.textContent = `🎉 ${pet.name} is ready to ride!`;
+      parts.burst(150, new THREE.Vector3(0, 0.2, 0), palette, { speed: 5.5, life: 1.4, up: 1.2, gravity: -1.5 });
+      play('proudNeigh');
+      setTimeout(() => play('tierUp'), 250);
+    }
+    rim.intensity = (landed ? Math.max(0, 1 - (t - DROP[1]) / 0.6) : 0) * 8 + (stood ? 2 : 0);
+    if (stood && Math.random() < 0.3) parts.burst(1, new THREE.Vector3((Math.random() - 0.5) * 3, Math.random() * 2.4 - 0.6, (Math.random() - 0.5) * 2), ['#ffffff', colorHex], { speed: 0.3, life: 0.9, gravity: 0.6 });
+    parts.update(dt);
+    // 轉：一開始慢慢轉，瞓低時停喺側面（睇到馬鞍），企返起身轉返正面
+    stage.rotation.y = t < LIE[0] ? t * 0.6 : stood ? Math.sin((t - STAND) * 2.2) * 0.22 + Math.min(1, (t - STAND) / 0.8) * 0.6 : LIE[0] * 0.6;
+    if (pb) {
+      pb.model.userData.animate?.(t, stood ? 0.5 : 0);
+      animateModelAuras(pb.body, t);
+    }
+    shake = Math.max(0, shake - dt);
+    const push = 7.2 - ease(t / SADDLE_LEN) * 0.7;
+    camera.position.set((Math.random() - 0.5) * shake, 0.9 + (Math.random() - 0.5) * shake, push);
+    camera.lookAt(0, -0.2, 0);
+    renderer?.render(scene, camera);
+    if (t >= SADDLE_LEN) return finish();
+    if (t >= SADDLE_LEN - 0.35) root.classList.remove('on');
+    raf = requestAnimationFrame(step);
+  };
+
+  const skip = (e) => {
+    e.preventDefault?.();
+    e.stopImmediatePropagation?.();
+    finish();
+  };
+  const onKey = (e) => {
+    if (e.repeat) return;
+    skip(e);
+  };
+  root.addEventListener('pointerdown', skip);
+  window.addEventListener('keydown', onKey, true);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    cancelAnimationFrame(raf);
+    root.removeEventListener('pointerdown', skip);
+    window.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('resize', resize);
+    root.classList.remove('on', 'revealed');
+    root.hidden = true;
+    running = null;
+    parts.dispose();
+    wave.geometry.dispose();
+    waveMat.dispose();
     if (pb) for (const g of pb.glows) g.m.dispose();
     renderer?.renderLists.dispose();
     onDone?.();

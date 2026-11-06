@@ -9,6 +9,8 @@
 // 😈 Demonic：紅黑火 + 背後一對細蝙蝠翼拍拍下 + 一對發光彎角 + 地上一個轉緊嘅紅色符文圈
 // ⏳ Time（小朋友 2026-11-03）：好可愛！頭上一對大「搖搖眼」（googly eyes，眼珠會跟住郁嚟郁去）+ 粉紅面珠
 //    + 頭頂一個金色時鐘光環（刻度 + 慢慢行嘅針，永遠面向鏡頭）+ 地上一個轉緊嘅時鐘圈 + 金色／青色星光
+// 🤠 Tame（小朋友 Issue #16）：可愛牛仔！頭上一頂細牛仔帽（跟住個頭郁、啵一聲彈出嚟、搖下搖下）
+//    + 一個轉緊嘅套索繩圈圍住隻寵物（有個繩結，斜斜咁轉）+ 地上一陣陣沙塵 + 金色／橙色星星
 //
 // 效能（地塊可以有好多隻寵物）：
 // - 粒子全部用 THREE.Points（每種一個 draw call），物料／貼圖／形狀全部共用；分身、隕石、水晶、角、翼用 InstancedMesh
@@ -402,6 +404,57 @@ const wingGeo = (() => {
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return g;
 })();
+// 🤠 Tame：牛仔帽（帽簷、帽頂、帽帶、金星）+ 套索繩圈（全部共用）
+const TAME_MAT = {
+  hat: new THREE.MeshStandardMaterial({ color: 0x9a6233, roughness: 0.75 }),
+  hatDark: new THREE.MeshStandardMaterial({ color: 0x6d4022, roughness: 0.8 }),
+  band: new THREE.MeshStandardMaterial({ color: 0xd84315, roughness: 0.6 }),
+  star: new THREE.MeshBasicMaterial({ color: 0xffd740 }),
+  rope: new THREE.MeshStandardMaterial({ color: 0xe0b276, roughness: 0.9 }),
+  ropeDark: new THREE.MeshStandardMaterial({ color: 0xa47442, roughness: 0.9 }),
+};
+// 帽簷：兩邊向上屈（牛仔帽招牌樣），中間平
+const hatBrimGeo = (() => {
+  const g = new THREE.CylinderGeometry(1, 1, 0.07, 28, 1);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const z = p.getZ(i);
+    const side = Math.abs(x);
+    p.setY(i, p.getY(i) + Math.max(0, side - 0.45) ** 2 * 0.9 - Math.max(0, -z - 0.6) * 0.08); // 兩邊翹起、前面少少向下
+    p.setZ(i, z * 0.86);
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+// 帽頂：上面中間撳低（pinch）
+const hatCrownGeo = (() => {
+  const g = new THREE.CylinderGeometry(0.5, 0.6, 0.62, 18, 3).translate(0, 0.31, 0);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i);
+    if (y > 0.6) p.setY(i, y - 0.12 * Math.max(0, 1 - Math.abs(p.getX(i)) / 0.25)); // 中間一條坑
+    p.setZ(i, p.getZ(i) * 0.85);
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+const hatBandGeo = new THREE.CylinderGeometry(0.61, 0.62, 0.12, 18, 1, true).scale(1, 1, 0.86).translate(0, 0.1, 0);
+const hatStarGeo = (() => {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * TAU + Math.PI / 2;
+    const r = i % 2 ? 0.07 : 0.16;
+    if (i) s.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    else s.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  return new THREE.ShapeGeometry(s);
+})();
+const lassoGeo = new THREE.TorusGeometry(1, 0.035, 6, 48);
+const lassoKnotGeo = new THREE.BoxGeometry(0.14, 0.1, 0.1);
+// 繩尾：由繩結伸出去，彎彎咁（好似手拎住嗰段）
+const lassoTailGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(1, 0, 0), V(1.12, 0.06, 0.08), V(1.25, 0.16, 0.04), V(1.35, 0.3, -0.05)]), 10, 0.03, 5, false);
+
 function V(x, y, z) {
   return new THREE.Vector3(x, y, z);
 }
@@ -944,6 +997,99 @@ const BUILD = {
           eyes.box.scale.setScalar(pop);
           if (lod < 2) wobbleEyes(eyes, t);
         }
+      },
+    };
+  },
+  // 🤠 Tame：牛仔帽 + 轉緊嘅套索 + 沙塵 + 星星
+  tame(e) {
+    const head = findHead(e);
+    // 套索：斜斜一個繩圈圍住隻寵物（腰嘅高度），繩結 + 繩尾跟住轉
+    const lasso = new THREE.Group();
+    const ring = new THREE.Mesh(lassoGeo, TAME_MAT.rope);
+    ring.rotation.x = Math.PI / 2;
+    const knot = new THREE.Mesh(lassoKnotGeo, TAME_MAT.ropeDark);
+    knot.position.set(1, 0, 0);
+    const tail = new THREE.Mesh(lassoTailGeo, TAME_MAT.rope);
+    lasso.add(ring, knot, tail);
+    const lassoR = e.R * 0.82;
+    lasso.scale.setScalar(lassoR);
+    const tilt = new THREE.Group(); // 斜住、慢慢「搖」（好似真係揮緊條繩）
+    tilt.position.set(e.c.x, e.minY + e.H * 0.55, e.c.z);
+    tilt.add(lasso);
+    // 沙塵（地上一陣陣）+ 星星
+    const dust = cloud(e, 14, 'smoke', false, { colors: pal(0xd7b98e, 0xc8a26e, 0xe8d3b0) });
+    const stars = cloud(e, 18, 'star', true, { colors: pal(0xffd740, 0xff9e40, 0xffffff, 0xffab40) });
+    e.g.add(tilt, dust.pts, stars.pts);
+    // 牛仔帽：貼喺個頭（跟住個頭郁），同搖搖眼一樣嘅做法
+    const parent = head.parent || e.model;
+    const root = new THREE.Group();
+    root.userData.isMutationAura = true;
+    parent.updateMatrixWorld(true);
+    new THREE.Matrix4().copy(parent.matrixWorld).invert().multiply(e.model.matrixWorld).decompose(root.position, root.quaternion, root.scale);
+    const hat = new THREE.Group();
+    const hatS = Math.min(Math.max(head.w * 0.62, 0.16 * e.s), 0.42 * e.s); // 帽簷半徑
+    hat.position.set(head.x, head.top - hatS * 0.08, head.z + head.d * 0.5);
+    const inner = new THREE.Group(); // 搖下搖下 + 啵一聲彈出嚟
+    inner.rotation.set(-0.12, 0, 0.16); // 戴得歪歪哋：型啲
+    inner.add(new THREE.Mesh(hatBrimGeo, TAME_MAT.hat), new THREE.Mesh(hatCrownGeo, TAME_MAT.hat), new THREE.Mesh(hatBandGeo, TAME_MAT.band));
+    const star = new THREE.Mesh(hatStarGeo, TAME_MAT.star);
+    star.position.set(0, 0.32, -0.535);
+    star.rotation.y = Math.PI;
+    inner.add(star);
+    inner.scale.setScalar(hatS);
+    hat.add(inner);
+    root.add(hat);
+    root.traverse((o) => {
+      o.castShadow = false;
+      o.receiveShadow = false;
+    });
+    parent.add(root);
+    const born = { t: null };
+    return {
+      anchor: stars.pts,
+      secondary: [tilt],
+      update(t, mul) {
+        if (born.t == null && t > 0) born.t = t;
+        const pop = born.t == null ? 0.001 : popIn(t - born.t);
+        inner.scale.setScalar(hatS * pop);
+        inner.rotation.z = 0.16 + Math.sin(t * 2.1 + e.seed * 7) * 0.06;
+        hat.position.y = head.top - hatS * 0.08 + Math.abs(Math.sin(t * 3 + e.seed * 4)) * 0.03 * e.s; // 帽仔彈下彈下
+        // 套索：轉 + 斜斜咁搖（precess）
+        lasso.rotation.y = t * 4.2;
+        tilt.rotation.set(Math.sin(t * 1.3 + e.seed * 5) * 0.18, 0, Math.cos(t * 1.3 + e.seed * 5) * 0.18);
+        tilt.scale.setScalar(pop);
+        // 沙塵：喺腳邊冒出嚟、慢慢散開
+        const n = cnt(14, mul);
+        const D = dust.seeds;
+        for (let i = 0; i < n; i++) {
+          const u = fract(t * 0.35 * (0.7 + D[i * 4 + 1] * 0.6) + D[i * 4 + 2]);
+          const a = D[i * 4] * TAU;
+          const rr = e.R * (0.6 + u * 0.8);
+          dust.pos[i * 3] = e.c.x + Math.cos(a) * rr;
+          dust.pos[i * 3 + 1] = e.minY + 0.05 * e.s + u * 0.35 * e.s;
+          dust.pos[i * 3 + 2] = e.c.z + Math.sin(a) * rr;
+          dust.size[i] = e.s * (0.25 + u * 0.45);
+          dust.alpha[i] = Math.sin(Math.PI * u) * 0.45;
+        }
+        flush(dust, n);
+        // 星星：沿住套索閃（同一個圈），一閃一閃
+        const m = cnt(18, mul);
+        const S = stars.seeds;
+        for (let i = 0; i < m; i++) {
+          if (i % 2) {
+            emberParticle(e, stars, i, t, { speed: 0.3, rise: 1.3, size: 0.12 });
+          } else {
+            const a = S[i * 4] * TAU + t * 4.2;
+            const y = e.minY + e.H * 0.55;
+            stars.pos[i * 3] = e.c.x + Math.cos(a) * lassoR;
+            stars.pos[i * 3 + 1] = y + Math.sin(a + t) * lassoR * 0.25;
+            stars.pos[i * 3 + 2] = e.c.z - Math.sin(a) * lassoR;
+            stars.size[i] = 0.11 * e.s;
+            stars.alpha[i] = 0.4 + 0.6 * Math.abs(Math.sin(t * 5 + S[i * 4 + 2] * 30));
+          }
+          stars.alpha[i] *= 0.55 + 0.45 * Math.abs(Math.sin(t * (2 + 3 * S[i * 4 + 1]) + S[i * 4 + 2] * 30));
+        }
+        flush(stars, m);
       },
     };
   },

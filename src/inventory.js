@@ -10,11 +10,11 @@ import { state, save } from './state.js';
 import { short as fmt } from './format.js';
 import { ANIMALS, findAnimal, kgOf, formatKg, itemMoney, sizeText, mutationInfo, mutationList, applyMutation } from './data/animals.js';
 import { rarityInfo } from './data/balance.js';
-import { GEARS, gearInfo, gearStacks, takeGear, isChestGear } from './data/gears.js';
+import { GEARS, gearInfo, gearStacks, takeGear, isChestGear, isToolGear } from './data/gears.js';
 import { extraPanels, panelKind, mutationTags, hotbarItems, hotbarToolCount, assignHotbar, clearHotbar, hotbarHooks, uidOf, popup, announce, selectSlot } from './hud.js';
 import { petPic } from './animalPics.js';
 import { gearPic, gearIcon } from './gearArt.js'; // 💎 Shard 圖示
-import { playMutationFx } from './mutateFx.js'; // ✨ 變異動畫（小朋友 2026-11-03）
+import { playMutationFx, playSaddleFx } from './mutateFx.js'; // ✨ 變異動畫（小朋友 2026-11-03）；🐎 放馬鞍動畫（Issue #16）
 
 const $ = (id) => document.getElementById(id);
 
@@ -66,7 +66,7 @@ function animalCard(e) {
     ${petPic(p.name, { rarity: p.rarity })}<b>${p.flipped ? '🙃 ' : ''}${p.name}</b>
     <small style="color:${rarityColor(r)}">${r.name}${sizeText(p.sizeMul) ? ` · ${sizeText(p.sizeMul)}` : ''}</small>${mutationTags(p)}
     <span class="kg">⚖️ ${formatKg(kgOf(p))} · 💰 $${fmt(itemMoney(p))}/s</span><p>${where}</p>
-    ${g ? `<div class="card-buttons"><button data-inv="mutate" ${canMutate ? '' : 'disabled'}>${canMutate ? `${gearInfo(mutateWith).emoji} Mutate!` : e.kind === 'pet' ? 'Already has it' : 'Not a pet yet'}</button></div>` : ''}
+    ${g ? `<div class="card-buttons"><button data-inv="mutate" ${canMutate ? '' : 'disabled'}>${canMutate ? (g.ride ? '🐎 Saddle up!' : `${gearInfo(mutateWith).emoji} Mutate!`) : e.kind === 'pet' ? (g.ride ? '🐎 Has a saddle' : 'Already has it') : 'Not a pet yet'}</button></div>` : ''}
   </div>`;
 }
 
@@ -79,7 +79,7 @@ function gearCard({ type, count }) {
     ${gearPic(type)}<b>${g.name}</b>
     <small style="color:${g.color}">${g.rarity} Gear · x${count}</small>
     <p>${g.desc()}</p><p class="inv-where">${g.where || ''}</p>
-    <div class="card-buttons"><button data-inv="use" data-type="${type}">${g.chest ? '🧰 Open' : '✨ Use'}</button></div>
+    <div class="card-buttons"><button data-inv="use" data-type="${type}">${g.chest ? '🧰 Open' : g.tool ? '✋ Hold it' : g.ride ? '🐎 Use' : '✨ Use'}</button></div>
   </div>`;
 }
 
@@ -95,7 +95,7 @@ function inventoryHtml() {
   const hint = win
     ? `<div class="inv-banner inv-win" style="border-color:${win.color};--c:${win.color}">${win.text}</div>`
     : g
-    ? `<div class="inv-banner inv-mutate-banner" style="border-color:${g.color}">${gearIcon(mutateWith, 'inv-banner-icon')} <b>Using a ${g.name}!</b> Pick a pet to mutate. <button data-inv="cancel" class="grey">Cancel</button></div>`
+    ? `<div class="inv-banner inv-mutate-banner" style="border-color:${g.color}">${gearIcon(mutateWith, 'inv-banner-icon')} <b>Using a ${g.name}!</b> ${g.ride ? 'Pick a pet to put a saddle on 🐎' : 'Pick a pet to mutate.'} <button data-inv="cancel" class="grey">Cancel</button></div>`
     : pickedName
     ? `<div class="inv-banner">👉 Now tap a hotbar slot below to put <b>${pickedName}</b> there!</div>`
     : '<p class="hint inv-hint">🖱️ Drag a card onto the hotbar (1-0) below · 📱 Tap a card, then tap a slot · drag a slot back up here to take it off</p>';
@@ -135,6 +135,7 @@ function doMutate(pet) {
   const type = mutateWith;
   const g = gearInfo(type);
   if (!g.canUse(pet)) return;
+  if (g.ride) return doRide(pet, type);
   const kind = g.mutate(pet);
   if (!kind || !takeGear(type)) return;
   mutateWith = null;
@@ -147,6 +148,35 @@ function doMutate(pet) {
   rerender(); // 收起「揀寵物」橫額（動畫淡出時見到）
   // ✨ 播變異動畫（src/mutateFx.js），播完先閃張卡 + 出大字
   playMutationFx({ pet, kind, gearType: type, before, onDone: () => showMutated(pet, info) });
+}
+
+// 🐎 Ridable Shard（Issue #16）：唔係變異，係 pet.rideable = true（有馬鞍）→ 播「瞓低、放馬鞍」動畫
+function doRide(pet, type) {
+  if (!takeGear(type)) return;
+  mutateWith = null;
+  pet.rideable = true;
+  save();
+  if (pet.onPlot) ctx?.refreshPlot();
+  ctx?.onRideable?.(pet); // riding.js：快捷欄第 1 格變「🐎 Ride」
+  rerender();
+  playSaddleFx({
+    pet,
+    onDone: () => {
+      burst = { pet, color: '#ffb74d' };
+      win = { text: `🐎 ${pet.name} has a saddle! Press <b>1</b> to ride it!`, color: '#ffb74d' };
+      tab = isEndangered(pet) ? 'endangered' : 'animals';
+      rerender();
+      setTimeout(() => {
+        burst = null;
+        rerender();
+      }, 2200);
+      setTimeout(() => {
+        win = null;
+        rerender();
+      }, 4000);
+      announce(`🐎 ${pet.name} is RIDABLE! Press 1 to ride it!`);
+    },
+  });
 }
 
 // 變異動畫播完：背包張卡閃一閃、面板頂大字
@@ -285,6 +315,19 @@ export function createInventory(opts) {
   // fromHotbar = 快捷欄撳 E／滑鼠（寶箱：即刻開一個）；背包 Use 掣（寶箱：放上快捷欄、揀咗佢、收埋背包、開一個）
   function useGear(type, fromHotbar = false) {
     if (!(state.gears || []).some((g) => g.type === type)) return popup(`You have no ${gearInfo(type).name}s!`);
+    if (isToolGear(type)) {
+      // 🪢 Leash：放上快捷欄、揀咗佢、收埋背包（唔會用完）
+      const key = `gear:${type}`;
+      let slot = hotbarItems().findIndex((e) => e?.key === key);
+      if (slot < 0) {
+        slot = hotbarItems().findIndex((e, i) => i >= hotbarToolCount() && !e);
+        if (slot < 0) slot = hotbarToolCount();
+        assignHotbar(slot, key);
+      }
+      selectSlot(slot);
+      if (isOpen()) ctx.togglePanel('inventory');
+      return popup(`${gearInfo(type).emoji} Your ${gearInfo(type).name} is in hotbar slot ${(slot + 1) % 10}! Walk up to an animal in a biome and press E.`);
+    }
     if (isChestGear(type)) {
       if (!fromHotbar) {
         const key = `gear:${type}`;

@@ -1392,6 +1392,67 @@ OUTFITS.demonic = {
   },
 };
 
+// ---------------- 🧢 Tamer Ranger（小朋友 Issue #16，⭐ Special's Stall）：紅格仔恤衫 + 皮背心（流蘇）+ 紅頸巾 + 牛仔帽 + 大金扣皮帶
+//                  + 腰間一卷套索 + 牛仔靴（有馬刺）+ 皮手套 + 金色沙塵 ----------------
+OUTFITS.tamer = {
+  body: {
+    shirt: { map: T.plaid(0xc0392b, 0x7b1a12, 0xffe0b2) }, sleeve: { map: T.plaid(0xc0392b, 0x7b1a12, 0xffe0b2) },
+    pants: { map: T.fabric(0x34558b, 1.4) }, shoes: { c: 0x5d3a1a }, skin: { c: SKIN },
+  },
+  face: { brows: 0x5d4037 },
+  build(k) {
+    const hatM = tex(T.leather(0x9a6233), { roughness: 0.8 });
+    const hatD = tex(T.leather(0x6d4022), { roughness: 0.8 });
+    const vest = tex(T.leather(0x7b4a24), { roughness: 0.75 });
+    const vestD = tex(T.leather(0x5a3418));
+    const bootM = tex(T.leather(0x5d3a1a), { roughness: 0.6 });
+    const red = tex(T.fabric(0xd32f2f, 1.2));
+    const gold = metal(0xffc107, 0.3);
+    const silver = metal(0xcfd8dc, 0.3);
+    const rope = tex(T.fabric(0xd7a86e, 1.6), { roughness: 0.95 });
+    hair(k, mat(0x6d4c41));
+    // 牛仔帽：闊帽簷（兩邊翹起）+ 帽頂（中間凹）+ 帽帶 + 金星
+    k.box('head', 0.62, 0.045, 1.08, hatM, 0, 0.35, 0, null, 0.4);
+    for (const s of [-1, 1]) k.box('head', 0.24, 0.045, 1.0, hatM, s * 0.4, 0.4, 0, [0, 0, s * 0.55], 0.4);
+    k.box('head', 0.6, 0.34, 0.64, hatM, 0, 0.53, 0.02, null, 0.25);
+    k.box('head', 0.18, 0.08, 0.5, hatD, 0, 0.69, 0.04, null, 0.3); // 頂中間凹（深色坑）
+    k.box('head', 0.62, 0.08, 0.66, hatD, 0, 0.405, 0.02, null, 0.2);
+    k.star('head', 0.07, gold, 0, 0.41, -0.335, null, 0.02);
+    // 紅頸巾：頸圈 + 前面一個三角
+    k.box('torso', 0.62, 0.1, 0.4, red, 0, 1.83, 0, null, 0.3);
+    k.cone('torso', 0.17, 0.26, red, 0, 1.69, -0.24, [PI, 0, 0], 3);
+    // 皮背心：前面兩幅（中間開）、側、背 + 下面一排流蘇 + 心口一粒金星章
+    for (const s of [-1, 1]) {
+      k.box('torso', 0.27, 0.84, 0.05, vest, s * 0.3, 1.38, -0.245);
+      k.box('torso', 0.05, 0.84, 0.48, vest, s * 0.44, 1.38, 0);
+      k.box('torso', 0.035, 0.84, 0.06, vestD, s * 0.17, 1.38, -0.25, null, 0.3);
+      for (let i = 0; i < 4; i++) k.box('torso', 0.035, 0.16, 0.03, vestD, s * (0.2 + i * 0.065), 0.9, -0.255, [0, 0, s * 0.1], 0.3);
+      k.ball('torso', 0.025, silver, s * 0.21, 1.55, -0.275);
+      k.ball('torso', 0.025, silver, s * 0.21, 1.35, -0.275);
+    }
+    k.box('torso', 0.9, 0.84, 0.05, vest, 0, 1.38, 0.245);
+    for (let i = 0; i < 12; i++) k.box('torso', 0.035, 0.16, 0.03, vestD, -0.39 + i * 0.07, 0.9, 0.255, null, 0.3);
+    k.star('torso', 0.08, gold, -0.3, 1.6, -0.28, null, 0.03);
+    // 皮帶 + 大金扣
+    belt(k, vestD, null, { y: 0.97, h: 0.13 });
+    k.box('torso', 0.24, 0.17, 0.05, gold, 0, 0.97, -0.26, null, 0.25);
+    k.box('torso', 0.14, 0.09, 0.02, silver, 0, 0.97, -0.29, null, 0.3);
+    // 腰間一卷套索（右邊）
+    for (let i = 0; i < 3; i++) k.torus('torso', 0.17 - i * 0.012, 0.03, rope, 0.5 + i * 0.012, 0.92, -0.02, [0, PI / 2, 0]);
+    k.box('torso', 0.05, 0.14, 0.05, vestD, 0.47, 1.08, -0.02, null, 0.3);
+    // 皮手套
+    gloves(k, tex(T.leather(0x8d5a2b)), vestD);
+    // 牛仔靴：高筒 + 靴頭 + 鞋踭 + 馬刺
+    boots(k, bootM, { h: 0.34, cuff: vestD, sole: mat(0x2b1a0e) });
+    for (const [b] of LEGS) {
+      k.box(b, 0.3, 0.09, 0.12, mat(0x2b1a0e), 0, -0.9, 0.18, null, 0.2); // 鞋踭
+      k.box(b, 0.04, 0.04, 0.12, silver, 0, -0.82, 0.25, null, 0.3);
+      k.star(b, 0.06, silver, 0, -0.82, 0.33, [0, PI / 2, 0], 0.02); // 馬刺（星仔轆）
+    }
+    particles(k, { n: 10, colors: [0xffd740, 0xffcc80, 0xffffff], mode: 'rise', speed: 0.3, size: 0.07, r: [0.7, 0.9, 0.6] });
+  },
+};
+
 // ---------------- 其他（將來新加、未有專屬造型嘅皮膚）：用皮膚記錄嘅顏色砌一套簡單但整齊嘅衫 ----------------
 function genericOutfit(skin) {
   const has = (k) => typeof skin[k] === 'number';

@@ -250,3 +250,9 @@ src/data/questions.js ← 野生動物問題
 
 - 2026-11-03：Issue #15：收埋（唔係刪）Halloween 同 Meteor：`balance.js` 開關 `HALLOWEEN_ON`（Hub 傳送門 → 變返噴水池，`isHalloweenOpen` 一齊 false）、`METEOR_EVENT_ON`（METEORIC 活動 + `buildMeteorDecor`）、`METEOR_SHOP_ON`。玩家擁有嘅嘢照留。
 - 2026-11-03：小朋友（對話）：收埋 Enchanted Kingdom（Biome 7）：`NEW_BIOME_ON = false`（閘門鎖住、牌寫 🔒 CLOSED；Kingdom 寵物照留）。另外做緊：Index 3D 寵物檢視器、變異動畫、⏳ Time Shard + TIME 變異。
+
+## Issue #16 Catch & Tame（2026-11-06/07）
+- 共用數值 `src/data/tame.js`（套索／笛 10 級、Special's Stall 6 樣、坐騎加速）；30 隻 Catch & Tame 動物 + 馴服數值 `src/data/tameAnimals.js`；`TAME_MONEY = 3`。
+- Hub 重新排位（`src/hubShape.js`）：冇咗 Fuse Machine／遊樂場／噴水池；Safety Zoo 喺中間（閘口向北 (0,16)）；Happy Machines 左邊一行；右邊 🤠 牧場區 `TAME_AREA`：傳送門 `TAME_PORTAL` (32.4,28)、Lasso Sam、Tamer Ayden、Special's Stall（`src/tameStalls.js`，`buySpecial`）。出生點 `HUB_SPAWN` (0,9)。
+- 小遊戲 `src/rodeo.js`（+ rodeoMaps/rodeoModels/rodeoShape，x=4000）：Savanna/Desert/Taiga 無限地圖、騎馬、3 ❤️、SPACE 跳 + 套索、馴服條、完場 loading 'rodeo' → 返傳送門前。測試 `game.rodeo.*`。
+- `src/riding.js` 騎寵物（快捷欄 1、`state.ridePet`、`moveOpts.rideMul`）+ 🪢 Leash；`src/saddle.js`；🐉 `src/luminousDragon.js`（最好寵物 ×1.2）；🤠 `src/cowboyBossSkin.js`；🧢 Tamer Ranger（`src/rangerOutfits.js`）；TAME 變異樣 `fireAura.js` BUILD.tame。測試 `game.giveTame()`。

@@ -67,6 +67,7 @@
 
 - 2026-10-25：🗼 Witch Tower 大更新（小朋友喺對話講）：擴充 API（新殭屍／Boss／樓層各自一個檔）、5 隻新殭屍、5 個新 Boss（Banshee Queen 係我哋揀）、9 款越高越恐怖嘅樓層、4% 跌盾、😡 Angry Spell 等 5 支新魔法武器、6 個新 Skill。詳情 `docs/plan.md`「Witch Tower 大更新」。
 - 2026-11-03：變異動畫（`src/mutateFx.js`：用 Shard 全畫面短片，自己一個 WebGL 畫布，可跳過）+ ⏳ TIME 變異（`TIME_MONEY`；樣喺 `fireAura.js` 嘅 `BUILD.time`：搖搖眼貼個頭 + 時鐘光環）+ Time Shard 每 1–10 分鐘由天跌（`src/timeShard.js`，`TIME_SHARD_MIN/MAX/STAY`；測試 `game.timeShard()`）。`addFireAura` 而家會先更新上面 group 嘅 matrix。
+- 2026-11-06/07：Issue #16 🤠 Catch & Tame（詳情 `docs/plan.md`「Issue #16」）：Hub 重新排位、3 個攤位、騎馬套動物小遊戲、騎寵物／Leash／Luminous God Dragon／Cowboy Boss／Tamer Ranger／TAME 變異。Index 3D 檢視器 `src/indexViewer.js`、Time Shard 追蹤牌。小朋友 2026-11-06 要求每 10 分鐘睇 GitHub。
 
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。

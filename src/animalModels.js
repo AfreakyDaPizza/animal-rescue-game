@@ -15,6 +15,8 @@ import { ECHO_MODELS } from './echoPetModels.js'; // 🐕 Echo 嘅 Zombified Che
 import { METEOR_MODELS } from './meteorPetModels.js'; // ☄️ Meteoric Shop 寵物（Issue #10）
 import { DEMONIC_MODELS } from './demonicPetModels.js'; // 😈 Witch Tower 獎品寵物（Issue #11）
 import { FUSE_MODELS } from './fusePets.js'; // Fuse Machine 寵物（Issue #4）
+import { buildLuminousDragon } from './luminousDragon.js'; // 🐉 Catch & Tame（Issue #16）
+const TAME_MODELS = { 'Luminous God Dragon': buildLuminousDragon };
 import { buildSkywhaleModel, buildSunlionModel, buildOctophantModel } from './enchantedModels.js'; // Biome 7 魔法動物
 import { buildKitsuneModel, buildGemDragonModel, buildDreadscaleModel, buildArmadilloModel, buildCitadelSnailModel } from './kingdomPets.js';
 import { RODEO_MODELS } from './rodeoModels.js'; // 🤠 Catch & Tame 動物（Issue #16）
@@ -927,7 +929,7 @@ const MODELS = {
 };
 
 export function buildAnimalModel(animal) {
-  const g = (HALLOWEEN_MODELS[animal.name] || ECHO_MODELS[animal.name] || METEOR_MODELS[animal.name] || DEMONIC_MODELS[animal.name] || WORST_PETS[animal.name] || RODEO_MODELS[animal.name] || ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || ENCHANTED_MODELS[animal.name] || MODELS[animal.name] || fallback)();
+  const g = (TAME_MODELS[animal.name] || HALLOWEEN_MODELS[animal.name] || ECHO_MODELS[animal.name] || METEOR_MODELS[animal.name] || DEMONIC_MODELS[animal.name] || WORST_PETS[animal.name] || RODEO_MODELS[animal.name] || ANIMALS_20[animal.name] || ANIMALS_30[animal.name] || FUSE_MODELS[animal.name] || ENCHANTED_MODELS[animal.name] || MODELS[animal.name] || fallback)();
   g.userData.height *= g.scale.y;
   g.userData.move ??= 'walk';
   g.userData.animalName = animal.name; // 👻 Spectral 分身形狀 cache 用

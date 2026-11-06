@@ -17,7 +17,7 @@ const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣
 // 用 log：Speed 每加倍，就快 3 格／秒。咁 Speed 去到幾百萬都唔會快到飛出畫面。
 //   100 → 6、200 → 9、400 → 12、1,000 → 16、2,000,000 → 49
 // 慢行模式（M 掣，小朋友 2026-10-19：朋友玩太快會頭暈）：最快只係普通行路速度
-export const moveOpts = { slow: false, speedMul: 1 }; // speedMul：例如 🗼 女巫塔 Frost Zombie 打中 = 慢落嚟（src/witchTower.js）
+export const moveOpts = { slow: false, speedMul: 1, rideMul: 1, rideLift: 0 }; // speedMul：例如 🗼 女巫塔 Frost Zombie 打中 = 慢落嚟（src/witchTower.js）；rideMul／rideLift：🐎 騎緊寵物（src/riding.js）快啲、對眼高啲
 export const SLOW_WALK_SPEED = 7;
 export function walkSpeed(speed) {
   return 6 + 3 * Math.log2(Math.max(speed, 100) / 100);
@@ -117,7 +117,7 @@ export function createPlayer(camera, domElement) {
   camera.rotation.order = 'YXZ'; // rotation.y 就係「望緊邊個方向」（箭咀要用）
   const controls = new MouseLook(camera, domElement);
   // 由 Hub 中間開始，望住生態區（-z）
-  camera.position.set(HUB.cx, EYE_HEIGHT, 14); // 入口同地塊閘口中間（Issue #16）
+  camera.position.set(HUB.cx, EYE_HEIGHT, 9); // 入口同地塊閘口中間（Issue #16）
   camera.rotation.set(0, 0, 0);
   return { controls, camera, feetY: 0, vy: 0, grounded: true, bob: 0 };
 }
@@ -166,7 +166,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
     const len = Math.hypot(f, s); // 斜行唔好快過直行
     // 喺半空都保持跑步速度（小朋友老師話：跑跑下跳起會慢咗好多，2026-10-18 取消咗半空限速）
-    const speed = (moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed)) * boostMult('speed') * (window.__skills?.fightSpeed(camera.position.x, camera.position.z) ?? 1) * (moveOpts.speedMul ?? 1); // ❄️ Frost 殭屍減速 // ⚡ 1.5x Speed boost；🌳 Swift Boots（打架先有，Issue #14）
+    const speed = (moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed)) * boostMult('speed') * (window.__skills?.fightSpeed(camera.position.x, camera.position.z) ?? 1) * (moveOpts.speedMul ?? 1) * (moveOpts.rideMul ?? 1); // 🐎 騎寵物（Issue #16）// ❄️ Frost 殭屍減速 // ⚡ 1.5x Speed boost；🌳 Swift Boots（打架先有，Issue #14）
     const step = speed * dt * mag;
     // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
     const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));
@@ -208,7 +208,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
   // 行路時個頭輕輕上下郁
   const bobOffset = player.walking ? Math.sin(player.bob) * 0.05 : 0;
-  camera.position.y = player.feetY + EYE_HEIGHT + bobOffset;
+  camera.position.y = player.feetY + EYE_HEIGHT + bobOffset + (moveOpts.rideLift || 0); // 🐎 坐喺坐騎上面：高啲
 }
 
 // 傳送（例如入夜送返 Hub）：連腳嘅高度一齊重設

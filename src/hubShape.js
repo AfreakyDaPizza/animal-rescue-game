@@ -38,5 +38,5 @@ export const FLUTE_STALL = { x: 28, z: 18.6 }; // 🎵 Tamer Ayden（面向 +z�
 export const SPECIAL_STALL_POS = { x: 23.5, z: 39 }; // ⭐ Special's Stall（面向 -z）
 
 // 出世／傳送返 Hub 嘅位（入口同地塊閘口中間）；🎃 Halloween 傳送門（HALLOWEEN_ON）放喺地塊下面條路
-export const HUB_SPAWN = { x: 0, z: 11 };
+export const HUB_SPAWN = { x: 0, z: 9 }; // 2026-11-07：退後啲，第三身鏡頭唔會撞落地塊閘口塊牌
 export const HW_PORTAL_SPOT = { x: 0, z: 44 };

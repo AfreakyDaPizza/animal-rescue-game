@@ -8,7 +8,7 @@ import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { rangerSkinPic, petSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
-import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, TAME_ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
+import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, TAME_ANIMALS, TAME_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
@@ -206,7 +206,7 @@ let selected = 0;
 export const HAMMER_ITEM = { kind: 'tool', item: { name: 'Hammer', tool: true } };
 // 球棒（Issue #4）：Boss 戰 Phase 1、2 先有，喺第一格
 export const BAT_ITEM = { kind: 'tool', item: { name: 'Bat', tool: true, bat: true } };
-export const toolFlags = { bat: false, weapons: [] }; // weapons：🔫 戰鬥區（src/weapons.js setZone）入面有嘅武器 id
+export const toolFlags = { bat: false, weapons: [], ride: false }; // weapons：🔫 戰鬥區（src/weapons.js setZone）入面有嘅武器 id；ride：🐎 有坐騎（riding.js）
 // 🎒 背包（Issue #10）：可以由背包拖嘢落快捷欄（state.hotbar 記住每格放咗乜）
 // 每樣嘢一個 key：寵物 'pet:uid'、救返嚟嘅動物 'res:uid'、Gear 'gear:type'（同種 Gear 疊埋一格）
 // 冇拖過嘅格仔：好似以前咁，自動放救返嚟嘅動物同背包寵物
@@ -224,7 +224,10 @@ export function hotbarPool() {
   ];
 }
 const weaponItem = (id) => ({ kind: 'tool', key: `weapon:${id}`, item: { name: WEAPONS[id].name, tool: true, weapon: id } }); // 🔫 Issue #11
+// 🐎 騎寵物（Issue #16）：有可以騎嘅寵物（src/riding.js 設 toolFlags.ride）→ 第 1 格係「Ride」掣；打架嗰陣（球棒、武器）就收埋
+export const RIDE_ITEM = { kind: 'tool', key: 'tool:ride', item: { name: 'Ride', tool: true, ride: true } };
 const toolItems = () => [
+  ...(toolFlags.ride && !toolFlags.bat && !(toolFlags.weapons || []).length ? [RIDE_ITEM] : []),
   ...(toolFlags.bat ? [BAT_ITEM] : []),
   ...(toolFlags.weapons || []).map(weaponItem),
   ...(state.hasHammer && !state.labBossDefeated ? [HAMMER_ITEM] : []), // 實驗室冇咗：鎚仔冇用，唔再放快捷欄
@@ -276,7 +279,7 @@ export function clearHotbar(i) {
   renderHotbar();
 }
 // 背包（inventory.js）可以攔住撳格仔（例如揀咗張卡，撳格仔 = 放落去）
-export const hotbarHooks = { onSlotClick: null };
+export const hotbarHooks = { onSlotClick: null, onRide: null, rideLabel: null }; // onRide／rideLabel：🐎 riding.js
 
 export function selectedHotbarItem() {
   return hotbarItems()[selected] || null;
@@ -288,11 +291,11 @@ export function selectSlot(i) {
 }
 export const scrollHotbar = (direction) => selectSlot(selected + direction);
 
-const slotIcon = (it) => (it.kind === 'tool' ? (it.item.weapon ? WEAPONS[it.item.weapon].emoji : it.item.bat ? '🏏' : '🔨') : it.kind === 'gear' ? gearIcon(it.item.gear, 'slot-gear') : findAnimal(it.item.name)?.emoji || '❓');
+const slotIcon = (it) => (it.kind === 'tool' ? (it.item.weapon ? WEAPONS[it.item.weapon].emoji : it.item.bat ? '🏏' : it.item.ride ? '🐎' : '🔨') : it.kind === 'gear' ? gearIcon(it.item.gear, 'slot-gear') : findAnimal(it.item.name)?.emoji || '❓');
 let lastHotbar = '';
 export function renderHotbar() {
   const items = hotbarItems();
-  const key = selected + JSON.stringify(items.map((x) => x && x.kind + x.item.name + (x.item.count || '') + (x.item.mutation || '')));
+  const key = selected + JSON.stringify(items.map((x) => x && x.kind + x.item.name + (x.item.count || '') + (x.item.mutation || ''))) + (items[selected]?.item.ride ? hotbarHooks.rideLabel?.() : ''); // 🐎 Ride／Dismount 字會變
   if (key === lastHotbar) return;
   lastHotbar = key;
 
@@ -308,18 +311,21 @@ export function renderHotbar() {
     slot.addEventListener('click', () => {
       if (hotbarHooks.onSlotClick?.(i)) return;
       selectSlot(i);
+      if (it?.item.ride) hotbarHooks.onRide?.(); // 🐎 撳 Ride 格 = 上／落坐騎（手機都得）
     });
     bar.appendChild(slot);
   }
   const it = items[selected];
   $('hotbar-label').textContent = it?.item.weapon
     ? `${WEAPONS[it.item.weapon].emoji} ${WEAPONS[it.item.weapon].name} - ${WEAPONS[it.item.weapon].desc}`
+    : it?.item.ride
+    ? (hotbarHooks.rideLabel?.() || '🐎 Ride - press 1 to hop on your pet!')
     : it?.item.bat
     ? '🏏 Bat - get close to the Scientist and press E or click to SMACK him!'
     : it?.kind === 'tool'
     ? '🔨 Hammer - smash the glass pods in the Laboratory to free the animals!'
     : it?.kind === 'gear'
-    ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - ${gearInfo(it.item.gear).chest ? (document.body.classList.contains('mobile') ? 'tap USE to open one (tap lots!)' : 'click or press E to open one (spam it!)') : 'press E or click to pick a pet to mutate!'}`
+    ? `${gearInfo(it.item.gear).emoji} ${it.item.name}${it.item.count > 1 ? ` x${it.item.count}` : ''} - ${gearInfo(it.item.gear).chest ? (document.body.classList.contains('mobile') ? 'tap USE to open one (tap lots!)' : 'click or press E to open one (spam it!)') : gearInfo(it.item.gear).tool ? 'walk up to an animal in a biome and press E to put it on a leash!' : gearInfo(it.item.gear).ride ? 'press E or click to pick a pet to put a saddle on!' : 'press E or click to pick a pet to mutate!'}`
     : it
     ? `${it.item.flipped ? '🙃 ' : ''}${mutationList(it.item).length ? `${mutationText(it.item)} ` : ''}${it.item.rarity || 'Common'} ${it.item.name} · ${formatKg(kgOf(it.item))} · $${fmt(itemMoney(it.item))}/s - ${it.kind === 'rescued' ? 'put me in a Happy Machine!' : 'put me in your Safety Zoo!'}`
     : items.some(Boolean) ? '' : (document.body.classList.contains('mobile') ? 'Rescued animals and pets go here · tap 🎒 for your Inventory' : 'Rescued animals and pets go here · press ` for your Inventory');
@@ -683,6 +689,7 @@ function specialIndexHtml() {
   for (const [title, list, how] of [
     ['😈 Demonic Chest', DEMONIC_CHEST_PETS, 'Win a Demonic Chest in the 🧙 Witch Tower and open it from your hotbar!'],
     ['🧙 Witch Tower Eggs', DEMONIC_EGG_PETS, 'Win a Lava Bloom or Pumpkgrim egg in the 🧙 Witch Tower and hatch it at the 🪦 Egg Graveyard!'],
+    ['🤠 Catch & Tame', TAME_PETS, "Tame animals in 🤠 Catch & Tame and buy it at ⭐ Special's Stall with Tame Tokens!"], // Issue #16
   ]) {
     const got = list.filter((a) => state.indexFound.includes(a.name)).length;
     html += `<h3>${title} <span class="count">${got}/${list.length}${got === list.length ? ' ✅' : ''}</span></h3>
@@ -747,6 +754,7 @@ function shopHtml() {
         : owned ? `<button data-shop="${action}-equip" data-i="${i}">Equip</button>`
         : action === 'ranger' && RANGER_SKINS[i]?.meteor ? '<span class="tag">☄️ Meteoric Shop 💎</span>' // 🌠 用 Meteor Crystals 先買得
         : action === 'ranger' && RANGER_SKINS[i]?.tower ? '<span class="tag">🧙 Witch Tower prize</span>' // 😈 Witch Tower 先攞得
+        : action === 'ranger' && RANGER_SKINS[i]?.tame ? '<span class="tag">🤠 Special\'s Stall</span>' // 🧢 Tamer：⭐ Special's Stall 用 Tame Tokens 買（Issue #16）
         : `<button data-shop="${action}-buy" data-i="${i}" ${state.tokens < cost ? 'disabled' : ''}>Buy 🎟️ ${cost}</button>`}
     </div>`;
   if (shopTab === 'ranger') {
