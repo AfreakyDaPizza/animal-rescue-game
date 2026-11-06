@@ -15,6 +15,12 @@ const DEFAULTS = {
   tableLevel: 1,
   machineLevel: 1, // 繁殖機等級（1 Basic、2 Nature Growth、3 Mountain Magic）
   tokens: 0, // Skin Tokens（做任務、攞寵物得到）
+  tameTokens: 0, // 🤠 Catch & Tame（Issue #16，見 data/tame.js）
+  lassoLevel: 1,
+  fluteLevel: 1,
+  totalTames: 0,
+  rodeoBest: {},
+  ridePet: null,
   quests: [],
   questDay: '',
   rangerSkin: 'ranger',

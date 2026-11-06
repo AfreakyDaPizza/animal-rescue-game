@@ -82,6 +82,7 @@ export const METEORIC_MONEY = 5; // ☄️ METEORIC pets (from a Meteoric Shard)
 export const ASTRAL_MONEY = 8; // 🌌 ASTRAL pets earn this many times more money
 export const DEMONIC_MONEY = 10; // 😈 DEMONIC pets (Demonic Shard / Witch Tower) earn this many times more money
 export const TIME_MONEY = 6; // ⏳ TIME pets (cute googly eyes + clock halo, from a Time Shard) earn this many times more money - change it if you like!
+export const TAME_MONEY = 3; // 🤠 TAME pets (from a Tame Shard, Special's Stall, Issue #16) earn this many times more money
 // ⏳ A Time Shard falls from the sky near you every random TIME_SHARD_MIN to TIME_SHARD_MAX minutes of play time
 export const TIME_SHARD_MIN = 1; // shortest wait (minutes)
 export const TIME_SHARD_MAX = 10; // longest wait (minutes)
