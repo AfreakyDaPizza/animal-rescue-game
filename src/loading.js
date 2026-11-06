@@ -5,7 +5,7 @@
 //     ... progress(0.5) ...           // 0–1，真實進度（可以唔叫，條會自己慢慢行）
 //   }, 1.8, { theme: 'halloween', title: 'Halloween World', kicker: 'Travelling to' });
 //   if (!ok) return;                   // 出錯／太耐 → 已經收埋畫面兼彈咗出錯卡
-// theme：'nature'（普通世界）／'halloween'／'ghost'／'hell'（🔥 Halloween World 2）
+// theme：'nature'（普通世界）／'halloween'／'ghost'／'hell'（🔥 Halloween World 2）／'rodeo'（🤠 Catch & Tame）
 // 最少顯示 minSeconds 秒；loading.active = true 嗰陣其他嘢（暫停、Boss）會停
 // 第一次開網頁：index.html 已經有 #loading-screen（class="boot"），main.js 起好叫 finishBoot()
 import { ANIMALS } from './data/animals.js';
@@ -30,6 +30,11 @@ const THEMES = {
   hell: {
     kicker: 'World 2 · Travelling to', title: 'Hell', rider: '🔥', orbit: '🦇',
     floaters: ['🔥', '🌋', '💀', '🔥', '🪨', '🍬', '🔥', '⛓️'], flyers: ['🦇', '🦇', '🧹'], icons: ['🔥', '🌋', '🏰', '🧙‍♀️'],
+  },
+  // 🤠 Catch & Tame（Issue #16）：牧場、日落、仙人掌、套索
+  rodeo: {
+    kicker: '🤠 Catch & Tame', title: 'Catch & Tame', rider: '🏇', orbit: '🪢',
+    floaters: ['🐎', '🦒', '🐪', '🦌', '🌵', '🦓', '🐃', '🤠'], flyers: ['🦅', '🐦'], icons: ['🤠', '🐎', '🪢', '🪈'],
   },
 };
 
@@ -59,7 +64,16 @@ const TIPS = {
     '🍬 Soul Candy comes from beating the Pumpkin Reaper Dragon.',
     '🏃 More Speed = longer jumps. Train on the Treadmill!',
   ],
-  ghost: [
+  rodeo: [
+    '🪢 Press SPACE to jump off and lasso an animal close to you!',
+    '🪈 A better Taming Flute fills the tame bar faster.',
+    '🪢 A better Lasso reaches animals that are further away.',
+    '❤️ You have 3 hearts. Steer around rocks, logs and cactus!',
+    '🌟 Rare animals show their rarity above their head. Legendary ones glow!',
+    '🤠 Every animal you tame gives you Tame Tokens for the Special Stall.',
+    '🐂 Wild animals buck! Hold on until the tame bar is full.',
+  ],
+ghost: [
     '🧹 Hold E (or the mouse button) to suck up ghosts.',
     '🧹 A better vacuum catches ghosts faster.',
     '👻 Stronger ghosts take longer to catch. Keep holding!',

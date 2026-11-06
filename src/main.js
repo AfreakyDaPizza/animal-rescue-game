@@ -81,6 +81,7 @@ import { HELL_ARRIVE, HELL_START, inHell, CASTLE_TOP, TOWER_DOOR, HELL_LAST_CP }
 import { inReaperHall } from './reaperShape.js';
 import { inTowerArena } from './towerShape.js'; // 🗼 Endless Witch Tower（Issue #11）
 import { createWitchTower } from './witchTower.js';
+import { createRodeo } from './rodeo.js'; // 🤠 Catch & Tame（Issue #16）
 import { createExpedition, EXPEDITION_SPOT } from './worldExpedition.js'; // 🗺️ World Expedition 地圖（Soul Candy 開 World 2）
 import { createPhantomExpress, forceTrain } from './phantomExpress.js'; // 🚂 每個鐘一班嘅鬼火車
 import { createGhostHunt } from './ghostVacuum.js'; // 🧹 吸塵機 + 👻 Ghost World 嘅鬼
@@ -394,6 +395,13 @@ const tower = createWitchTower({
   togglePanel: (kind) => togglePanel(kind),
   toCastle: () => towerToCastle(),
 });
+// 🤠 Catch & Tame（src/rodeo.js）：傳送門叫 rodeo.openMapSelect()；跑緊（rodeo.active）就由佢控制玩家、用佢個鏡頭畫畫面
+const rodeo = createRodeo({
+  scene, camera, player, thirdPerson, play, popup, announce, showLoading, extraPanels, sky, hemi, sun,
+  flash: () => flashScreen(),
+  teleport: (x, z, rotY) => { teleportPlayer(player, x, z); faceTo(rotY); },
+  togglePanel: (kind) => togglePanel(kind),
+});
 const chests = createChests(scene); // 🧰 開箱動畫（圍住玩家）
 const timeShard = createTimeShardDrop({ scene, isWalkable, groundAt }); // ⏳
 const inventory = createInventory({
@@ -462,7 +470,7 @@ const dayNight = createDayNight({ scene, hemi, sun, sky }, () => {
   gate.locked = true;
   play('night');
   setTimeout(() => popup('🌙 Night bonus: Happy Machines are 10x faster!'), 3500);
-  if (camera.position.z < 0 && !inHalloween(camera.position.x, camera.position.z)) { // 🎃 Halloween 世界唔會俾人帶返 Hub
+  if (camera.position.z < 0 && !inHalloween(camera.position.x, camera.position.z) && !rodeo.active) { // 🎃 Halloween 世界唔會俾人帶返 Hub；🤠 Catch & Tame 都唔會
     if (rescue.carrying) {
       loseAnimal(rescue);
       setCarrying(null);
@@ -1909,7 +1917,7 @@ renderer.setAnimationLoop((timestamp) => {
   const atKingdomGate = pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10;
   const revealOk = kingdomReady && !state.kingdomSeen && !movie.active && !intro.active && startScreen.hidden && !isPanelOpen() && !isQuizOpen()
     && !document.getElementById('device-chooser') && !rescue.carrying && !endingRunning && whereIs(pos.x, pos.z) !== 'Boss Arena'
-    && (state.tutorialDone || atKingdomGate);
+    && (state.tutorialDone || atKingdomGate) && !rodeo.active;
   revealWait = revealOk ? revealWait + dt : 0;
   if (revealOk && (atKingdomGate || revealWait > 1.5)) {
     revealWait = 0;
@@ -1964,7 +1972,7 @@ renderer.setAnimationLoop((timestamp) => {
 
     if (fling) updateFling(dt);
     else if (sitting) camera.position.set(BENCH.x + 0.05, 1.75, BENCH.z); // 坐喺長櫈睇流星
-    else updatePlayer(player, dt, station ? station.standHeight : gymStation ? gymStation.standHeight : 0);
+    else if (!rodeo.active) updatePlayer(player, dt, station ? station.standHeight : gymStation ? gymStation.standHeight : 0); // 🤠 Catch & Tame：rodeo.js 自己郁
     // 🦘 彈床：一落地就自動彈返上去（跳得越高越好玩）
     if (gymStation?.kind === 'trampoline' && player.grounded) {
       player.vy = jumpVelocity(Math.max(3.2, jumpHeight() * 1.35));
@@ -2140,7 +2148,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (d > max) viewCam.position.set(ARENA.x + (dx / d) * max, viewCam.position.y, ARENA.z + (dz / d) * max);
   }
   avoidCameraClip(fight, viewCam.position);
-  renderPass.camera = viewCam;
+  renderPass.camera = rodeo.active ? rodeo.view : viewCam; // 🤠 Catch & Tame 自己個鏡頭
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
   if (heldModel) heldModel.visible = !petsHidden && !inMovie; // 播片時唔好喺鏡頭前面見到手上隻寵物
@@ -2153,6 +2161,7 @@ renderer.setAnimationLoop((timestamp) => {
   reaper.update(dt, time, { paused: isPaused(), frozen, inHw: inHalloween(camera.position.x, camera.position.z), view: viewCam });
   if (!isPaused() && !inMovie && !loading.active) reaper.autoEnter(camera.position);
   tower.update(dt, time, { paused: isPaused() || inMovie, frozen, view: viewCam }); // 🗼 Witch Tower（要喺 weapons.update 之前：打中先計到）
+  rodeo.update(dt, time, { paused: isPaused() || inMovie }); // 🤠 Catch & Tame（要喺天空／霧之後：蓋過佢哋）
   // 🔫 武器淨係喺戰鬥區（塔、Reaper 大廳）先有：用任何方法離開（傳送、控制面板）都即刻收埋（小朋友 Issue #13）
   if (!inTowerArena(camera.position.x, camera.position.z)) weapons.setZone('tower', false);
   if (!inReaperHall(camera.position.x, camera.position.z)) weapons.setZone('reaper', false);
@@ -2170,7 +2179,7 @@ renderer.setAnimationLoop((timestamp) => {
   meteorShop.update(dt, time); // ☄️ 舖頭水晶閃、隕石火尾
   chests.update(dt, { pos: camera.position, yaw: camera.rotation.y, feetY: player.feetY, third: thirdPerson.zoom > 0, hidden: inMovie }); // 🧰 開箱動畫
   // ⏳ Time Shard：正常玩緊先計時（Boss Arena、塔、Reaper 大廳、播片、彈飛緊都唔跌）
-  const shardOk = !isPaused() && !inMovie && !loading.active && !endingRunning && !fling && whereIs(pos.x, pos.z) !== 'Boss Arena' && !inTowerArena(pos.x, pos.z) && !inReaperHall(pos.x, pos.z) && !tower.inside && !reaper.inside;
+  const shardOk = !isPaused() && !inMovie && !loading.active && !endingRunning && !fling && whereIs(pos.x, pos.z) !== 'Boss Arena' && !inTowerArena(pos.x, pos.z) && !inReaperHall(pos.x, pos.z) && !tower.inside && !reaper.inside && !rodeo.active;
   timeShard.update(dt, time, { pos, feetY: player.feetY, playing: shardOk });
   bossSkins.update(dt, time); // 🦹 隕石皮膚嘅細隕石轉圈
   demonicBossSkins.update(dt, time); // 😈 火球、翼
@@ -2186,7 +2195,7 @@ renderer.setAnimationLoop((timestamp) => {
   const quake = inMovie ? null : meteorShake(meteor) || reaper.shake() || tower.shake(); // ☄️ 隕石撞落地／🐉 Boss 爆地板：震下畫面
   if (quake) viewCam.position.add(quake);
   if (quality.bloom) composer.render();
-  else renderer.render(scene, viewCam);
+  else renderer.render(scene, rodeo.active ? rodeo.view : viewCam);
   if (quake) viewCam.position.sub(quake);
   autoQuality(dt);
   if (!booted) {
@@ -2263,7 +2272,7 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, rodeo: rodeo.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.timeShard = () => timeShard.force(camera.position, player.feetY); // ⏳ 測試：即刻跌一粒 Time Shard（game.timeShardDrop 睇狀態）
 if (import.meta.env.DEV) window.game.timeShardDrop = timeShard;

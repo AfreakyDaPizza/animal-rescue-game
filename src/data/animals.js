@@ -10,6 +10,8 @@ import { METEOR_PETS, ARCADRAGON_MONEY } from './meteorShop.js'; // ☄️ Meteo
 export { METEOR_PETS };
 import { DEMONIC_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS } from './demonic.js'; // 😈 Witch Tower 獎品寵物（Issue #11：Demonic Chest + 2 隻蛋）
 export { DEMONIC_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS };
+import { TAME_ANIMALS } from './tameAnimals.js'; // 🤠 Catch & Tame 動物（Issue #16：淨係 Catch & Tame 馴服到）
+export { TAME_ANIMALS };
 
 // emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
 // kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
@@ -173,7 +175,7 @@ export const animalsInBiome = (biome) => (biome >= 7 ? HALLOWEEN_PETS : ANIMALS)
 
 // 舊名（2026-10-17 小朋友改名）
 const OLD_NAMES = { 'Enchanted Sunlion': 'Celestial Sunlion' };
-export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name);
+export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name) || TAME_ANIMALS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {

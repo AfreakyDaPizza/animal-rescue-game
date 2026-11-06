@@ -8,7 +8,7 @@ import { eventStatus } from './events.js';
 import { todayQuests, questText } from './quests.js';
 import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { rangerSkinPic, petSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
-import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
+import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, TAME_ANIMALS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
 import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
@@ -159,7 +159,8 @@ export function showZoneTitle(location) {
     'Fishing Lake': ['Fish for Halloween eggs', '🎣 Fishing Lake', '#4fc3f7'],
     'Ghost World': ['Catch the ghosts!', '👻 Ghost World', '#b388ff'],
     Hell: ['🔥 Halloween World 2', '🌋 Hell', '#ff7043'], // Issue #11
-    'Witch Castle': ['🔥 Halloween World 2', '🏰 Witch Castle', '#ea80fc'] }[location];
+    'Witch Castle': ['🔥 Halloween World 2', '🏰 Witch Castle', '#ea80fc'],
+    'Catch & Tame': ['Ride, lasso & tame!', '🤠 Catch & Tame', '#ffb74d'] }[location]; // Issue #16
   el.querySelector('small').textContent = extra ? extra[0] : i >= 0 ? `Biome ${i + 1}` : 'Welcome back to';
   el.querySelector('span').textContent = extra ? extra[1] : i >= 0 ? BIOMES[i].short : 'The Hub';
   el.style.setProperty('--zone-color', extra ? extra[2] : i >= 0 ? BIOME_THEMES[i].top : '#ffd54f');
@@ -689,6 +690,21 @@ function specialIndexHtml() {
       html += state.indexFound.includes(a.name)
         ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
         : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not found yet</small></div>`;
+    }
+    html += '</div>';
+  }
+  // 🤠 Catch & Tame（Issue #16）：三張地圖，每張 10 隻
+  const tameGot = TAME_ANIMALS.filter((a) => state.indexFound.includes(a.name)).length;
+  html += `<h2>🤠 Catch & Tame <span class="count">${tameGot}/${TAME_ANIMALS.length}</span></h2>
+    <p class="reward">Go through the Catch & Tame portal, lasso wild animals and tame them with your flute!</p>`;
+  for (const [map, title] of [['savanna', '🦒 Savanna'], ['desert', '🐪 Desert'], ['taiga', '🌲 Taiga']]) {
+    const list = TAME_ANIMALS.filter((a) => a.map === map);
+    const got = list.filter((a) => state.indexFound.includes(a.name)).length;
+    html += `<h3>${title} <span class="count">${got}/${list.length}${got === list.length ? ' ✅' : ''}</span></h3><div class="cards">`;
+    for (const a of list) {
+      html += state.indexFound.includes(a.name)
+        ? `<div class="card-animal" data-view="${viewAttr(a.name)}">${petPic(a.name, { rarity: a.rarity })}<b>${a.name}</b><small style="color:${rarityInfo(a.rarity).color}">${a.rarity}</small><span class="kg">⚖️ ${a.kg[0].toLocaleString('en-US')}–${a.kg[1].toLocaleString('en-US')} kg</span><p>${a.fact}</p></div>`
+        : `<div class="card-animal locked">${petPic(a.name, { silhouette: true })}<b>???</b><small>Not tamed yet</small></div>`;
     }
     html += '</div>';
   }

@@ -43,7 +43,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 // ---------- 介面 ----------
 function buildDom(animal, skinSwatch) {
   const rarity = animal.rarity ? rarityInfo(animal.rarity) : null;
-  const where = BIOMES[animal.biome]?.short || HALLOWEEN_BIOMES.find((h) => h.key === animal.hw)?.name || null;
+  const where = animal.where || BIOMES[animal.biome]?.short || HALLOWEEN_BIOMES.find((h) => h.key === animal.hw)?.name || null;
   const rarityHtml = rarity
     ? `<span class="iv-pill" style="--c:${rarity.color}">${rarity.name}</span>`
     : `<span class="iv-pill iv-rainbow">${RARITIES.filter((r) => r.chance > 0).map((r) => `<i style="background:${r.color}"></i>`).join('')} Any rarity</span>`;

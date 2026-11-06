@@ -29,6 +29,7 @@ import { GATE_LANE, YARD, LAB_DOOR, LAB, LAB_DOOR_Z, ARENA, BEACH, BEACH_PIER, G
 import { beach } from './secretBeach.js';
 import { inHalloween, hwWalkable, hwZoneAt } from './halloweenShape.js'; // 🎃 Halloween 世界（好遠嘅西邊）
 import { inHell } from './hellShape.js'; // 🔥 Halloween World 2
+import { inRodeo } from './rodeoShape.js'; // 🤠 Catch & Tame（好遠嘅東邊，Issue #16）
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
 export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
@@ -54,6 +55,7 @@ export function biomeRect(i) {
 
 // 玩家而家喺邊？（Hub 或者第幾個生態區）
 export function whereIs(x, z) {
+  if (inRodeo(x)) return 'Catch & Tame'; // 🤠 無限地圖（src/rodeo.js）
   if (inHalloween(x, z)) return hwZoneAt(x, z); // 🎃 Halloween 世界：'🎃 Spawn Ruins'、'Pumpkin Graveyard'…（halloweenShape.js）
   // Hub 大門外面（Issue #2）：前院、實驗室、圓形 Boss Arena（好遠，經傳送門去）
   if (z > ARENA.z - ARENA.r - 5) return 'Boss Arena';
