@@ -488,13 +488,13 @@ const dayNight = createDayNight({ scene, hemi, sun, sky }, () => {
     teleportPlayer(player, 0, 4);
     camera.rotation.set(0, 0, 0, 'YXZ');
     announce('🌙 Night! Rangers brought you back. The biomes are locked!');
-  } else if (!inHalloween(camera.position.x, camera.position.z)) announce('🌙 Night falls... the biomes are locked and reset!'); // 🎃 Halloween 世界：唔講
+  } else if (!inHalloween(camera.position.x, camera.position.z) && !rodeo?.active) announce('🌙 Night falls... the biomes are locked and reset!'); // 🎃 Halloween 世界：唔講
   resetBosses(bosses);
   spawnAll(); // 每個生態區換過一隻新動物
 }, () => {
   gate.locked = false;
   play('day');
-  if (!inHalloween(camera.position.x, camera.position.z)) announce('☀️ Morning! The biomes are open!');
+  if (!inHalloween(camera.position.x, camera.position.z) && !rodeo?.active) announce('☀️ Morning! The biomes are open!');
 });
 spawnAll(); // 放第一批動物（要日夜系統起好先知係第幾段白天）
 
@@ -2068,6 +2068,7 @@ renderer.setAnimationLoop((timestamp) => {
       save();
     }
     updateTutorial(tutorial, time);
+    document.body.classList.toggle('in-rodeo', !!rodeo?.active); // 🤠 Catch & Tame：收埋 Hub 用嘅牌（教學、日夜、活動、操作說明）
     const it = currentInteraction();
     setPrompt(it?.prompt ?? null);
     updateBossSigns(state.speed, state.iq);
