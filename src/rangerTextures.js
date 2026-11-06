@@ -108,6 +108,31 @@ export const stripes = (colors, w = 16, dir = 'h') => make(`stripes${colors}|${w
   for (let i = 0; i < s; i += 2) ctx.fillRect(0, i, s, 1);
 });
 
+// 🤠 格仔絨布（牛仔恤衫，Issue #16 Tamer Ranger）：底色 + 打直打橫兩種闊條（半透明疊埋 = 格仔）+ 布紋
+export const plaid = (base, band, thin) => make(`plaid${base}|${band}|${thin}`, (ctx, s, r) => {
+  ctx.fillStyle = css(base);
+  ctx.fillRect(0, 0, s, s);
+  const n = 4;
+  const w = s / n;
+  ctx.globalAlpha = 0.45;
+  ctx.fillStyle = css(band);
+  for (let i = 0; i < n; i++) {
+    ctx.fillRect(i * w, 0, w * 0.4, s);
+    ctx.fillRect(0, i * w, s, w * 0.4);
+  }
+  ctx.globalAlpha = 0.6;
+  ctx.fillStyle = css(thin);
+  for (let i = 0; i < n; i++) {
+    ctx.fillRect(i * w + w * 0.7, 0, 2, s);
+    ctx.fillRect(0, i * w + w * 0.7, s, 2);
+  }
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 200; i++) {
+    ctx.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)';
+    ctx.fillRect(r() * s, r() * s, 1 + r() * 2, 1);
+  }
+});
+
 // 星空：底色 + 幾團星雲 + 星星（有啲係四角星）
 export const starfield = (bg, nebula = [], starCols = ['#ffffff'], n = 60, { glowOnly = false } = {}) => make(`stars${bg}|${nebula}|${starCols}|${n}|${glowOnly}`, (ctx, s, r) => {
   ctx.fillStyle = glowOnly ? '#000' : css(bg);

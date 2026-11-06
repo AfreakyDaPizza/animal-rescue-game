@@ -7,6 +7,8 @@ import { animalsInBiome, formatKg, kgScale, findAnimal } from './data/animals.js
 import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, rarityInfo } from './data/balance.js';
 import { seededRandom, rollWild } from './spawnRoll.js';
 import { buildAnimalModel } from './animalModels.js';
+import { addSaddle } from './saddle.js'; // 🐎 Issue #16
+import { moveOpts } from './player.js';
 import { biomeRect, KINGDOM_Y } from './world.js';
 import { SUMMIT } from './biomes.js';
 import { boost } from './events.js';
@@ -118,7 +120,7 @@ export function nearestAnimal(rescue) {
   let bestDist = Infinity;
   for (const w of rescue.wild) {
     const d = Math.hypot(w.group.position.x - p.x, w.group.position.z - p.z);
-    const sameLevel = Math.abs(w.group.position.y - (p.y - 1.6)) < 2.5; // 要企喺同一個高度（例如山頂）
+    const sameLevel = Math.abs(w.group.position.y - (p.y - 1.6 - (moveOpts.rideLift || 0))) < 2.5; // 要企喺同一個高度（例如山頂）；🐎 騎緊：對眼高咗
     if (d < w.reach && d < bestDist && sameLevel) {
       best = w;
       bestDist = d;
@@ -189,15 +191,16 @@ export function deliver(rescue) {
 }
 
 // 快捷欄揀咗嘅嘢拎喺手（抱住救援動物時就收埋）
-export function setHolding(rescue, name, mutation = null, flipped = false) {
+export function setHolding(rescue, name, mutation = null, flipped = false, rideable = false) {
   const show = rescue.carrying ? null : name;
-  const key = show && (mutation || flipped) ? `${show}#${mutation || ''}${flipped ? '#flip' : ''}` : show; // 🔥 Fire／🌑 Eclipse／🙃 倒轉寵物要換過模型
+  const key = show && (mutation || flipped || rideable) ? `${show}#${mutation || ''}${flipped ? '#flip' : ''}${rideable ? '#ride' : ''}` : show; // 🔥 Fire／🌑 Eclipse／🙃 倒轉／🐎 有馬鞍嘅寵物要換過模型
   if ((rescue.holding?.key ?? rescue.holding?.name ?? null) === key) return;
   if (rescue.holding) rescue.holding.model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.holding = null;
   if (show) {
     const model = handModel(findAnimal(show), flipped);
     applyPetSkin(model, state.petSkin); // 寵物皮膚
+    if (rideable) addSaddle(model.userData.inner); // 🐎 Issue #16
     if (mutation) addFireAura(model, mutation);
     rescue.camera.add(model);
     rescue.holding = { name: show, key, model };
@@ -234,7 +237,7 @@ export function updateRescue(rescue, dt, time, walking = false) {
       w.ring.material.color.setHSL((time * 0.3 + 0.5) % 1, 1, 0.6);
     }
   }
-  const held = rescue.carrying?.model || rescue.holding?.model;
+  const held = (rescue.carrying && !rescue.carrying.leashed ? rescue.carrying.model : null) || rescue.holding?.model; // 🪢 拖住嘅動物自己行（riding.js）
   if (held) {
     const sway = walking ? 1 : 0.3;
     held.position.y = -0.5 + Math.sin(time * 10) * 0.025 * sway;

@@ -6,6 +6,9 @@
 //   🟣 Phantom：紫羅蘭水晶 + 漩渦煙 + 新月
 //   😈 Demonic：紅黑水晶 + 頂上一對彎角 + 底下紅黑火 + 入面細惡魔笑臉（Issue #11）
 //   ⏳ Time：金色水晶 + 入面一個時鐘 + 後面一個金色時鐘圈（刻度）+ 青色星光（小朋友 2026-11-03）
+//   🤠 Tame：橙啡色水晶 + 入面一頂牛仔帽 + 圍住一個套索繩圈 + 金星（Issue #16）
+//   🐎 Ridable Shard：栗色水晶 + 入面一個馬鞍 + 後面一隻金色馬蹄鐵（Issue #16）
+//   🪢 Leash：唔係水晶，係一卷繩 + 皮手柄 + 金屬扣（noShard，Issue #16）
 // 兩樣嘢：
 //   gearIcon(type)：2D canvas 畫 → data URL（背包卡、快捷欄、商店、控制台用）；畫一次就記住
 //   buildShardModel(type)：3D 水晶（快捷欄揀咗 Shard 時拎喺手）
@@ -27,6 +30,9 @@ const STYLES = {
   phantom: { body: ['#e1bee7', '#aa00ff', '#311b92'], glow: '#b388ff', accent: '#f3e5f5', motif: 'swirl' },
   demonic: { body: ['#ff8a80', '#d50000', '#1a0505'], glow: '#ff1744', accent: '#ffab00', motif: 'demon' }, // 😈 Issue #11
   time: { body: ['#fffde7', '#ffca28', '#e65100'], glow: '#ffd54f', accent: '#18ffff', motif: 'clock' }, // ⏳ Time Shard
+  tame: { body: ['#ffe0b2', '#ff9e40', '#8d4a17'], glow: '#ffab40', accent: '#ffd740', motif: 'cowboy' }, // 🤠 Tame Shard（Issue #16）
+  ride: { body: ['#ffccbc', '#c0703a', '#4e2a12'], glow: '#ffb74d', accent: '#ffd740', motif: 'saddle' }, // 🐎 Ridable Shard
+  leash: { body: ['#ffe0b2', '#d7a86e', '#6d4c2f'], glow: '#ffcc80', accent: '#b0bec5', motif: 'leash', noShard: true }, // 🪢 Leash
 };
 
 // 呢個 Gear 用邊個樣（冇 = null → 用 emoji）
@@ -509,6 +515,211 @@ MOTIFS.clock = {
   },
 };
 
+// 🤠 牛仔帽（2D）：中心 (0,0)，闊 w
+function cowboyHat(c, w, col = '#9a6233', band = '#d84315') {
+  c.save();
+  c.lineJoin = 'round';
+  c.lineWidth = w * 0.035;
+  c.strokeStyle = '#3e2412';
+  // 帽頂（中間凹）
+  c.beginPath();
+  c.moveTo(-w * 0.28, 0);
+  c.bezierCurveTo(-w * 0.3, -w * 0.38, -w * 0.18, -w * 0.46, -w * 0.06, -w * 0.38);
+  c.quadraticCurveTo(0, -w * 0.32, w * 0.06, -w * 0.38);
+  c.bezierCurveTo(w * 0.18, -w * 0.46, w * 0.3, -w * 0.38, w * 0.28, 0);
+  c.closePath();
+  c.fillStyle = col;
+  c.fill();
+  c.stroke();
+  // 帽帶
+  c.fillStyle = band;
+  c.fillRect(-w * 0.28, -w * 0.11, w * 0.56, w * 0.08);
+  // 帽簷：兩邊翹起
+  c.beginPath();
+  c.moveTo(-w * 0.5, -w * 0.12);
+  c.quadraticCurveTo(-w * 0.42, w * 0.06, 0, w * 0.06);
+  c.quadraticCurveTo(w * 0.42, w * 0.06, w * 0.5, -w * 0.12);
+  c.quadraticCurveTo(w * 0.36, -w * 0.02, 0, -w * 0.02);
+  c.quadraticCurveTo(-w * 0.36, -w * 0.02, -w * 0.5, -w * 0.12);
+  c.closePath();
+  c.fillStyle = col;
+  c.fill();
+  c.stroke();
+  sparkle(c, 0, -w * 0.07, w * 0.07, '#ffd740');
+  c.restore();
+}
+
+// 🤠 Tame：後面一個套索繩圈（斜斜）+ 金星；水晶入面一頂細牛仔帽
+MOTIFS.cowboy = {
+  back(c, st) {
+    c.save();
+    c.translate(128, 136);
+    c.rotate(-0.25);
+    c.strokeStyle = '#8d5a2b';
+    c.lineWidth = 11;
+    c.beginPath();
+    c.ellipse(0, 0, 104, 34, 0, Math.PI, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = '#e0b276';
+    c.lineWidth = 7;
+    c.setLineDash([10, 6]);
+    c.stroke();
+    c.restore();
+    const r = rng(61);
+    for (let i = 0; i < 9; i++) sparkle(c, 20 + r() * 216, 20 + r() * 216, 4 + r() * 7, i % 2 ? st.accent : '#ffffff');
+  },
+  inside(c) {
+    c.save();
+    c.translate(0, 12);
+    cowboyHat(c, 66);
+    c.restore();
+  },
+  front(c) {
+    // 套索前半圈 + 繩結 + 繩尾
+    c.save();
+    c.translate(128, 136);
+    c.rotate(-0.25);
+    c.strokeStyle = '#8d5a2b';
+    c.lineWidth = 11;
+    c.beginPath();
+    c.ellipse(0, 0, 104, 34, 0, 0, Math.PI);
+    c.stroke();
+    c.strokeStyle = '#e0b276';
+    c.lineWidth = 7;
+    c.setLineDash([10, 6]);
+    c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#6d4022';
+    c.fillRect(96, -10, 20, 20);
+    c.strokeStyle = '#e0b276';
+    c.lineWidth = 7;
+    c.beginPath();
+    c.moveTo(108, 0);
+    c.quadraticCurveTo(130, -30, 118, -70);
+    c.stroke();
+    c.restore();
+  },
+};
+
+// 🐎 Ridable Shard：後面一隻金色馬蹄鐵；水晶入面一個馬鞍
+function drawSaddle(c, w) {
+  c.save();
+  c.lineJoin = 'round';
+  c.lineWidth = w * 0.035;
+  c.strokeStyle = '#2b160a';
+  // 鞍墊（藍紅格仔布）
+  c.fillStyle = '#1e5aa8';
+  c.beginPath();
+  c.roundRect(-w * 0.46, -w * 0.02, w * 0.92, w * 0.26, w * 0.06);
+  c.fill();
+  c.stroke();
+  c.fillStyle = '#e53935';
+  c.fillRect(-w * 0.46, w * 0.08, w * 0.92, w * 0.05);
+  // 鞍座：前高（鞍頭）後高（鞍尾）中間凹
+  c.fillStyle = '#8d4a1f';
+  c.beginPath();
+  c.moveTo(-w * 0.38, w * 0.02);
+  c.quadraticCurveTo(-w * 0.42, -w * 0.22, -w * 0.3, -w * 0.24);
+  c.quadraticCurveTo(0, -w * 0.06, w * 0.24, -w * 0.18);
+  c.lineTo(w * 0.3, -w * 0.36);
+  c.lineTo(w * 0.38, -w * 0.34);
+  c.quadraticCurveTo(w * 0.42, -w * 0.08, w * 0.38, w * 0.02);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  // 腳踏
+  c.strokeStyle = '#5d2f12';
+  c.lineWidth = w * 0.05;
+  c.beginPath();
+  c.moveTo(0, w * 0.0);
+  c.lineTo(0, w * 0.32);
+  c.stroke();
+  c.fillStyle = '#ffd740';
+  c.fillRect(-w * 0.08, w * 0.3, w * 0.16, w * 0.06);
+  c.restore();
+}
+MOTIFS.saddle = {
+  back(c, st) {
+    c.save();
+    c.translate(128, 112);
+    c.shadowColor = st.accent;
+    c.shadowBlur = 14;
+    c.strokeStyle = '#ffc400';
+    c.lineWidth = 22;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.arc(0, 0, 82, Math.PI * 0.82, Math.PI * 2.18);
+    c.stroke();
+    c.shadowBlur = 0;
+    c.fillStyle = '#7a5200';
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI * 0.9 + (i / 6) * Math.PI * 1.2;
+      c.beginPath();
+      c.arc(Math.cos(a) * 82, Math.sin(a) * 82, 3.5, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+    const r = rng(29);
+    for (let i = 0; i < 9; i++) sparkle(c, 20 + r() * 216, 20 + r() * 216, 4 + r() * 7, i % 2 ? st.accent : '#ffffff');
+  },
+  inside(c) {
+    c.save();
+    c.translate(0, 8);
+    drawSaddle(c, 64);
+    c.restore();
+  },
+};
+
+// 🪢 Leash：一卷繩（幾個圈疊埋）+ 皮手柄 + 銀色扣（唔畫水晶）
+MOTIFS.leash = {
+  front(c, st) {
+    c.save();
+    c.translate(118, 132);
+    for (let i = 0; i < 4; i++) {
+      c.save();
+      c.rotate(-0.35 + i * 0.12);
+      c.strokeStyle = '#6d4c2f';
+      c.lineWidth = 15;
+      c.beginPath();
+      c.ellipse(0, i * 4 - 6, 70 - i * 4, 52 - i * 3, 0, 0, Math.PI * 2);
+      c.stroke();
+      c.strokeStyle = i % 2 ? '#e0b276' : '#d7a86e';
+      c.lineWidth = 10;
+      c.setLineDash([12, 5]);
+      c.stroke();
+      c.restore();
+    }
+    c.setLineDash([]);
+    // 繩尾 → 扣
+    c.strokeStyle = '#d7a86e';
+    c.lineWidth = 10;
+    c.beginPath();
+    c.moveTo(52, 30);
+    c.quadraticCurveTo(96, 60, 100, 92);
+    c.stroke();
+    c.fillStyle = '#90a4ae';
+    c.strokeStyle = '#37474f';
+    c.lineWidth = 4;
+    c.beginPath();
+    c.roundRect(88, 88, 26, 34, 10);
+    c.fill();
+    c.stroke();
+    c.beginPath();
+    c.arc(101, 82, 8, 0, Math.PI * 2);
+    c.stroke();
+    // 皮手柄
+    c.fillStyle = '#5d2f12';
+    c.strokeStyle = '#2b160a';
+    c.beginPath();
+    c.roundRect(-92, -76, 46, 30, 12);
+    c.fill();
+    c.stroke();
+    c.restore();
+    const r = rng(17);
+    for (let i = 0; i < 6; i++) sparkle(c, 24 + r() * 208, 24 + r() * 208, 4 + r() * 5, i % 2 ? st.glow : '#ffffff');
+  },
+};
+
 // 光環（橢圓）：from–to 角度（後半 / 前半分開畫，似圍住水晶）
 function ring(c, st, from, to) {
   c.save();
@@ -534,9 +745,11 @@ function drawIcon(st) {
   c.fillStyle = halo;
   c.fillRect(0, 0, S, S);
   m.back?.(c, st);
-  drawShard(c, 74, 168, 0.42, -0.5, st); // 兩粒細水晶喺後面
-  drawShard(c, 184, 172, 0.36, 0.45, st);
-  drawShard(c, 128, 122, 0.98, 0.06, st, m.inside ? (cc) => m.inside(cc, st) : null);
+  if (!st.noShard) {
+    drawShard(c, 74, 168, 0.42, -0.5, st); // 兩粒細水晶喺後面
+    drawShard(c, 184, 172, 0.36, 0.45, st);
+    drawShard(c, 128, 122, 0.98, 0.06, st, m.inside ? (cc) => m.inside(cc, st) : null);
+  }
   m.front?.(c, st);
   return cv.toDataURL('image/png');
 }
@@ -585,6 +798,7 @@ function glowMaterial(color, emissive, intensity, opacity = 1) {
 export function buildShardModel(type) {
   const st = styleOf(type);
   if (!st) return null;
+  if (st.motif === 'leash') return buildLeashModel();
   const g = new THREE.Group();
   const spin = new THREE.Group();
   g.add(spin);
@@ -690,6 +904,31 @@ export function buildShardModel(type) {
     });
     g.add(clock);
   }
+  if (st.motif === 'cowboy') {
+    // 🤠 頂上一頂細牛仔帽 + 斜斜一個繩圈
+    const hatM = glowMaterial('#9a6233', '#5d2f12', 0.25);
+    const hat = new THREE.Group();
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.025, 20), hatM);
+    brim.scale.z = 0.85;
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.15, 14), hatM);
+    crown.position.y = 0.08;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.152, 0.155, 0.035, 14), glowMaterial('#d84315', '#bf360c', 0.4));
+    band.position.y = 0.03;
+    hat.add(brim, crown, band);
+    hat.position.y = 0.68;
+    hat.rotation.z = 0.2;
+    spin.add(hat);
+    const rope = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.022, 6, 36), glowMaterial('#e0b276', '#8d5a2b', 0.3));
+    rope.rotation.x = Math.PI / 2 - 0.4;
+    g.add(rope);
+  }
+  if (st.motif === 'saddle') {
+    // 🐎 後面一隻金色馬蹄鐵
+    const shoe = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 8, 30, Math.PI * 1.35), glowMaterial('#ffc400', '#ffab00', 1.1));
+    shoe.rotation.z = -Math.PI * 0.175 + Math.PI;
+    shoe.position.set(0, 0.15, -0.15);
+    g.add(shoe);
+  }
   g.userData.animate = (t) => {
     if (hands) {
       hands[0].rotation.z = -t * 2.4;
@@ -698,6 +937,33 @@ export function buildShardModel(type) {
     spin.rotation.y = t * 1.2;
     orbit.rotation.y = -t * 2;
     g.position.y = (g.userData.baseY ?? 0) + Math.sin(t * 2.4) * 0.04;
+  };
+  return g;
+}
+
+// 🪢 Leash 3D：一卷繩 + 手柄 + 扣（拎喺手）
+function buildLeashModel() {
+  const g = new THREE.Group();
+  const coil = new THREE.Group();
+  const ropeA = glowMaterial('#d7a86e', '#6d4c2f', 0.15);
+  const ropeB = glowMaterial('#e0b276', '#6d4c2f', 0.15);
+  for (let i = 0; i < 4; i++) {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.3 - i * 0.015, 0.045, 6, 28), i % 2 ? ropeA : ropeB);
+    r.position.y = i * 0.05 - 0.08;
+    r.rotation.x = Math.PI / 2 + (i - 1.5) * 0.12;
+    coil.add(r);
+  }
+  coil.rotation.z = 0.5;
+  g.add(coil);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.09), glowMaterial('#5d2f12', '#2b160a', 0.2));
+  handle.position.set(-0.28, 0.22, 0);
+  const clip = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.025, 6, 16), new THREE.MeshStandardMaterial({ color: 0xb0bec5, metalness: 0.8, roughness: 0.3 }));
+  clip.position.set(0.3, -0.25, 0);
+  g.add(handle, clip);
+  g.userData.animate = (t) => {
+    coil.rotation.y = Math.sin(t * 1.5) * 0.25;
+    clip.rotation.y = t * 2;
+    g.position.y = (g.userData.baseY ?? 0) + Math.sin(t * 2.4) * 0.03;
   };
   return g;
 }

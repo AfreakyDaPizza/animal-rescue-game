@@ -20,6 +20,7 @@ import { applyPetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
+import { addSaddle } from './saddle.js'; // 🐎 Issue #16
 import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation, hasMutation } from './data/animals.js';
 import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
 import { plotGroundTexture } from './hubFloor.js'; // 🐾 地塊地面紋理（Issue #8）
@@ -1593,6 +1594,7 @@ function addPetToPlot(plot, scene, pet) {
     body.add(flipUpsideDown(model));
     body.userData.noFireAura = model.userData.noFireAura; // Royal Skywhale 唔要火圈
   }
+  if (pet.rideable) addSaddle(model); // 🐎 Ridable Shard（Issue #16）：背脊有馬鞍（要喺變異特效之前，唔係會量埋特效）
   for (const m of mutationList(pet)) addFireAura(body, m); // 🔥 Fire：一圈火；🌑 Eclipse：黑紫火 + 白光環（可以兩樣都有）
   g.add(body);
   const kg = kgOf(pet);

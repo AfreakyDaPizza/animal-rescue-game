@@ -61,16 +61,35 @@ export const GEARS = {
     mutate: () => null,
     canUse: () => false,
   },
+  // 🐎 Ridable Shard（小朋友 Issue #16，⭐ Special's Stall）：揀一隻寵物 → 播「瞓低、放馬鞍」動畫 → pet.rideable = true（唔係變異）
+  // ride: true = 背包「揀寵物」之後唔係變異，係 inventory.js 嘅 doRide（src/riding.js 騎）
+  rideShard: {
+    name: 'Ridable Shard', emoji: '🐎', color: '#ffb74d', rarity: 'Legendary', art: 'ride', ride: true,
+    desc: () => 'Pick a pet: it lies down and gets a SADDLE - then press 1 to RIDE it! (More money per second = faster!)',
+    where: "Buy it at ⭐ Special's Stall (🤠 Tame Tokens)",
+    mutate: () => null,
+    canUse: (pet) => !pet.rideable,
+  },
+  // 🪢 Leash（Issue #16）：唔會用完；放上快捷欄揀咗佢，喺生態區行近動物撳 E = 用繩拖住佢返 Hub（src/riding.js）
+  // tool: true = 背包「Use」係放上快捷欄（唔係揀寵物）
+  leash: {
+    name: 'Leash', emoji: '🪢', color: '#d7a86e', rarity: 'Epic', art: 'leash', tool: true,
+    desc: () => 'Hold it and press E next to an animal in a biome: it walks home with you on a rope!',
+    where: "Buy it at ⭐ Special's Stall (🤠 Tame Tokens)",
+    mutate: () => null,
+    canUse: () => false,
+  },
 };
 export const isChestGear = (type) => !!GEARS[type]?.chest;
+export const isToolGear = (type) => !!GEARS[type]?.tool; // 🪢 Leash：拎喺手用，唔會用完
 
 // 💎 每個變異一粒 Shard（小朋友 2026-10-22）：未有專屬 Shard 嘅變異（🔥 fire、🌑 eclipse、👻 spectral、🟣 phantom…）
 // 自動整一個 gear 'shard_<變異>'，揀一隻寵物 → 一定變嗰個變異（加落去，唔會洗走其他變異）
 // 點解每個變異一個 type（唔係一個 type + mutation 欄）：state.gears 仍然係 { type }，背包疊埋、快捷欄 key 'gear:<type>' 全部照用，唔使改舊存檔
 // ☄️ meteoric 同 🌌 astral 已經有 meteoricShard／astralReroll（mutation 欄），唔再整多一粒
 // 將來 MUTATIONS 加新變異 → 自動有新 Shard（樣用變異顏色，想要專屬樣喺 gearArt.js STYLES 加）
-const SHARD_RARITY = { fire: 'Epic', eclipse: 'Legendary', spectral: 'Epic', phantom: 'Legendary', demonic: 'Mythic', time: 'Mythic' };
-const SHARD_WHERE = { demonic: 'Win it in the 🧙 Witch Tower', time: 'Falls from the sky every few minutes - walk over it!' }; // 😈 Demonic Shard（Issue #11）；⏳ Time Shard（src/timeShard.js）
+const SHARD_RARITY = { fire: 'Epic', eclipse: 'Legendary', spectral: 'Epic', phantom: 'Legendary', demonic: 'Mythic', time: 'Mythic', tame: 'Legendary' };
+const SHARD_WHERE = { demonic: 'Win it in the 🧙 Witch Tower', time: 'Falls from the sky every few minutes - walk over it!', tame: "Buy it at ⭐ Special's Stall (🤠 Tame Tokens)" }; // 😈 Demonic Shard（Issue #11）；⏳ Time Shard（src/timeShard.js）
 const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
 for (const m of MUTATIONS) {
   if (Object.values(GEARS).some((g) => g.mutation === m)) continue;
@@ -85,7 +104,7 @@ for (const m of MUTATIONS) {
 // 變異 → 用邊種 gear（例如 'fire' → 'shard_fire'，'meteoric' → 'meteoricShard'）
 export const mutationShardType = (m) => Object.keys(GEARS).find((t) => GEARS[t].mutation === m) || null;
 // 所有變異 Shard（有 mutate 嘅 gear，包括 🔮 Halloween Shard）
-export const isShardGear = (type) => !!GEARS[type]?.mutate && !GEARS[type].chest; // 寶箱都有 mutate（return null），唔算 Shard
+export const isShardGear = (type) => !!GEARS[type]?.mutate && !GEARS[type].chest && !GEARS[type].tool && !GEARS[type].ride; // 寶箱都有 mutate（return null），唔算 Shard；🐎 🪢 都唔算
 
 export const gearInfo = (type) => GEARS[type] || { name: type, emoji: '❓', color: '#90a4ae', rarity: 'Common', desc: () => 'A mystery gear!', mutate: () => null, canUse: () => false };
 export const gearCount = (type) => (state.gears || []).filter((g) => g.type === type).length;

@@ -19,8 +19,12 @@ import { createDayNight, updateDayNight, dayCycle } from './daynight.js';
 import {
   updateHud, popup, announce, isPanelOpen, panelKind, openPanel, closePanel, setPrompt, setCarrying, showFact,
   selectedHotbarItem, selectSlot, toolFlags, showZoneTitle, setPetActions, setShopActions, setPortalActions,
-  extraPanels,
+  extraPanels, hotbarItems,
 } from './hud.js';
+import { createRiding, rideablePets } from './riding.js'; // 🐎 騎寵物 + 🪢 Leash（Issue #16）
+import { createCowboyBossSkins } from './cowboyBossSkin.js'; // 🤠 Cowboy Boss Skin（Issue #16）
+import { addGear } from './data/gears.js';
+import { LUMINOUS_DRAGON } from './data/animals.js';
 import { initSideBoxes, toggleSideBox, updateSideBoxes, sideBoxOpen } from './sideBoxes.js'; // 右邊中間：🐾 地塊寵物、⏱️ 繁殖機時間（小朋友 2026-10-18）
 import { state, save, SAVE_KEY } from './state.js';
 import { account, uploadSave } from './account.js';
@@ -200,6 +204,7 @@ const hazards = createHazards(scene);
 const bosses = createBosses(scene);
 const bossSkins = createMeteorBossSkins(bosses); // 🦹 Boss 隕石皮膚（買咗之後撳 E 換）
 const demonicBossSkins = createDemonicBossSkins(bosses); // 😈 Boss 惡魔皮膚（Witch Tower 解鎖咗之後撳 E 輪住換）
+const cowboyBossSkins = createCowboyBossSkins(bosses); // 🤠 Boss 牛仔皮膚（⭐ Special's Stall 買咗之後撳 E 輪住換，Issue #16）
 const fight = createLabFight(scene); // Issue #2：實驗室 Boss（Mutated Scientist Poacher）
 fight.onDefeat = () => {
   state.labBossDefeated = true; // 打贏咗：存檔（F5 都唔會再出）
@@ -401,6 +406,7 @@ const inventory = createInventory({
   openChest: (type) => chests.open(type),
   refreshPlot: () => refreshPlotPets(hub),
   portalMutate: (pet, kind) => useHalloweenShard(pet, kind),
+  onRideable: () => riding.syncHotbar(), // 🐎 有新坐騎：快捷欄第 1 格變 Ride
 });
 document.getElementById('inventory-button').addEventListener('click', () => inventory.toggle());
 
@@ -415,6 +421,18 @@ scene.add(camera); // 鏡頭要喺場景入面，手上拎住嘅嘢（掛喺鏡�
 
 // 每個生態區放一隻動物；Legendary／Mythic 要話俾全世界知！
 const rescue = createRescue(scene, camera);
+// 🐎 騎寵物 + 🪢 Leash（Issue #16）：呢啲情況自動落坐騎（Boss 戰、塔、播片、彈飛、坐低、訓練機、Catch & Tame…）
+const riding = createRiding({
+  scene, camera, player, thirdPerson, rescue,
+  togglePanel: (kind) => togglePanel(kind),
+  blocked: () => {
+    const { x, z } = camera.position;
+    return intro.active || movie.active || !!fling || sitting || endingRunning || !!window.__rodeo?.active
+      || whereIs(x, z) === 'Boss Arena' || inTowerArena(x, z) || inReaperHall(x, z)
+      || !!trainingStationAt(hub, x, z) || !!gymStationAt(x, z);
+  },
+  onLeash: (w) => leashAnimal(w),
+});
 let introRunning = true; // 開場動畫播緊
 function spawnAll() {
   const cycle = dayCycle(dayNight);
@@ -705,12 +723,14 @@ window.addEventListener('keydown', (e) => {
     showMute();
   }
   if (e.code === 'KeyM') toggleSlowWalk(); // 🐢 慢行模式：朋友玩太快會頭暈
+  if (e.code === 'Digit1' && panelKind() === 'ride') return togglePanel('ride'); // 🐎 揀坐騎面板：再撳 1 收埋
   if (isPaused()) return;
   if (e.code === 'KeyE' && !(e.repeat && fishingBusy(fishing))) interact(); // 🎣 釣緊魚：長撳嘅自動重複唔算狂撳
   const digit = e.code.match(/^Digit(\d)$/);
   if (digit) {
     selectSlot((Number(digit[1]) + 9) % 10); // 1 = 第一格 … 0 = 第十格
     play('click');
+    if (digit[1] === '1' && hotbarItems()[0]?.item.ride && !e.repeat) riding.press(); // 🐎 1 = 上／落坐騎（Issue #16）
   }
 });
 window.addEventListener('wheel', (e) => {
@@ -840,7 +860,7 @@ setShopActions({
     };
     if (action === 'ranger-buy' || action === 'ranger-equip') {
       const skin = RANGER_SKINS[i];
-      if ((skin.meteor || skin.tower) && !state.ownedRanger.includes(skin.id)) return; // 🌠 Meteoric Shop／😈 Witch Tower 先攞得
+      if ((skin.meteor || skin.tower || skin.tame) && !state.ownedRanger.includes(skin.id)) return; // 🌠 Meteoric Shop／😈 Witch Tower／🧢 Special's Stall 先攞得
       if (action === 'ranger-buy' && !buy(skin.cost)) return;
       if (!state.ownedRanger.includes(skin.id)) state.ownedRanger.push(skin.id);
       state.rangerSkin = skin.id;
@@ -1006,6 +1026,12 @@ function currentInteraction() {
   }
   // ⚙️ 快捷欄揀咗 Gear（例如 Shard）：E／撳滑鼠 = 開背包揀寵物
   const gearSel = selectedHotbarItem();
+  if (gearSel?.kind === 'gear' && gearSel.item.gear === 'leash') { // 🪢 Leash（Issue #16）：附近有野生動物 = 用繩拖住佢
+    const lab3 = labInteraction(pos);
+    if (lab3) return lab3;
+    const near = nearestAnimal(rescue);
+    if (near || whereIs(pos.x, pos.z) !== 'Hub') return riding.leashPrompt(near);
+  }
   if (gearSel?.kind === 'gear' && isChestGear(gearSel.item.gear)) return { prompt: `<kbd>E</kbd> / Click: open a ${gearSel.item.name} 🧰 (x${gearSel.item.count})`, action: () => inventory.useGear(gearSel.item.gear, true) };
   if (gearSel?.kind === 'gear') return { prompt: `<kbd>E</kbd> / Click: use your ${gearSel.item.name} on a pet`, action: () => inventory.useGear(gearSel.item.gear) };
   const lab2 = labInteraction(pos);
@@ -1015,15 +1041,20 @@ function currentInteraction() {
     if (rescue.carrying) return { prompt: '🙌 Your hands are full - take your animal to the Hub first' };
     return { prompt: `<kbd>E</kbd> Borrow ${w.animal.name} (${formatKg(w.kg)})`, action: () => borrowAnimal(w) };
   }
-  const skinAct = demonicBossSkins.interaction(pos, rescue.carrying) || bossSkins.interaction(pos, rescue.carrying); // 🦹 Boss 隔籬：換隕石／惡魔皮膚
+  const skinAct = cowboyBossSkins.interaction(pos, rescue.carrying) || demonicBossSkins.interaction(pos, rescue.carrying) || bossSkins.interaction(pos, rescue.carrying); // 🦹 Boss 隔籬：換隕石／惡魔皮膚
   if (skinAct) return skinAct;
-  if (whereIs(pos.x, pos.z) !== 'Hub') return null;
-  return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
+  if (whereIs(pos.x, pos.z) !== 'Hub') return ridePickInteraction();
+  return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions) || ridePickInteraction();
+}
+// 🐎 揀咗 Ride 格、冇其他嘢做：E = 換另一隻坐騎（有 2 隻以上先出）
+function ridePickInteraction() {
+  if (!selectedHotbarItem()?.item.ride || riding.riding || rideablePets().length < 2) return null;
+  return { prompt: '<kbd>E</kbd> 🐎 Pick a different pet to ride', action: () => riding.openPicker() };
 }
 
 // ================= Issue #2：鎚仔、紅色掣、玻璃艙、傳送門 =================
 const near = (pos, p, d) => Math.hypot(pos.x - p.x, pos.z - p.z) < d;
-const holdingHammer = () => selectedHotbarItem()?.kind === 'tool' && !selectedHotbarItem().item.bat && !selectedHotbarItem().item.weapon; // 🔫 武器自己處理（weapons.js）
+const holdingHammer = () => selectedHotbarItem()?.kind === 'tool' && !selectedHotbarItem().item.bat && !selectedHotbarItem().item.weapon && !selectedHotbarItem().item.ride; // 🔫 武器自己處理（weapons.js）
 function labInteraction(pos) {
   // Biome 6 座山後面嘅鎚仔
   if (!state.hasHammer && !state.labBossDefeated && near(pos, HAMMER_SPOT, 2.6)) return { prompt: '<kbd>E</kbd> Pick up the 🔨 Hammer', action: pickUpHammer };
@@ -1372,6 +1403,7 @@ window.addEventListener('mousedown', (e) => {
     swingBat();
     return;
   }
+  if (selectedHotbarItem()?.item.gear === 'leash') return currentInteraction()?.action?.(); // 🪢 click = 同 E 一樣
   if (selectedHotbarItem()?.kind === 'gear') return inventory.useGear(selectedHotbarItem().item.gear, true); // ⚙️（寶箱：撳一下開一個）
   if (!holdingHammer()) return;
   const it = labInteraction(camera.position);
@@ -1587,6 +1619,21 @@ function borrowAnimal(w) {
   setCarrying(`${w.animal.name} (${formatKg(w.kg)})`);
   announce(`You borrowed a ${formatKg(w.kg)} ${w.animal.name}!`);
   popup('Run back to the Hub! 🏃');
+}
+
+// 🪢 Leash（Issue #16）：用條繩拖住動物返 Hub（同借一樣：Boss 會追、返到 Hub = 救援成功）
+function leashAnimal(w) {
+  if (!riding.leash(w)) return;
+  play('borrow');
+  play('swoosh');
+  const boss = bosses[w.biome];
+  if (boss) {
+    boss.grace = BORROW_HEAD_START;
+    setTimeout(() => popup(`⚠️ ${boss.info.name} noticed! You have a ${BORROW_HEAD_START}-second head start - RUN!`), 900);
+  }
+  setCarrying(`🪢 ${w.animal.name} (${formatKg(w.kg)})`);
+  announce(`🪢 The ${formatKg(w.kg)} ${w.animal.name} is on your leash!`);
+  popup('Walk it back to the Hub! 🐾');
 }
 
 // ================= 撞到嘢／俾 Boss 捉到 =================
@@ -2090,9 +2137,9 @@ renderer.setAnimationLoop((timestamp) => {
   }
   const sel = selectedHotbarItem();
   const vacuumOut = state.vacuumLevel > 0 && inHalloween(camera.position.x, camera.position.z) && !sel?.item.weapon; // 🧹 Halloween 世界：手拎吸塵機，唔拎寵物（🔫 拎住武器就唔拎）
-  setHolding(rescue, sel?.kind === 'tool' || sel?.kind === 'gear' || vacuumOut || hwEggs?.isCarrying() ? null : sel?.item.name ?? null, sel?.item.mutation ?? null, !!sel?.item.flipped);
+  setHolding(rescue, sel?.kind === 'tool' || sel?.kind === 'gear' || vacuumOut || hwEggs?.isCarrying() ? null : sel?.item.name ?? null, sel?.item.mutation ?? null, !!sel?.item.flipped, !!sel?.item.rideable);
   // 鎚仔／球棒：第一身拎喺手，第三身拎喺右手
-  const showTool = sel?.kind === 'tool' && !rescue.carrying && !sel.item.weapon; // 🔫 武器模型喺 weapons.js
+  const showTool = sel?.kind === 'tool' && !rescue.carrying && !sel.item.weapon && !sel.item.ride; // 🔫 武器模型喺 weapons.js；🐎 Ride 格冇嘢拎
   const bat = !!sel?.item.bat;
   handHammer.visible = avatarHammer.visible = showTool && !bat; // ✋ 喺 handHold 隻手度（第一身／第三身 handHold.update 揀）
   handHold.tool = showTool && !bat;
@@ -2104,6 +2151,7 @@ renderer.setAnimationLoop((timestamp) => {
   handBat.rotation.set(-0.5 - k * 1.6, 0, 0.4 + k * 0.6);
   avatarBat.rotation.set(-0.35 - k * 2.2, 0, -0.25);
   if (!frozen) updateRescue(rescue, dt, time, player.walking);
+  riding.update(dt, time, { frozen }); // 🐎 坐騎跟住你 + 🪢 拖住嘅動物、條繩
   // 拎住寵物／抱住動物：第三身，寵物頂喺頭上
   const inMovie = intro.active || movie.active;
   if (inMovie) thirdPerson.avatar.g.visible = false;
@@ -2112,14 +2160,15 @@ renderer.setAnimationLoop((timestamp) => {
   document.body.classList.toggle('in-halloween', inHalloween(camera.position.x, camera.position.z)); // 🎃 Halloween 世界：收埋教學、正常世界嘅夜晚倒數
   document.body.classList.toggle('in-hell', inHell(camera.position.x, camera.position.z) || inReaperHall(camera.position.x, camera.position.z) || inTowerArena(camera.position.x, camera.position.z)); // 🔥 🗼 Hell：收埋火車、蛋提示（喺度用唔到）
   const viewCam = inMovie ? camera : updateThirdPerson(thirdPerson, dt, {
-    held: rescue.carrying?.model || hwEggs?.carryModel() || rescue.holding?.model || null,
-    item: rescue.carrying ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : selectedHotbarItem()?.item,
+    held: (rescue.carrying && !rescue.carrying.leashed ? rescue.carrying.model : null) || hwEggs?.carryModel() || rescue.holding?.model || null, // 🪢 拖住嘅動物喺地上行，唔使頂喺頭
+    item: rescue.carrying && !rescue.carrying.leashed ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : (['pet', 'rescued'].includes(selectedHotbarItem()?.kind) ? selectedHotbarItem().item : null), // 🐎 Ride／鎚仔等工具唔係動物（kgScale 會搵唔到）
     oneHand: handHold.active, // ✋ 右手舉起拎住 Shard／寶箱／鎚仔
     walking: player.walking, feetY: player.feetY, grounded: player.grounded, vy: player.vy,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
     time, quality: quality.level, // 👕 皮膚粒子跟畫質
   });
+  if (!inMovie) riding.afterView(viewCam); // 🐎 公仔坐喺馬鞍上面、鏡頭退後
   if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
   handHold.update({ time, third: thirdPerson.zoom > 0, show: !inMovie, walking: player.walking }); // ✋ 要喺 updateThirdPerson（擺好右手）之後
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
@@ -2174,6 +2223,7 @@ renderer.setAnimationLoop((timestamp) => {
   timeShard.update(dt, time, { pos, feetY: player.feetY, playing: shardOk });
   bossSkins.update(dt, time); // 🦹 隕石皮膚嘅細隕石轉圈
   demonicBossSkins.update(dt, time); // 😈 火球、翼
+  cowboyBossSkins.update(dt, time); // 🤠 轉緊嘅套索
   if (halloween.sky > 0.01) {
     stars.material.opacity *= 1 - halloween.sky; // 普通星星喺好遠，Halloween 有自己嘅
     stars2.material.opacity *= 1 - halloween.sky;
@@ -2263,7 +2313,21 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+// 🤠 測試（Issue #16）：game.giveTame() = 所有 Special's Stall 嘅嘢都俾晒你
+function giveTame() {
+  addGear('shard_tame', 3);
+  addGear('rideShard', 3);
+  addGear('leash', 1);
+  if (!state.ownedRanger.includes('tamer')) state.ownedRanger.push('tamer');
+  state.cowboyBossSkin = true;
+  state.tameTokens = (state.tameTokens || 0) + 500;
+  if (!state.pets.some((p) => p.name === LUMINOUS_DRAGON)) state.pets.push({ name: LUMINOUS_DRAGON, rarity: 'Eternal', kg: 7500, biome: 9, onPlot: false });
+  if (!state.indexFound.includes(LUMINOUS_DRAGON)) state.indexFound.push(LUMINOUS_DRAGON);
+  save();
+  riding.syncHotbar();
+  popup('🤠 Got every Special\'s Stall item!');
+}
+if (import.meta.env.DEV) window.game = { giveTame, riding, cowboyBossSkins, composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.timeShard = () => timeShard.force(camera.position, player.feetY); // ⏳ 測試：即刻跌一粒 Time Shard（game.timeShardDrop 睇狀態）
 if (import.meta.env.DEV) window.game.timeShardDrop = timeShard;
