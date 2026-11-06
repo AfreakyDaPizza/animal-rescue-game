@@ -3,17 +3,15 @@
 
 import * as THREE from 'three';
 import { short } from './format.js';
-import { PLOT, LIBRARY } from './hubShape.js';
+import { PLOT, LIBRARY, MACHINE_ROW, MACHINE_SIGN } from './hubShape.js';
 import { addCollider, bakeStatic } from './world.js';
-import { fencePost, fenceRails, archX } from './fences.js'; // 🪵 靚啲嘅圍欄
+import { fencePost, fenceRails, archZ } from './fences.js'; // 🪵 靚啲嘅圍欄
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall, buildSaveStall } from './hubBuildings.js';
 import { addFireAura } from './fireAura.js';
 import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
 import { buildPrehistoric, animatePrehistoric, prehistoricTexture } from './prehistoric.js'; // Lv16 Prehistoric Age（Issue #14）
-import { fuseMachine } from './hubPark.js';
-import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { boost } from './events.js';
 import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 買嘅加成
 import { applyPetSkin } from './skins.js';
@@ -1252,9 +1250,11 @@ function animateDragonLair(m, time, lair = m.dragon) {
   });
 }
 
-function buildMachine(scene, index, x, z) {
+// yaw：成部機轉幾多（0 = 正面向 -z；Issue #16 左邊嗰行用 -π/2 = 正面向 +x）
+function buildMachine(scene, index, x, z, yaw = 0) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
+  g.rotation.y = yaw;
   scene.add(g);
   const metal = new THREE.MeshStandardMaterial({ color: 0x90a4ae, metalness: 0.7, roughness: 0.3 });
   const pink = new THREE.MeshStandardMaterial({ color: 0xec407a });
@@ -1340,7 +1340,7 @@ function buildMachine(scene, index, x, z) {
 
   const sign = dynamicSign(2.8, 1.1);
   sign.mesh.position.set(x, 3.2, z);
-  sign.mesh.rotation.y = Math.PI; // 面向 Hub 中間（-z）
+  sign.mesh.rotation.y = Math.PI + yaw; // 面向機嘅正面
   scene.add(sign.mesh);
 
   // 心心（做緊嘢時飄上去）
@@ -1351,7 +1351,8 @@ function buildMachine(scene, index, x, z) {
     heart.visible = false;
     hearts.push({ heart, phase: i / 4 });
   }
-  return { index, x, z, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, meteorLair, rune, orb, pink };
+  const front = { x: -Math.sin(yaw), z: -Math.cos(yaw) }; // 正面方向（firstHatch.js、教學箭咀用）
+  return { index, x, z, front, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, meteorLair, rune, orb, pink };
 }
 
 export function machineStatus(i) {
@@ -1375,7 +1376,7 @@ export { PLOT };
 
 function buildPlot(realScene) {
   const scene = new THREE.Group(); // 圍欄同草地先放埋一齊，最後焊埋做幾件（畫得快啲）
-  const { minX, maxX, minZ, maxZ, gateZ, gateWidth } = PLOT;
+  const { minX, maxX, minZ, maxZ, gateX, gateZ, gateWidth } = PLOT;
   // 草地
   const grassMat = new THREE.MeshStandardMaterial({ color: 0x66bb6a, map: plotGroundTexture(maxX - minX, maxZ - minZ), roughness: 0.95 }); // 皮膚會改佢顏色（紋理係灰白色，跟住染色；Issue #8）
   const grass = new THREE.Mesh(new THREE.BoxGeometry(maxX - minX, 0.06, maxZ - minZ), grassMat);
@@ -1391,7 +1392,7 @@ function buildPlot(realScene) {
   const leaf = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.8 });
   const style = { post: wood, rail: wood, trim, h: 1.3, w: 0.26, cap: 'ball', rails: [0.32, 0.72, 1.08], railW: 0.09, railH: 0.12, vines: 0.35, leaf };
   const corners = [[minX, minZ], [maxX, minZ], [maxX, maxZ], [minX, maxZ]];
-  const inGate = (x, z) => x === minX && Math.abs(z - gateZ) < gateWidth / 2;
+  const inGate = (x, z) => Math.abs(z - gateZ) < 0.01 && Math.abs(x - gateX) < gateWidth / 2; // Issue #16：閘口喺北邊（minZ），對住入口
   corners.forEach(([x1, z1], i) => {
     const [x2, z2] = corners[(i + 1) % 4];
     const length = Math.hypot(x2 - x1, z2 - z1);
@@ -1414,17 +1415,17 @@ function buildPlot(realScene) {
   });
 
   // 閘口：兩條粗柱 + 圓拱 + 頂上寶石
-  for (const dz of [-gateWidth / 2 - 0.2, gateWidth / 2 + 0.2]) {
-    fencePost(scene, minX, gateZ + dz, { ...style, w: 0.42, h: 4.3, cap: 'ball', capMat: trim, gem });
+  for (const dx of [-gateWidth / 2 - 0.2, gateWidth / 2 + 0.2]) {
+    fencePost(scene, gateX + dx, gateZ, { ...style, w: 0.42, h: 4.3, cap: 'ball', capMat: trim, gem });
   }
-  archX(scene, minX, gateZ - gateWidth / 2 - 0.2, gateZ + gateWidth / 2 + 0.2, 4.35, trim, 0.16);
+  archZ(scene, gateZ, gateX - gateWidth / 2 - 0.2, gateX + gateWidth / 2 + 0.2, 4.35, trim, 0.16);
   const crest = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), gem);
-  crest.position.set(minX, 4.35 + gateWidth / 2 + 0.6, gateZ);
+  crest.position.set(gateX, 4.35 + gateWidth / 2 + 0.6, gateZ);
   crest.scale.y = 1.5;
   scene.add(crest);
   const sign = dynamicSign(4.2, 1.2);
-  sign.mesh.position.set(minX, 3.4, gateZ);
-  sign.mesh.rotation.y = -Math.PI / 2; // 面向 Hub 中間
+  sign.mesh.position.set(gateX, 3.4, gateZ);
+  sign.mesh.rotation.y = Math.PI; // 面向北（入口）
   realScene.add(sign.mesh); // 牌會變字，唔焊
   bakeStatic(scene, realScene);
   const skins = buildPlotSkins(realScene);
@@ -1467,7 +1468,7 @@ function buildPlotSkins(scene) {
     else if ((t -= w) < d) [x, z] = [maxX - inset, minZ + inset + t];
     else if ((t -= d) < w) [x, z] = [maxX - inset - t, maxZ - inset];
     else [x, z] = [minX + inset, maxZ - inset - (t - w)];
-    if (x < minX + 2 && Math.abs(z - PLOT.gateZ) < 3) continue; // 閘口
+    if (z < minZ + 2 && Math.abs(x - PLOT.gateX) < 3) continue; // 閘口
     spots.push([x, z]);
   }
   const make = (name, fill) => {
@@ -1663,6 +1664,14 @@ export function moneyPerSecond() {
 
 // ================= 起晒成個 Hub =================
 
+// 牌背面加塊木板（唔係背面會見到反轉咗嘅字）
+function signBack(group, w, h, y) {
+  const back = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.06), new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.8 }));
+  back.position.set(0, y, -0.07);
+  back.castShadow = true;
+  group.add(back);
+}
+
 export function createHub(scene) {
   const treadmill = buildTreadmill(scene, -25, 6.5);
   const table = buildStudentTable(scene, -14, 5.5);
@@ -1672,40 +1681,40 @@ export function createHub(scene) {
   for (const st of stations) state[st.levelKey] = Math.min(state[st.levelKey], MAX_TRAINING_LEVEL); // 舊存檔可能超過最高級
   stations.forEach((s) => applyTier(s));
 
-  const machines = [-16, -8, 0, 8, 16].map((x, i) => buildMachine(scene, i, x, 40)); // 噴水池下面一排
+  const machines = MACHINE_ROW.zs.map((z, i) => buildMachine(scene, i, MACHINE_ROW.x, z, -Math.PI / 2)); // Issue #16：Hub 左邊一行，面向 +x（地塊）
   const plot = buildPlot(scene);
   // 舊存檔：地塊上面嘅寵物多過位數，就淨係留最好嗰啲
   const onPlot = state.pets.filter((p) => p.onPlot).sort((a, b) => itemMoney(b) - itemMoney(a));
   onPlot.slice(plotSlots(state.plotLevel)).forEach((p) => (p.onPlot = false));
   state.pets.filter((p) => p.onPlot).forEach((p) => addPetToPlot(plot, scene, p));
-  // 魔法圖書館（Index）喺噴水池左邊，面向噴水池
+  // 魔法圖書館（Index）喺 Hub 左邊，面向 Hub 中間
   // 2026-10-21 Issue #10：背脊貼住左邊圍牆（慳位），隔籬係 ☄️ Meteoric Shop（meteorShop.js）
   const library = buildMagicLibrary(scene, LIBRARY.x, LIBRARY.z, Math.PI / 2);
   const kiosk = library.spot;
   applyPlotSkin({ plot });
 
-  // ---- 2026-10-18 Hub 重新排位（小朋友：rearrange everything）----
-  //   上面：左 🏃 Training Zone、中 入口、右 🛍️ Shop Street（Skin Shop + Sell Stall）
-  //   中間：左 ✨ Magic Library ── 噴水池 ── 右 🐾 Pets Zone（地塊 + MY PETS 牌 + 地塊升級牌）
-  //   下面：💗 Breeding Lab（5 部繁殖機 + 升級牌）+ 🧪 Fuse Machine
-  //   最底：Owner's Garden、Playground、大門
-  // 地塊升級牌（閘口上面）
+  // ---- Issue #16（2026-11-06）Hub 重新排位：排位一覽喺 hubShape.js ----
+  // 地塊升級牌（閘口右邊，企喺圍欄入面，隔住圍欄面向北）
   const plotSign = dynamicSign(2.6, 1.6);
   const plotSignGroup = signOnPosts(plotSign.mesh, 2.6, 1.6, 2.0);
-  plotSignGroup.position.set(PLOT.minX - 1.5, 0, PLOT.gateZ - 4.5);
-  plotSignGroup.rotation.y = -Math.PI / 2;
+  const psx = PLOT.gateX + 5.2;
+  const psz = PLOT.minZ + 0.7;
+  plotSignGroup.position.set(psx, 0, psz);
+  plotSignGroup.rotation.y = Math.PI;
+  signBack(plotSignGroup, 2.6, 1.6, 2.0); // 由地塊入面望：見到木板，唔係反轉咗嘅字
   scene.add(plotSignGroup);
-  addCollider(PLOT.minX - 1.5, PLOT.gateZ - 4.5, 0.4);
-  const plotUpgradeSpot = { x: PLOT.minX - 3, z: PLOT.gateZ - 4.5, sign: plotSign };
+  addCollider(psx, psz, 0.4);
+  const plotUpgradeSpot = { x: psx, z: PLOT.minZ - 1.4, sign: plotSign };
 
-  // 繁殖機升級牌（機嘅左邊）
+  // 繁殖機升級牌（一行機嘅尾，面向 +x）
   const machineSign = dynamicSign(2.6, 1.7);
   const machineSignGroup = signOnPosts(machineSign.mesh, 2.6, 1.7, 2.0);
-  machineSignGroup.position.set(-23.5, 0, 40);
-  machineSignGroup.rotation.y = Math.PI;
+  machineSignGroup.position.set(MACHINE_SIGN.x, 0, MACHINE_SIGN.z);
+  machineSignGroup.rotation.y = -Math.PI / 2;
+  signBack(machineSignGroup, 2.6, 1.7, 2.0); // 開場動畫會影到塊牌背面
   scene.add(machineSignGroup);
-  addCollider(-23.5, 40, 0.4);
-  const machineUpgradeSpot = { x: -23.5, z: 38, sign: machineSign };
+  addCollider(MACHINE_SIGN.x, MACHINE_SIGN.z, 0.4);
+  const machineUpgradeSpot = { x: MACHINE_SIGN.x + 1.8, z: MACHINE_SIGN.z, sign: machineSign };
 
   // ---- 皮膚商店攤位（間條帳篷 + 櫃枱 + 公仔模特兒）----
   // 入口前面（小朋友 2026-10-15）：右邊皮膚商店、左邊賣寵物攤位，面向中間條路
@@ -1972,7 +1981,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   }
 
   // 地塊閘口
-  const gate = near(PLOT.minX, PLOT.gateZ);
+  const gate = near(PLOT.gateX, PLOT.gateZ);
   if (gate < INTERACT_DISTANCE + 1) {
     const pet = selected?.kind === 'pet' ? selected.item : state.pets.find((p) => !p.onPlot);
     const used = petsOnPlot();
@@ -2003,13 +2012,6 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   // 皮膚商店
   const sh = near(hub.shopSpot.x, hub.shopSpot.z);
   if (sh < INTERACT_DISTANCE + 0.8) options.push({ dist: sh, prompt: `<kbd>E</kbd> Open the Skin Shop (🎟️ ${state.tokens} tokens)`, action: actions.openShop });
-
-  // Fuse Machine（Issue #4）
-  const fu = near(fuseMachine.spot.x, fuseMachine.spot.z);
-  if (fu < INTERACT_DISTANCE + 1) {
-    if (isFuseOpen()) options.push({ dist: fu, prompt: '<kbd>E</kbd> Open the Fuse Machine 🧪 (fuse 3 pets into 1)', action: actions.openFuse });
-    else options.push({ dist: fu, prompt: `🔒 The Fuse Machine opens on ${openDateText()} (in ${daysUntilOpen()} day${daysUntilOpen() === 1 ? '' : 's'}) - or find the secret 🔴 button under a bridge!` });
-  }
 
   // 賣寵物攤位
   const se = near(hub.sellSpot.x, hub.sellSpot.z);

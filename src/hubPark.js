@@ -1,25 +1,24 @@
 // 新嘅圓形 Hub 裝飾（小朋友 2026-10-15 Issue #1）：
-// 中間會噴水嘅噴水池、石像、樹、雀仔、吊床（Owner 瞓喺度）、「Coming Soon」機器、遊樂場、大門口
+// 石像、樹、雀仔、吊床（Owner 瞓喺度）、大門口、路、區域牌
+// Issue #16（2026-11-06）：噴水池、遊樂場、Fuse Machine 已經刪走；排位見 hubShape.js
 // 唔會郁嘅放 staticRoot（之後焊埋）；會郁嘅放 live（每格畫面 update）
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { HUB, PLOT, LIBRARY, METEOR_SHOP, LIBRARY_WALK_X } from './hubShape.js';
+import { HUB, PLOT, PLOT_RING, LIBRARY, METEOR_SHOP, LIBRARY_WALK_X, MACHINE_ROW, TAME_AREA } from './hubShape.js';
 import { GYM_PORTAL } from './labShape.js';
 import { addCollider } from './world.js';
 import { buildAnimalModel } from './animalModels.js';
 import { findAnimal } from './data/animals.js';
 import { applyPetSkin } from './skins.js';
 import { makeSign, makeLabel, dynamicSign, THEMES } from './signs.js';
-import { isFuseOpen, daysUntilOpen, openDateText } from './fuse.js';
 import { buildOwner } from './owner.js';
 import { shimmerTexture } from './ambience.js';
 import { fenceLine } from './fences.js'; // 🪵 前院白色木欄
-import { pathStrip, centralPlaza, tilePad, roundPad } from './hubFloor.js';
-import { HALLOWEEN_ON } from './data/balance.js';
+import { pathStrip, tilePad, roundPad } from './hubFloor.js';
+import { METEOR_SHOP_ON } from './data/balance.js';
 
 // 位置（開場動畫都會用）
-export const FOUNTAIN = { x: HUB.cx, z: HUB.cz };
 export const HAMMOCK = { x: -20, z: 50 }; // 兩棵樹中間
 export const DESK = { x: -14.2, z: 51 }; // 吊床隔籬張枱（有杯水同 pizza）
 export const PARK_GATE = { x: 0, z: HUB.cz + HUB.r }; // Hub 底嘅大門口（開場動畫架車由呢度入）
@@ -68,95 +67,11 @@ function tree(root, x, z, s = 1, kind = 0) {
 
 // 路、中間廣場、區域地磚：Issue #8 重做咗，喺 hubFloor.js（有紋理、石邊、唔會閃）
 
-// ---------- 噴水池（會噴水） ----------
-function buildFountain(root, live) {
-  const { x, z } = FOUNTAIN;
-  const stone = mat(0xd7d2c8);
-  const stoneDark = mat(0xb0a99c);
-  add(root, new THREE.CylinderGeometry(4.6, 4.9, 0.8, 32), stoneDark, x, 0.4, z);
-  add(root, new THREE.TorusGeometry(4.55, 0.28, 8, 40), stone, x, 0.82, z).rotation.x = Math.PI / 2;
-  add(root, new THREE.CylinderGeometry(0.6, 0.9, 2.6, 16), stone, x, 1.5, z);
-  add(root, new THREE.CylinderGeometry(2.0, 1.2, 0.4, 24), stone, x, 2.8, z);
-  add(root, new THREE.CylinderGeometry(0.3, 0.4, 1.2, 12), stone, x, 3.5, z);
-  add(root, new THREE.CylinderGeometry(0.9, 0.5, 0.3, 16), stone, x, 4.15, z);
-  // 4 隻細細嘅金魚石像噴水口
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const fish = add(root, rbox(0.5, 0.5, 0.9), mat(0xffb74d), x + Math.cos(a) * 3.9, 1.15, z + Math.sin(a) * 3.9);
-    fish.rotation.y = -a + Math.PI / 2;
-  }
-
-  // 水面（會閃）
-  const shimmer = shimmerTexture(2, 2); // 水面閃光（ambience.js 會郁）
-  const waterMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, map: shimmer, emissive: 0x29b6f6, emissiveMap: shimmer, emissiveIntensity: 0.3, transparent: true, opacity: 0.88, roughness: 0.05, metalness: 0.2 });
-  const pool = add(live, new THREE.CylinderGeometry(4.35, 4.35, 0.08, 32), waterMat, x, 0.72, z, false);
-  const bowl = add(live, new THREE.CylinderGeometry(1.85, 1.85, 0.06, 24), waterMat, x, 2.99, z, false);
-  // 水波紋（一圈圈向外擴散）
-  const ripples = [0, 1, 2].map((i) => {
-    const r = add(live, new THREE.RingGeometry(0.9, 1.0, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }), x, 0.77, z, false);
-    r.rotation.x = -Math.PI / 2;
-    return { r, phase: i / 3 };
-  });
-
-  // 噴出嚟嘅水點
-  const COUNT = 420;
-  const pos = new Float32Array(COUNT * 3);
-  const drops = [];
-  for (let i = 0; i < COUNT; i++) {
-    const top = i < COUNT * 0.45; // 頂嘅水柱
-    drops.push({ phase: Math.random(), a: Math.random() * Math.PI * 2, speed: top ? 2.2 + Math.random() * 0.6 : 2 + Math.random() * 0.5, top, fish: i % 4 });
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const spray = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xe1f5fe, size: 0.14, transparent: true, opacity: 0.85, depthWrite: false }));
-  spray.frustumCulled = false;
-  live.add(spray);
-  addCollider(x, z, 5.0);
-
-  return (dt, time) => {
-    for (let i = 0; i < COUNT; i++) {
-      const d = drops[i];
-      const k = (time * 0.55 * d.speed + d.phase) % 1;
-      let px;
-      let py;
-      let pz;
-      if (d.top) {
-        // 由頂向上噴再跌落中間個碗
-        const r = k * 1.7;
-        px = x + Math.cos(d.a) * r;
-        pz = z + Math.sin(d.a) * r;
-        py = 4.3 + k * 3.2 - k * k * 4.4;
-      } else {
-        // 金魚口噴落大池
-        const fa = (d.fish / 4) * Math.PI * 2 + Math.PI / 4;
-        const r = 3.9 - k * 2.4;
-        px = x + Math.cos(fa) * r + Math.cos(d.a) * 0.08;
-        pz = z + Math.sin(fa) * r + Math.sin(d.a) * 0.08;
-        py = 1.25 + k * 1.6 - k * k * 2.1;
-      }
-      pos[i * 3] = px;
-      pos[i * 3 + 1] = Math.max(0.75, py);
-      pos[i * 3 + 2] = pz;
-    }
-    geo.attributes.position.needsUpdate = true;
-    for (const { r, phase } of ripples) {
-      const k = (time * 0.35 + phase) % 1;
-      r.scale.setScalar(1 + k * 3.2);
-      r.material.opacity = 0.5 * (1 - k);
-    }
-    waterMat.emissiveIntensity = 0.25 + Math.sin(time * 2) * 0.08;
-    pool.position.y = 0.72 + Math.sin(time * 3) * 0.01;
-    bowl.position.y = 2.99 + Math.sin(time * 3.5) * 0.01;
-  };
-}
-
-// ---------- 石像（金熊貓、銀象、銅犀牛、金老虎） ----------
+// ---------- 石像（大門兩邊：銅犀牛、金老虎；Issue #16 刪咗噴水池嗰兩隻） ----------
 function buildStatues(root) {
   const plinth = mat(0x9e9e9e);
   const plinthTop = mat(0xbdbdbd);
   const list = [
-    ['Giant Panda', 'golden', -9.5, 32.8, 2.4],
-    ['African Savanna Elephant', 'marble', 9.5, 32.8, -2.4],
     ['Black Rhinoceros', 'golden', -6, 56, Math.PI],
     ['Sumatran Tiger', 'marble', 6, 56, Math.PI],
   ];
@@ -247,240 +162,6 @@ export function standUp(owner, x, z, faceAngle) {
   owner.g.rotation.set(0, faceAngle, 0);
   owner.root.rotation.set(0, 0, 0);
   owner.label.position.set(0, 4.1, 0);
-}
-
-// ---------- Fuse Machine（Issue #4）：未開（FUSE_OPEN_DATE 之前）用帆布冚住 + 倒數；開咗就係發光嘅溶合機 ----
-// 3 個入料艙（後面）+ 1 個出貨艙（前面，面向噴水池）；fuseMachine.showResult(名) 播溶合動畫
-// 2026-10-18 Hub 重新排位：搬咗去 Breeding Lab 右邊（同繁殖機一齊做 Machine 區），前面面向繁殖機（-x）
-export const FUSE_MACHINE = { x: 26, z: 40 };
-// Issue #10（小朋友：Fuse Machine 要醒目啲）：部機大 1.3 倍、頂有光柱 + 轉圈光環、高高嘅大牌、地台四角有燈柱
-const FUSE_SCALE = 1.3;
-export const fuseMachine = { spot: { x: FUSE_MACHINE.x - 3.6 * FUSE_SCALE, z: FUSE_MACHINE.z }, showResult: null };
-function buildComingSoon(rootScene, liveScene) {
-  // 喺噴水池右邊，面向噴水池（本地 -z → 世界 -x）
-  const x = 0;
-  const z = 0;
-  const root = new THREE.Group();
-  const live = new THREE.Group();
-  for (const g of [root, live]) {
-    g.position.set(FUSE_MACHINE.x, 0, FUSE_MACHINE.z);
-    g.rotation.y = Math.PI / 2;
-    g.scale.setScalar(FUSE_SCALE);
-  }
-  rootScene.add(root);
-  liveScene.add(live);
-  const metal = mat(0x78909c, { metalness: 0.6, roughness: 0.4 });
-  add(root, rbox(4.6, 0.6, 3.8), mat(0x546e7a), x, 0.3, z);
-
-  // ===== 未開：帆布、膠帶、閃燈 =====
-  const closed = new THREE.Group();
-  live.add(closed);
-  add(closed, rbox(3.4, 2.8, 2.6), metal, x, 2.0, z);
-  const tarp = mat(0x1e88e5);
-  add(closed, rbox(3.7, 2.2, 2.9), tarp, x, 2.4, z);
-  add(closed, rbox(3.0, 0.8, 2.3), tarp, x - 0.2, 3.8, z + 0.1).rotation.z = 0.08;
-  for (const s of [-1, 1]) add(closed, new THREE.CylinderGeometry(0.15, 0.15, 1.6, 8), metal, x + s * 1.3, 4.6, z);
-  const cone = mat(0xff6d00);
-  const tape = mat(0xffd600, { emissive: 0x332b00 });
-  const pts = [[-2.8, -2.4], [2.8, -2.4], [2.8, 2.4], [-2.8, 2.4]];
-  pts.forEach(([ax, az], i) => {
-    add(closed, new THREE.ConeGeometry(0.3, 0.8, 8), cone, x + ax, 0.4, z + az);
-    const [bx, bz] = pts[(i + 1) % 4];
-    const len = Math.hypot(bx - ax, bz - az);
-    add(closed, new THREE.BoxGeometry(0.04, 0.12, len), tape, x + (ax + bx) / 2, 0.7, z + (az + bz) / 2).rotation.y = Math.atan2(bx - ax, bz - az);
-  });
-  const lamp = add(closed, new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff1744, emissive: 0xff1744, emissiveIntensity: 2 }), x, 5.1, z, false);
-
-  // ===== 開咗：溶合機 =====
-  const open = new THREE.Group();
-  live.add(open);
-  const dark = mat(0x263238, { metalness: 0.6, roughness: 0.35 });
-  const neon = new THREE.MeshStandardMaterial({ color: 0x76ff03, emissive: 0x76ff03, emissiveIntensity: 2 });
-  const glassMat = new THREE.MeshStandardMaterial({ color: 0xb2ff59, transparent: true, opacity: 0.25, roughness: 0.05 });
-  // 中間：能量核心（會轉）
-  add(open, rbox(2.2, 3.2, 2.0), dark, x, 2.2, z + 0.6);
-  const core = add(open, new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xccff90, emissive: 0x76ff03, emissiveIntensity: 2.5 }), x, 4.4, z + 0.6, false);
-  const coreRing = add(open, new THREE.TorusGeometry(0.85, 0.07, 8, 32), neon, x, 4.4, z + 0.6, false);
-  // 3 個入料艙（後面一排）
-  const inputs = [-1.5, 0, 1.5].map((dx) => {
-    add(open, new THREE.CylinderGeometry(0.6, 0.7, 0.4, 16), dark, x + dx, 0.8, z + 1.6);
-    add(open, new THREE.CylinderGeometry(0.55, 0.55, 1.4, 16, 1, true), glassMat, x + dx, 1.7, z + 1.6, false);
-    const light = add(open, new THREE.CylinderGeometry(0.5, 0.5, 0.06, 16), neon.clone(), x + dx, 1.02, z + 1.6, false);
-    add(open, new THREE.CylinderGeometry(0.62, 0.62, 0.12, 16), dark, x + dx, 2.45, z + 1.6);
-    // 喉管去核心
-    const pipe = add(open, new THREE.CylinderGeometry(0.08, 0.08, 1.6, 8), neon, x + dx * 0.5, 3.2, z + 1.1, false);
-    pipe.rotation.x = 0.8;
-    pipe.rotation.z = -dx * 0.3;
-    return light;
-  });
-  // 出貨艙（前面，大啲）
-  add(open, new THREE.CylinderGeometry(1.0, 1.15, 0.5, 20), dark, x, 0.85, z - 1.3);
-  const outRing = add(open, new THREE.TorusGeometry(1.0, 0.08, 8, 32), neon, x, 1.12, z - 1.3, false);
-  outRing.rotation.x = Math.PI / 2;
-  const beam = add(open, new THREE.CylinderGeometry(0.9, 0.9, 3, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xb2ff59, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }), x, 2.6, z - 1.3, false);
-  const resultSlot = new THREE.Group();
-  resultSlot.position.set(x, 1.15, z - 1.3);
-  open.add(resultSlot);
-  for (const s of [-1, 1]) add(open, rbox(0.3, 3.4, 0.3), dark, x + s * 1.25, 1.7, z - 1.3);
-
-  // 牌（會變：倒數／FUSE MACHINE）
-  const sign = dynamicSign(3.8, 1.3);
-  sign.mesh.position.set(x, 3.2, z - 2.05);
-  sign.mesh.rotation.y = Math.PI;
-  live.add(sign.mesh);
-  addCollider(FUSE_MACHINE.x, FUSE_MACHINE.z + 0, 2.6 * FUSE_SCALE);
-  const beacon = buildFuseBeacon(rootScene, liveScene);
-
-  // 溶合動畫：入料艙閃、光柱、新寵物喺出貨艙轉
-  let fx = null;
-  fuseMachine.showResult = (name) => {
-    resultSlot.clear();
-    const model = buildAnimalModel(findAnimal(name));
-    const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
-    model.scale.multiplyScalar(1.8 / Math.max(size.x, size.y, size.z));
-    if (model.userData.move === 'fly') model.userData.flying = false;
-    resultSlot.add(model);
-    fx = { t: 0, model };
-  };
-
-  return (dt, time) => {
-    const isOpen = isFuseOpen();
-    closed.visible = !isOpen;
-    open.visible = isOpen;
-    beacon(time, isOpen, fx ? fx.t : -1);
-    if (!isOpen) {
-      lamp.material.emissiveIntensity = Math.sin(time * 5) > 0 ? 2.5 : 0.2;
-      const days = daysUntilOpen();
-      sign.draw(THEMES.orange, [
-        { text: '🧪 FUSE MACHINE', size: 0.36 },
-        { text: `Opens ${openDateText()}`, size: 0.24 },
-        { text: days > 1 ? `in ${days} days` : 'TOMORROW!', size: 0.22, color: '#fff59d' },
-      ]);
-      return;
-    }
-    sign.draw(THEMES.green, [{ text: '🧪 FUSE MACHINE', size: 0.4 }, { text: 'Press E: fuse 3 pets into 1!', size: 0.2 }]);
-    core.rotation.y = time * 1.5;
-    core.position.y = 4.4 + Math.sin(time * 2) * 0.12;
-    coreRing.rotation.x = time;
-    coreRing.rotation.y = time * 0.7;
-    inputs.forEach((l, i) => (l.material.emissiveIntensity = 1.2 + Math.sin(time * 3 + i * 2) * 0.8));
-    if (fx) {
-      fx.t += dt;
-      const k = fx.t;
-      inputs.forEach((l) => (l.material.emissiveIntensity = k < 1.5 ? 4 + Math.sin(k * 40) * 2 : l.material.emissiveIntensity));
-      beam.material.opacity = k < 1.5 ? Math.min(0.7, k) : Math.max(0, 0.7 - (k - 1.5));
-      fx.model.visible = k > 1.2;
-      fx.model.rotation.y = k * 2;
-      fx.model.userData.animate?.(time, 0);
-      if (k > 9) {
-        resultSlot.clear();
-        fx = null;
-        beam.material.opacity = 0;
-      }
-    }
-  };
-}
-
-// 🧪 Fuse Machine 嘅「醒目」裝飾（Issue #10）：成個 Hub 都望到
-//   - 頂上一條光柱 + 兩個轉圈光環（開咗 = 綠色；未開 = 橙色）
-//   - 高高嘅大牌（雙面，面向 Hub 中間）
-//   - 地台四角四支燈柱（頂有發光波波）+ 一盞綠燈照住部機
-// 回傳 update(time, isOpen, fuseT)：fuseT ≥ 0 = 播緊溶合動畫（光柱閃到最勁）
-function buildFuseBeacon(rootScene, liveScene) {
-  const { x, z } = FUSE_MACHINE;
-  const g = new THREE.Group();
-  g.position.set(x, 0, z);
-  liveScene.add(g);
-  const additive = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-  // 光柱（由部機頂一直射上天）
-  const beamMat = additive(0x76ff03, 0.22);
-  const beam = add(g, new THREE.CylinderGeometry(0.55, 0.9, 26, 20, 1, true), beamMat, 0, 6.8 + 13, 0, false);
-  const coreMat = additive(0xccff90, 0.5);
-  const core = add(g, new THREE.CylinderGeometry(0.16, 0.16, 26, 10, 1, true), coreMat, 0, 6.8 + 13, 0, false);
-  // 兩個光環（上下郁）
-  const rings = [0, 1].map(() => {
-    const r = add(g, new THREE.TorusGeometry(1.5, 0.07, 8, 40), additive(0x76ff03, 0.8), 0, 8, 0, false);
-    r.rotation.x = Math.PI / 2;
-    return r;
-  });
-  // 四支燈柱
-  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xb2ff59, emissive: 0x76ff03, emissiveIntensity: 2.5 });
-  const pole = mat(0x37474f, { metalness: 0.6, roughness: 0.4 });
-  const stripe = mat(0xffd600, { emissive: 0x332b00 });
-  const bulbs = [];
-  for (let i = 0; i < 4; i++) {
-    const a = Math.PI / 4 + (i * Math.PI) / 2;
-    const px = Math.cos(a) * 4.3;
-    const pz = Math.sin(a) * 4.3;
-    add(rootScene, new THREE.CylinderGeometry(0.16, 0.2, 2.2, 10), pole, x + px, 1.1, z + pz);
-    add(rootScene, new THREE.CylinderGeometry(0.21, 0.21, 0.25, 10), stripe, x + px, 0.6, z + pz);
-    add(rootScene, new THREE.CylinderGeometry(0.21, 0.21, 0.25, 10), stripe, x + px, 1.5, z + pz);
-    bulbs.push(add(g, new THREE.SphereGeometry(0.3, 14, 10), bulbMat, px, 2.45, pz, false));
-    addCollider(x + px, z + pz, 0.3);
-  }
-  const lamp = new THREE.PointLight(0x76ff03, 14, 13, 1.5);
-  lamp.position.set(-2.5, 4, 0);
-  g.add(lamp);
-  // 高高嘅大牌：兩條柱 + 牌，喺部機後面（離 Hub 中間遠嗰邊），面向 Hub 中間
-  const signTheme = { top: '#76ff03', bottom: '#2e7d32', border: '#0b3d0b', text: '#ffffff' };
-  const big = dynamicSign(6.2, 1.9);
-  const signG = new THREE.Group();
-  const away = Math.atan2(x - HUB.cx, z - HUB.cz); // 由 Hub 中間望過嚟：牌喺部機後面
-  signG.position.set(x + Math.sin(away) * 4.2, 0, z + Math.cos(away) * 4.2);
-  signG.rotation.y = Math.atan2(HUB.cx - signG.position.x, HUB.cz - signG.position.z);
-  liveScene.add(signG);
-  big.mesh.position.y = 9.6;
-  signG.add(big.mesh);
-  for (const sx of [-2.9, 2.9]) add(signG, rbox(0.3, 10.6, 0.3), pole, sx, 5.3, -0.06);
-  add(signG, rbox(6.6, 0.3, 0.4), stripe, 0, 10.7, -0.06);
-  addCollider(signG.position.x + Math.cos(signG.rotation.y) * 2.9, signG.position.z - Math.sin(signG.rotation.y) * 2.9, 0.3);
-  addCollider(signG.position.x - Math.cos(signG.rotation.y) * 2.9, signG.position.z + Math.sin(signG.rotation.y) * 2.9, 0.3);
-  const GREEN = new THREE.Color(0x76ff03);
-  const ORANGE = new THREE.Color(0xff9100);
-  return (time, isOpen, fuseT) => {
-    const c = isOpen ? GREEN : ORANGE;
-    beamMat.color.copy(c);
-    rings.forEach((r) => r.material.color.copy(c));
-    bulbMat.color.copy(c);
-    bulbMat.emissive.copy(c);
-    lamp.color.copy(c);
-    const fusing = fuseT >= 0 && fuseT < 2;
-    beamMat.opacity = fusing ? 0.5 + Math.sin(fuseT * 30) * 0.15 : 0.16 + Math.sin(time * 2) * 0.06;
-    coreMat.opacity = fusing ? 0.9 : 0.35 + Math.sin(time * 3) * 0.12;
-    beam.rotation.y = time * 0.5;
-    rings.forEach((r, i) => {
-      const k = (time * 0.25 + i * 0.5) % 1;
-      r.position.y = 6.5 + k * 12;
-      r.scale.setScalar(1 + k * 0.6);
-      r.material.opacity = 0.8 * (1 - k);
-    });
-    bulbs.forEach((b, i) => (b.scale.setScalar(1 + Math.max(0, Math.sin(time * 4 - i * 1.57)) * 0.25)));
-    bulbMat.emissiveIntensity = 2 + Math.sin(time * 4) * 0.8;
-    big.draw(isOpen ? signTheme : THEMES.orange, isOpen
-      ? [{ text: '🧪 FUSE MACHINE', size: 0.5 }, { text: 'Fuse 3 pets into 1 NEW pet!', size: 0.24, color: '#f4ff81' }]
-      : [{ text: '🧪 FUSE MACHINE', size: 0.5 }, { text: `Opens ${openDateText()}`, size: 0.24, color: '#fff59d' }]);
-  };
-}
-
-// ---------- 遊樂場（滑梯、韆鞦、蹺蹺板） ----------
-function buildPlayground(root) {
-  const x = 14;
-  const z = 51.5;
-  const red = mat(0xe53935);
-  const blue = mat(0x1e88e5);
-  const yellow = mat(0xfdd835);
-  roundPad(root, x, z, 5.2, 'sand'); // 沙池（有紋理 + 石框）
-  add(root, rbox(1.6, 2.4, 1.6), blue, x - 3.5, 1.2, z - 1); // 滑梯台
-  add(root, new THREE.BoxGeometry(1.2, 0.12, 4), yellow, x - 3.5, 1.3, z + 1.4).rotation.x = -0.55;
-  for (const s of [-1, 1]) add(root, rbox(0.15, 3, 0.15), red, x + 1.5 + s * 1.6, 1.5, z - 2);
-  add(root, rbox(3.5, 0.15, 0.15), red, x + 1.5, 3, z - 2);
-  for (const s of [-0.6, 0.6]) {
-    add(root, new THREE.BoxGeometry(0.03, 2, 0.03), mat(0x9e9e9e), x + 1.5 + s, 2, z - 2);
-    add(root, rbox(0.5, 0.08, 0.35), blue, x + 1.5 + s, 1, z - 2);
-  }
-  add(root, rbox(4, 0.15, 0.5), yellow, x + 2, 0.6, z + 2.5).rotation.z = 0.2;
-  add(root, new THREE.ConeGeometry(0.4, 0.6, 4), red, x + 2, 0.3, z + 2.5);
-  addCollider(x - 3.5, z - 1, 1.3);
 }
 
 // ---------- 大門口（開場動畫：閘門打開，Ranger 揸車入嚟） ----------
@@ -584,7 +265,7 @@ function buildBirds(live) {
   return (dt, time) => {
     for (const b of birds) {
       const a = time * b.speed + b.phase;
-      b.g.position.set(FOUNTAIN.x + Math.cos(a) * b.r, b.h + Math.sin(time * 1.3 + b.phase) * 0.6, FOUNTAIN.z + Math.sin(a) * b.r);
+      b.g.position.set(PLOT_CX + Math.cos(a) * b.r, b.h + Math.sin(time * 1.3 + b.phase) * 0.6, PLOT_CZ + Math.sin(a) * b.r); // 喺地塊上面飛圈
       b.g.rotation.y = -a + (b.speed > 0 ? Math.PI : 0);
       const flap = Math.sin(time * 12 + b.phase) * 0.7;
       b.wings[0].rotation.z = flap;
@@ -599,7 +280,6 @@ function buildBirds(live) {
 function flowerBeds(live) {
   const beds = [];
   for (const s of [-1, 1]) {
-    beds.push([s * 4.2, s * 8.4, 12.6, 14.8]); // 出世點旁邊（噴水池樹籬前面）
     beds.push([s * 5.6, s * 8.0, 1.2, 7.6]); // 入口廣場兩邊
   }
   const spots = [];
@@ -669,100 +349,81 @@ function hedge(root, x1, z1, x2, z2, ends = false) {
     add(root, new THREE.BoxGeometry(0.18, 0.18, 0.18), mat(flowerColors[i % flowerColors.length]), x1 + (x2 - x1) * k, 0.98, z1 + (z2 - z1) * k, false);
   }
 }
-// 圓弧樹籬（a1 → a2）
-function hedgeArc(root, cx, cz, r, a1, a2) {
-  const steps = Math.max(2, Math.round(((a2 - a1) * r) / 1.5));
-  for (let i = 0; i < steps; i++) {
-    const p = a1 + ((a2 - a1) * i) / steps;
-    const q = a1 + ((a2 - a1) * (i + 1)) / steps;
-    hedge(root, cx + Math.cos(p) * r, cz + Math.sin(p) * r, cx + Math.cos(q) * r, cz + Math.sin(q) * r);
-  }
-}
-
 // ================= 起晒成個 Hub =================
-// 排位（2026-10-18 小朋友叫成個 Hub 重新排；由上面望，-z 係生態區）：
-//   最上：左 🏃 Training Zone ── 入口（出世點）── 右 🛍️ Shop Street（Skin Shop + Sell Stall）
-//   中間：左 ✨ Magic Library ── 噴水池 ── 右 🐾 Pets Zone（地塊 + MY PETS + 地塊升級）
-//   下面：💗 Breeding Lab（5 部繁殖機 + 升級牌）+ 右邊 🧪 Fuse Machine
-//   最底：左 Owner's Garden（吊床）、右 Playground、大門
+// 排位（Issue #16，2026-11-06，詳細見 hubShape.js）：
+//   最上：左 🏃 Training Zone ── 入口（出世點）── 右 🛍️ Shop Street
+//   中間：🐾 Animal Shelter Safety Zoo（地塊）+ 一圈石路
+//   左邊：😊 Happy Machines + ✨ Magic Library；右邊：🤠 Catch & Tame（tameStalls.js 起）
+//   最底：左 Owner's Garden（吊床）、大門
+const PLOT_CX = (PLOT.minX + PLOT.maxX) / 2;
+const PLOT_CZ = (PLOT.minZ + PLOT.maxZ) / 2;
 export function buildHubPark(root, live) {
   const { cx, cz, r } = HUB;
   const updates = [];
+  const W = PLOT_RING;
+  const ringW = PLOT.minX - W / 2 - 0.2; // 地塊四邊石路（中線）
+  const ringE = PLOT.maxX + W / 2 + 0.2;
+  const ringN = PLOT.minZ - W / 2 - 0.2;
+  const ringS = PLOT.maxZ + W / 2 + 0.2;
 
-  // 路：十字形 + 噴水池圓環 + 去跑步機／地塊嘅橫路 + 繁殖機前面嘅橫路
-  pathStrip(root, 0, 0, 0, cz - 7, 5);
-  centralPlaza(root, cx, cz, 9.4); // 傳送門周圍嘅圓形石板廣場
-  pathStrip(root, 0, cz + 7, 0, cz + r, 5);
-  pathStrip(root, -29, 10.5, 27, 10.5, 3); // 上面一條：Training Zone ── 入口 ── Shop Street
-  pathStrip(root, LIBRARY_WALK_X, cz, -7, cz, 3.5); // 去 Magic Library + ☄️ Meteoric Shop（Issue #10：兩間都貼住左邊圍牆）
-  pathStrip(root, LIBRARY_WALK_X, LIBRARY.z - 4.5, LIBRARY_WALK_X, METEOR_SHOP.z + 3.5, 3.2); // 兩間門口前面嘅直路
-  pathStrip(root, 7, cz, PLOT.minX, cz, 3.5); // 去地塊閘口
-  pathStrip(root, -27, 36, 27, 36, 3); // 繁殖機 + Fuse Machine 前面
+  // ---- 路 ----
+  pathStrip(root, 0, 0, 0, ringN, 5); // 入口 → 地塊閘口
+  pathStrip(root, -29, 10.5, 29, 10.5, 3); // 上面一條：Training Zone ── 入口 ── Shop Street
+  // 地塊四邊一圈
+  pathStrip(root, ringW, ringN, ringE, ringN, W);
+  pathStrip(root, ringW, ringS, ringE, ringS, W);
+  pathStrip(root, ringW, 10.5, ringW, ringS, W);
+  pathStrip(root, ringE, 10.5, ringE, ringS, W);
+  pathStrip(root, 0, ringS, 0, cz + r, 5); // 地塊 → 大門
+  pathStrip(root, LIBRARY_WALK_X, 10.5, LIBRARY_WALK_X, (METEOR_SHOP_ON ? METEOR_SHOP.z : LIBRARY.z) + 4, 3.2); // ✨ 圖書館門口條直路（由上面條路落）
+  pathStrip(root, ringE, TAME_AREA.gateZ, TAME_AREA.minX + 1, TAME_AREA.gateZ, 3.4); // 去 🤠 Catch & Tame 入口
 
-  // 區域地磚
+  // ---- 區域地磚 ----
   tilePad(root, -19.5, 7.5, 20, 12, 'training'); // Training Zone（膠地）
   tilePad(root, 0, 4.2, 10, 7.4, 'entrance'); // 入口廣場（雲石）
   tilePad(root, 17.3, 5.2, 18, 7.6, 'shop'); // Shop Street（藍白格仔）
   roundPad(root, LIBRARY.x, LIBRARY.z, 6.0, 'library'); // Magic Library（紫色星星）
-  roundPad(root, METEOR_SHOP.x, METEOR_SHOP.z, 5.6, 'meteor'); // ☄️ Meteoric Shop（深藍星空 + 隕石水晶）
-  tilePad(root, 0, 40, 40, 6, 'breeding'); // Breeding Lab（粉紅菱形）
-  roundPad(root, FUSE_MACHINE.x, FUSE_MACHINE.z, 4.8, 'fuse'); // Fuse Machine（鋼板 + 黃黑警告邊 + 綠色化學圈；Issue #10 要醒目啲）
+  if (METEOR_SHOP_ON) roundPad(root, METEOR_SHOP.x, METEOR_SHOP.z, 5.6, 'meteor'); // ☄️ Meteoric Shop（收埋咗就唔使地磚）
+  const mz = MACHINE_ROW.zs;
+  const machineW = (ringW - W / 2) - (MACHINE_ROW.x - 4); // 由機後面一直鋪到地塊條石路
+  tilePad(root, MACHINE_ROW.x - 4 + machineW / 2, (mz[0] + mz[mz.length - 1]) / 2 + 1.5, machineW, mz[mz.length - 1] - mz[0] + 11, 'breeding'); // Happy Machines（粉紅菱形）
 
-  // 區域牌
-  zoneSign(live, -19.5, 14.6, '🏃 TRAINING ZONE', THEMES.orange);
+  // ---- 區域牌 ----
+  zoneSign(live, -19.5, 14.6, '🏃 TRAINING ZONE', THEMES.orange, -19.5, 40);
   zoneSign(live, 17.3, 13.2, '🛍️ SHOP STREET', THEMES.blue, 17.3, 40);
-  zoneSign(live, PLOT.maxX + 1.6, PLOT.gateZ, '🐾 PETS ZONE', THEMES.green); // 地塊後面，由噴水池望過去見到
-  zoneSign(live, -20, 33, '🌴 OWNER\'S GARDEN', THEMES.green, -20, 0);
-  zoneSign(live, 14, 44.8, '🛝 PLAYGROUND', THEMES.blue, 14, 0);
-
-  // Breeding Lab 拱門（喺繁殖機上面）
-  const pink = mat(0xec407a);
+  zoneSign(live, -7.5, 46, '🌴 OWNER\'S GARDEN', THEMES.green, 0, 46);
+  // 😊 Happy Machines 大牌：一行機後面，高高咁面向地塊
+  const sx = MACHINE_ROW.x - 3.2;
+  const szc = (mz[0] + mz[mz.length - 1]) / 2;
   for (const s of [-1, 1]) {
-    add(root, rbox(0.8, 6, 0.8), mat(0xf8bbd0), s * 20.5, 3, 40);
-    add(root, rbox(1.1, 0.4, 1.1), pink, s * 20.5, 6.2, 40);
-    addCollider(s * 20.5, 40, 0.6);
+    add(root, rbox(0.5, 7.2, 0.5), mat(0xf8bbd0), sx, 3.6, szc + s * 4.4);
+    add(root, rbox(0.8, 0.35, 0.8), mat(0xec407a), sx, 7.3, szc + s * 4.4);
+    addCollider(sx, szc + s * 4.4, 0.45);
   }
-  add(root, rbox(42, 0.5, 0.6), pink, 0, 6.0, 40);
-  const lab = makeSign([{ text: '😊 HAPPY MACHINES', size: 0.5 }], 7, 1.2, THEMES.pink);
-  lab.position.set(0, 6.9, 39.6);
-  lab.rotation.y = Math.PI;
+  const lab = makeSign([{ text: '😊 HAPPY MACHINES', size: 0.5 }], 8.4, 1.4, THEMES.pink);
+  lab.position.set(sx + 0.3, 6.3, szc);
+  lab.rotation.y = Math.PI / 2; // 面向 +x（地塊）
   live.add(lab);
 
-  // 噴水池：2026-10-19 小朋友叫 Halloween 傳送門取代佢（halloweenWorld.js buildHubPortal，main.js 起）；Issue #15 收埋 Halloween 就擺返
-  if (!HALLOWEEN_ON) {
-    updates.push(buildFountain(root, live));
-    addCollider(FOUNTAIN.x, FOUNTAIN.z, 4.6);
-  }
   flowerBeds(live);
   buildStatues(root);
   buildHammock(root, live);
-  updates.push(buildComingSoon(root, live));
-  buildPlayground(root);
   buildGate(root, live);
   updates.push(buildBirds(live));
 
-  // 噴水池外面一圈樹籬（十字路口留位）
-  for (let q = 0; q < 4; q++) {
-    const gap = 0.32;
-    hedgeArc(root, cx, cz, 10, (q * Math.PI) / 2 + gap, ((q + 1) * Math.PI) / 2 - gap);
-  }
-  // 路兩邊嘅樹籬
+  // 路兩邊嘅矮樹籬（去大門條路）
   for (const s of [-1, 1]) {
-    hedge(root, s * 3.2, 12, s * 3.2, 14.5, true);
     hedge(root, s * 3.2, 44, s * 3.2, 58, true);
   }
-
-  // 圍牆內邊種一圈樹（只喺下半部分，避開大門、吊床、遊樂場）
+  // 圍牆內邊種一圈樹（只喺下半部分，避開大門、吊床、右邊 Catch & Tame、左邊 Happy Machines／圖書館）
   for (let i = 0; i < 64; i++) {
     const a = (i / 64) * Math.PI * 2;
     const tx = cx + Math.cos(a) * (r - 2.6);
     const tz = cz + Math.sin(a) * (r - 2.6);
-    if (tz < 33) continue;
+    if (tz < 44) continue;
     if (Math.abs(tx) < 7) continue; // 大門
+    if (tx > TAME_AREA.minX - 1 && tz < TAME_AREA.maxZ + 2) continue; // 🤠 Catch & Tame
     if (Math.hypot(tx - HAMMOCK.x, tz - HAMMOCK.z) < 6) continue;
-    if (Math.hypot(tx - 14, tz - 51.5) < 7) continue; // 遊樂場
-    if (Math.hypot(tx - METEOR_SHOP.x, tz - METEOR_SHOP.z) < 7) continue; // ☄️ Meteoric Shop
-    if (Math.hypot(tx - FUSE_MACHINE.x, tz - FUSE_MACHINE.z) < 7) continue; // 🧪 Fuse Machine（留位俾光柱同大牌）
     tree(root, tx, tz, 0.85 + ((i * 37) % 10) / 25, i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0);
   }
 

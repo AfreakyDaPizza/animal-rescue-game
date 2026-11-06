@@ -138,8 +138,8 @@ export function playFirstHatch({ scene, camera, machine, pet, onDone }) {
   const color = rarityInfo(pet.rarity).color;
   const rc = new THREE.Color(color);
   const M = V(machine.x, 0, machine.z);
-  // 繁殖機正面向 -z（Hub 中間）：由正面行埋去，兩邊嘅喉喺後面唔會擋鏡
-  const u = V(0, 0, -1);
+  // 由繁殖機正面行埋去，兩邊嘅喉喺後面唔會擋鏡（machine.front；Issue #16 左邊嗰行向 +x）
+  const u = V(machine.front?.x ?? 0, 0, machine.front?.z ?? -1);
   const s = V(u.z, 0, -u.x); // 側邊
   const at = (a, b = 0, y = 0) => M.clone().addScaledVector(u, a).addScaledVector(s, b).setY(y);
   const center = V(M.x, GLASS_Y, M.z);

@@ -64,8 +64,8 @@ import { BENCH, STRANGER, BEACH_PORTAL, BEACH_ARRIVE } from './labShape.js';
 import { playUnlockScene, playEnding } from './labScenes.js';
 import { createLabFight, updateLabFight, debugFight, resetFight, avoidCameraClip, hideBoss, hasBat, batHit, batInRange } from './labBoss.js';
 import { LAB, inLab, ARENA, ARENA_START, LAB_RETURN, PORTAL, EXIT_PORTAL, HAMMER_SPOT } from './labShape.js';
-import { setGateOpen, fuseMachine, PARK_GATE } from './hubPark.js';
-import { fusePets, isFuseOpen } from './fuse.js';
+import { setGateOpen, PARK_GATE } from './hubPark.js';
+import { isFuseOpen } from './fuse.js';
 import { ANIMALS } from './data/animals.js';
 import { itemMoney, formatKg, hasMutation, addMutation, mutationEmoji, sizeText, mutationInfo } from './data/animals.js';
 import { inDiscord, startDiscord } from './discordActivity.js';
@@ -101,7 +101,8 @@ import { createMeteorBossSkins } from './meteorBossSkin.js'; // 🦹 Meteoric Bo
 import { createDemonicBossSkins } from './demonicBossSkin.js'; // 😈 Demonic Boss Skin（Issue #11：Witch Tower 獎品）
 import { createDemonicRanger, updateDemonicRanger } from './demonicRanger.js'; // 😈 Demonic Ranger：飛 + 火噴射跳
 import { setDemonicHooks } from './demonicRewards.js'; // 🧙 Witch Tower 獎品 API（giveReward）
-import { FOUNTAIN } from './hubPark.js';
+import { HUB_SPAWN, HW_PORTAL_SPOT, TAME_PORTAL } from './hubShape.js'; // Issue #16：噴水池冇咗，Hub 重新排位
+import { createTameStalls } from './tameStalls.js'; // 🤠 Catch & Tame 區：3 個攤位 + 傳送門（Issue #16）
 import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
 import { createWeapons } from './weapons.js'; // 🔫 魔法武器（Issue #11，之後 Endless Tower 都用）
 import { createReaper } from './reaperBoss.js'; // 🐉 Pumpkin Reaper Dragon（Issue #11）
@@ -158,7 +159,7 @@ const crazy = createCrazyButton(scene); // 🤪 Crazy Pet Frenzy 掣（秘密沙
 const statueBtn = buildStatueButton(scene); // 🦏 犀牛像後面嘅掣
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
-const hubPortal = HALLOWEEN_ON ? buildHubPortal(scene, FOUNTAIN.x, FOUNTAIN.z) : null; // Issue #15：收埋就變返噴水池（hubPark.js） // 🎃 Hub 中間嘅 Halloween 傳送門（取代噴水池）
+const hubPortal = HALLOWEEN_ON ? buildHubPortal(scene, HW_PORTAL_SPOT.x, HW_PORTAL_SPOT.z) : null; // 🎃 Halloween 傳送門（Issue #15 收埋咗；Issue #16 噴水池冇咗，放喺地塊下面條路）
 let hwWorld = null; // 🎃 Halloween 世界：第一次入去先起（載入畫面）
 let hwEggs = null; // 🥚 Halloween 蛋同 Boss（同 hwWorld 一齊起）
 let echo = null; // 🐕 Echo 嘅 Zombified Chest 舖（同 hwWorld 一齊起）
@@ -208,6 +209,15 @@ fight.onDefeat = () => {
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
 const meteorShop = createMeteorShop({ scene, camera, openShop: () => togglePanel('meteor'), teleport: (x, z) => teleportPlayer(player, x, z), resume, popup, announce, equipRanger: (skin) => applyRangerSkin(thirdPerson, skin) }); // ☄️ Hub 圖書館隔籬
+// 🤠 Catch & Tame 區（Issue #16）：Hub 右邊 3 個攤位 + 傳送門；rodeo（rodeo.js）起好咗就由佢開揀地圖
+let rodeo = null; // createRodeo(ctx)（rodeo.js）
+const tameStalls = createTameStalls({
+  scene, play, popup, announce,
+  openRodeo: () => (rodeo?.openMapSelect ? (rodeo.openMapSelect(), true) : false),
+  equipRanger: (skin) => applyRangerSkin(thirdPerson, skin),
+  blocked: () => (rescue.carrying ? '🐾 Bring your animal to a Happy Machine first, partner!' : null),
+});
+tameStalls.setToggle((kind) => togglePanel(kind));
 const player = createPlayer(camera, document.body);
 // Discord Activity：鎖唔到滑鼠，改用撳住滑鼠拖轉鏡頭；平時網頁版唔變（src/discordActivity.js）
 if (inDiscord()) {
@@ -555,7 +565,7 @@ function enableMobile() {
     controls: player.controls,
     isPaused,
     onUse: () => {
-      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
+      if (['shop', 'pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower', 'lasso', 'flute', 'special'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 USE 收埋
       if (!isPaused()) interact();
     },
     onPause: () => {
@@ -690,7 +700,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB' && !isPanelOpen()) toggleSideBox('pets'); // 🐾 地塊寵物
   if (e.code === 'KeyT' && !isPanelOpen()) toggleSideBox('timers'); // ⏱️ 繁殖機時間
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
-  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
+  if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower', 'lasso', 'flute', 'special'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
   if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
@@ -801,7 +811,6 @@ const hubActions = {
       .then(() => popup(`✅ Progress saved, ${account.name}! You can play on any computer now.`))
       .catch(() => popup('📡 No internet right now. Saved on this computer, will save online later!'));
   },
-  openFuse: () => togglePanel('fuse'),
   openShop: () => togglePanel('shop'),
   upgradeMachines() {
     const lv = upgradeMachines(hub);
@@ -918,21 +927,6 @@ setPetActions({
     play('coin');
     save();
   },
-  // Fuse Machine：3 隻變 1 隻
-  fuse(pets) {
-    const pet = fusePets(pets);
-    if (!pet) return;
-    for (const p of pets) p.onPlot = false;
-    refreshPlotPets(hub);
-    fuseMachine.showResult(pet.name);
-    play('magic');
-    setTimeout(() => play('upgrade'), 1200);
-    const r = rarityInfo(pet.rarity);
-    announce(`🧪 FUSED! You got a ${r.name.toUpperCase()} ${pet.name}! ($${short(itemMoney(pet))}/s)`);
-    save();
-    closePanel();
-    resume();
-  },
   sellMany(pets) {
     const price = pets.reduce((n, p) => n + sellPet(hub, p), 0);
     popup(`💰 Sold ${pets.length} pets for $${short(price)}`);
@@ -1018,6 +1012,8 @@ function currentInteraction() {
   const skinAct = demonicBossSkins.interaction(pos, rescue.carrying) || bossSkins.interaction(pos, rescue.carrying); // 🦹 Boss 隔籬：換隕石／惡魔皮膚
   if (skinAct) return skinAct;
   if (whereIs(pos.x, pos.z) !== 'Hub') return null;
+  const tameAct = tameStalls.interaction(pos); // 🤠 Catch & Tame 傳送門、3 個攤位
+  if (tameAct) return tameAct;
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions);
 }
 
@@ -1265,6 +1261,7 @@ setAdminActions({
   // 🌍 傳送（Issue #10）：locked = 點解未去得
   places: () => [
     { id: 'hub', group: 'normal', emoji: '🏡', name: 'Hub' },
+    { id: 'tame', group: 'normal', emoji: '🤠', name: 'Catch & Tame' },
     ...BIOMES.map((b, i) => ({ id: `biome${i}`, group: 'normal', emoji: ['🌳', '🌊', '🐦', '🧊', '📦', '⛰️', '👑'][i] || '🌿', name: b.name.replace(/^Biome \d+ - /, `${i + 1}. `), locked: i === 6 && !kingdom.open ? 'Unlock the Enchanted Kingdom first' : '' })),
     { id: 'gym', group: 'secret', emoji: '💪', name: 'Ranger Gym', locked: gym.present ? '' : 'Use the Unlocks tab: Take me to the Gym' },
     { id: 'beach', group: 'secret', emoji: '🏖️', name: 'Secret Beach', locked: beach.open ? '' : 'Beat the Lab boss first' },
@@ -1296,7 +1293,8 @@ setAdminActions({
       stopFishing(fishing);
     }
     if (id === 'beach') return goToBeach();
-    if (id === 'hub') return travel(FOUNTAIN.x, FOUNTAIN.z - 8, 0, '🏡 The Hub!');
+    if (id === 'hub') return travel(HUB_SPAWN.x, HUB_SPAWN.z, 0, '🏡 The Hub!');
+    if (id === 'tame') return travel(TAME_PORTAL.x - 6, TAME_PORTAL.z, -Math.PI / 2, '🤠 Catch & Tame!');
     if (id === 'gym') return travel(GYM_FRONT.x, GYM_FRONT.z, Math.PI, '💪 The Ranger Gym!');
     const i = Number(id.slice(5));
     if (dayNight.isNight) dayNight.offset += Math.ceil(dayNight.timeLeft * 1000) + 50; // 夜晚生態區落閘：直接跳去白天
@@ -1442,7 +1440,7 @@ async function leaveHalloween() {
   hwTravelling = true;
   play('portal');
   const ok = await showLoading('🌀 Going back to the Hub...', async () => {
-    teleportPlayer(player, FOUNTAIN.x, FOUNTAIN.z - 8);
+    teleportPlayer(player, HUB_SPAWN.x, HUB_SPAWN.z);
     camera.rotation.set(0, 0, 0, 'YXZ');
     halloween.sky = 0;
   }, 1.2, { theme: 'nature', kicker: 'Going back to', title: 'Animal Rescue Park' });
@@ -2168,6 +2166,7 @@ renderer.setAnimationLoop((timestamp) => {
   echo?.update(dt, time, camera.position); // 🐕 Echo 搖尾（開箱動畫都要郁）
   echoQuests?.update(dt, time, camera.position); // 🐾 任務攤位 + HUD 追蹤器
   meteorShop.update(dt, time); // ☄️ 舖頭水晶閃、隕石火尾
+  tameStalls.update(dt, time); // 🤠 Catch & Tame：傳送門轉、NPC 郁
   chests.update(dt, { pos: camera.position, yaw: camera.rotation.y, feetY: player.feetY, third: thirdPerson.zoom > 0, hidden: inMovie }); // 🧰 開箱動畫
   // ⏳ Time Shard：正常玩緊先計時（Boss Arena、塔、Reaper 大廳、播片、彈飛緊都唔跌）
   const shardOk = !isPaused() && !inMovie && !loading.active && !endingRunning && !fling && whereIs(pos.x, pos.z) !== 'Boss Arena' && !inTowerArena(pos.x, pos.z) && !inReaperHall(pos.x, pos.z) && !tower.inside && !reaper.inside;
@@ -2263,7 +2262,7 @@ const labDebug = {
   },
 };
 
-if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { composer, reaper: reaper.debug, tower: tower.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, tameStalls, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.timeShard = () => timeShard.force(camera.position, player.feetY); // ⏳ 測試：即刻跌一粒 Time Shard（game.timeShardDrop 睇狀態）
 if (import.meta.env.DEV) window.game.timeShardDrop = timeShard;

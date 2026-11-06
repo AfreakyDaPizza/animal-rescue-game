@@ -7,6 +7,7 @@ import { short as shortNum } from './format.js'; // playEnding 有個參數都�
 import { playMovie, once, shake } from './movie.js';
 import { lab, openParkGate } from './lab.js';
 import { setGateOpen, PARK_GATE, park, standUp, lieOnHammock } from './hubPark.js';
+import { PLOT } from './hubShape.js';
 import { play } from './sound.js';
 import { state, save } from './state.js';
 import { LAB_REWARD } from './data/balance.js';
@@ -196,7 +197,7 @@ export function playEnding({ scene, camera, fight, onPaid, onDone, short = false
     paid = true;
     onPaid?.();
   };
-  const PLOT_SPOTS = pets.map((_, i) => V(15.5 + (i % 3) * 4.5, 0, 6 + Math.floor(i / 3) * 6));
+  const PLOT_SPOTS = pets.map((_, i) => V(PLOT.gateX - 4.5 + (i % 3) * 4.5, 0, PLOT.minZ + 4 + Math.floor(i / 3) * 5)); // Issue #16：地塊喺 Hub 中間，閘口向北
   const walk = (obj, goal, speed, dt) => {
     const d = goal.clone().sub(obj.position);
     d.y = 0;
@@ -225,7 +226,7 @@ export function playEnding({ scene, camera, fight, onPaid, onDone, short = false
       [0, 5, { p: V(B.x + 17, 10, B.z + 19), l: V(B.x, 1.5, B.z) }, { p: V(B.x + 13, 8, B.z + 15), l: V(B.x, 1.2, B.z) }], // Boss 瞓低咗（企遠啲，佢好大隻）
       [5, 11, { p: V(ARENA.x, 10, AZ + 22), l: V(ARENA.x, 1.5, AZ - 6) }, { p: V(ARENA.x, 7, AZ + 18), l: V(ARENA.x, 1.5, AZ) }], // 動物醒，走去出口
       [11, 16, { p: V(0, 2.4, 50), l: V(0, 1.6, 72) }, { p: V(0, 2.8, 45), l: V(0, 1.6, 60) }], // 跑過大門
-      [16, 21, { p: V(2, 7, 27), l: V(19, 0.5, 10) }, { p: V(5, 5, 23), l: V(19, 0.5, 10) }], // 跑入地塊
+      [16, 21, { p: V(-7, 7, 8), l: V(0, 0.5, 20) }, { p: V(-5, 5, 10), l: V(0, 0.5, 21) }], // 跑入地塊（Issue #16：由北邊閘口入）
       [21, 46, { p: V(7.3, 2.7, 15.5), l: V(7.3, 2.3, 9.5) }, { p: V(7.3, 2.6, 13.8), l: V(7.3, 2.3, 9.5) }], // Owner 多謝你
     ],
     captions: [
@@ -276,11 +277,11 @@ export function playEnding({ scene, camera, fight, onPaid, onDone, short = false
             a.holder.visible = true;
             a.holder.position.set((a.i - 2.5) * 1.4, 0, 80 + (a.i % 3) * 2.5);
           }
-          moving = walk(a.holder, V((a.i - 2.5) * 1.1, 0, 30), 9.5, dt) ? 1 : 0;
+          moving = walk(a.holder, V((a.i - 2.5) * 1.1, 0, PLOT.maxZ + 4), 9.5, dt) ? 1 : 0;
         } else if (t >= 16) {
-          if (once(`plot${a.i}`)) a.holder.position.set(1 + (a.i % 3) * 1.5, 0, 19 + Math.floor(a.i / 3) * 1.5);
-          const atGate = a.holder.position.x >= 11.5;
-          moving = walk(a.holder, atGate ? PLOT_SPOTS[a.i] : V(12.5, 0, 10.5), 7, dt) ? 1 : 0;
+          if (once(`plot${a.i}`)) a.holder.position.set(PLOT.gateX - 1.5 + (a.i % 3) * 1.5, 0, PLOT.minZ - 5 - Math.floor(a.i / 3) * 1.5);
+          const atGate = a.holder.position.z >= PLOT.gateZ + 0.5;
+          moving = walk(a.holder, atGate ? PLOT_SPOTS[a.i] : V(PLOT.gateX, 0, PLOT.gateZ + 1), 7, dt) ? 1 : 0;
           if (!moving) {
             a.model.position.y = Math.abs(Math.sin(t * 5 + a.i)) * 0.5; // 開心到跳
             a.holder.rotation.y = Math.PI / 2 + Math.sin(t * 2 + a.i) * 0.3;

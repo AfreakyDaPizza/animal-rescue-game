@@ -551,3 +551,99 @@ export function plotGroundTexture(w, d) {
   t.repeat.set(w / 3, d / 3);
   return t;
 }
+
+// =====================================================================
+// 🤠 Catch & Tame 區（Issue #16）：牧場泥地 + 木板路（tameStalls.js 用）
+// =====================================================================
+function dirtTexture() {
+  return canvasTex(128, (ctx, s) => {
+    const rand = seeded(97);
+    for (let y = 0; y < s; y += 2)
+      for (let x = 0; x < s; x += 2) {
+        ctx.fillStyle = shade(0xc9a273, (rand() - 0.5) * 0.07);
+        ctx.fillRect(x, y, 2, 2);
+      }
+    // 深色泥笪、細石、乾草碎
+    for (let n = 0; n < 10; n++) {
+      ctx.fillStyle = 'rgba(110,72,40,0.12)';
+      const cx = rand() * s, cy = rand() * s;
+      for (let k = 0; k < 12; k++) wrapRect(ctx, s, Math.floor((cx + (rand() - 0.5) * 26) / 2) * 2, Math.floor((cy + (rand() - 0.5) * 26) / 2) * 2, 6, 4);
+    }
+    for (let k = 0; k < 70; k++) {
+      ctx.fillStyle = ['#a88458', '#e3c595', '#8d6e4e'][k % 3];
+      wrapRect(ctx, s, Math.floor(rand() * 64) * 2, Math.floor(rand() * 64) * 2, 2, 2);
+    }
+    for (let k = 0; k < 26; k++) {
+      ctx.fillStyle = k % 2 ? '#e8cf7a' : '#d4b45e';
+      wrapRect(ctx, s, Math.floor(rand() * 64) * 2, Math.floor(rand() * 64) * 2, 6, 2);
+    }
+  });
+}
+function plankTexture() {
+  return canvasTex(128, (ctx, s) => {
+    const rand = seeded(53);
+    const rows = 4; // 每 1 米（128px）4 條板
+    const h = s / rows;
+    for (let r = 0; r < rows; r++) {
+      const base = [0xa47148, 0x9a6840, 0xb07b50, 0x95633c][r % 4];
+      for (let y = r * h; y < (r + 1) * h; y += 2)
+        for (let x = 0; x < s; x += 2) {
+          ctx.fillStyle = shade(base, (rand() - 0.5) * 0.04 + Math.sin(x * 0.09 + r * 2) * 0.02);
+          ctx.fillRect(x, y, 2, 2);
+        }
+      ctx.fillStyle = '#5d3a1f';
+      ctx.fillRect(0, r * h, s, 2); // 板縫
+      const cut = Math.floor(rand() * 60) * 2;
+      ctx.fillRect(cut, r * h, 2, h); // 駁口
+      ctx.fillStyle = '#4e342e';
+      for (const dx of [6, -8]) {
+        ctx.fillRect((cut + dx + s) % s, r * h + 6, 2, 2); // 釘
+        ctx.fillRect((cut + dx + s) % s, r * h + h - 8, 2, 2);
+      }
+    }
+  });
+}
+
+// 牧場泥地：x ≥ area.minX、area.minZ ≤ z ≤ area.maxZ，右邊同 Hub 圓形圍牆內邊切齊（多邊形）
+export function ranchGround(root, HUB, area) {
+  const { cx, cz, r } = HUB;
+  const R = r - 0.4;
+  const xAt = (z) => cx + Math.sqrt(Math.max(0, R * R - (z - cz) ** 2)); // 右邊圍牆喺邊（x）
+  const shape = new THREE.Shape();
+  shape.moveTo(area.minX, area.minZ);
+  const steps = 32;
+  for (let i = 0; i <= steps; i++) {
+    const z = area.minZ + ((area.maxZ - area.minZ) * i) / steps;
+    shape.lineTo(xAt(z), z);
+  }
+  shape.lineTo(area.minX, area.maxZ);
+  shape.closePath();
+  const g = new THREE.ShapeGeometry(shape, 1);
+  g.rotateX(Math.PI / 2); // shape 嘅 y → 世界 z
+  g.translate(0, 0.075, 0);
+  worldUV(g, 3);
+  // 轉完個面向下：反轉三角形
+  const idx = g.index.array;
+  for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]];
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat('dirt', () => stdMat(dirtTexture(), { roughness: 1 })));
+  m.receiveShadow = true;
+  root.add(m);
+  // 深色木框（泥地西邊、北邊、南邊）
+  const frame = mat('rframe-ranch', () => stdMat(settTexture(0x6d4c41, shade(0x6d4c41, -0.15), 19)));
+  slab(root, frame, area.minX, (area.minZ + area.maxZ) / 2, 0.5, area.maxZ - area.minZ + 0.5, 0.09, 0.09, 0, 1);
+  for (const z of [area.minZ, area.maxZ]) {
+    const x2 = xAt(z);
+    slab(root, frame, (area.minX + x2) / 2, z, x2 - area.minX, 0.5, 0.09, 0.09, 0, 1);
+  }
+  return m;
+}
+
+// 木板路（兩邊深色木邊）；高過泥地
+export function plankPath(root, x1, z1, x2, z2, width) {
+  const len = Math.hypot(x2 - x1, z2 - z1);
+  const rot = Math.atan2(x2 - x1, z2 - z1);
+  const mx = (x1 + x2) / 2, mz = (z1 + z2) / 2;
+  slab(root, mat('plankEdge', () => stdMat(settTexture(0x5d4037, '#3e2723', 23))), mx, mz, width + 0.5, len + 0.3, 0.1, 0.03, rot, 1);
+  return slab(root, mat('planks', () => stdMat(plankTexture(), { roughness: 0.85 })), mx, mz, width, len, 0.12, 0.03, rot, 1);
+}

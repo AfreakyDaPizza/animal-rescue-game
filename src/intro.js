@@ -90,12 +90,12 @@ export function createIntro(scene, camera) {
     return { g, model, heart, target: g.position.clone(), wait: Math.random() * 2, caged: false, cage: null, boss: null };
   });
 
-  // 6 個 Boss：喺噴水池嗰邊等，第 3 幕衝埋嚟
+  // 6 個 Boss：喺地塊下面嗰條路等（Issue #16：噴水池冇咗、中間係地塊），第 3 幕衝埋嚟
   const bosses = [0, 1, 2, 3, 4, 5].map((i) => {
     const rig = buildBossRig(i);
     const group = new THREE.Group();
     group.add(rig.g);
-    group.position.set(-17 + i * 3.6, 0, 30 - (i % 2) * 2);
+    group.position.set(-9 + i * 3.6, 0, 36 - (i % 2) * 1.5);
     group.visible = false;
     root.add(group);
     return { rig, group, runPhase: 0, targets: [animals[i * 2], animals[i * 2 + 1]], step: 0 };
