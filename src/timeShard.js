@@ -73,11 +73,29 @@ export function createTimeShardDrop({ scene, isWalkable, groundAt }) {
     scene.add(g);
     drop = { g, spin, shard, trail, beam, ring, age: 0, landed: false, life: TIME_SHARD_STAY * 60, ground: at.y };
     play('meteorWhoosh');
+    announce('⏳ A TIME SHARD is dropping near you!'); // 2026-11-06 小朋友：跌落嚟要有大通知
     popup('⏳ Look up! A TIME SHARD is falling from the sky!');
     return true;
   }
 
+  // 📍 追蹤牌（2026-11-06 小朋友）：地上有 Time Shard 嗰陣，畫面頂顯示幾遠、邊個方向、仲有幾耐消失
+  let tracker = null;
+  function showTracker(text, angle) {
+    if (!tracker) {
+      tracker = document.createElement('div');
+      tracker.id = 'time-shard-tracker';
+      tracker.innerHTML = '<span class="ts-arrow">⬆</span><span class="ts-text"></span>';
+      document.body.appendChild(tracker);
+    }
+    tracker.hidden = false;
+    tracker.querySelector('.ts-text').textContent = text;
+    tracker.querySelector('.ts-arrow').style.transform = `rotate(${angle}rad)`;
+  }
+  const hideTracker = () => tracker && (tracker.hidden = true);
+  const _dir = new THREE.Vector3();
+
   function remove() {
+    hideTracker();
     drop?.g.removeFromParent();
     drop = null;
     wait = rollWait();
@@ -106,7 +124,7 @@ export function createTimeShardDrop({ scene, isWalkable, groundAt }) {
       if (drop) return false;
       return spawn(pos, feetY);
     },
-    update(dt, time, { pos, feetY, playing }) {
+    update(dt, time, { pos, feetY, playing, cam }) {
       if (!drop) {
         if (!playing) return;
         wait -= dt;
@@ -150,6 +168,17 @@ export function createTimeShardDrop({ scene, isWalkable, groundAt }) {
         remove();
         return;
       }
+      // 📍 追蹤牌：箭咀跟你望緊嘅方向計（0 = 正前面）
+      const dx = d.g.position.x - pos.x;
+      const dz = d.g.position.z - pos.z;
+      let angle = 0;
+      if (cam) {
+        cam.getWorldDirection(_dir);
+        angle = Math.atan2(dx, -dz) - Math.atan2(_dir.x, -_dir.z);
+      }
+      const secs = Math.max(0, Math.ceil(left));
+      showTracker(`⏳ Time Shard · ${Math.round(Math.hypot(dx, dz))} m · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} left`, angle);
+      if (!playing) hideTracker();
       // 行過去執
       if (playing && Math.hypot(pos.x - d.g.position.x, pos.z - d.g.position.z) < PICK_RANGE && Math.abs(feetY - d.ground) < 2.5) pickUp();
     },

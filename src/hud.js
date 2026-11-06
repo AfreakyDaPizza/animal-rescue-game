@@ -86,6 +86,7 @@ export function updateHud(dayNight, location) {
   $('hud-jump').textContent = fmt(state.jumpPower || 0); // 💪 Gym 彈床：有 Jump Power 先顯示
   $('hud-jump-box').hidden = !state.jumpPower;
   $('hud-tokens').textContent = fmt(state.tokens);
+  $('hud-tame').textContent = fmt(state.tameTokens || 0); // 🤠 Catch & Tame（Issue #16）
   // 🎃 Halloween 世界（Issue #10）：左下數值盒換做 Money / Speed / 🌽 Candy Corn / 💀 Souls；返普通世界就變返
   if (document.body.classList.contains('in-halloween')) {
     bumpStat('hud-candy', state.candyCorn || 0);

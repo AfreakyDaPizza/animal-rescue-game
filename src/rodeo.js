@@ -34,9 +34,10 @@ import { RODEO_ORIGIN, inRodeo } from './rodeoShape.js';
 import { MAP_LOOK, CHUNK_LEN, buildGround, buildHorizon, disposeHorizon, buildChunk, disposeChunk } from './rodeoMaps.js';
 import { buildHorse } from './rodeoModels.js';
 import { short } from './format.js';
+import { TAME_PORTAL } from './hubShape.js';
 
-// 完咗返 Hub 邊度（Catch & Tame 傳送門喺 Hub 右邊；Helper A 可以改 rodeo.returnTo）
-export const RODEO_RETURN = { x: 31, z: 12, rotY: Math.PI / 2 }; // 望住 Hub 中間（-x）
+// 完咗返 Hub 邊度：Catch & Tame 傳送門（TAME_PORTAL，Hub 右邊，src/hubShape.js）前面；想改就改 rodeo.returnTo
+export const RODEO_RETURN = { x: TAME_PORTAL.x - 6, z: TAME_PORTAL.z, rotY: -Math.PI / 2 }; // 傳送門前面 6 米，望住個傳送門（第三身鏡頭唔會卡入門度）
 export { inRodeo };
 
 const X0 = RODEO_ORIGIN.x;

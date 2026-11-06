@@ -109,3 +109,9 @@ export function archX(root, x, z1, z2, y, material, tube = 0.14) {
   const a = put(root, new THREE.TorusGeometry(r, tube, 8, 24, Math.PI), material, x, y, (z1 + z2) / 2, Math.PI / 2);
   return a;
 }
+
+// 圓拱（喺 z = 常數嗰塊面，跨過 x1–x2）：Issue #16 地塊閘口改咗向北
+export function archZ(root, z, x1, x2, y, material, tube = 0.14) {
+  const r = Math.abs(x2 - x1) / 2;
+  return put(root, new THREE.TorusGeometry(r, tube, 8, 24, Math.PI), material, (x1 + x2) / 2, y, z, 0);
+}

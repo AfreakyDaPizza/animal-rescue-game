@@ -49,7 +49,7 @@ const STEPS = [
     text: 'You saved it! 🎉 Walk to a pink <b>Happy Machine</b> and press <kbd>E</kbd> to put your animal inside.',
     target: (ctx) => {
       const m = ctx.hub.machines.find((mm, i) => !state.machines[i]) || ctx.hub.machines[2];
-      return new THREE.Vector3(m.x, 0, m.z - 1.5);
+      return new THREE.Vector3(m.x + (m.front?.x ?? 0) * 1.5, 0, m.z + (m.front?.z ?? -1) * 1.5);
     },
     done: () => state.machines.some(Boolean) || state.pets.length > 0,
   },
@@ -58,7 +58,7 @@ const STEPS = [
     target: (ctx) => {
       const i = state.machines.findIndex(Boolean);
       const m = ctx.hub.machines[i >= 0 ? i : 2];
-      return new THREE.Vector3(m.x, 0, m.z - 1.5);
+      return new THREE.Vector3(m.x + (m.front?.x ?? 0) * 1.5, 0, m.z + (m.front?.z ?? -1) * 1.5);
     },
     start: () => {
       // 教學：第一隻好快就繁殖完
@@ -68,7 +68,7 @@ const STEPS = [
   },
   {
     text: 'Your very own pet! Take it to the <b>Safety Zoo</b> gate and press <kbd>E</kbd>. Pets in your Safety Zoo earn 💰 money every second.',
-    target: () => new THREE.Vector3(PLOT.minX - 1, 0, PLOT.gateZ),
+    target: () => new THREE.Vector3(PLOT.gateX, 0, PLOT.gateZ - 1),
     done: () => state.pets.some((p) => p.onPlot),
   },
   {
