@@ -2171,7 +2171,7 @@ renderer.setAnimationLoop((timestamp) => {
   chests.update(dt, { pos: camera.position, yaw: camera.rotation.y, feetY: player.feetY, third: thirdPerson.zoom > 0, hidden: inMovie }); // 🧰 開箱動畫
   // ⏳ Time Shard：正常玩緊先計時（Boss Arena、塔、Reaper 大廳、播片、彈飛緊都唔跌）
   const shardOk = !isPaused() && !inMovie && !loading.active && !endingRunning && !fling && whereIs(pos.x, pos.z) !== 'Boss Arena' && !inTowerArena(pos.x, pos.z) && !inReaperHall(pos.x, pos.z) && !tower.inside && !reaper.inside;
-  timeShard.update(dt, time, { pos, feetY: player.feetY, playing: shardOk });
+  timeShard.update(dt, time, { pos, feetY: player.feetY, playing: shardOk, cam: camera });
   bossSkins.update(dt, time); // 🦹 隕石皮膚嘅細隕石轉圈
   demonicBossSkins.update(dt, time); // 😈 火球、翼
   if (halloween.sky > 0.01) {

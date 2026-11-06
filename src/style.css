@@ -620,3 +620,9 @@ body.mobile #side-buttons { top: calc(116px + env(safe-area-inset-top, 0px)); ri
 body.mobile .side-btn { width: 46px; height: 46px; font-size: 24px; border-radius: 12px; }
 body.mobile #side-box { right: calc(200px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: none; width: min(300px, calc(100vw - 390px)); min-width: 220px; max-height: calc(100vh - 100px); z-index: 21; }
 body:has(#panel:not([hidden])) #side-buttons, body:has(#panel:not([hidden])) #side-box { display: none; }
+
+/* ⏳ Time Shard 追蹤牌（timeShard.js，2026-11-06） */
+#time-shard-tracker { position: fixed; top: calc(62px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); z-index: 6; pointer-events: none; display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: linear-gradient(135deg, rgba(60, 40, 0, 0.85), rgba(20, 30, 60, 0.85)); border: 2px solid #ffd54f; box-shadow: 0 0 14px rgba(255, 213, 79, 0.6); color: #fff8e1; font-weight: 900; font-size: 14px; white-space: nowrap; animation: ts-glow 1.4s ease-in-out infinite; }
+#time-shard-tracker .ts-arrow { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 50%; background: #ffd54f; color: #3e2700; font-size: 16px; transition: transform 0.15s linear; }
+@keyframes ts-glow { 50% { box-shadow: 0 0 22px rgba(255, 213, 79, 0.95); } }
+@media (max-width: 600px) { #time-shard-tracker { top: calc(58px + env(safe-area-inset-top, 0px)); font-size: 12px; } }
