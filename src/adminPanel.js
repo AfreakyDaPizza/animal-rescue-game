@@ -11,7 +11,7 @@
 import { state, save, SAVE_KEY, autoBackups, restoreAutoBackup } from './state.js';
 import { short } from './format.js';
 import { play } from './sound.js';
-import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText, findAnimal, randomKg } from './data/animals.js';
+import { ANIMALS, FUSE_PETS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_PETS, TAME_ANIMALS, TAME_PETS, MUTATIONS, mutationInfo, joinMutations, sizeText, findAnimal, randomKg } from './data/animals.js';
 import { RARITIES, NEW_BIOME_DATE, FUSE_OPEN_DATE, GYM_OPEN_DATE, HALLOWEEN_OPEN_DATE, METEOR_OPEN_DATE, FISHING_RODS, GHOST_VACUUM } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { EVENTS } from './events.js';
@@ -81,6 +81,10 @@ const CURRENCIES = [
   { key: 'soulCandy', emoji: '🍬', name: 'Soul Candy', max: 999, steps: [1, 5, 10], hw: true }, // 🔥 5 粒開 Halloween World 2（Issue #11）
   { key: 'skeleTokens', emoji: '☠️', name: 'Skele Tokens', max: 1e9, hw: true }, // 🧙 Witch Tower（Issue #11）
   { key: 'meteorCrystals', emoji: '💎', name: 'Meteor Crystals', max: 1e9 },
+  // 🤠 Catch & Tame（小朋友 Issue #14，2026-11-07）；cap = 唔可以超過 max（等級）
+  { key: 'tameTokens', emoji: '🤠', name: 'Tame Tokens', max: 1e6, steps: [10, 100, 1000], tame: true },
+  { key: 'lassoLevel', emoji: '🪢', name: 'Lasso level', max: 10, steps: [1], cap: true, tame: true },
+  { key: 'fluteLevel', emoji: '🎵', name: 'Flute level', max: 10, steps: [1], cap: true, tame: true },
 ];
 const STEPS = [100, 1e3, 1e6];
 const stepLabel = (n) => `+${n >= 1e6 ? `${n / 1e6}M` : n >= 1e3 ? `${n / 1e3}K` : n}`;
@@ -93,7 +97,8 @@ function parseAmount(text) {
 }
 function setCurrency(key, value) {
   if (key === 'hwShards') return setGearCount('halloweenShard', value); // 🔮 Halloween Shard 而家係背包 Gear（hwShards 只係鏡）
-  state[key] = Math.max(0, Math.floor(value));
+  const c = CURRENCIES.find((x) => x.key === key);
+  state[key] = c?.cap ? Math.min(c.max, Math.max(1, Math.floor(value))) : Math.max(0, Math.floor(value)); // 🪢🎵 等級 1–10
   save();
   play('coin');
 }
@@ -113,8 +118,8 @@ function currencyRow(c) {
 
 function giveHtml() {
   return `<p class="index-summary">Give yourself anything. Type a number like <b>5000</b>, <b>5K</b> or <b>2.5M</b> and tap <b>Set</b>.</p>
-    ${section('🌳 Normal world', CURRENCIES.filter((c) => !c.hw).map(currencyRow).join(''))}
-    ${section('🎃 Halloween world', CURRENCIES.filter((c) => c.hw).map(currencyRow).join(''))}
+    ${section('🌳 Normal world', CURRENCIES.filter((c) => !c.hw && !c.tame).map(currencyRow).join(''))}
+    ${section('🤠 Catch & Tame', CURRENCIES.filter((c) => c.tame).map(currencyRow).join(''))}
     ${section('🚀 Everything at once', `<div class="pet-actions">${confirmButton('rich', '💰 Huge Money, Speed, IQ and Jump Power')}</div>`)}`;
 }
 
@@ -281,7 +286,7 @@ function futureHtml() {
 }
 
 // ---------- 🐾 Pets ----------
-const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS, ...DEMONIC_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
+const findRarity = () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS, ...DEMONIC_PETS, ...TAME_ANIMALS, ...TAME_PETS].find((a) => a.name === pick.name)?.rarity || pick.rarity;
 // 預覽：例如「🙃 GIANT x10 🔥🌑 Mythic Celestial Sunlion」
 const previewText = () => {
   const muts = MUTATIONS.filter((m) => pick.mutations.includes(m)).map((m) => mutationInfo(m).emoji).join('');
@@ -289,8 +294,9 @@ const previewText = () => {
 };
 const niceName = (m) => mutationInfo(m).name[0] + mutationInfo(m).name.slice(1).toLowerCase();
 const GROUPS = [
-  ['all', 'All', () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS, ...DEMONIC_PETS]],
+  ['all', 'All', () => [...ANIMALS, ...FUSE_PETS, ...HALLOWEEN_PETS, ...CHEST_PETS, ...METEOR_PETS, ...DEMONIC_PETS, ...TAME_ANIMALS, ...TAME_PETS]],
   ['normal', '🌳 Animals', () => ANIMALS],
+  ['tame', '🤠 Catch & Tame', () => [...TAME_ANIMALS, ...TAME_PETS]], // Issue #14（2026-11-07）
   ['fuse', '🧪 Fuse', () => FUSE_PETS],
   ['halloween', '🎃 Halloween', () => HALLOWEEN_PETS],
   ['chest', '🧟 Chest', () => CHEST_PETS],
@@ -333,9 +339,6 @@ function worldHtml() {
   return `<p class="index-summary">Jump anywhere in one tap.</p>
     ${section('🏡 Hub and biomes', `<div class="admin-grid">${groupOf('normal')}</div>`)}
     ${section('✨ Secret places', `<div class="admin-grid">${groupOf('secret')}</div>`)}
-    ${section('🎃 Halloween', `<div class="admin-grid">${groupOf('halloween')}</div>`, 'Going to the Ghost World also calls the Phantom Express, so you have 30 minutes there.')}
-    ${section('🗼 Witch Tower', `<div class="pet-actions admin-wrap">${['easy', 'medium', 'hard'].map((m) => `<button data-admin="towerGo" data-mode="${m}">${{ easy: '🟢 Easy', medium: '🟡 Medium', hard: '🔴 Hard' }[m]}</button>`).join('')}</div>
-      <div class="admin-search-row"><span>⏩ Start at floor</span><input id="admin-tower-floor" type="number" min="1" max="999" step="1" value="${towerFloor}" style="width:90px"><button data-admin="towerFloor">⏩ Jump to floor</button></div>`, 'Goes straight into the tower (no Witch or World 2 lock). Pick a mode, or type a floor and jump (in the tower it starts that floor now).')}
     ${section('🌗 Day and night', `<div class="pet-actions admin-wrap"><button data-admin="night">🌙 Make it night now</button><button data-admin="day">☀️ Make it day now</button></div>`)}`;
 }
 
@@ -343,7 +346,7 @@ function worldHtml() {
 function eventsHtml() {
   const biomes = BIOMES.map((b, i) => [i, b.name]);
   return `${section('🎉 Start an event', `<div class="admin-grid">${EVENTS.map((e) => `<button data-admin="event" data-id="${e.id}" title="${(e.desc || '').replace(/"/g, '&quot;')}">${e.emoji} ${e.name}</button>`).join('')}</div>
-    <div class="admin-grid"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button><button data-admin="train">🚂 Phantom Express now</button><button data-admin="reaper" class="sell">🐉 Summon Pumpkin Reaper Dragon</button></div>`, 'Each event runs for its normal time, then the clock events come back.')}
+    <div class="admin-grid"><button data-admin="crazy" class="sell">🤪 CRAZY PET FRENZY</button></div>`, 'Each event runs for its normal time, then the clock events come back.')}
     ${section('✨ Spawn an animal', `<div class="pet-actions admin-wrap">${biomes.map(([i, n]) => `<button data-admin="biome" data-i="${i}" class="${i === spawnBiome ? '' : 'grey'}">${i + 1}. ${n.replace(/^Biome \d+ - /, '')}</button>`).join('')}</div>
     <div class="pet-actions admin-wrap">${RARITIES.map((r) => `<button data-admin="srarity" data-v="${r.name}" class="${r.name === spawnRarity ? '' : 'grey'}">${r.name}</button>`).join('')}</div>
     <div class="pet-actions"><button data-admin="spawn" class="sell">✨ Spawn it</button></div>`, 'Eternal animals only live in the Enchanted Kingdom (biome 7).')}`;
