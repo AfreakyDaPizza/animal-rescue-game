@@ -459,7 +459,8 @@ const fwd = new THREE.Vector3();
 
 // held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；oneHand：右手單手拎緊細嘢；回傳要用嚟畫畫面嘅鏡頭
 // emote：可唔可以做企定動作（🎵 Tamer 吹笛）；騎緊坐騎、釣緊魚、Catch & Tame 嗰陣 main.js 俾 false
-export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3, emote = true }) {
+// orbit：Shift Lock 熄咗（或者手機）→ 公仔面向行緊嘅方向，鏡頭可以自由轉一圈睇到自己塊面（小朋友 2026-11-07）
+export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3, emote = true, orbit = false }) {
   const { eye, avatar, view } = tp;
   tp.smoothZoom += (tp.zoom - tp.smoothZoom) * Math.min(1, dt * 10);
   const third = tp.zoom > 0;
@@ -497,7 +498,18 @@ export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking
 
   // 公仔跟住玩家（腳嘅位置、面向）
   avatar.g.position.set(eye.position.x, feetY, eye.position.z);
-  avatar.g.rotation.set(0, eye.rotation.y, 0);
+  // 面向：Shift Lock 著住 = 跟鏡頭；熄咗 = 慢慢轉去行緊嘅方向，企定就唔郁（鏡頭可以轉去前面睇自己）
+  const mx = eye.position.x - (tp.lastX ?? eye.position.x);
+  const mz = eye.position.z - (tp.lastZ ?? eye.position.z);
+  tp.lastX = eye.position.x;
+  tp.lastZ = eye.position.z;
+  if (!orbit || tp.bodyYaw === undefined) tp.bodyYaw = eye.rotation.y;
+  else if (Math.hypot(mx, mz) > 0.02 && Math.hypot(mx, mz) < 3) { // 太大 = 傳送咗，唔計
+    let d = Math.atan2(-mx, -mz) - tp.bodyYaw;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    tp.bodyYaw += d * Math.min(1, dt * 12);
+  }
+  avatar.g.rotation.set(0, tp.bodyYaw, 0);
   avatar.legs.forEach((l) => l.rotation.set(0, 0, 0));
   avatar.arms.forEach((a) => a.rotation.set(0, 0, 0));
   avatar.knees.forEach((k) => k.rotation.set(0, 0, 0));

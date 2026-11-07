@@ -190,7 +190,7 @@ export function createRiding(ctx) {
     const w = mount.wrap;
     w.position.set(camera.position.x, player.feetY, camera.position.z);
     // 轉身：跟住鏡頭方向（慢少少，似真啲）
-    const yaw = camera.rotation.y;
+    const yaw = thirdPerson.bodyYaw ?? camera.rotation.y; // 🔓 Shift Lock 熄咗：跟公仔面向（行緊嘅方向）
     let d = yaw - w.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     w.rotation.y += dt ? d * Math.min(1, dt * 12) : d;

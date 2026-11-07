@@ -2174,6 +2174,7 @@ renderer.setAnimationLoop((timestamp) => {
     held: (rescue.carrying && !rescue.carrying.leashed ? rescue.carrying.model : null) || hwEggs?.carryModel() || rescue.holding?.model || null, // 🪢 拖住嘅動物喺地上行，唔使頂喺頭
     item: rescue.carrying && !rescue.carrying.leashed ? { name: rescue.carrying.animal.name, kg: rescue.carrying.kg, sizeMul: rescue.carrying.sizeMul } : (['pet', 'rescued'].includes(selectedHotbarItem()?.kind) ? selectedHotbarItem().item : null), // 🐎 Ride／鎚仔等工具唔係動物（kgScale 會搵唔到）
     oneHand: handHold.active, // ✋ 右手舉起拎住 Shard／寶箱／鎚仔
+    orbit: player.controls.freeMode || !!player.controls.virtual, // 🔓 Shift Lock 熄咗／手機：鏡頭自由轉，睇到自己塊面
     walking: player.walking, feetY: player.feetY, grounded: player.grounded, vy: player.vy,
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）

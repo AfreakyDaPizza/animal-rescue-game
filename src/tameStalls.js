@@ -486,7 +486,7 @@ export function upgradeTameTool(kind) {
 // ⭐ Special's Stall 嘅效果全部喺度（其他幫手要改效果就改呢度）
 // 回傳 { ok, msg, big? }：ok = 買到；msg = 彈出嘅字；big = 用大公告
 export const specialOwned = (id) => {
-  if (id === 'luminousDragon') return state.pets.some((p) => p.name === DRAGON);
+  // 🐉 Luminous God Dragon：小朋友 2026-11-07 話買幾多隻都得（每隻都係「最好嗰隻其他寵物」×1.2，唔會越疊越多）
   if (id === 'tamerRanger') return !!state.ownedRanger?.includes('tamer');
   if (id === 'cowboyBossSkin') return !!state.cowboyBossSkin;
   return false; // Shard／Leash 可以買好多
