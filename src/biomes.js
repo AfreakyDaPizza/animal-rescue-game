@@ -2,7 +2,7 @@
 // 裝飾放喺兩邊，中間留條路（|x| < 3）俾玩家行。
 
 import * as THREE from 'three';
-import { addPlatform, addCollider, kingdom } from './world.js';
+import { addPlatform, addCollider, kingdom, KINGDOM_Y } from './world.js';
 import { state } from './state.js';
 import { enchanted } from './enchanted.js';
 import { arcticV2, smugglersV2 } from './biomeArt.js'; // Issue #2：Biome 4、5 新美術
@@ -626,65 +626,164 @@ export const KINGDOM_GATE = { open: 0, fast: false, bars: null, swirl: null, z: 
 export const MOUNTAIN = { minX: -15, maxX: 15, minZ: 0, maxZ: 0 }; // 山腳範圍（main／hazards 用）
 const STAIRS = { z: 0 }; // 樓梯口
 
-// 一座方塊金字塔山：一層疊一層，每層要跳先上到；頂幾層有雪
+// 座山嘅形狀（Issue #14 小朋友 2026-11-07：「now make the mountain bigger」）
+// 10 層 13 米 → 18 層 23.4 米；山腳 30×34 → 42×46。前面每級 1.5 米闊（行樓梯／企得穩），
+// 後面每級窄啲（0.6 米，好似懸崖），條橋由山頂背面落去王國閘門（王國仲係 KINGDOM_Y 高）
+const MTN = {
+  LAYERS: 18,
+  LAYER: 1.3,        // 每層幾高（跳得上，大約跳到 1.5 米）
+  SHRINK_X: 0.85,    // 兩邊每級幾闊
+  SHRINK_FRONT: 1.5, // 前面每級幾闊（樓梯每層 3 級就喺度）
+  SHRINK_BACK: 0.6,  // 後面每級幾闊
+  TOP_HX: 6.5,       // 最頂嗰層（一半）：夠位俾兩隻動物一左一右
+  TOP_HZ: 5.5,
+  STAIR_HALF: 2.5,   // 中間條樓梯（一半闊）
+  cz: 0,             // 山頂中心 z（buildMountain 計）
+};
+const mtnHx = (i) => MTN.TOP_HX + (MTN.LAYERS - 1 - i) * MTN.SHRINK_X;
+const mtnFront = (i) => MTN.cz + MTN.TOP_HZ + (MTN.LAYERS - 1 - i) * MTN.SHRINK_FRONT; // 第 i 層前面（入口嗰邊）
+const mtnBack = (i) => MTN.cz - MTN.TOP_HZ - (MTN.LAYERS - 1 - i) * MTN.SHRINK_BACK;   // 第 i 層後面（閘門嗰邊）
+// 條橋：山頂背面（topA）→ 平路 → 一級級落（每級矮過 0.45 米，行返上嚟都唔使跳）→ 平路 → 閘門（topB = KINGDOM_Y）
+const BRIDGE = { z1: 0, zA: 0, zB: 0, z2: 0, topA: 0, topB: 0, steps: 1, stepH: 0.3, tread: 0.45 };
+// 橋面喺 z 有幾高
+function bridgeDeckAt(z) {
+  const b = BRIDGE;
+  if (z >= b.zA) return b.topA;
+  if (z <= b.zB) return b.topB;
+  const k = Math.min(b.steps - 1, Math.floor((b.zA - z) / b.tread));
+  return b.topA - (k + 1) * b.stepH;
+}
+// 扶手嗰條斜線（樓梯段打斜，兩頭平）
+function bridgeRailAt(z) {
+  const b = BRIDGE;
+  if (z >= b.zA) return b.topA;
+  if (z <= b.zB) return b.topB;
+  return b.topB + ((z - b.zB) / (b.zA - b.zB)) * (b.topA - b.topB);
+}
+// 兩點之間一條斜嘅長方條（沿住 z 方向；橋樓梯段嘅扶手、玻璃）
+function slab(scene, material, x, w, h, za, ya, zb, yb, shadow = false) {
+  const len = Math.hypot(za - zb, ya - yb);
+  const m = add(scene, new THREE.Mesh(new THREE.BoxGeometry(w, h, len), material), x, (ya + yb) / 2, (za + zb) / 2, shadow);
+  m.rotation.x = -Math.atan2(ya - yb, za - zb);
+  return m;
+}
+
+// 一座方塊金字塔山：一層疊一層，每層要跳先上到（或者行中間條樓梯）；石層有幾種顏色 + 深色石紋，頂 4 層有雪
 function buildMountain(scene, rect) {
-  const LAYERS = 10;
-  const LAYER_HEIGHT = 1.3; // 跳得上（大約跳到 2 米）
-  const SHRINK = 1.4;       // 每層細幾多（即係每級有幾闊企）
-  const cz = rect.minZ + 20;
-  const baseHalfX = 15;
-  const baseHalfZ = 17;
-  const rocks = [mat(0x7a6f63, { flatShading: true }), mat(0x8c8072, { flatShading: true })];
+  const { LAYERS, LAYER } = MTN;
+  const top = LAYER * LAYERS;
+  // 先計條橋要幾長，再由閘門倒推座山擺喺邊
+  const stepH0 = 0.3;
+  const steps = Math.max(1, Math.ceil((top - KINGDOM_Y) / stepH0));
+  const z2 = rect.minZ + 0.5; // 盡頭幅牆
+  const zB = z2 + 5;          // 閘門前面 5 米平路
+  const zA = zB + steps * 0.45;
+  const z1 = zA + 3;          // 山頂背面出去 3 米平路
+  Object.assign(BRIDGE, { z1, zA, zB, z2, topA: top, topB: KINGDOM_Y, steps, stepH: (top - KINGDOM_Y) / steps, tread: 0.45 });
+  MTN.cz = z1 + MTN.TOP_HZ;
+  const cz = MTN.cz;
+
+  // 石層：底（啡灰）→ 中（深啡）→ 上（淺灰）→ 雪
+  const bands = [
+    [mat(0x7a6f63, { flatShading: true }), mat(0x857a6d, { flatShading: true })],
+    [mat(0x6b5f55, { flatShading: true }), mat(0x75695e, { flatShading: true })],
+    [mat(0x8a8178, { flatShading: true }), mat(0x958c82, { flatShading: true })],
+  ];
+  const stripe = mat(0x4e463e, { flatShading: true });
   const snow = mat(0xf5f7fa);
+  const snowLip = mat(0xffffff, { roughness: 0.4 });
+  const SNOW_FROM = LAYERS - 4;
   for (let i = 0; i < LAYERS; i++) {
-    const hx = baseHalfX - i * SHRINK;
-    const hz = baseHalfZ - i * SHRINK;
-    const top = LAYER_HEIGHT * (i + 1);
-    const material = i >= LAYERS - 3 ? snow : rocks[i % 2];
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(hx * 2, LAYER_HEIGHT, hz * 2), material), 0, top - LAYER_HEIGHT / 2, cz);
-    addPlatform({ minX: -hx, maxX: hx, minZ: cz - hz, maxZ: cz + hz }, top);
+    const hx = mtnHx(i);
+    const f = mtnFront(i);
+    const b = mtnBack(i);
+    const y = LAYER * (i + 1);
+    const material = i >= SNOW_FROM ? snow : bands[Math.min(2, Math.floor(i / 5))][i % 2];
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(hx * 2, LAYER, f - b), material), 0, y - LAYER / 2, (f + b) / 2);
+    addPlatform({ minX: -hx, maxX: hx, minZ: b, maxZ: f }, y);
+    if (i < SNOW_FROM) add(scene, new THREE.Mesh(new THREE.BoxGeometry(hx * 2 + 0.06, 0.14, f - b + 0.06), stripe), 0, y - LAYER * 0.58, (f + b) / 2, false); // 深色石紋
+    else add(scene, new THREE.Mesh(new THREE.BoxGeometry(hx * 2 + 0.14, 0.2, f - b + 0.14), snowLip), 0, y - 0.1, (f + b) / 2, false); // 雪邊（凸出少少）
   }
   // 山前面中間一條樓梯（小朋友 2026-10-15：爬山唔好慢）：每層 3 級，每級矮過 0.45 米，行上去唔使跳
   const STEPS = 3;
+  const SH = MTN.SHRINK_FRONT;
+  const SW = MTN.STAIR_HALF;
   const stepMat = mat(0xcfc6b8, { flatShading: true });
   const edgeMat = mat(0xffd54f, { metalness: 0.6, roughness: 0.4 });
   for (let i = 0; i < LAYERS; i++) {
-    const front = cz + (baseHalfZ - i * SHRINK); // 呢層嘅前面
-    const base = LAYER_HEIGHT * i;
+    const front = mtnFront(i); // 呢層嘅前面
+    const base = LAYER * i;
     for (let j = 0; j < STEPS; j++) {
-      const top = base + (LAYER_HEIGHT * (j + 1)) / STEPS;
-      const z1 = front + SHRINK - (SHRINK * (j + 1)) / STEPS; // 越高越入
-      const z2 = front + SHRINK - (SHRINK * j) / STEPS;
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(4, top - base + 0.01, z2 - z1), stepMat), 0, (base + top) / 2, (z1 + z2) / 2);
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 0.08), edgeMat), 0, top + 0.02, z2 - 0.05, false);
-      addPlatform({ minX: -2, maxX: 2, minZ: z1, maxZ: z2 }, top);
+      const stepTop = base + (LAYER * (j + 1)) / STEPS;
+      const za = front + SH - (SH * (j + 1)) / STEPS; // 越高越入
+      const zb = front + SH - (SH * j) / STEPS;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(SW * 2, stepTop - base + 0.01, zb - za), stepMat), 0, (base + stepTop) / 2, (za + zb) / 2);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(SW * 2, 0.05, 0.08), edgeMat), 0, stepTop + 0.02, zb - 0.05, false);
+      addPlatform({ minX: -SW, maxX: SW, minZ: za, maxZ: zb }, stepTop);
     }
   }
-  // 樓梯口：石門 + 牌
-  const trailZ = cz + baseHalfZ + SHRINK + 0.6;
-  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.4, 0.8), mat(0x6d6359, { flatShading: true })), s * 2.6, 2.2, trailZ);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.7, 1.0), mat(0x5d4037)), 0, 4.6, trailZ);
+  // 樓梯兩邊嘅石欄（矮矮，裝飾）：每層一嚿
+  const curb = mat(0x5d544b, { flatShading: true });
+  for (let i = 0; i < LAYERS; i++) {
+    for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.3, LAYER + 0.35, SH), curb), s * (SW + 0.15), LAYER * i + (LAYER + 0.35) / 2, mtnFront(i) + SH / 2);
+  }
+  // 樓梯口：大石門 + 橫樑
+  const trailZ = mtnFront(0) + SH + 0.6;
+  for (const s of [-1, 1]) {
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.0, 5.6, 1.0), mat(0x6d6359, { flatShading: true })), s * (SW + 0.9), 2.8, trailZ);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 1.3), mat(0x4e463e, { flatShading: true })), s * (SW + 0.9), 0.25, trailZ);
+  }
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(SW * 2 + 3.2, 0.8, 1.2), mat(0x5d4037)), 0, 5.8, trailZ);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(SW * 2 + 1.6, 0.12, 0.08), edgeMat), 0, 5.4, trailZ + 0.62, false);
   STAIRS.z = trailZ;
 
-  // 山頂支旗
-  const top = LAYER_HEIGHT * LAYERS;
-  const hx = baseHalfX - (LAYERS - 1) * SHRINK;
-  const hz = baseHalfZ - (LAYERS - 1) * SHRINK;
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.5, 0.15), mat(0x5d4037)), hx - 0.4, top + 1.75, cz - hz + 0.4);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.05), mat(0xe53935)), hx - 1.1, top + 3, cz - hz + 0.4, false);
-  Object.assign(SUMMIT, { x: 0, z: cz, top, halfX: hx - 0.9, halfZ: hz - 0.9 });
-  Object.assign(MOUNTAIN, { minX: -baseHalfX, maxX: baseHalfX, minZ: cz - baseHalfZ, maxZ: cz + baseHalfZ });
+  // 山頂：支旗 + 一堆石（cairn）
+  const hx = mtnHx(LAYERS - 1);
+  const back = mtnBack(LAYERS - 1);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.18, 4.5, 0.18), mat(0x5d4037)), hx - 0.5, top + 2.25, back + 0.6);
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.05), mat(0xe53935)), hx - 1.4, top + 3.9, back + 0.6, false);
+  [[0.9, 0.5], [0.7, 0.45], [0.5, 0.4]].forEach(([w, h], k) => {
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(w, h, w), bands[2][k % 2]), -hx + 0.8, top + 0.25 + k * 0.45, back + 0.8).rotation.y = k * 0.5;
+  });
+  Object.assign(SUMMIT, { x: 0, z: cz, top, halfX: MTN.TOP_HX - 0.9, halfZ: MTN.TOP_HZ - 0.9 });
+  Object.assign(MOUNTAIN, { minX: -mtnHx(0), maxX: mtnHx(0), minZ: mtnBack(0), maxZ: mtnFront(0) });
+}
+
+// 礦洞口：石框 + 黑窿 + 木支架 + 礦燈 + 黃牌（rotY：0 = 向 +z，±π/2 = 向兩邊）
+function mineDoor(scene, x, y, z, rotY = 0, s = 1) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  g.scale.setScalar(s);
+  add(g, new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.2, 1.4), mat(0x5d544b, { flatShading: true })), 0, 1.6, -0.5);
+  add(g, new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 0.1), mat(0x111111)), 0, 1.2, 0.22, false);
+  for (const sx of [-1, 1]) add(g, new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.7, 0.4), mat(0x6d4c41)), sx * 1.25, 1.35, 0.35);
+  add(g, new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.4, 0.45), mat(0x6d4c41)), 0, 2.75, 0.35);
+  add(g, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.06), mat(0xffd54f)), 0, 3.2, 0.4, false); // 牌
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8), mat(0xfff59d, { emissive: 0xffd54f, emissiveIntensity: 1.5 })), 0, 2.35, 0.55, false); // 礦燈
+  for (const sx of [-0.45, 0.45]) add(g, new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 2.2), mat(0x9e9e9e, { metalness: 0.7 })), sx, 0.06, 1.1, false);
+  scene.add(g);
+  return g;
+}
+// 一條直路軌（沿 z）：兩條鐵 + 一條條枕木
+function railLine(scene, x, za, zb) {
+  const len = Math.abs(zb - za);
+  const zc = (za + zb) / 2;
+  const iron = mat(0x9e9e9e, { metalness: 0.7 });
+  const sleeper = mat(0x5d4037);
+  for (const sx of [-0.6, 0.6]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, len), iron), x + sx, 0.12, zc, false);
+  for (let z = Math.min(za, zb) + 0.4; z < Math.max(za, zb); z += 0.8) add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 0.22), sleeper), x, 0.04, z, false);
 }
 
 // Biome 6 再型啲（小朋友 2026-10-15）：瀑布一級級流落嚟、水池、礦洞口 + 路軌、山上有松樹、山頂金光圈、鷹喺山頂飛、雪
+// Issue #14（2026-11-07）：座山大咗 → 仲有水晶礦脈、幾個礦洞口、兩邊礦車路軌、半山積雪
 function coolMountain(scene, live, rect, rand) {
   const cz = SUMMIT.z;
-  const LAYER = 1.3;
-  const SHRINK = 1.4;
-  const hzOf = (i) => 17 - i * SHRINK;
-  const hxOf = (i) => 15 - i * SHRINK;
+  const LAYER = MTN.LAYER;
+  const SH = MTN.SHRINK_FRONT;
+  const LAYERS = MTN.LAYERS;
 
-  // 瀑布：一條流動嘅水，由第 7 層一級級流落山腳（x = -4.2）
+  // 瀑布：一條流動嘅水，由第 12 層一級級流落山腳（x = -4.6，樓梯左邊）
   const c = document.createElement('canvas');
   c.width = 16;
   c.height = 64;
@@ -697,21 +796,24 @@ function coolMountain(scene, live, rect, rand) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
   const waterMat = new THREE.MeshStandardMaterial({ map: tex, emissive: 0x0277bd, emissiveIntensity: 0.35, transparent: true, opacity: 0.88, roughness: 0.1 });
-  const wx = -4.2;
-  for (let i = 0; i <= 7; i++) {
-    const front = cz + hzOf(i);
+  const wx = -4.6;
+  const FALL_TOP = 12;
+  for (let i = 0; i <= FALL_TOP; i++) {
+    const front = mtnFront(i);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.6, LAYER), waterMat);
     face.position.set(wx, LAYER * i + LAYER / 2, front + 0.03);
     live.add(face);
     if (i > 0) {
-      const flat = new THREE.Mesh(new THREE.PlaneGeometry(1.6, SHRINK), waterMat);
+      const flat = new THREE.Mesh(new THREE.PlaneGeometry(1.6, SH), waterMat);
       flat.rotation.x = -Math.PI / 2;
-      flat.position.set(wx, LAYER * i + 0.03, front + SHRINK / 2);
+      flat.position.set(wx, LAYER * i + 0.03, front + SH / 2);
       live.add(flat);
     }
   }
+  // 瀑布源頭：山上面一個冰洞
+  add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.1), mat(0x0d47a1, { emissive: 0x01579b, emissiveIntensity: 0.6 })), wx, LAYER * (FALL_TOP + 1) + 0.5, mtnFront(FALL_TOP + 1) + 0.04, false);
   // 山腳水池 + 水花
-  const poolZ = cz + hzOf(0) + 1.4;
+  const poolZ = mtnFront(0) + 1.4;
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.3, 2.4), mat(0x8c8072, { flatShading: true })), wx, 0.15, poolZ);
   const pool = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.06, 1.9), waterMat);
   pool.position.set(wx, 0.31, poolZ);
@@ -724,34 +826,97 @@ function coolMountain(scene, live, rect, rand) {
   splash.frustumCulled = false;
   live.add(splash);
 
-  // 礦洞口（山腳右邊）+ 路軌 + 一架礦車
-  const mx = 8;
-  const mz = cz + hzOf(0) + 0.05;
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.4, 0.1), mat(0x111111)), mx, 1.2, mz, false);
-  for (const sx of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.7, 0.4), mat(0x6d4c41)), mx + sx * 1.45, 1.35, mz + 0.1);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.4, 0.45), mat(0x6d4c41)), mx, 2.75, mz + 0.1);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.06), mat(0xffd54f)), mx, 3.2, mz + 0.15, false); // 牌
-  for (const sx of [-0.45, 0.45]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 6), mat(0x9e9e9e, { metalness: 0.7 })), mx + sx, 0.06, mz + 3, false);
-  for (let k = 0; k < 10; k++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 0.2), mat(0x5d4037)), mx, 0.03, mz + 0.4 + k * 0.6, false);
+  // 礦洞口（山腳右邊）+ 路軌 + 一架礦車 + 寶石
+  const mx = 9;
+  const mz = mtnFront(0) + 0.05;
+  mineDoor(scene, mx, 0, mz);
+  railLine(scene, mx, mz + 0.4, mz + 6.4);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 1.4), mat(0x795548)), mx, 0.55, mz + 3.5);
   for (let k = 0; k < 5; k++) {
     const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), mat([0x00e5ff, 0xff4081, 0xffd600][k % 3], { emissive: [0x00e5ff, 0xff4081, 0xffd600][k % 3], emissiveIntensity: 2 }));
     add(scene, gem, mx - 0.4 + (k % 3) * 0.4, 1.0, mz + 3.2 + Math.floor(k / 3) * 0.5);
   }
+  // 半山嘅礦洞口（企喺嗰級上面）+ 兩邊山腳嘅礦洞口（駁住礦車路軌）
+  const DOORS = [[-12, 5], [11, 9], [-8, 12]];
+  for (const [x, i] of DOORS) mineDoor(scene, x, LAYER * i, mtnFront(i) + 0.05, 0, 0.75);
+  const laneX = MOUNTAIN.maxX + 2.5; // 礦車條路（hazards.js 用同一個位）
+  const sideZ = cz + 6;
+  for (const s of [-1, 1]) {
+    mineDoor(scene, s * (mtnHx(0) + 0.05), 0, sideZ, s * Math.PI / 2);
+    // 礦洞口出嚟嘅短路軌（打橫）駁去礦車路
+    const spur = new THREE.Group();
+    railLine(spur, 0, 0, laneX - mtnHx(0) - 0.4);
+    spur.rotation.y = s * Math.PI / 2;
+    spur.position.set(s * (mtnHx(0) + 0.4), 0, sideZ);
+    scene.add(spur);
+    railLine(scene, s * laneX, MOUNTAIN.minZ + 0.5, rect.maxZ - 1.5); // 兩邊長路軌（礦車喺度上落）
+    // 路軌旁邊一排礦燈柱
+    for (let z = rect.maxZ - 4; z > MOUNTAIN.minZ + 2; z -= 9) {
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 0.2), mat(0x5d4037)), s * (laneX + 1.4), 1.5, z);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.15, 0.15), mat(0x5d4037)), s * (laneX + 1.1), 2.9, z, false);
+      add(scene, new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.28, 8), mat(0xfff59d, { emissive: 0xffd54f, emissiveIntensity: 1.5 })), s * (laneX + 0.85), 2.7, z, false);
+    }
+  }
 
-  // 山上每級都有啲松樹（避開樓梯同瀑布）
-  for (let i = 0; i < 7; i++) {
-    for (let n = 0; n < 3; n++) {
-      const side = rand() < 0.5 ? -1 : 1;
-      const x = side * (6 + rand() * Math.max(0.5, hxOf(i) - 7));
-      if (Math.abs(x - wx) < 1.6) continue;
-      const z = cz + (rand() * 2 - 1) * (hzOf(i) - 0.7);
-      const onLedge = Math.abs(z - cz) > hzOf(i + 1) || Math.abs(x) > hxOf(i + 1);
-      if (!onLedge) continue;
+  // 水晶礦脈：山身（前面同兩邊）一嚿嚿發光水晶 + 一條條發光石縫
+  const veinColors = [0x7c4dff, 0x00e5ff, 0xff4081];
+  const veinMats = veinColors.map((cc) => mat(cc, { emissive: cc, emissiveIntensity: 2.2, flatShading: true }));
+  const crackMats = veinColors.map((cc) => mat(cc, { emissive: cc, emissiveIntensity: 1.4 }));
+  for (let n = 0; n < 70; n++) {
+    const i = Math.floor(rand() * (LAYERS - 5));
+    const y = LAYER * i + 0.25 + rand() * (LAYER - 0.5);
+    const k = n % 3;
+    const side = rand();
+    let x;
+    let z;
+    let rotY = 0;
+    if (side < 0.5) {
+      // 前面：避開樓梯同瀑布
+      x = (rand() * 2 - 1) * (mtnHx(i) - 0.6);
+      if (Math.abs(x) < MTN.STAIR_HALF + 0.8 || Math.abs(x - wx) < 1.4) continue;
+      z = mtnFront(i) + 0.05;
+    } else {
+      const s = side < 0.75 ? -1 : 1;
+      x = s * (mtnHx(i) + 0.05);
+      z = mtnBack(i) + 1 + rand() * (mtnFront(i) - mtnBack(i) - 2);
+      rotY = Math.PI / 2;
+      if (Math.abs(z - sideZ) < 2.5) continue; // 礦洞口
+    }
+    if (n % 2) {
+      const cr = add(scene, new THREE.Mesh(new THREE.OctahedronGeometry(0.22 + rand() * 0.25), veinMats[k]), x, y, z, false);
+      cr.scale.y = 1.7;
+      cr.rotation.set(rand() - 0.5, rand() * 3, rand() - 0.5);
+    } else {
+      const cr = add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2 + rand() * 1.8, 0.08, 0.06), crackMats[k]), x, y, z, false);
+      cr.rotation.y = rotY;
+      cr.rotation[rotY ? 'x' : 'z'] = (rand() - 0.5) * 0.9;
+    }
+  }
+
+  // 山上每級都有啲松樹（前面同兩邊，避開樓梯、瀑布、礦洞口；積雪嗰幾層冇樹）
+  for (let i = 0; i < 11; i++) {
+    for (let n = 0; n < 4; n++) {
+      // 多數種喺前面嗰級（1.5 米闊），少少喺兩邊嗰級（窄啲，樹細啲）
+      const front = n < 3;
+      const x = front ? (rand() * 2 - 1) * (mtnHx(i) - 0.7) : (rand() < 0.5 ? -1 : 1) * (mtnHx(i + 1) + MTN.SHRINK_X / 2);
+      const z = front ? mtnFront(i + 1) + 0.6 + rand() * (MTN.SHRINK_FRONT - 1.2) : cz + rand() * (mtnFront(i + 1) - cz);
+      if (Math.abs(x) < MTN.STAIR_HALF + 1.2 || Math.abs(x - wx) < 1.8 || (i < 2 && Math.abs(x - mx) < 2.5)) continue;
+      if (DOORS.some(([dx, di]) => Math.abs(x - dx) < 2.2 && Math.abs(i + 1 - di) <= 1)) continue;
+      if (!front && i === 0 && Math.abs(z - sideZ) < 3) continue; // 兩邊礦洞口
       const g = new THREE.Group();
-      pineTree(g, 0, 0, 0.55 + rand() * 0.3);
+      pineTree(g, 0, 0, front ? 0.5 + rand() * 0.25 : 0.38);
       g.position.set(x, LAYER * (i + 1), z); // 種喺嗰級上面
       scene.add(g);
+    }
+  }
+  // 半山開始有雪：雪堆喺級上面
+  const snowPile = mat(0xffffff, { roughness: 0.5 });
+  for (let i = 9; i < LAYERS - 4; i++) {
+    for (let n = 0; n < 6; n++) {
+      const x = (rand() * 2 - 1) * (mtnHx(i) - 0.5);
+      const z = mtnFront(i + 1) + 0.25 + rand() * (SH - 0.5);
+      if (Math.abs(x) < MTN.STAIR_HALF + 0.4 || Math.abs(x - wx) < 1.2) continue;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.8 + rand() * 1.4, 0.12, 0.5 + rand() * 0.5), snowPile), x, LAYER * (i + 1) + 0.06, z, false);
     }
   }
 
@@ -775,14 +940,14 @@ function coolMountain(scene, live, rect, rand) {
       return p;
     });
     live.add(g);
-    return { g, wings, r: 7 + i * 3, h: SUMMIT.top + 5 + i * 2, speed: 0.35 + i * 0.1, phase: i * 2 };
+    return { g, wings, r: 10 + i * 4, h: SUMMIT.top + 6 + i * 2.5, speed: 0.3 + i * 0.08, phase: i * 2 };
   });
 
   // 山頂附近落雪
-  const SNOW = 160;
+  const SNOW = 200;
   const snowPos = new Float32Array(SNOW * 3);
   const flakes = [];
-  for (let i = 0; i < SNOW; i++) flakes.push({ x: (rand() * 2 - 1) * 9, z: cz + (rand() * 2 - 1) * 10, k: rand(), speed: 0.5 + rand() * 0.5 });
+  for (let i = 0; i < SNOW; i++) flakes.push({ x: (rand() * 2 - 1) * 13, z: cz + (rand() * 2 - 1) * 14, k: rand(), speed: 0.5 + rand() * 0.5 });
   const snowGeo = new THREE.BufferGeometry();
   snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
   const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.18, transparent: true, opacity: 0.9, depthWrite: false }));
@@ -813,7 +978,7 @@ function coolMountain(scene, live, rect, rand) {
       const f = flakes[i];
       const k = (f.k + t * 0.08 * f.speed) % 1;
       snowPos[i * 3] = f.x + Math.sin(t + i) * 0.3;
-      snowPos[i * 3 + 1] = SUMMIT.top + 9 - k * 9;
+      snowPos[i * 3 + 1] = SUMMIT.top + 10 - k * 14;
       snowPos[i * 3 + 2] = f.z;
     }
     snowGeo.attributes.position.needsUpdate = true;
@@ -840,45 +1005,78 @@ export function newBiomeCountdown(now = new Date()) {
   return 'Coming soon!';
 }
 function buildBridge(scene, live, rect) {
-  const top = SUMMIT.top;
-  const z1 = SUMMIT.z - SUMMIT.halfZ - 0.9; // 山頂背面（最頂嗰層嘅邊）
-  const z2 = rect.minZ + 0.5; // 盡頭幅牆
+  // Issue #14（2026-11-07）：座山高咗（23.4 米），王國仲係 KINGDOM_Y（13 米）→ 條橋由山頂平行 3 米，
+  // 之後一級級落（大理石級，每級矮過 0.45 米，返上山都唔使跳），最尾平行 5 米入閘門（數喺 BRIDGE，buildMountain 計）
+  const { z1, zA, zB, z2, topA, topB, steps, stepH, tread } = BRIDGE;
   const len = z1 - z2;
-  const zc = (z1 + z2) / 2;
   const W = 7; // 橋面闊（小朋友：要大啲）
   const wood = mat(0x8d6e63);
   const wood2 = mat(0x6d4c41);
   const iron = mat(0x455a64, { metalness: 0.6, roughness: 0.4 });
   const gold = mat(0xffc400, { metalness: 0.7, roughness: 0.3 });
   const glass = mat(0xb3e5fc, { transparent: true, opacity: 0.35, roughness: 0.05 });
-  // 橋面：闊木板 + 中間一條紅地毯
-  const n = Math.floor(len / 0.6);
-  for (let i = 0; i < n; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.25, 0.54), i % 2 ? wood : wood2), 0, top - 0.125, z1 - 0.3 - i * (len / n), false);
-  add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, len), mat(0xb71c1c)), 0, top + 0.01, zc, false);
-  for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, len), iron), s * (W / 2), top - 0.35, zc);
-  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2 - 0.7, maxZ: z1 }, top, top - 0.4); // 伸過閘門少少，接住王國塊地（以前中間有 0.5 米窿，行得慢會跌落去）
-  // 跌唔落去（小朋友：unfallable）：兩邊有高高嘅隱形欄杆台，只會擋住企喺橋上面嘅人；
-  // 有 bottom，所以喺地面行嘅人照可以喺橋下面行過去攞鎚仔
-  const GUARD = 3.2; // 欄杆擋到幾高（高過跳得到）
-  const hx = SUMMIT.halfX + 0.9; // 山頂最頂嗰層有幾闊（一半）
-  for (const s of [-1, 1]) {
-    addPlatform({ minX: s > 0 ? W / 2 : -W / 2 - 0.4, maxX: s > 0 ? W / 2 + 0.4 : -W / 2, minZ: z2, maxZ: z1 + 0.05 }, top + GUARD, top - 0.1);
-    // 接山頂嗰頭：山頂比橋窄，橋兩邊角位都封住
-    addPlatform({ minX: s > 0 ? hx : -W / 2 - 0.4, maxX: s > 0 ? W / 2 + 0.4 : -hx, minZ: z1, maxZ: z1 + 0.4 }, top + GUARD, top - 0.1);
+  const carpet = mat(0xb71c1c);
+  // 橋面：兩段平路係闊木板，中間樓梯係一級級木級；中間一條紅地毯
+  const planks = (za, zb, y) => {
+    const n = Math.max(1, Math.round((za - zb) / 0.6));
+    for (let i = 0; i < n; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.25, (za - zb) / n - 0.06), i % 2 ? wood : wood2), 0, y - 0.125, za - ((i + 0.5) * (za - zb)) / n, false);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, za - zb), carpet), 0, y + 0.01, (za + zb) / 2, false);
+  };
+  planks(z1, zA, topA);
+  planks(zB, z2 - 0.7, topB);
+  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: zA, maxZ: z1 }, topA, topA - 0.4);
+  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2 - 0.7, maxZ: zB }, topB, topB - 0.4); // 伸過閘門少少，接住王國塊地（以前中間有 0.5 米窿，行得慢會跌落去）
+  for (let k = 0; k < steps; k++) {
+    const za = zA - k * tread;
+    const zb = za - tread;
+    const y = topA - (k + 1) * stepH;
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, stepH + 0.25, tread), k % 2 ? wood : wood2), 0, y - (stepH + 0.25) / 2, (za + zb) / 2, false);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, tread), carpet), 0, y + 0.01, (za + zb) / 2, false);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.05, 0.06), gold), 0, y + 0.02, za - 0.03, false); // 金色級邊
+    addPlatform({ minX: -W / 2, maxX: W / 2, minZ: zb, maxZ: za }, y, y - 0.4);
   }
-  // 睇得見嘅欄杆：鐵柱 + 玻璃板 + 金色扶手
+  // 三段（平、落、平）：扶手、玻璃、側邊鐵樑都跟住呢條線
+  const sections = [[z1, topA, zA, topA], [zA, topA, zB, topB], [zB, topB, z2, topB]];
+  for (const s of [-1, 1]) {
+    for (const [za, ya, zb, yb] of sections) {
+      slab(scene, iron, s * (W / 2), 0.4, 0.6, za, ya - 0.35, zb, yb - 0.35, true);
+      slab(scene, gold, s * (W / 2 + 0.1), 0.14, 0.1, za, ya + 0.18, zb, yb + 0.18); // 底邊金條
+      slab(scene, glass, s * (W / 2 + 0.1), 0.06, 1.2, za, ya + 0.7, zb, yb + 0.7);
+      slab(scene, gold, s * (W / 2 + 0.1), 0.2, 0.15, za, ya + 1.6, zb, yb + 1.6);
+    }
+  }
+  // 跌唔落去（小朋友：unfallable）：兩邊有高高嘅隱形欄杆台，只會擋住企喺橋上面嘅人；
+  // 有 bottom，所以喺地面行嘅人照可以喺橋下面行過去
+  const GUARD = 3.2; // 欄杆擋到幾高（高過跳得到）
+  const guard = (za, zb, y) => {
+    for (const s of [-1, 1]) addPlatform({ minX: s > 0 ? W / 2 : -W / 2 - 0.4, maxX: s > 0 ? W / 2 + 0.4 : -W / 2, minZ: zb, maxZ: za }, y + GUARD, y - 0.1);
+  };
+  guard(z1 + 0.05, zA, topA);
+  for (let k = 0; k < steps; k++) guard(zA - k * tread, zA - (k + 1) * tread, topA - (k + 1) * stepH);
+  guard(zB, z2, topB);
+  const hx = SUMMIT.halfX + 0.9; // 山頂最頂嗰層有幾闊（一半）
+  if (hx < W / 2) {
+    // 接山頂嗰頭：山頂比橋窄，橋兩邊角位都封住
+    for (const s of [-1, 1]) addPlatform({ minX: s > 0 ? hx : -W / 2 - 0.4, maxX: s > 0 ? W / 2 + 0.4 : -hx, minZ: z1, maxZ: z1 + 0.4 }, topA + GUARD, topA - 0.1);
+  }
+  // 睇得見嘅欄杆柱：鐵柱 + 柱頂金球 + 底座（小朋友 2026-10-19：欄杆要型啲）
   const posts = Math.floor(len / 3);
   for (const s of [-1, 1]) {
     for (let i = 0; i <= posts; i++) {
       const pz = z1 - (i * len) / posts;
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 0.25), iron), s * (W / 2 + 0.1), top + 0.8, pz);
-      // 柱頂金球 + 底座（小朋友 2026-10-19：欄杆要型啲）
-      add(scene, new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), gold), s * (W / 2 + 0.1), top + 1.82, pz, false);
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.42), gold), s * (W / 2 + 0.1), top + 0.07, pz, false);
+      const y = bridgeRailAt(pz);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 0.25), iron), s * (W / 2 + 0.1), y + 0.8, pz);
+      add(scene, new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), gold), s * (W / 2 + 0.1), y + 1.82, pz, false);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.42), gold), s * (W / 2 + 0.1), y + 0.07, pz, false);
     }
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, len), gold), s * (W / 2 + 0.1), top + 0.18, zc, false); // 底邊金條
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, len), glass), s * (W / 2 + 0.1), top + 0.7, zc, false);
-    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, len), gold), s * (W / 2 + 0.1), top + 1.6, zc, false);
+  }
+  // 樓梯段下面嘅石拱柱（撐住條橋，望落好似一條天梯）
+  const pier = mat(0x5d544b, { flatShading: true });
+  for (const pz of [zA - (zA - zB) * 0.33, zA - (zA - zB) * 0.7]) {
+    const y = bridgeDeckAt(pz) - 0.6;
+    for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, y, 1.2), pier), s * (W / 2 - 0.8), y / 2, pz);
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(W - 0.4, 0.6, 1.0), pier), 0, y - 0.3, pz);
+    for (const s of [-1, 1]) addPlatform({ minX: s * (W / 2 - 0.8) - 0.6, maxX: s * (W / 2 - 0.8) + 0.6, minZ: pz - 0.6, maxZ: pz + 0.6 }, y); // 地面行會撞到（橋面高過佢，唔阻）
   }
   // 燈籠水晶（沿住欄杆，會一閃一閃）
   const lanterns = [];
@@ -888,43 +1086,45 @@ function buildBridge(scene, live, rect) {
       const c = [0x00e5ff, 0xd500f9, 0x76ff03][(i + (s > 0 ? 1 : 0)) % 3];
       const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.6, flatShading: true }));
       m.scale.y = 1.6;
-      m.position.set(s * (W / 2 + 0.1), top + 2.15, z1 - (i * len) / LN);
+      const lz = z1 - (i * len) / LN;
+      m.position.set(s * (W / 2 + 0.1), bridgeRailAt(lz) + 2.15, lz);
       live.add(m);
       lanterns.push(m);
     }
   }
-  // 兩座更高嘅橋塔 + 粗吊索
+  // 兩座更高嘅橋塔 + 粗吊索（山頂嗰座企喺山頂背面；盡頭座塔貼住幅牆）
   const TOWER_H = 15;
-  // 盡頭座塔貼住幅牆（z2 - 0.2），唔好阻住喺橋下面行過去攞鎚仔（z ≈ -370.2）
-  const towers = [[z1 - 0.8, top - 3, W / 2 + 1.1], [z2 - 0.2, 0, 5.6]];
-  for (const [tz, base, towerX] of towers) {
+  const towers = [[z1 - 0.8, topA - 3, W / 2 + 1.1, topA + 12], [z2 - 0.2, 0, 5.6, topB + TOWER_H]];
+  for (const [tz, base, towerX, tTop] of towers) {
     for (const s of [-1, 1]) {
-      const h = top + TOWER_H - base;
+      const h = tTop - base;
       add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), iron), s * towerX, base + h / 2, tz);
-      add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 1.5), gold), s * towerX, top + TOWER_H + 0.25, tz);
-      add(scene, new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 4), mat(0xd32f2f)), s * towerX, top + TOWER_H + 1.3, tz).rotation.y = Math.PI / 4;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 1.5), gold), s * towerX, tTop + 0.25, tz);
+      add(scene, new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.6, 4), mat(0xd32f2f)), s * towerX, tTop + 1.3, tz).rotation.y = Math.PI / 4;
       if (base === 0) addCollider(s * towerX, tz, 0.5);
     }
-    for (const y of [top + 4.5, top + TOWER_H - 0.6]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(towerX * 2 + 1.2, 0.6, 0.7), iron), 0, y, tz);
+    const deck = bridgeDeckAt(tz);
+    for (const y of [deck + 4.5, tTop - 0.6]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(towerX * 2 + 1.2, 0.6, 0.7), iron), 0, y, tz);
   }
   const rope = mat(0xbcaaa4);
-  const tA = towers[0][0];
-  const tB = towers[1][0];
-  const SEG = 18;
+  const [tA, , xA, yA] = towers[0];
+  const [tB, , xB, yB] = towers[1];
+  const SEG = 22;
+  const sag = Math.max(0, (yA + yB) / 2 - bridgeRailAt((tA + tB) / 2) - 3);
   for (const s of [-1, 1]) {
     let prev = null;
     for (let i = 0; i <= SEG; i++) {
       const k = i / SEG;
       const z = tA + (tB - tA) * k;
-      const y = top + TOWER_H - Math.sin(k * Math.PI) * (TOWER_H - 2.4);
-      const p = new THREE.Vector3(s * (towers[0][2] + (towers[1][2] - towers[0][2]) * k), y, z);
+      const y = Math.max(bridgeRailAt(z) + 2.6, yA + (yB - yA) * k - Math.sin(k * Math.PI) * sag);
+      const p = new THREE.Vector3(s * (xA + (xB - xA) * k), y, z);
       if (prev) {
         const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, prev.distanceTo(p), 8), rope);
         seg.position.copy(prev).add(p).multiplyScalar(0.5);
         seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p.clone().sub(prev).normalize());
         scene.add(seg);
         if (i < SEG) {
-          const foot = new THREE.Vector3(s * (W / 2 + 0.1), top + 1.6, z);
+          const foot = new THREE.Vector3(s * (W / 2 + 0.1), bridgeRailAt(z) + 1.6, z);
           const h = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, p.distanceTo(foot), 5), rope);
           h.position.copy(p).add(foot).multiplyScalar(0.5);
           h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), foot.clone().sub(p).normalize());
@@ -934,13 +1134,14 @@ function buildBridge(scene, live, rect) {
       prev = p;
     }
   }
-
+  // 閘門地台 = 王國高度（KINGDOM_Y），唔係山頂
+  const top = topB;
   // ---- 盡頭：神秘大閘門（新生態區）----
 // （KINGDOM_GATE：main.js／開門動畫用）
   // 好大嘅石框 + 圓形金庫門（有會轉嘅符文圈）+ 鐵枝後面旋轉緊嘅紫色能量 + 會浮嘅「?」+ 火花 + 個鎖一閃一閃
   const wallZ = rect.minZ + 0.25;
   const GATE_W = 24;
-  const GATE_H = top + 14;
+  const GATE_H = Math.max(top + 14, topA + 8); // 高過座山頂少少
   const stone = mat(0x263238, { roughness: 0.8, flatShading: true });
   const stone2 = mat(0x37474f, { roughness: 0.8, flatShading: true });
   // 牆中間留個門窿（閘門開咗就行得入 Biome 7）
