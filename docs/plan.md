@@ -271,6 +271,7 @@ src/data/questions.js ← 野生動物問題
 - 🐾 馴服咗嘅寵物：而家**馴服嗰下**即刻入背包 + Tame Tokens + 存檔（以前要等成個 run 完先俾：中途開背包睇唔到、閂咗 game 會冇咗）。完場結果講明喺 🎒 → 🐉 Animals。
 - 🏔️ 地形（`src/rodeoMaps.js` `TERRAIN`）：跑道慢慢起伏、兩邊山丘／沙丘脊／雪山、彎彎嘅乾河床／乾溪／冰河、樹林同空地（`forestAt`）、每約 5 段一個 landmark（水氹、Kopje 石山、大猴麵包樹／綠洲、大平頂山、沙丘脊／結冰湖、大石、大樹幹）。每段自己起地面（同一條高度公式，冇接縫）；霧色 = 地平線色。`groundY(x, z)` 俾 rodeo.js 擺馬、動物、你。
 - 💨 其他：動物跑過踢塵（Taiga 係雪粉）、落地「噗」一圈塵、雙色麻繩、方塊雲。
+- 🎬 開場短片（Issue #14 留言 2026-11-07：「riding a horse and then seeing a lot of animals escaping from the lab. like cutscene」）：`src/rodeoIntro.js`。第一次喺傳送門撳 E（`state.rodeoIntroSeen` 未有，舊存檔都會睇一次）→ 鏡頭衝入漩渦、白光 → 大草原專用佈景（x 4000、z +3000）你騎馬飛奔 → 路邊 Research Lab 警報紅燈、道門爆開（火花、煙）→ 34 隻 Catch & Tame 動物衝出嚟喺你兩邊跑過 → 匹馬企起身、你回頭望 → 轉套索追過去 → 黑畫面「🤠 CATCH & TAME」→ 揀地圖面板。約 28 秒，撳任何掣／滑鼠跳過；完咗拆晒佈景、鏡頭返傳送門前面。揀地圖面板有「🎬 Watch intro」重播；測試 `game.rodeo.intro()`。天空：`rodeoIntro.savanna` 時 rodeo.js 每格用 Savanna 個天。
 ## Issue #14 留言「now make the mountain bigger」（2026-11-07）
 - ⛰️ Biome 6 座山大咗：10 層 13 米 → **18 層 23.4 米**；山腳 30×34 → **42×47**（`MTN` 喺 `src/biomes.js`：`LAYERS`、`SHRINK_X` 0.85、前面每級 `SHRINK_FRONT` 1.5、後面每級 `SHRINK_BACK` 0.6 似懸崖；山頂 13×11，兩隻動物一左一右）。中間樓梯闊咗（5 米，每層 3 級，唔使跳）、樓梯口大石門。
 - 🌉 條橋：王國仲係 `KINGDOM_Y` 13 米 → 橋由山頂平行 3 米，之後 35 級木樓梯（每級 0.3 米，行返上山都唔使跳）落到閘門前面 5 米平路（`BRIDGE`／`bridgeDeckAt`）；樓梯下面兩條石柱；隱形欄杆每級一段（跌唔落）。座山擺位由閘門倒推（山頂中心 z ≈ -486）。開門動畫第一個鏡頭搬高咗（企喺新樓梯上面）。

@@ -20,6 +20,7 @@ const DEFAULTS = {
   fluteLevel: 1,
   totalTames: 0,
   rodeoBest: {},
+  rodeoIntroSeen: false, // 🎬 睇咗 Catch & Tame 開場短片（第一次入傳送門播）
   ridePet: null,
   quests: [],
   questDay: '',
