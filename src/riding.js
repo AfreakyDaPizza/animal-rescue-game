@@ -21,11 +21,10 @@
 
 import * as THREE from 'three';
 import { state, save } from './state.js';
-import { findAnimal, itemMoney, kgScale, mutationList } from './data/animals.js';
+import { findAnimal, itemMoney, kgScale } from './data/animals.js';
 import { RIDE_SPEED_PER_LOG10, RIDE_SPEED_MAX } from './data/tame.js';
 import { buildAnimalModel } from './animalModels.js';
 import { applyPetSkin, activePetSkin } from './skins.js';
-import { addFireAura } from './fireAura.js';
 import { addSaddle } from './saddle.js';
 import { groundAt } from './world.js';
 import { moveOpts } from './player.js';
@@ -97,7 +96,7 @@ export function createRiding(ctx) {
     inner.scale.multiplyScalar(k);
     const kk = inner.scale.x;
     inner.position.set(-saddle.position.x * kk, 0, -saddle.position.z * kk); // 馬鞍喺正中（你坐喺度）
-    for (const m of mutationList(pet)) addFireAura(inner, m);
+    // 小朋友 2026-11-07：騎緊嗰陣唔要見到變異特效（坐騎淨係原本個樣 + 馬鞍）
     const wrap = new THREE.Group();
     wrap.add(inner);
     wrap.traverse((o) => {
@@ -105,7 +104,7 @@ export function createRiding(ctx) {
     });
     const box = new THREE.Box3().setFromObject(wrap);
     const size = box.getSize(V());
-    return { pet, wrap, inner, seat: got.seatY * kk, size: Math.max(size.x, size.z, size.y), mult: rideSpeedMult(pet), phase: 0, mut: pet.mutation || '' };
+    return { pet, wrap, inner, seat: got.seatY * kk, size: Math.max(size.x, size.z, size.y), mult: rideSpeedMult(pet), phase: 0 };
   }
 
   function mountPet(pet, { quiet = false } = {}) {
@@ -207,7 +206,6 @@ export function createRiding(ctx) {
       // 揀咗嗰隻冇咗（賣咗）／唔再可以騎
       if (!state.pets.includes(mount.pet) || !mount.pet.rideable) dismount({ quiet: true });
       else if (ctx.blocked?.()) dismount({ quiet: true });
-      else if ((mount.pet.mutation || '') !== mount.mut) mountPet(mount.pet, { quiet: true }); // 騎緊用 Shard：重新整過坐騎，見到新變異（2026-11-07）
     }
     if (mount) {
       placeMount(dt);
