@@ -40,6 +40,8 @@ export const kingdom = { open: false };
 // 小朋友 2026-10-17：入咗閘門之後地面要同閘門一樣高（天空王國），仲要大啲
 export const KINGDOM_Y = 13; // 天空王國高度 = Biome 6 山頂（10 層 × 1.3 米）
 export const KINGDOM_RECT = { minX: -75, maxX: 75, minZ: -6 * BIOME_LENGTH - 200, maxZ: -6 * BIOME_LENGTH }; // 小朋友：要好大（150 × 200 米）
+// 王國野生動物出現嘅範圍（x 一半闊）：兩邊留俾魔法森林，中間冇樹，動物易睇（Issue #14，animals.js／enchanted.js 用）
+export const KINGDOM_PET_HALF_X = 42;
 const KINGDOM_DOOR = { minX: -3.4, maxX: 3.4, minZ: -6 * BIOME_LENGTH - 4, maxZ: -6 * BIOME_LENGTH + 3 }; // 閘門個窿（接住條橋同入面嘅樓梯）
 
 const WALL_HEIGHT = HUB_WALL_H; // 小朋友 2026-10-22：「Hub 圍牆高啲」→ 3.5 → 7 米（數值喺 hubShape.js）

@@ -9,7 +9,7 @@ import { seededRandom, rollWild } from './spawnRoll.js';
 import { buildAnimalModel } from './animalModels.js';
 import { addSaddle } from './saddle.js'; // 🐎 Issue #16
 import { moveOpts } from './player.js';
-import { biomeRect, KINGDOM_Y } from './world.js';
+import { biomeRect, KINGDOM_Y, KINGDOM_PET_HALF_X } from './world.js';
 import { SUMMIT } from './biomes.js';
 import { boost } from './events.js';
 import { applyPetSkin, activePetSkin } from './skins.js';
@@ -102,7 +102,7 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
   let home = null;
   let bestGap = -1;
   for (let t = 0; t < 6; t++) {
-    const p = new THREE.Vector3((Math.random() * 2 - 1) * half, biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 70 : 16) + Math.random() * (biome === 6 ? 80 : 26)); // 離 Boss 遠啲（佢喺 minZ + 4／王國 minZ + 42）
+    const p = new THREE.Vector3((Math.random() * 2 - 1) * (biome === 6 ? Math.min(half, KINGDOM_PET_HALF_X) : half), biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 70 : 16) + Math.random() * (biome === 6 ? 80 : 26)); // 離 Boss 遠啲（佢喺 minZ + 4／王國 minZ + 42）
     const gap = Math.min(99, ...others.map((o) => Math.hypot(o.x - p.x, o.z - p.z)));
     if (gap > bestGap) [home, bestGap] = [p, gap];
     if (gap > 12) break;
