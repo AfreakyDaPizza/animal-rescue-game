@@ -265,3 +265,9 @@ src/data/questions.js ← 野生動物問題
 - ⭕ Safety Zoo 變圓形（小朋友：「make the plot into a circle」）：`PLOT = { cx: 0, cz: 23.5, r: 8.5, … }`（`src/hubShape.js`，`inPlotCircle`、`plotNorthZ`），閘口照舊喺北邊 (0, 15)；外面一圈圓形石路；寵物喺圓入面行；皮膚裝飾沿住個圓。
 - 😊 繁殖機升級牌轉返正面（向 +x，對住一行機前面條路同 Safety Zoo）。
 - 🔨 鎚仔搬咗去 Safety Zoo 隔籬（`HAMMER_SPOT` (-7.2, 15.2)，石台 + 金色光圈 + 光柱），唔再喺 Biome 6 山後面；提示字都改咗。
+## Issue #17（Catch & Tame 部分，2026-11-07）
+- 🚀 SPACE 跳落馬：`LASSO_LEVELS` 每級加 `height`（飛幾高，2.2→9 米）同 `fling`（向前加速，4→18 m/s）；夠高（`FLING_SLOWMO_MIN_HEIGHT` 3.5 米）喺最高點慢鏡 `FLING_SLOWMO` 0.4。上升緊淨係瞄（黃圈），開始跌先自動拋套索；飛緊再撳 SPACE = 即刻拋。鏡頭跟高、風線、頭頂轉繩圈。
+- 🎵 Tamer Ranger 吹笛：`src/tamerFlute.js`（橫笛、雙手、手指、♪ 音符、柔和曲）。Hub 企定 `FLUTE_IDLE_SECONDS` 4 秒就吹（第一身右下角有支笛）；Catch & Tame 馴服緊都吹（`thirdPerson.flute.byRodeo`）。其他皮膚照舊單手細笛。
+- 🐾 馴服咗嘅寵物：而家**馴服嗰下**即刻入背包 + Tame Tokens + 存檔（以前要等成個 run 完先俾：中途開背包睇唔到、閂咗 game 會冇咗）。完場結果講明喺 🎒 → 🐉 Animals。
+- 🏔️ 地形（`src/rodeoMaps.js` `TERRAIN`）：跑道慢慢起伏、兩邊山丘／沙丘脊／雪山、彎彎嘅乾河床／乾溪／冰河、樹林同空地（`forestAt`）、每約 5 段一個 landmark（水氹、Kopje 石山、大猴麵包樹／綠洲、大平頂山、沙丘脊／結冰湖、大石、大樹幹）。每段自己起地面（同一條高度公式，冇接縫）；霧色 = 地平線色。`groundY(x, z)` 俾 rodeo.js 擺馬、動物、你。
+- 💨 其他：動物跑過踢塵（Taiga 係雪粉）、落地「噗」一圈塵、雙色麻繩、方塊雲。

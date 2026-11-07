@@ -32,18 +32,23 @@ export const RODEO_HEARTS = 3; // ❤️ hits from obstacles before you go back 
 export const RODEO_TOKENS_PER_TAME = 1; // 🤠 Tame Tokens for each animal you tame (rarer animals give more, see rodeo.js)
 
 // 🪢 Lasso Sam: 10 levels, paid with 💰 money. range = how far (metres) your lasso reaches
+// SPACE jump-off (Issue #17): a better lasso flings you FURTHER and HIGHER
+//   height = how high you fly above the animal's back (metres)
+//   fling  = extra forward speed while you fly (metres per second, on top of the herd speed)
 export const LASSO_LEVELS = [
-  { range: 6, cost: 0 },
-  { range: 7, cost: 50000 },
-  { range: 8, cost: 250000 },
-  { range: 9, cost: 1000000 },
-  { range: 10, cost: 5000000 },
-  { range: 11, cost: 25000000 },
-  { range: 12, cost: 100000000 },
-  { range: 13.5, cost: 500000000 },
-  { range: 15, cost: 2500000000 },
-  { range: 17, cost: 10000000000 },
+  { range: 6, height: 2.2, fling: 4, cost: 0 },
+  { range: 7, height: 2.8, fling: 5.5, cost: 50000 },
+  { range: 8, height: 3.4, fling: 7, cost: 250000 },
+  { range: 9, height: 4.0, fling: 8.5, cost: 1000000 },
+  { range: 10, height: 4.7, fling: 10, cost: 5000000 },
+  { range: 11, height: 5.4, fling: 11.5, cost: 25000000 },
+  { range: 12, height: 6.1, fling: 13, cost: 100000000 },
+  { range: 13.5, height: 6.9, fling: 14.5, cost: 500000000 },
+  { range: 15, height: 7.8, fling: 16, cost: 2500000000 },
+  { range: 17, height: 9, fling: 18, cost: 10000000000 },
 ];
+export const FLING_SLOWMO = 0.4; // ⏱️ slow-motion at the top of a big jump (1 = no slow-mo, 0.4 = 40% speed)
+export const FLING_SLOWMO_MIN_HEIGHT = 3.5; // only jumps at least this high (metres) get slow-mo
 // 🎵 Tamer Ayden: 10 flute levels, paid with 💰 money. speed = how fast the tame bar fills (x1 = normal)
 export const FLUTE_LEVELS = [
   { speed: 1, cost: 0 },

@@ -575,11 +575,11 @@ function toolHtml(kind) {
   const stat = (L) => (lasso ? `${L.range} m` : `x${L.speed}`);
   const next = list[lv];
   const say = lasso
-    ? '🤠 <b>Lasso Sam:</b> "Howdy, partner! A longer lasso catches animals from further away. My best ropes ain\'t cheap!"'
+    ? '🤠 <b>Lasso Sam:</b> "Howdy, partner! A better lasso catches animals from further away, and your SPACE jump flings you higher and further! My best ropes ain\'t cheap!"'
     : '🎵 <b>Tamer Ayden:</b> "Animals love music! A better flute fills the tame bar faster, so they calm down quicker."';
   const steps = list.map((L, i) => `<div class="ts-step ${i < lv - 1 ? 'done' : ''} ${i === lv - 1 ? 'now' : ''}"><b>Lv ${i + 1}</b><span>${stat(L)}</span><small>${i === 0 ? 'Free' : i < lv ? '✔' : `$${fmt(L.cost)}`}</small></div>`).join('');
   const bottom = next
-    ? `<div>Next: <b>Lv ${lv + 1}</b> → ${lasso ? `reach <b>${next.range} m</b> (now ${list[lv - 1].range} m)` : `tame <b>x${next.speed}</b> faster (now x${list[lv - 1].speed})`}</div>
+    ? `<div>Next: <b>Lv ${lv + 1}</b> → ${lasso ? `reach <b>${next.range} m</b> (now ${list[lv - 1].range} m) · jump <b>${next.height} m</b> high (now ${list[lv - 1].height} m)` : `tame <b>x${next.speed}</b> faster (now x${list[lv - 1].speed})`}</div>
        ${state.money >= next.cost ? `<button class="ts-big" data-tame="up" data-kind="${kind}">⬆️ Upgrade for $${fmt(next.cost)}</button>` : `<button class="ts-big grey" disabled>💰 Need $${fmt(next.cost - state.money)} more</button>`}`
     : '<div class="ts-max">★ MAX LEVEL ★ You have the best one in the West!</div>';
   return `<div class="ts-top"><span class="ts-pill">💰 $${fmt(state.money)}</span><span class="ts-pill">${lasso ? '🪢 Lasso' : '🎵 Flute'} Lv ${lv} · ${stat(list[lv - 1])}</span></div>
