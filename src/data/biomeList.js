@@ -8,3 +8,8 @@ export const BIOMES = [
   { name: 'Biome 6 - Mining Mountain', short: 'Mining Mountain', floor: 0x8a7f72 },
   { name: 'Biome 7 - Enchanted Kingdom', short: 'Enchanted Kingdom', floor: 0x9fa8da },
 ];
+
+// 生態區大細（Issue #17 小朋友：「enlarge biome areas」→ 42×62 → 52×86）
+// 放喺呢度（冇 import）：world.js、enchanted.js、labShape.js、meteorDecor.js 都用，唔會兜圈 import
+export const BIOME_LENGTH = 86; // 每個生態區有幾長（z）
+export const BIOME_HALF_W = 26; // 生態區通道一半闊（x：-26…26）

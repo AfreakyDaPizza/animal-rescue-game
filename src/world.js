@@ -18,9 +18,9 @@ import { buildHubPark } from './hubPark.js';
 import { boost } from './events.js';
 import { buildBiomeBorders } from './biomeBorders.js';
 import { buildMeteorDecor } from './meteorDecor.js'; // ☄️ Issue #10：Hub 圍牆頂同生態區山丘嘅發光隕石、水晶
-import { makeSign, dynamicSign, signOnPosts, THEMES } from './signs.js';
+import { makeSign, dynamicSign, makeLabel, THEMES } from './signs.js';
 import { BOSSES, BIOME_BASE_MONEY, METEOR_EVENT_ON } from './data/balance.js';
-import { BIOMES } from './data/biomeList.js';
+import { BIOMES, BIOME_LENGTH, BIOME_HALF_W } from './data/biomeList.js';
 
 // ---- 地圖尺寸（想改大細就改呢度）----
 import { HUB, HUB_WALL_H } from './hubShape.js';
@@ -32,8 +32,9 @@ import { inHell } from './hellShape.js'; // 🔥 Halloween World 2
 import { inRodeo } from './rodeoShape.js'; // 🤠 Catch & Tame（好遠嘅東邊，Issue #16）
 export { HUB };
 const HUB_TOP_HALF = Math.sqrt(HUB.r ** 2 - HUB.cz ** 2); // 頂嗰條直線有幾闊（一半）
-export const BIOME_LENGTH = 62;                                     // 每個生態區有幾長
-export const STEM = { minX: -21, maxX: 21, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道（小朋友 2026-10-15：生態區大啲、長啲）；Biome 7 喺閘門後面，另外計（KINGDOM）
+// 生態區大細喺 src/data/biomeList.js（Issue #17 小朋友：「enlarge biome areas」→ 52×86，以前 42×62）
+export { BIOME_LENGTH };
+export const STEM = { minX: -BIOME_HALF_W, maxX: BIOME_HALF_W, minZ: -6 * BIOME_LENGTH, maxZ: 0 }; // 直嘅通道（小朋友 2026-10-15：生態區大啲、長啲）；Biome 7 喺閘門後面，另外計（KINGDOM）
 // Biome 7 Enchanted Kingdom：Biome 6 座山頂條橋盡頭嗰道閘門後面；閘門開咗先行得入（kingdom.open，main.js 睇日期）
 export const kingdom = { open: false };
 // 小朋友 2026-10-17：入咗閘門之後地面要同閘門一樣高（天空王國），仲要大啲
@@ -92,8 +93,29 @@ export function addPlatform(rect, top, bottom = null) {
   platforms.push(p);
   return p;
 }
+// 🪵 跳得過嘅矮圍欄（Issue #17 小朋友：「Make the hub fences permeable or jumpable」）
+// 唔用圓形 collider（點都擋住），改做一條薄薄嘅石台：喺地面行就好似牆咁擋住（動物、NPC 都過唔到），
+// 跳起（腳高過 FENCE_TOP - STEP_UP）就跳得過，仲可以企喺圍欄頂。只可以打直／打橫（x 或 z 固定）
+export const FENCE_TOP = 1.2;
+export function addFenceLine(x1, z1, x2, z2, thick = 0.5) {
+  return addPlatform({ minX: Math.min(x1, x2) - thick / 2, maxX: Math.max(x1, x2) + thick / 2, minZ: Math.min(z1, z2) - thick / 2, maxZ: Math.max(z1, z2) + thick / 2 }, FENCE_TOP);
+}
+// 圓形圍欄（Issue #17 圓形 Safety Zoo）：一個圓環，gap = 閘口（角度 gapA 左右 gapHalf 唔擋）
+export function addFenceRing(cx, cz, r, gapA = -Math.PI / 2, gapHalf = 0, thick = 0.5) {
+  const p = { ring: true, cx, cz, rr: r, thick, gapA, gapHalf, top: FENCE_TOP, bottom: null };
+  platforms.push(p);
+  return p;
+}
+function onRing(p, x, z, m) {
+  const d = Math.hypot(x - p.cx, z - p.cz);
+  if (Math.abs(d - p.rr) > p.thick / 2 + m) return false;
+  if (!p.gapHalf) return true;
+  let a = Math.atan2(z - p.cz, x - p.cx) - p.gapA;
+  a = Math.atan2(Math.sin(a), Math.cos(a));
+  return Math.abs(a) * p.rr >= p.gapHalf - m; // 閘口（gapHalf 係米：沿住個圓量）；公仔有闊度，閘口要窄返少少
+}
 // 🔥 圓形台（Hell 嘅轉石／石島）：{ cx, cz, r }；長方形就睇 minX…maxZ（m = 額外闊度）
-const onPlat = (p, x, z, m = 0) => (p.r ? (x - p.cx) ** 2 + (z - p.cz) ** 2 <= (p.r + m) ** 2 : x >= p.minX - m && x <= p.maxX + m && z >= p.minZ - m && z <= p.maxZ + m);
+const onPlat = (p, x, z, m = 0) => (p.ring ? onRing(p, x, z, m) : p.r ? (x - p.cx) ** 2 + (z - p.cz) ** 2 <= (p.r + m) ** 2 : x >= p.minX - m && x <= p.maxX + m && z >= p.minZ - m && z <= p.maxZ + m);
 const HEADROOM = 2.2; // 喺天橋下面行要幾高位
 const STEP_UP = 0.45; // 低過呢個高度嘅台，行過去自動踏上去（例如跑步機）
 
@@ -112,7 +134,7 @@ function platformWall(x, z, radius, feetY) {
     // 矮嘅樓梯級唔計公仔闊度（級太淺，計埋就會俾第二級擋住，踏唔上第一級）
     if (p.bottom !== null && feetY + HEADROOM < p.bottom) continue; // 喺天橋下面行過
     const m = p.top - feetY <= STEP_UP * 2.2 ? 0 : radius;
-    if (feetY + STEP_UP < p.top && (p.r ? (x - p.cx) ** 2 + (z - p.cz) ** 2 < (p.r + m) ** 2 : x > p.minX - m && x < p.maxX + m && z > p.minZ - m && z < p.maxZ + m)) return true;
+    if (feetY + STEP_UP < p.top && (p.ring ? onRing(p, x, z, m) : p.r ? (x - p.cx) ** 2 + (z - p.cz) ** 2 < (p.r + m) ** 2 : x > p.minX - m && x < p.maxX + m && z > p.minZ - m && z < p.maxZ + m)) return true;
   }
   return false;
 }
@@ -151,7 +173,7 @@ export function buildWorld(scene) {
     const host = i === 6 ? kingdomHost(scene) : scene;
     if (i !== 6) addFloor(scene, rect, biome.floor, i === 3 ? 0.03 : 0.1, i);
     addBanner(host, biome.name, i === 6 ? rect.maxZ - 8 : rect.maxZ - 0.5, i);
-    addBossSign(host, i, i === 6 ? rect.maxZ - 10 : rect.maxZ - 3);
+    addBossSign(host, i, i === 6 ? rect.maxZ - 8 : rect.maxZ - 0.5); // 掛喺大門橫樑上面（Issue #17）
     animators.push(decorateBiome(staticRoot, i, rect, scene));
   });
 
@@ -187,6 +209,7 @@ export function buildWorld(scene) {
 
   return (dt, time) => {
     animators.forEach((update) => update && update(dt, time));
+    animateBossSigns(time);
     // 閘口慢慢升起／降落
     const target = gate.locked ? 0 : -6.5;
     gate.mesh.position.y += (target - gate.mesh.position.y) * Math.min(1, dt * 2);
@@ -309,39 +332,81 @@ function addBanner(scene, text, z, i) {
     addCollider(x, z, 0.8);
   }
   const beam = new THREE.Mesh(new THREE.BoxGeometry(STEM.maxX - STEM.minX - 2, 0.5, 0.6), pillar);
-  beam.position.set(0, 6.3, z);
+  beam.position.set(0, 5.75, z); // Issue #17：低咗少少，上面放 Boss 牌
   scene.add(beam);
   const board = makeSign(text, STEM.maxX - STEM.minX - 6, 2.2, BIOME_THEMES[i]);
-  board.position.set(0, 4.9, z);
+  board.position.set(0, 4.45, z);
   scene.add(board);
 }
 
-// 入口隔籬嘅 Boss 牌：要幾多 Speed／IQ，你夠唔夠
+// Boss 牌（小朋友叫佢「recommended sign」）：要幾多 Speed／IQ，你夠唔夠
+// Issue #17：以前細細塊企喺入口左邊，Hub 重新排位之後成日俾攤位遮住、睇唔到 →
+// 而家掛喺每個生態區大門橫樑上面（高高、正中間、面向行入嚟嘅玩家），好大塊；
+// 外面一圈發光框：夠晒 = 綠色「✅ READY!」，未夠 = 紅色「⚠️ TRAIN MORE」；頂上仲有個會浮嘅大字
 const bossSigns = [];
+const SIGN_W = 13;
+const SIGN_H = 3.7;
+const SIGN_Y = 8.1; // 牌中間嘅高度（大門橫樑喺 5.75；唔好太高，Hub 望過去唔好俾頂嘅 HUD 遮住）
 function addBossSign(scene, i, z) {
-  const sign = dynamicSign(4.2, 2.6);
-  const group = signOnPosts(sign.mesh, 4.2, 2.6, 2.0);
-  group.position.set(STEM.minX + 3.6, 0, z);
-  group.rotation.y = 0.35; // 斜斜對住行入嚟嘅玩家
+  const group = new THREE.Group();
+  group.position.set(0, 0, z + 0.45); // 喺大門橫樑前面少少
   scene.add(group);
-  addCollider(STEM.minX + 3.6, z, 1.2);
-  bossSigns.push({ i, sign });
+  const tilt = new THREE.Group(); // 微微向前傾，由下面望上去睇得清楚啲
+  tilt.position.y = SIGN_Y;
+  tilt.rotation.x = 0.12;
+  group.add(tilt);
+  const sign = dynamicSign(SIGN_W, SIGN_H);
+  sign.mesh.position.z = 0.08;
+  tilt.add(sign.mesh);
+  // 發光框（Bloom 會令佢發光）+ 後面一塊深色板（由生態區入面望返出去唔會見到反轉嘅字）
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff1744, toneMapped: false });
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(SIGN_W + 0.7, SIGN_H + 0.7), glowMat);
+  tilt.add(glow);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(SIGN_W + 0.9, SIGN_H + 0.9, 0.12), new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.8 }));
+  back.position.z = -0.1;
+  tilt.add(back);
+  // 金色底座：塊牌企喺大門橫樑上面
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffc107, metalness: 0.6, roughness: 0.35 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(SIGN_W + 1.2, 0.3, 0.9), gold);
+  base.position.y = 6.1;
+  group.add(base);
+  // 頂上會浮嘅大字（Sprite：點望都係正面）
+  const icon = makeLabel([{ text: '⚠️ TRAIN MORE', color: '#ff8a80' }], 2.6);
+  icon.position.y = SIGN_Y + SIGN_H / 2 + 1.3;
+  group.add(icon);
+  bossSigns.push({ i, sign, glowMat, icon, ready: null });
+}
+
+// 每格畫面：發光框一閃一閃、頂上個字上下浮（buildWorld 嘅 update 叫）
+function animateBossSigns(time) {
+  for (const b of bossSigns) {
+    b.icon.position.y = SIGN_Y + SIGN_H / 2 + 1.3 + Math.sin(time * 2.2 + b.i) * 0.25;
+    const k = 1.2 + Math.sin(time * 3 + b.i) * 0.5;
+    b.glowMat.color.setHex(b.ready ? 0x00e676 : 0xff1744).multiplyScalar(k);
+  }
 }
 
 const fmt = short; // K／M／B／T（src/format.js）
 export function updateBossSigns(speed, iq) {
-  for (const { i, sign } of bossSigns) {
+  for (const b of bossSigns) {
+    const { i, sign } = b;
     const boss = BOSSES[i];
     const need = boss.speed * boost.bossSpeed; // Troll Frenzy：×1,000,000
     const speedOk = speed >= need;
     const iqOk = iq >= boss.iq;
-    sign.draw(THEMES.red, [
-      { text: `${boost.bossSpeed > 1 ? '🤡 TROLL ' : ''}BOSS: ${boss.name.toUpperCase()}`, size: 0.17, color: '#ffeb3b' },
-      { text: `Speed needed: ${fmt(need)} ${speedOk ? '✔' : '✘'}`, size: 0.12, color: speedOk ? '#b9f6ca' : '#ffcdd2' },
-      { text: `IQ needed: ${fmt(boss.iq)} ${iqOk ? '✔' : '✘'}`, size: 0.12, color: iqOk ? '#b9f6ca' : '#ffcdd2' },
-      { text: `You: ${fmt(speed)} Speed · ${fmt(iq)} IQ`, size: 0.1 },
-      { text: `Pets from here: $${fmt(BIOME_BASE_MONEY[i])}+/sec (heavier = more)`, size: 0.1, color: '#fff59d' },
+    const ready = speedOk && iqOk;
+    b.ready = ready;
+    const want = [];
+    if (!speedOk) want.push(`+${fmt(need - speed)} Speed`);
+    if (!iqOk) want.push(`+${fmt(boss.iq - iq)} IQ`);
+    sign.draw(ready ? THEMES.green : THEMES.red, [
+      { text: `${boost.bossSpeed > 1 ? '🤡 TROLL ' : ''}👹 BOSS: ${boss.name.toUpperCase()}`, size: 0.15, color: '#ffeb3b' },
+      { text: `RECOMMENDED: ⚡ ${fmt(need)} Speed · 🧠 ${fmt(boss.iq)} IQ`, size: 0.115 },
+      { text: `You: ⚡ ${fmt(speed)} ${speedOk ? '✔' : '✘'} · 🧠 ${fmt(iq)} ${iqOk ? '✔' : '✘'}`, size: 0.1, color: ready ? '#b9f6ca' : '#ffcdd2' },
+      { text: ready ? '✅ READY! Go rescue!' : `⚠️ Train more: ${want.join(' · ')}`, size: 0.12, color: ready ? '#ffffff' : '#fff59d' },
+      { text: `Pets from here: $${fmt(BIOME_BASE_MONEY[i])}+/sec (heavier = more)`, size: 0.08, color: '#fff59d' },
     ]);
+    b.icon.userData.setLines([ready ? { text: '✅ READY!', color: '#69f0ae' } : { text: '⚠️ TRAIN MORE', color: '#ff8a80' }]);
   }
 }
 

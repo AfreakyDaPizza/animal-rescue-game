@@ -355,8 +355,8 @@ function hedge(root, x1, z1, x2, z2, ends = false) {
 //   中間：🐾 Animal Shelter Safety Zoo（地塊）+ 一圈石路
 //   左邊：😊 Happy Machines + ✨ Magic Library；右邊：🤠 Catch & Tame（tameStalls.js 起）
 //   最底：左 Owner's Garden（吊床）、大門
-const PLOT_CX = (PLOT.minX + PLOT.maxX) / 2;
-const PLOT_CZ = (PLOT.minZ + PLOT.maxZ) / 2;
+const PLOT_CX = PLOT.cx;
+const PLOT_CZ = PLOT.cz;
 export function buildHubPark(root, live) {
   const { cx, cz, r } = HUB;
   const updates = [];
@@ -377,6 +377,12 @@ export function buildHubPark(root, live) {
   pathStrip(root, 0, ringS, 0, cz + r, 5); // 地塊 → 大門
   pathStrip(root, LIBRARY_WALK_X, 10.5, LIBRARY_WALK_X, (METEOR_SHOP_ON ? METEOR_SHOP.z : LIBRARY.z) + 4, 3.2); // ✨ 圖書館門口條直路（由上面條路落）
   pathStrip(root, ringE, TAME_AREA.gateZ, TAME_AREA.minX + 1, TAME_AREA.gateZ, 3.4); // 去 🤠 Catch & Tame 入口
+  // 圓形地塊（Issue #17）：圍欄外面一圈圓形石路 + 深色邊
+  for (const [r1, r2, c, y] of [[PLOT.r - 0.1, PLOT.r + 1.9, 0x8a7d68, 0.05], [PLOT.r + 0.05, PLOT.r + 1.7, 0xe1d1ae, 0.06]]) {
+    const ring = add(root, new THREE.RingGeometry(r1, r2, 72), mat(c), PLOT.cx, y, PLOT.cz, false);
+    ring.rotation.x = -Math.PI / 2;
+    ring.receiveShadow = true;
+  }
 
   // ---- 區域地磚 ----
   tilePad(root, -19.5, 7.5, 20, 12, 'training'); // Training Zone（膠地）

@@ -3,8 +3,8 @@
 
 import * as THREE from 'three';
 import { short } from './format.js';
-import { PLOT, LIBRARY, MACHINE_ROW, MACHINE_SIGN } from './hubShape.js';
-import { addCollider, bakeStatic } from './world.js';
+import { PLOT, LIBRARY, MACHINE_ROW, MACHINE_SIGN, plotNorthZ } from './hubShape.js';
+import { addCollider, addFenceRing, bakeStatic } from './world.js';
 import { fencePost, fenceRails, archZ } from './fences.js'; // 🪵 靚啲嘅圍欄
 import { makeSign, dynamicSign, signOnPosts, makeLabel, THEMES } from './signs.js';
 import { createVideoScreen } from './videos.js';
@@ -1377,43 +1377,37 @@ export { PLOT };
 
 function buildPlot(realScene) {
   const scene = new THREE.Group(); // 圍欄同草地先放埋一齊，最後焊埋做幾件（畫得快啲）
-  const { minX, maxX, minZ, maxZ, gateX, gateZ, gateWidth } = PLOT;
-  // 草地
-  const grassMat = new THREE.MeshStandardMaterial({ color: 0x66bb6a, map: plotGroundTexture(maxX - minX, maxZ - minZ), roughness: 0.95 }); // 皮膚會改佢顏色（紋理係灰白色，跟住染色；Issue #8）
-  const grass = new THREE.Mesh(new THREE.BoxGeometry(maxX - minX, 0.06, maxZ - minZ), grassMat);
-  grass.position.set((minX + maxX) / 2, 0.03, (minZ + maxZ) / 2);
+  const { cx, cz, r, gateX, gateZ, gateWidth } = PLOT;
+  // 草地：Issue #17 小朋友「make the plot into a circle」→ 圓形
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x66bb6a, map: plotGroundTexture(r * 2, r * 2), roughness: 0.95 }); // 皮膚會改佢顏色（紋理係灰白色，跟住染色；Issue #8）
+  const grass = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.06, 64), grassMat);
+  grass.position.set(cx, 0.03, cz);
   grass.receiveShadow = true;
   scene.add(grass);
 
-  // 圍欄（小朋友 2026-10-19：要型啲）：圓角柱 + 底座 + 尖頂，三條橫木，四個角有發光寶石，閘口有拱門
-  // 碰撞位置同以前一樣（每 1 米一條柱），皮膚換 wood／trim／gem 三隻顏色
+  // 圍欄（小朋友 2026-10-19：要型啲）：圓角柱 + 底座 + 波波頂，三條橫木，每 8 條柱一粒發光寶石，閘口有拱門
+  // 碰撞：addFenceRing（跳得過，Issue #17）；皮膚換 wood／trim／gem 三隻顏色
   const wood = new THREE.MeshStandardMaterial({ color: 0xa1887f, roughness: 0.7 });
   const trim = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.6 });
   const gem = new THREE.MeshStandardMaterial({ color: 0xfff176, emissive: 0xffd54f, emissiveIntensity: 1.4, flatShading: true });
   const leaf = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.8 });
   const style = { post: wood, rail: wood, trim, h: 1.3, w: 0.26, cap: 'ball', rails: [0.32, 0.72, 1.08], railW: 0.09, railH: 0.12, vines: 0.35, leaf };
-  const corners = [[minX, minZ], [maxX, minZ], [maxX, maxZ], [minX, maxZ]];
-  const inGate = (x, z) => Math.abs(z - gateZ) < 0.01 && Math.abs(x - gateX) < gateWidth / 2; // Issue #16：閘口喺北邊（minZ），對住入口
-  corners.forEach(([x1, z1], i) => {
-    const [x2, z2] = corners[(i + 1) % 4];
-    const length = Math.hypot(x2 - x1, z2 - z1);
-    const steps = Math.round(length / 1.0);
-    for (let s = 0; s <= steps; s++) {
-      const x = x1 + ((x2 - x1) * s) / steps;
-      const z = z1 + ((z2 - z1) * s) / steps;
-      if (inGate(x, z)) continue; // 閘口
-      const corner = s === 0;
-      fencePost(scene, x, z, corner ? { ...style, w: 0.38, h: 1.55, gem } : style);
-      addCollider(x, z, 0.4);
-      // 同下一條柱之間嘅橫木
-      if (s < steps) {
-        const nx = x1 + ((x2 - x1) * (s + 1)) / steps;
-        const nz = z1 + ((z2 - z1) * (s + 1)) / steps;
-        if (inGate(nx, nz)) continue;
-        fenceRails(scene, x, z, nx, nz, style);
-      }
+  const steps = Math.round((Math.PI * 2 * r) / 1.0); // 每 1 米左右一條柱
+  const gateA = Math.atan2(gateZ - cz, gateX - cx); // 閘口喺北邊（-z）
+  const at = (k) => {
+    const a = gateA + (k / steps) * Math.PI * 2;
+    return [cx + Math.cos(a) * r, cz + Math.sin(a) * r];
+  };
+  const inGate = (x, z) => Math.hypot(x - gateX, z - gateZ) < gateWidth / 2 + 0.3; // Issue #16：閘口向北，對住入口
+  for (let k = 0; k < steps; k++) {
+    const [x, z] = at(k);
+    const [nx, nz] = at(k + 1);
+    if (!inGate(x, z)) {
+      fencePost(scene, x, z, k % 8 === 4 ? { ...style, w: 0.38, h: 1.55, gem } : style);
+      if (!inGate(nx, nz)) fenceRails(scene, x, z, nx, nz, style);
     }
-  });
+  }
+  addFenceRing(cx, cz, r, gateA, gateWidth / 2 + 0.3);
 
   // 閘口：兩條粗柱 + 圓拱 + 頂上寶石
   for (const dx of [-gateWidth / 2 - 0.2, gateWidth / 2 + 0.2]) {
@@ -1455,25 +1449,17 @@ export const PLOT_SKINS = [
 ];
 
 function buildPlotSkins(scene) {
-  const { minX, maxX, minZ, maxZ } = PLOT;
   const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra });
   const glow = (color, k = 2) => M(color, { emissive: color, emissiveIntensity: k });
   const groups = {};
-  // 沿住圍欄內邊平均揀 14 個位（唔阻住中間啲寵物，閘口嗰邊留空）
+  // 沿住圍欄內邊（個圓）平均揀位（唔阻住中間啲寵物，閘口嗰邊留空）
   const spots = [];
   const inset = 0.9;
-  const w = maxX - minX - inset * 2;
-  const d = maxZ - minZ - inset * 2;
-  const perimeter = 2 * (w + d);
   for (let i = 0; i < 18; i++) {
-    let t = ((i + 0.5) / 18) * perimeter;
-    let x;
-    let z;
-    if (t < w) [x, z] = [minX + inset + t, minZ + inset];
-    else if ((t -= w) < d) [x, z] = [maxX - inset, minZ + inset + t];
-    else if ((t -= d) < w) [x, z] = [maxX - inset - t, maxZ - inset];
-    else [x, z] = [minX + inset, maxZ - inset - (t - w)];
-    if (z < minZ + 2 && Math.abs(x - PLOT.gateX) < 3) continue; // 閘口
+    const a = ((i + 0.5) / 18) * Math.PI * 2;
+    const x = PLOT.cx + Math.cos(a) * (PLOT.r - inset);
+    const z = PLOT.cz + Math.sin(a) * (PLOT.r - inset);
+    if (Math.hypot(x - PLOT.gateX, z - PLOT.gateZ) < 3) continue; // 閘口
     spots.push([x, z]);
   }
   const make = (name, fill) => {
@@ -1556,7 +1542,7 @@ function buildPlotSkins(scene) {
     const band = new THREE.Mesh(new THREE.TorusGeometry(5 - i * 0.3, 0.15, 6, 32, Math.PI), glow(c, 1));
     arch.add(band);
   });
-  arch.position.set((minX + maxX) / 2, 0, maxZ - 0.5);
+  arch.position.set(PLOT.cx, 0, PLOT.cz + 3.5); // 圓形地塊（Issue #17）：南邊個圓窄咗，拱門入返啲
   groups.rainbow.add(arch);
   return groups;
 }
@@ -1654,11 +1640,11 @@ function addPetToPlot(plot, scene, pet) {
   });
 }
 
+// 圓形地塊入面隨機一個位（離圍欄最少 2 米）
 function randomPlotSpot() {
-  return {
-    x: PLOT.minX + 2 + Math.random() * (PLOT.maxX - PLOT.minX - 4),
-    z: PLOT.minZ + 2 + Math.random() * (PLOT.maxZ - PLOT.minZ - 4),
-  };
+  const a = Math.random() * Math.PI * 2;
+  const d = Math.sqrt(Math.random()) * (PLOT.r - 2);
+  return { x: PLOT.cx + Math.cos(a) * d, z: PLOT.cz + Math.sin(a) * d };
 }
 
 export function moneyPerSecond() {
@@ -1704,19 +1690,19 @@ export function createHub(scene) {
   const plotSign = dynamicSign(2.6, 1.6);
   const plotSignGroup = signOnPosts(plotSign.mesh, 2.6, 1.6, 2.0);
   const psx = PLOT.gateX + 5.2;
-  const psz = PLOT.minZ + 0.7;
+  const psz = plotNorthZ(psx) + 0.7; // 圓形地塊（Issue #17）：貼住圍欄入面
   plotSignGroup.position.set(psx, 0, psz);
   plotSignGroup.rotation.y = Math.PI;
   signBack(plotSignGroup, 2.6, 1.6, 2.0); // 由地塊入面望：見到木板，唔係反轉咗嘅字
   scene.add(plotSignGroup);
   addCollider(psx, psz, 0.4);
-  const plotUpgradeSpot = { x: psx, z: PLOT.minZ - 1.4, sign: plotSign };
+  const plotUpgradeSpot = { x: psx, z: plotNorthZ(psx) - 1.4, sign: plotSign };
 
   // 繁殖機升級牌（一行機嘅尾，面向 +x）
   const machineSign = dynamicSign(2.6, 1.7);
   const machineSignGroup = signOnPosts(machineSign.mesh, 2.6, 1.7, 2.0);
   machineSignGroup.position.set(MACHINE_SIGN.x, 0, MACHINE_SIGN.z);
-  machineSignGroup.rotation.y = -Math.PI / 2;
+  machineSignGroup.rotation.y = Math.PI / 2; // Issue #17：以前 -π/2 係背脊向住玩家（字向牆），而家面向 +x（一行機前面條路、Safety Zoo）
   signBack(machineSignGroup, 2.6, 1.7, 2.0); // 開場動畫會影到塊牌背面
   scene.add(machineSignGroup);
   addCollider(MACHINE_SIGN.x, MACHINE_SIGN.z, 0.4);
@@ -1848,8 +1834,8 @@ export function updateHub(hub, dt, time, px, pz) {
   }
 
   // 地塊：寵物行嚟行去 + 牌
-  const plotCenterX = (PLOT.minX + PLOT.maxX) / 2;
-  const plotCenterZ = (PLOT.minZ + PLOT.maxZ) / 2;
+  const plotCenterX = PLOT.cx;
+  const plotCenterZ = PLOT.cz;
   for (const p of hub.plot.pets) {
     if (p.aura) {
       p.aura.rotation.y = time * 0.8;

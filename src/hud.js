@@ -810,7 +810,7 @@ function portalHtml() {
   if (LAB_PORTAL_BY_PODS) {
     html += `<div class="portal-route"><h3>🔨 Route A: Smash the glass pods</h3>
       <p>Free the trapped animals with the Hammer: <b>${st.pods} / ${Math.min(LAB_PODS, st.podsTotal)}</b> ${st.pods >= st.podsTotal ? '✅' : ''}</p>
-      ${state.hasHammer ? '' : '<p class="hint">You need the Hammer (found behind the mountain in Biome 6)</p>'}</div>`;
+      ${state.hasHammer ? '' : '<p class="hint">You need the Hammer (it is next to the Safety Zoo in the Hub)</p>'}</div>`;
   }
   if (LAB_PORTAL_BY_PODS && LAB_PORTAL_BY_LEGENDARY) html += '<p class="portal-or">— OR —</p>';
   if (LAB_PORTAL_BY_LEGENDARY) {
