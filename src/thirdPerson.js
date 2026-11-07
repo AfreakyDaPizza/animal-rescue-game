@@ -8,6 +8,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { kgScale } from './data/animals.js';
 import { buildDemonicParts, animateDemonic } from './demonicRanger.js'; // 😈 Demonic Ranger（Issue #11）
 import { buildOutfit, applyBody } from './rangerOutfits.js'; // 👕 每款皮膚嘅衫（Issue #14）
+import { createFlute, fluteFrame, stopFlute, FLUTE_IDLE_SECONDS } from './tamerFlute.js'; // 🎵 Tamer Ranger 吹笛（Issue #17）
 
 const MIN_ZOOM = 0; // 0 = 第一身
 const MAX_ZOOM = 20;
@@ -296,6 +297,8 @@ export function applyRangerSkin(tp, skin) {
   tp.rainbow = !!skin.rainbow;
   tp.cosmic = skin.extra === 'cosmic'; // 🌠 動畫 + 超級英雄落地
   tp.demonic = skin.extra === 'demonic'; // 😈 飛 + 火噴射跳（demonicRanger.js）
+  tp.skinId = skin.id; // 🎵 'tamer' = 企定會吹笛（tamerFlute.js）
+  if (tp.flute && skin.id !== 'tamer' && !tp.flute.byRodeo) stopFlute(tp.flute);
 }
 
 export function createThirdPerson(scene, eye) {
@@ -315,7 +318,9 @@ export function createThirdPerson(scene, eye) {
   } catch {
     // 記唔到就用預設
   }
-  return { avatar, view, headSlot, eye, held: null, phase: 0, zoom, smoothZoom: zoom };
+  // 🎵 Tamer Ranger 支笛（Issue #17）：flute.byRodeo = true 嗰陣由 Catch & Tame（rodeo.js）控制
+  const flute = createFlute(avatar);
+  return { avatar, view, headSlot, eye, held: null, phase: 0, zoom, smoothZoom: zoom, flute, skinId: null };
 }
 
 // 轆滑鼠：dir = 1 拉遠、-1 拉近
@@ -453,7 +458,8 @@ function poseOneHand(arm, a, t) {
 const fwd = new THREE.Vector3();
 
 // held：手上嘅模型；item：嗰隻動物嘅資料（用嚟計真實大細）；oneHand：右手單手拎緊細嘢；回傳要用嚟畫畫面嘅鏡頭
-export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3 }) {
+// emote：可唔可以做企定動作（🎵 Tamer 吹笛）；騎緊坐騎、釣緊魚、Catch & Tame 嗰陣 main.js 俾 false
+export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking, feetY, grounded = true, vy = 0, station = null, gymStation = null, time = 0, quality = 3, emote = true }) {
   const { eye, avatar, view } = tp;
   tp.smoothZoom += (tp.zoom - tp.smoothZoom) * Math.min(1, dt * 10);
   const third = tp.zoom > 0;
@@ -481,7 +487,13 @@ export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking
   }
 
   avatar.g.visible = third;
-  if (!third) return (gymStation && gymFirstPerson(tp, gymStation, { time })) || eye;
+  // 🎵 Tamer Ranger：企定 FLUTE_IDLE_SECONDS 秒就吹笛（一郁即刻收）；第一身都計（右下角見到支笛）
+  const anim = trackMotion(tp, dt, { walking: walking || station?.kind === 'treadmill', running: station?.kind === 'treadmill', grounded, vy });
+  const fluteOn = emote && tp.skinId === 'tamer' && !held && !oneHand && !station && !gymStation && grounded && anim.still > FLUTE_IDLE_SECONDS;
+  if (!third) {
+    if (!tp.flute.byRodeo) fluteFrame(tp.flute, dt, { on: fluteOn, third: false, eye, sound: true });
+    return (gymStation && gymFirstPerson(tp, gymStation, { time })) || eye;
+  }
 
   // 公仔跟住玩家（腳嘅位置、面向）
   avatar.g.position.set(eye.position.x, feetY, eye.position.z);
@@ -498,7 +510,6 @@ export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking
   const running = station?.kind === 'treadmill'; // 跑步機：自動跑
   const sitting = station?.kind === 'table'; // 學生桌：坐低寫字
   const t = performance.now() / 1000;
-  const anim = trackMotion(tp, dt, { walking: walking || running, running, grounded, vy });
   if (gymStation && poseGym(tp, gymStation, { feetY, dt, time })) {
     // 💪 Gym：gymPoses.js 已經擺好
     anim.still = 0;
@@ -525,6 +536,7 @@ export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking
   if (tp.cosmic) animateCosmic(avatar, t, anim); // 🌠 披風、細隕石、裂紋閃
   if (tp.demonic && !sitting && !gymStation) animateDemonic(avatar, t, anim, !!held); // 😈 行路 = 飛、拍翼
   if (oneHand && !held && !sitting && !gymStation) poseOneHand(avatar.arms[1], anim, t); // ✋ 右手拎住 Shard／寶箱／鎚仔
+  if (!tp.flute.byRodeo) fluteFrame(tp.flute, dt, { on: fluteOn, third: true, eye, sound: true }); // 🎵 Tamer 吹笛（要喺其他姿勢之後）
 
   // 鏡頭：喺公仔後面；寵物越大，退得越後，等你睇得晒
   eye.getWorldDirection(fwd);

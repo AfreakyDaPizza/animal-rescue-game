@@ -2174,6 +2174,7 @@ renderer.setAnimationLoop((timestamp) => {
     station: trainingStationAt(hub, camera.position.x, camera.position.z),
     gymStation: gymStationAt(camera.position.x, camera.position.z), // 💪 Gym 動作（gymPoses.js）
     time, quality: quality.level, // 👕 皮膚粒子跟畫質
+    emote: !rodeo?.active && !riding.riding && fishing.phase === 'idle' && !fling && !sitting, // 🎵 Tamer 企定吹笛（Issue #17）：騎緊、釣緊魚、彈飛、坐低就唔吹
   });
   if (!inMovie) riding.afterView(viewCam); // 🐎 公仔坐喺馬鞍上面、鏡頭退後
   if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）

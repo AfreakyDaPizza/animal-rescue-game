@@ -25,13 +25,14 @@ import { makeLabel } from './signs.js';
 import { buildAnimalModel } from './animalModels.js';
 import { findAnimal, randomKg, itemMoney } from './data/animals.js';
 import { rarityInfo, INDEX_NEW_SPECIES_REWARD } from './data/balance.js';
-import { RODEO_MAPS, RODEO_HEARTS, RODEO_TOKENS_PER_TAME, LASSO_LEVELS, FLUTE_LEVELS } from './data/tame.js';
+import { RODEO_MAPS, RODEO_HEARTS, RODEO_TOKENS_PER_TAME, LASSO_LEVELS, FLUTE_LEVELS, FLING_SLOWMO, FLING_SLOWMO_MIN_HEIGHT } from './data/tame.js';
 import {
   TAME_ANIMALS, tameAnimalsOn, TAME_PET_BIOME, TAME_TOKEN_BONUS, TAME_SECONDS, TAME_BUCK, TAME_SPAWN_WEIGHT,
   RODEO_START_SPEED, RODEO_MAX_SPEED, RODEO_SPEED_UP, RODEO_LANE, RODEO_HIT_SAFE, RODEO_MAX_ANIMALS,
 } from './data/tameAnimals.js';
 import { RODEO_ORIGIN, inRodeo } from './rodeoShape.js';
-import { MAP_LOOK, CHUNK_LEN, buildGround, buildHorizon, disposeHorizon, buildChunk, disposeChunk } from './rodeoMaps.js';
+import { MAP_LOOK, CHUNK_LEN, buildGround, buildHorizon, disposeHorizon, buildChunk, disposeChunk, groundY, slopeZ } from './rodeoMaps.js';
+import { fluteFrame, stopFlute } from './tamerFlute.js'; // 🎵 Tamer Ranger 吹笛（Issue #17）
 import { buildHorse } from './rodeoModels.js';
 import { short } from './format.js';
 import { TAME_PORTAL } from './hubShape.js';
@@ -46,7 +47,6 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = THREE.MathUtils.clamp;
 const AHEAD_CHUNKS = 9; // 前面起幾多段
 const GRAVITY = 20;
-const JUMP_VY = 8.5;
 const HORSE_H = 3.0;
 const HORSE_SEAT = 2.2;
 const MIN_RIDE_H = 1.6; // 細隻動物喺 Catch & Tame 入面放大到最少咁高（騎得到）
@@ -178,6 +178,77 @@ function buildUi() {
   return ui;
 }
 
+// ================= 💨 效果（Issue #17：「graphics should be better」）=================
+const ROPE_SEGS = 26;
+// 塵：每粒自己有透明度、大細（ShaderMaterial），圓圓哋、邊位淡
+const DUST_MAX = 420;
+function makeDust(color) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(DUST_MAX * 3);
+  const alpha = new Float32Array(DUST_MAX);
+  const size = new Float32Array(DUST_MAX);
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('alpha', new THREE.BufferAttribute(alpha, 1));
+  geo.setAttribute('size', new THREE.BufferAttribute(size, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color(color) }, scale: { value: 420 } },
+    vertexShader: `attribute float alpha; attribute float size; varying float vA; uniform float scale;
+      void main() { vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * scale / max(0.5, -mv.z); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 color; varying float vA;
+      void main() { float d = length(gl_PointCoord - 0.5); if (d > 0.5 || vA <= 0.0) discard; gl_FragColor = vec4(color, vA * smoothstep(0.5, 0.12, d)); }`,
+    transparent: true, depthWrite: false,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  return { pts, pos, alpha, size, vel: new Float32Array(DUST_MAX * 3), age: new Float32Array(DUST_MAX), life: new Float32Array(DUST_MAX), a0: new Float32Array(DUST_MAX), s0: new Float32Array(DUST_MAX), next: 0, live: 0 };
+}
+function emitDust(d, x, y, z, vx, vy, vz, size, life, a) {
+  const i = d.next;
+  d.next = (d.next + 1) % DUST_MAX;
+  d.pos[i * 3] = x;
+  d.pos[i * 3 + 1] = y;
+  d.pos[i * 3 + 2] = z;
+  d.vel[i * 3] = vx;
+  d.vel[i * 3 + 1] = vy;
+  d.vel[i * 3 + 2] = vz;
+  d.age[i] = 0;
+  d.life[i] = life;
+  d.a0[i] = a;
+  d.s0[i] = size;
+  d.live = DUST_MAX;
+}
+// 風線：圍住你嘅圓柱入面，一條條向後飛
+function resetWind(l, anyZ = false) {
+  const a = Math.random() * PI * 2;
+  const r = 1.6 + Math.random() * 4.5;
+  l.userData.o.set(Math.cos(a) * r, Math.sin(a) * r * 0.7 + 0.8, anyZ ? -30 + Math.random() * 38 : -30 - Math.random() * 6);
+  l.userData.v = 0.8 + Math.random() * 0.6;
+}
+// ☁️ 雲：一嚿嚿方塊雲，喺好高好遠，跟住你（每張地圖唔同色）
+const CLOUD_LOOK = { savanna: [0xffd2ad, 0.92], desert: [0xffffff, 0.85], taiga: [0xdfe5ec, 0.95] };
+function buildClouds(mapId) {
+  const g = new THREE.Group();
+  const [color, opacity] = CLOUD_LOOK[mapId] || CLOUD_LOOK.desert;
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, fog: false, depthWrite: false });
+  g.userData.mat = mat;
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const n = mapId === 'taiga' ? 18 : 13;
+  for (let i = 0; i < n; i++) {
+    const c = new THREE.Group();
+    const w = 30 + Math.random() * 50;
+    for (let k = 0; k < 5; k++) {
+      const m = new THREE.Mesh(box, mat);
+      m.scale.set(w * (0.4 + Math.random() * 0.5), 6 + Math.random() * 7, 14 + Math.random() * 14);
+      m.position.set((Math.random() - 0.5) * w, Math.random() * 4, (Math.random() - 0.5) * 12);
+      c.add(m);
+    }
+    c.position.set(X0 + (Math.random() - 0.5) * 900, 70 + Math.random() * 60, -160 - Math.random() * 380);
+    c.userData.vx = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2.5);
+    g.add(c);
+  }
+  return g;
+}
+
 // ================= 主角 =================
 export function createRodeo(ctx) {
   const { scene, camera, player, thirdPerson, play, popup, announce, showLoading, teleport, togglePanel, flash, sky, hemi, sun } = ctx;
@@ -186,7 +257,7 @@ export function createRodeo(ctx) {
   const keys = new Set();
   window.addEventListener('keydown', (e) => {
     keys.add(e.code);
-    if (e.code === 'Space' && api.active && !lastPaused && !e.repeat) jumpOff();
+    if (e.code === 'Space' && api.active && !lastPaused && !e.repeat) jumpOff(); // 飛緊再撳 = 即刻拋套索
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
@@ -239,14 +310,15 @@ export function createRodeo(ctx) {
     const F = flute();
     return `<div class="rodeo-panel"><p class="rp-intro">🤠 Pick a map! You ride a horse 🐎 that runs by itself. Steer with <b>A / D</b> (or the mouse). Press <b>SPACE</b> to jump off and 🪢 lasso an animal. Ride it while your 🪈 flute tames it!</p>
       <div class="rodeo-maps">${RODEO_MAPS.map(card).join('')}</div>
-      <div class="rodeo-gear"><span>🪢 Lasso Lv ${state.lassoLevel || 1} · ${L.range} m range</span><span>🪈 Flute Lv ${state.fluteLevel || 1} · ×${F.speed} taming speed</span><span>❤️ × ${RODEO_HEARTS}</span><span>🤠 ${short(state.tameTokens || 0)} Tame Tokens</span></div></div>`;
+      <div class="rodeo-gear"><span>🪢 Lasso Lv ${state.lassoLevel || 1} · ${L.range} m range · ${L.height} m jump</span><span>🪈 Flute Lv ${state.fluteLevel || 1} · ×${F.speed} taming speed</span><span>❤️ × ${RODEO_HEARTS}</span><span>🤠 ${short(state.tameTokens || 0)} Tame Tokens</span></div></div>`;
   }
   function resultsHtml() {
     const r = R.results;
     if (!r) return '<p>No results yet.</p>';
     const m = RODEO_MAPS.find((x) => x.id === r.mapId);
     const title = r.how === 'away' ? '🏃 You left Catch & Tame!' : '💫 Your ride is over!';
-    const li = (p) => `<li style="--rc:${rarityInfo(p.rarity).color}">${p.emoji} <b>${p.name}</b> · <span style="color:${rarityInfo(p.rarity).color}">${p.rarity}</span> · ⚖️ ${p.kg.toLocaleString('en-US')} kg · 💰 $${short(p.money)}/sec · 🤠 +${p.tokens}${p.isNew ? ' · 📖 NEW!' : ''}</li>`;
+    const rc = (r) => (rarityInfo(r).color === '#cfd8dc' ? '#78909c' : rarityInfo(r).color); // Common 嘅淺灰喺米色底睇唔到
+    const li = (p) => `<li style="--rc:${rc(p.rarity)}">${p.emoji} <b>${p.name}</b> · <span style="color:${rc(p.rarity)}">${p.rarity}</span> · ⚖️ ${p.kg.toLocaleString('en-US')} kg · 💰 $${short(p.money)}/sec · 🤠 +${p.tokens}${p.isNew ? ' · 📖 NEW!' : ''}</li>`;
     return `<div class="rodeo-panel rodeo-res">
       <div class="big">${r.tamed.length ? '🤠' : '🐎'}</div><h2>${title}</h2>
       <div>${m.emoji} ${m.name}</div>
@@ -256,7 +328,7 @@ export function createRodeo(ctx) {
         <div><b>${r.tamed.length}</b><span>🐾 Animals tamed</span></div>
         <div><b>+${r.tokens}</b><span>🤠 Tame Tokens</span></div>
       </div>
-      ${r.tamed.length ? `<h3>🐾 Your new pets</h3><ul>${r.tamed.map(li).join('')}</ul><p>They are in your pets now. Put them on your plot to earn money!</p>`
+      ${r.tamed.length ? `<h3>🐾 Your new pets</h3><ul>${r.tamed.map(li).join('')}</ul><p>🎒 They are in your Backpack already (press <b>\`</b> → 🐉 Animals). Put them in your 🐾 Safety Zoo to earn 💰 money!</p>`
         : '<p>No animals tamed this time. Jump off (SPACE) near an animal, lasso it and ride it until the tame bar is full!</p>'}
       ${r.indexMoney ? `<p>📖 New species in your Index: +$${short(r.indexMoney)}</p>` : ''}
       <div class="btns"><button data-rodeo="start" data-map="${r.mapId}">🐎 Ride again (${m.name})</button><button data-rodeo="maps" class="grey">🗺️ Change map</button></div></div>`;
@@ -311,17 +383,38 @@ export function createRodeo(ctx) {
     mark.userData.arrow = arrow;
     mark.visible = false;
     root.add(mark);
-    const ropeMat = new THREE.MeshStandardMaterial({ color: 0xd7b98e, roughness: 0.8 });
+    // 🪢 條繩：兩隻色一節節（好似扭埋嘅麻繩），粗啲、多啲節（Issue #17：靚啲）
+    const ropeMat = new THREE.MeshStandardMaterial({ color: 0xd7b98e, roughness: 0.85 });
+    const ropeMat2 = new THREE.MeshStandardMaterial({ color: 0xa8824f, roughness: 0.85 });
+    const ropeGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6);
+    ropeGeo.rotateX(PI / 2);
     const rope = new THREE.Group();
-    for (let i = 0; i < 16; i++) {
-      const s = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 1), ropeMat);
-      rope.add(s);
-    }
+    for (let i = 0; i < ROPE_SEGS; i++) rope.add(new THREE.Mesh(ropeGeo, i % 2 ? ropeMat2 : ropeMat));
     rope.visible = false;
     root.add(rope);
-    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.07, 6, 18), ropeMat);
+    const loop = new THREE.Group(); // 繩圈 + 結
+    loop.add(new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.065, 6, 22), ropeMat));
+    const knot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.26), ropeMat2);
+    knot.position.x = 0.7;
+    loop.add(knot);
     loop.visible = false;
     root.add(loop);
+    // 💨 塵（動物跑過、落地）、風線（飛緊）、雲
+    const dust = makeDust(MAP_LOOK[mapId].dust ?? 0xd9b77a);
+    root.add(dust.pts);
+    const wind = new THREE.Group();
+    const windGeo = new THREE.BoxGeometry(0.03, 0.03, 2.6);
+    const windMat = ADDM(0xffffff, 0);
+    for (let i = 0; i < 30; i++) {
+      const l = new THREE.Mesh(windGeo, windMat);
+      l.userData.o = new THREE.Vector3();
+      resetWind(l, true);
+      wind.add(l);
+    }
+    wind.visible = false;
+    root.add(wind);
+    const clouds = buildClouds(mapId);
+    root.add(clouds);
     // 手上個馴服笛（騎緊野生動物先拎出嚟）
     const fluteMesh = new THREE.Group();
     const fm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.62), new THREE.MeshStandardMaterial({ color: 0xa0522d, roughness: 0.6 }));
@@ -334,7 +427,7 @@ export function createRodeo(ctx) {
     fluteMesh.position.set(0, -0.8, -0.28);
     fluteMesh.visible = false;
     thirdPerson.avatar.arms[1].add(fluteMesh);
-    return { root, ground, horizon, particles, ring, mark, rope, loop, fluteMesh };
+    return { root, ground, horizon, particles, ring, mark, rope, loop, fluteMesh, dust, wind, windGeo, windMat, ropeGeo, ropeMat2, clouds };
   }
   function destroyWorld() {
     if (!world) return;
@@ -352,10 +445,18 @@ export function createRodeo(ctx) {
     disposeHorizon(world.horizon);
     world.particles.geometry.dispose();
     world.particles.material.dispose();
-    for (const o of [world.ring, ...world.mark.children, world.loop, ...world.rope.children]) {
+    for (const o of [world.ring, ...world.mark.children, ...world.loop.children]) {
       o.geometry.dispose();
       o.material.dispose();
     }
+    world.ropeGeo.dispose();
+    world.ropeMat2.dispose();
+    world.dust.pts.geometry.dispose();
+    world.dust.pts.material.dispose();
+    world.windGeo.dispose();
+    world.windMat.dispose();
+    world.clouds.traverse((o) => o.isMesh && o.geometry.dispose());
+    world.clouds.userData.mat.dispose();
     world.fluteMesh.removeFromParent();
     world.root.removeFromParent();
     world = null;
@@ -418,7 +519,7 @@ export function createRodeo(ctx) {
   function spawnWild(info, x, z) {
     const displayH = Math.max(MIN_RIDE_H, info.h);
     const { holder, inner } = animalModel(info, displayH);
-    holder.position.set(X0 + x, 0, z);
+    holder.position.set(X0 + x, groundY(X0 + x, z), z);
     world.root.add(holder);
     const rar = rarityInfo(info.rarity);
     let label = null;
@@ -436,7 +537,7 @@ export function createRodeo(ctx) {
     }
     const a = {
       info, holder, inner, label, glow, x, z, h: displayH, seat: displayH * (info.seat ?? 0.72), r: 0.5 + displayH * 0.12,
-      spd: info.speed * rand(0.6, 0.72), wob: Math.random() * 10, t: Math.random() * 10, escaped: false,
+      spd: info.speed * rand(0.6, 0.72), wob: Math.random() * 10, t: Math.random() * 10, escaped: false, dustT: Math.random() * 0.2,
     };
     R.wild.push(a);
     return a;
@@ -459,9 +560,10 @@ export function createRodeo(ctx) {
       const hit = obstacleAt(a.x, a.z - 4, a.r + 0.6);
       if (hit) ax += (X0 + a.x >= hit.ci.x ? 1 : -1) * 9;
       a.x = clamp(a.x + ax * dt, -RODEO_LANE - 2, RODEO_LANE + 2);
-      a.holder.position.set(X0 + a.x, 0, a.z);
-      a.holder.rotation.y = -ax * 0.04;
+      a.holder.position.set(X0 + a.x, groundY(X0 + a.x, a.z), a.z);
+      a.holder.rotation.set(slopeZ(X0 + a.x, a.z) * 0.8, -ax * 0.04, 0);
       a.inner.userData.animate?.(time * 1.7 * a.info.speed, 1);
+      kickDust(a, dt, 1);
       if (a.glow) a.glow.material.opacity = 0.35 + Math.sin(time * 5) * 0.2;
       if (a.z > R.z + 30 || a.z < R.z - 260) removeWild(a);
     }
@@ -470,8 +572,9 @@ export function createRodeo(ctx) {
       a.t += dt;
       a.z -= a.vz * dt;
       a.x += a.vx * dt;
-      a.holder.position.set(X0 + a.x, 0, a.z);
+      a.holder.position.set(X0 + a.x, groundY(X0 + a.x, a.z), a.z);
       a.holder.rotation.y = -Math.atan2(a.vx, a.vz) * 0.6;
+      kickDust(a, dt, 1);
       a.inner.userData.animate?.(time * 1.8, 1);
       if (a.t > 4 || a.z > R.z + 40) {
         a.holder.removeFromParent();
@@ -501,9 +604,9 @@ export function createRodeo(ctx) {
   function letGo(m, sideways = true) {
     if (!m) return;
     m.holder.rotation.set(0, 0, 0);
-    m.holder.position.y = 0;
+    m.holder.position.y = groundY(X0 + R.x, R.z);
     if (m.label) m.label.visible = true;
-    R.runners.push({ holder: m.holder, inner: m.inner, label: m.label, glow: m.glow, x: R.x, z: R.z, vx: sideways ? (R.x > 0 ? 1 : -1) * rand(6, 9) : 0, vz: R.speed * 0.7, t: 0 });
+    R.runners.push({ holder: m.holder, inner: m.inner, label: m.label, glow: m.glow, x: R.x, z: R.z, vx: sideways ? (R.x > 0 ? 1 : -1) * rand(6, 9) : 0, vz: R.speed * 0.7, t: 0, h: m.h, r: m.r, dustT: 0 });
   }
 
   // ================= 坐騎 =================
@@ -523,6 +626,7 @@ export function createRodeo(ctx) {
       mul: clamp(0.8 + 0.25 * tamedInfo.speed, 0.88, 1.15), buckT: 0 };
     R.phase = 'ride';
     R.fly = null;
+    dustBurst(X0 + a.x, a.z, 18, 4.5);
     play('lassoCatch');
     popup(`🪢 You caught a ${tamedInfo.rarity} ${tamedInfo.name}! Hold on while your 🪈 flute tames it!`);
     showTame(true);
@@ -550,6 +654,8 @@ export function createRodeo(ctx) {
       savedZoom = thirdPerson.zoom;
       if (thirdPerson.zoom < 3) thirdPerson.zoom = 5; // 拎住寵物唔好喺第一身飄喺半空
       thirdPerson.headSlot.visible = false;
+      thirdPerson.flute.byRodeo = true; // 🎵 支笛由 Catch & Tame 控制（唔好企定吹）
+      stopFlute(thirdPerson.flute);
       player.walking = false;
       placeEye();
       snapCamera();
@@ -576,27 +682,10 @@ export function createRodeo(ctx) {
     const before = best(run.mapId);
     state.rodeoBest = { ...(state.rodeoBest || {}) };
     if (dist > before) state.rodeoBest[run.mapId] = dist;
-    // 🐾 馴服咗嘅 → 寵物 + 🤠 Tame Tokens
-    let tokens = 0;
-    let indexMoney = 0;
-    const tamed = run.tamed.map((t) => {
-      const info = t.info;
-      const pet = { name: info.name, biome: TAME_PET_BIOME, kg: t.kg, rarity: info.rarity, onPlot: false };
-      state.pets.push(pet);
-      const tk = RODEO_TOKENS_PER_TAME * (TAME_TOKEN_BONUS[info.rarity] || 1);
-      tokens += tk;
-      let isNew = false;
-      if (!state.indexFound.includes(info.name)) {
-        state.indexFound.push(info.name);
-        const reward = INDEX_NEW_SPECIES_REWARD[TAME_PET_BIOME] || 0;
-        state.money += reward;
-        indexMoney += reward;
-        isNew = true;
-      }
-      return { name: info.name, emoji: info.emoji, rarity: info.rarity, kg: t.kg, money: itemMoney(pet), tokens: tk, isNew };
-    });
-    state.tameTokens = (state.tameTokens || 0) + tokens;
-    state.totalTames = (state.totalTames || 0) + tamed.length;
+    // 🐾 馴服咗嘅：馴服嗰下已經放咗入背包（tameDone，Issue #17），呢度淨係計總數
+    const tamed = run.tamed;
+    const tokens = tamed.reduce((n, t) => n + t.tokens, 0);
+    const indexMoney = tamed.reduce((n, t) => n + t.indexMoney, 0);
     save();
     R.results = { how, mapId: run.mapId, dist, best: best(run.mapId), newBest: dist > before && dist > 0, tamed, tokens, indexMoney };
     R.run = null;
@@ -632,6 +721,8 @@ export function createRodeo(ctx) {
     ui.banner.classList.remove('show');
     ui.hurt.style.opacity = '0';
     thirdPerson.headSlot.visible = true;
+    thirdPerson.flute.byRodeo = false;
+    stopFlute(thirdPerson.flute);
     if (savedZoom !== null) thirdPerson.zoom = savedZoom;
     savedZoom = null;
     const av = thirdPerson.avatar;
@@ -641,6 +732,7 @@ export function createRodeo(ctx) {
 
   // ================= 動作 =================
   function jumpOff() {
+    if (R.phase === 'fly' && R.fly && R.fly.t > 0.12) R.fly.throwNow = true; // 飛緊再撳 SPACE：即刻拋套索（唔使等跌落嚟）
     if (R.phase !== 'ride' || !R.mount) return;
     const m = R.mount;
     if (m.kind === 'wild' && !m.tamed) popup(`💨 The ${m.info.name} ran away! (The tame bar was not full)`);
@@ -648,7 +740,13 @@ export function createRodeo(ctx) {
     R.mount = null;
     showTame(false);
     R.phase = 'fly';
-    R.fly = { t: 0, y: m.seat, vy: JUMP_VY, target: null, spin: rand(5, 8) * (Math.random() < 0.5 ? -1 : 1), roll: rand(-3, 3) };
+    // 🚀 Issue #17：套索越好，飛得越高、越遠（LASSO_LEVELS 嘅 height／fling）
+    const L = lasso();
+    const vy = Math.sqrt(2 * GRAVITY * L.height);
+    R.fly = { t: 0, y: m.holder.position.y + m.seat, vy, vy0: vy, height: L.height, fling: L.fling, slow: 1, throwNow: false, target: null,
+      spin: rand(5, 8) * (Math.random() < 0.5 ? -1 : 1) * (0.7 + L.height * 0.06), roll: rand(-3, 3) };
+    dustBurst(X0 + R.x, R.z, 10, 3);
+    R.shake = 0.15;
     play('boing');
     play('lassoSwing');
   }
@@ -682,8 +780,23 @@ export function createRodeo(ctx) {
     const m = R.mount;
     m.tamed = true;
     m.tame = 1;
-    const kg = randomKg(m.info);
-    R.run.tamed.push({ info: m.info, kg });
+    // 🎒 即刻變寵物、放入背包 + 🤠 Tame Tokens + 存檔（Issue #17：以前要等成個 run 完先俾，中途閂咗個 game 或者開背包睇就見唔到）
+    const info = m.info;
+    const kg = randomKg(info);
+    const pet = { name: info.name, biome: TAME_PET_BIOME, kg, rarity: info.rarity, onPlot: false };
+    state.pets.push(pet);
+    const tokens = RODEO_TOKENS_PER_TAME * (TAME_TOKEN_BONUS[info.rarity] || 1);
+    state.tameTokens = (state.tameTokens || 0) + tokens;
+    state.totalTames = (state.totalTames || 0) + 1;
+    let indexMoney = 0;
+    if (!state.indexFound.includes(info.name)) {
+      state.indexFound.push(info.name);
+      indexMoney = INDEX_NEW_SPECIES_REWARD[TAME_PET_BIOME] || 0;
+      state.money += indexMoney;
+    }
+    save();
+    R.run.tamed.push({ info, name: info.name, emoji: info.emoji, rarity: info.rarity, kg, money: itemMoney(pet), tokens, isNew: indexMoney > 0, indexMoney });
+    popup(`🎒 ${info.emoji} ${info.name} went into your Backpack! +${tokens} 🤠`);
     play('tamed');
     banner('🤠 TAMED!', `${m.info.emoji} ${m.info.name} · ${m.info.rarity}`);
     showTame(false);
@@ -713,6 +826,7 @@ export function createRodeo(ctx) {
     if (!paused && Math.abs(yaw) < 1.5) R.mouseSteer += -yaw * 22;
     if (paused || R.phase === 'leaving' || api.debug.freeze) {
       R.pose?.(); // updateThirdPerson 每格都擺返企直：暫停時都要擺返騎馬／飛緊嘅樣
+      fluteFrame(thirdPerson.flute, 0, { on: thirdPerson.flute.on, third: true });
       placeEye();
       applySky();
       return;
@@ -720,6 +834,13 @@ export function createRodeo(ctx) {
     // 手機 JUMP 掣（撳落嗰下）
     if (touchInput.jump && !R.jumpWas) jumpOff();
     R.jumpWas = touchInput.jump;
+    // ⏱️ 慢鏡：飛得夠高，喺最高點附近成個世界慢落嚟（FLING_SLOWMO）
+    if (R.phase === 'fly' && R.fly) {
+      const f = R.fly;
+      const want = f.height >= FLING_SLOWMO_MIN_HEIGHT && Math.abs(f.vy) < f.vy0 * 0.4 && !f.throwNow ? FLING_SLOWMO : 1;
+      f.slow += (want - f.slow) * Math.min(1, dt * 12);
+      dt *= f.slow;
+    }
     R.t += dt;
     R.safeT = Math.max(0, R.safeT - dt);
     R.speed = Math.min(RODEO_MAX_SPEED, RODEO_START_SPEED + R.dist * RODEO_SPEED_UP);
@@ -737,12 +858,17 @@ export function createRodeo(ctx) {
       R.pose = () => poseDown(0.016);
       if (R.overT > 2.2) finish('ko');
     }
+    if (R.phase !== 'ride') fluteFrame(thirdPerson.flute, dt, { on: false, third: true, quick: true });
+    if (!api.active) return; // finish() 拆咗個世界
     updateChunks();
     updateWild(dt, time);
     world.ground.follow(R.z);
     world.horizon.position.z = R.z;
     updateParticles(dt, time);
     updateLassoFx(time);
+    updateDust(dt);
+    updateWind(dt);
+    updateClouds(dt);
     placeEye();
     followCamera(dt);
     applySky();
@@ -791,8 +917,10 @@ export function createRodeo(ctx) {
     // 位置、彈、跑步動畫
     const hop = Math.abs(Math.sin(R.t * 9 * m.mul)) * 0.12;
     const by = wildBuck ? Math.abs(Math.sin(R.t * 8)) * 0.45 * buck : 0;
-    m.holder.position.set(X0 + R.x, hop + by, R.z);
-    m.holder.rotation.set(wildBuck ? Math.sin(R.t * 8) * 0.22 * buck : 0, -R.steerV * 0.035, wildBuck ? Math.sin(R.t * 6.3) * 0.14 * buck : -R.steerV * 0.01);
+    const gy = groundY(X0 + R.x, R.z);
+    m.holder.position.set(X0 + R.x, gy + hop + by, R.z);
+    m.holder.rotation.set((wildBuck ? Math.sin(R.t * 8) * 0.22 * buck : 0) + slopeZ(X0 + R.x, R.z) * 0.8, -R.steerV * 0.035, wildBuck ? Math.sin(R.t * 6.3) * 0.14 * buck : -R.steerV * 0.01);
+    kickDust(m, dt, 1.3);
     m.inner.userData.animate?.(time * (m.kind === 'horse' ? 1.6 : 1.7 * (m.info?.speed || 1)), 1);
     if (time - R.lastGallop > 0.36 / m.mul) {
       R.lastGallop = time;
@@ -806,16 +934,18 @@ export function createRodeo(ctx) {
     const rot = m.holder.rotation.clone();
     R.pose = () => poseRider(seat, rot, wildBuck, buck);
     R.pose();
+    // 🎵 Tamer Ranger：馴服緊就雙手舉起吹笛（tamerFlute.js），音符跟住隻動物一齊向前飄
+    fluteFrame(thirdPerson.flute, dt, { on: wildBuck && state.rangerSkin === 'tamer', third: true, carry: _carry.set(0, 0, -vz), quick: !wildBuck });
   }
   function flyUpdate(dt, time, steer, mouse) {
     const f = R.fly;
     f.t += dt;
     f.vy -= GRAVITY * dt;
     f.y += f.vy * dt;
-    const vz = R.speed * 0.95;
+    const vz = R.speed * 0.95 + f.fling; // 🚀 套索越好飛得越遠
     R.z -= vz * dt;
     R.dist += vz * dt;
-    R.x = clamp(R.x + steer * 6 * dt + mouse * 0.6, -RODEO_LANE - 1, RODEO_LANE + 1);
+    R.x = clamp(R.x + steer * 7 * dt + mouse * 0.6, -RODEO_LANE - 1, RODEO_LANE + 1);
     // 🪢 搵最近、喺範圍入面嘅動物
     const range = lasso().range;
     let best2 = null;
@@ -830,7 +960,8 @@ export function createRodeo(ctx) {
       }
     }
     f.target = best2;
-    if (best2 && f.t > 0.15) {
+    // 上升緊：淨係瞄（綠色箭咀）；過咗最高點（開始跌）先自動拋，或者再撳 SPACE 即刻拋 → 飛得高都可以揀落邊隻
+    if (best2 && f.t > 0.15 && (f.vy < 0 || f.throwNow)) {
       R.phase = 'pull';
       R.pull = { t: 0, from: new THREE.Vector3(X0 + R.x, f.y, R.z), target: best2 };
       play('lassoSwing');
@@ -838,13 +969,14 @@ export function createRodeo(ctx) {
     }
     R.pose = () => poseRagdoll(time, f);
     R.pose();
-    if (f.y <= 0) {
+    if (f.vy < 0 && f.y <= groundY(X0 + R.x, R.z)) {
       // 套唔到 → 跌落地
       R.phase = 'down';
       R.downT = 0;
       R.fly = null;
       const g = thirdPerson.avatar.g;
       g.rotation.x = Math.atan2(Math.sin(g.rotation.x), Math.cos(g.rotation.x));
+      dustBurst(X0 + R.x, R.z, 26, 6);
       hurt('fall');
     }
   }
@@ -854,7 +986,7 @@ export function createRodeo(ctx) {
     P.t += dt;
     const k = Math.min(1, P.t / 0.42);
     const tx = X0 + a.x;
-    const ty = a.seat;
+    const ty = groundY(tx, a.z) + a.seat;
     const tz = a.z;
     const x = THREE.MathUtils.lerp(P.from.x, tx, k);
     const z = THREE.MathUtils.lerp(P.from.z, tz, k);
@@ -900,7 +1032,7 @@ export function createRodeo(ctx) {
       // 一隻手揸實，另一隻手吹笛
       av.arms[0].rotation.set(Math.PI - 0.4 + Math.sin(R.t * 10) * 0.3, 0, -0.3);
       av.arms[1].rotation.set(2.5, 0, 0.55);
-      world.fluteMesh.visible = true;
+      world.fluteMesh.visible = state.rangerSkin !== 'tamer'; // 🧢 Tamer：用 tamerFlute.js 嗰支靚笛（雙手吹）
     } else {
       av.arms[0].rotation.set(0.75, 0, 0.15);
       av.arms[1].rotation.set(0.75, 0, -0.15);
@@ -912,7 +1044,7 @@ export function createRodeo(ctx) {
     const av = thirdPerson.avatar;
     av.g.visible = true;
     av.g.scale.setScalar(1);
-    av.g.position.set(X0 + R.x, Math.max(0, f.y), R.z);
+    av.g.position.set(X0 + R.x, Math.max(groundY(X0 + R.x, R.z), f.y), R.z);
     av.g.rotation.set(f.t * f.spin, 0, f.t * f.roll);
     av.torso.rotation.set(0, 0, 0);
     av.legs.forEach((l, i) => l.rotation.set(Math.sin(time * 14 + i * 2) * 1.1, 0, (i ? 1 : -1) * (0.4 + Math.sin(time * 9 + i) * 0.3)));
@@ -923,12 +1055,94 @@ export function createRodeo(ctx) {
   function poseDown(dt) {
     const av = thirdPerson.avatar;
     av.g.visible = true;
-    av.g.position.set(X0 + R.x, 0.35, R.z);
+    av.g.position.set(X0 + R.x, groundY(X0 + R.x, R.z) + 0.35, R.z);
     av.g.rotation.x += (-PI / 2 - av.g.rotation.x) * Math.min(1, dt * 8);
     av.g.rotation.z *= 0.9;
     av.legs.forEach((l, i) => l.rotation.set(0, 0, (i ? 1 : -1) * 0.5));
     av.arms.forEach((a, i) => a.rotation.set(0, 0, (i ? -1 : 1) * 1.2));
     world.fluteMesh.visible = false;
+  }
+
+  // ---------- 💨 塵、風、雲 ----------
+  const _carry = new THREE.Vector3();
+  // 動物／馬跑過：腳底後面踢起一嚿嚿塵（Taiga = 雪粉）
+  function kickDust(a, dt, k = 1) {
+    if (!world || dt <= 0) return;
+    a.dustT = (a.dustT ?? 0) - dt;
+    if (a.dustT > 0) return;
+    a.dustT = 0.07 + Math.random() * 0.08;
+    const p = a.holder.position;
+    const r = a.r || 0.6;
+    const big = Math.min(2.2, 0.7 + (a.h || 1.5) * 0.25) * k;
+    emitDust(world.dust, p.x + rand(-r, r), p.y + 0.25, p.z + r * 0.8, rand(-0.8, 0.8), rand(0.4, 1.4), rand(0.5, 2), big * rand(0.6, 1), rand(0.8, 1.3), 0.5);
+  }
+  // 落地「噗」一聲：一圈塵向外散
+  function dustBurst(x, z, n = 18, speed = 5) {
+    if (!world) return;
+    const y = groundY(x, z) + 0.2;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * PI * 2 + Math.random() * 0.3;
+      const v = speed * rand(0.6, 1.1);
+      emitDust(world.dust, x + Math.cos(a) * 0.6, y, z + Math.sin(a) * 0.6, Math.cos(a) * v, rand(0.8, 2.2), Math.sin(a) * v - R.speed * 0.3, rand(1.1, 2), rand(0.7, 1.2), 0.75);
+    }
+  }
+  function updateDust(dt) {
+    const d = world.dust;
+    if (!d.live) return;
+    let alive = 0;
+    const drag = Math.max(0, 1 - dt * 1.8);
+    for (let i = 0; i < DUST_MAX; i++) {
+      if (d.age[i] >= d.life[i]) {
+        d.alpha[i] = 0;
+        continue;
+      }
+      alive++;
+      d.age[i] += dt;
+      const k = d.age[i] / d.life[i];
+      d.vel[i * 3] *= drag;
+      d.vel[i * 3 + 1] = d.vel[i * 3 + 1] * drag - 0.4 * dt;
+      d.vel[i * 3 + 2] *= drag;
+      d.pos[i * 3] += d.vel[i * 3] * dt;
+      d.pos[i * 3 + 1] += d.vel[i * 3 + 1] * dt;
+      d.pos[i * 3 + 2] += d.vel[i * 3 + 2] * dt;
+      d.alpha[i] = d.a0[i] * (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
+      d.size[i] = d.s0[i] * (0.6 + k * 1.6);
+    }
+    d.live = alive;
+    const g = d.pts.geometry.attributes;
+    g.position.needsUpdate = true;
+    g.alpha.needsUpdate = true;
+    g.size.needsUpdate = true;
+    d.pts.material.uniforms.scale.value = (renderH() / 2) / Math.tan((view.fov * PI) / 360);
+  }
+  const renderH = () => (window.innerHeight || 800);
+  // 💨 風線：飛緊（同跑得好快）嗰陣圍住你向後飛
+  function updateWind(dt) {
+    const w = world.wind;
+    const flying = R.phase === 'fly' || R.phase === 'pull';
+    const want = flying ? 1 : clamp((R.speed - RODEO_START_SPEED) / (RODEO_MAX_SPEED - RODEO_START_SPEED), 0, 1) * 0.3;
+    R.windK = (R.windK || 0) + (want - (R.windK || 0)) * Math.min(1, dt * 4);
+    w.visible = R.windK > 0.02;
+    if (!w.visible) return;
+    world.windMat.opacity = R.windK * 0.45;
+    riderPos(_v);
+    const sp = (R.speed + (R.fly?.fling || 0)) * 1.6;
+    for (const l of w.children) {
+      const o = l.userData.o;
+      o.z += sp * l.userData.v * dt;
+      if (o.z > 8) resetWind(l);
+      l.position.set(_v.x + o.x, _v.y + o.y, _v.z + o.z);
+      l.scale.z = 0.6 + R.windK * 1.2;
+    }
+  }
+  function updateClouds(dt) {
+    const c = world.clouds;
+    c.position.z = R.z;
+    for (const g of c.children) {
+      g.position.x += g.userData.vx * dt;
+      if (g.position.x > X0 + 460) g.position.x -= 920;
+      if (g.position.x < X0 - 460) g.position.x += 920;
+    }
   }
 
   // ---------- 🪢 套索效果 ----------
@@ -937,29 +1151,54 @@ export function createRodeo(ctx) {
     const range = lasso().range;
     world.ring.visible = flying;
     if (flying) {
-      world.ring.position.set(X0 + R.x, 0.08, R.z);
+      world.ring.position.set(X0 + R.x, groundY(X0 + R.x, R.z) + 0.12, R.z);
       world.ring.scale.setScalar(range);
     }
     // 目標
     const target = R.phase === 'fly' ? R.fly?.target : R.phase === 'pull' ? R.pull?.target : null;
     world.mark.visible = !!target;
     if (target) {
-      world.mark.position.set(X0 + target.x, 0.1, target.z);
+      world.mark.position.set(X0 + target.x, groundY(X0 + target.x, target.z) + 0.14, target.z);
+      world.mark.children[0].material.color.setHex(R.phase === 'fly' && R.fly.vy >= 0 && !R.fly.throwNow ? 0xffd54f : 0x76ff03); // 黃 = 瞄緊；綠 = 拋！
       world.mark.scale.setScalar(target.r * 1.4 + Math.sin(time * 10) * 0.08);
       world.mark.userData.arrow.position.y = (target.h + 1.6 + Math.sin(time * 6) * 0.25) / (target.r * 1.4);
       world.mark.userData.arrow.rotation.y = time * 3;
     }
-    // 繩：由右手去目標條頸
+    // 繩：由右手去目標條頸；飛緊就喺頭頂轉個繩圈（好似真牛仔咁）
     const pulling = R.phase === 'pull' && R.pull;
-    world.rope.visible = !!pulling;
-    world.loop.visible = !!pulling;
+    world.rope.visible = !!pulling || flying;
+    world.loop.visible = !!pulling || flying;
+    if (flying && !pulling) {
+      const av = thirdPerson.avatar;
+      av.g.updateMatrixWorld(true);
+      _v.set(0, -0.75, 0);
+      av.arms[1].localToWorld(_v);
+      const spinA = time * 13;
+      _w.set(_v.x + Math.cos(spinA) * 0.35, _v.y + 0.9, _v.z + Math.sin(spinA) * 0.35);
+      const n = world.rope.children.length;
+      const short = 5;
+      let prev = _v.clone();
+      for (let i = 1; i <= n; i++) {
+        const s = world.rope.children[i - 1];
+        s.visible = i <= short;
+        if (!s.visible) continue;
+        const p = _v.clone().lerp(_w, i / short);
+        s.position.copy(prev).add(p).multiplyScalar(0.5);
+        s.scale.z = Math.max(0.01, prev.distanceTo(p));
+        s.lookAt(p);
+        prev = p;
+      }
+      world.loop.position.set(_w.x - Math.cos(spinA) * 0.7, _w.y + 0.05, _w.z - Math.sin(spinA) * 0.7);
+      world.loop.rotation.set(-PI / 2 + Math.sin(time * 6) * 0.12, 0, -spinA);
+    }
     if (pulling) {
+      for (const s of world.rope.children) s.visible = true;
       const a = R.pull.target;
       const av = thirdPerson.avatar;
       av.g.updateMatrixWorld(true);
       _v.set(0, -0.75, 0);
       av.arms[1].localToWorld(_v);
-      _w.set(X0 + a.x, a.h * 0.85, a.z - a.r * 0.6);
+      _w.set(X0 + a.x, groundY(X0 + a.x, a.z) + a.h * 0.85, a.z - a.r * 0.6);
       const n = world.rope.children.length;
       const sag = Math.max(0, 1 - R.pull.t / 0.42) * 1.2;
       let prev = _v.clone();
@@ -1001,12 +1240,16 @@ export function createRodeo(ctx) {
   function followCamera(dt) {
     riderPos(_v);
     const mh = R.mount ? R.mount.h : 2;
-    const back = 7.5 + mh * 0.6 + (R.phase === 'fly' || R.phase === 'pull' ? 3 : 0);
-    const up = 4.6 + mh * 0.5 + (R.phase === 'fly' ? 1.5 : 0);
-    _w.set(_v.x * 0.85 + X0 * 0.15, _v.y + up, _v.z + back);
-    R.camPos.lerp(_w, Math.min(1, dt * 6));
+    // 🚀 飛緊：鏡頭跟住你升高、退後少少、望落前面（睇到落邊隻動物度）
+    const flying = R.phase === 'fly' || R.phase === 'pull';
+    const air = flying ? Math.max(0, _v.y - 1.2 - groundY(_v.x, _v.z)) : 0;
+    R.camAir = (R.camAir || 0) + (air - (R.camAir || 0)) * Math.min(1, dt * 5);
+    const back = 7.5 + mh * 0.6 + (flying ? 3 : 0) + R.camAir * 0.55;
+    const up = 4.6 + mh * 0.5 + (R.phase === 'fly' ? 1.5 : 0) - R.camAir * 0.35;
+    _w.set(_v.x * 0.85 + X0 * 0.15, Math.max(_v.y + up, groundY(_v.x, _v.z + back) + 2), _v.z + back);
+    R.camPos.lerp(_w, Math.min(1, dt * (flying ? 7 : 6)));
     R.camPos.z = Math.min(R.camPos.z, _v.z + back + 2); // 前面跑得快都唔好甩得太遠
-    R.camLook.lerp(_w.set(_v.x, _v.y + 0.3, _v.z - 10), Math.min(1, dt * 8));
+    R.camLook.lerp(_w.set(_v.x, _v.y + 0.3 - R.camAir * 0.45, _v.z - 10 - R.camAir * 0.8), Math.min(1, dt * 8));
     view.position.copy(R.camPos);
     if (R.shake > 0) {
       R.shake = Math.max(0, R.shake - dt);
@@ -1015,7 +1258,8 @@ export function createRodeo(ctx) {
     }
     view.lookAt(R.camLook);
     view.aspect = camera.aspect;
-    view.fov = 68 + (R.speed - RODEO_START_SPEED) * 0.6;
+    const slow = R.phase === 'fly' && R.fly ? 1 - R.fly.slow : 0;
+    view.fov = 68 + (R.speed - RODEO_START_SPEED) * 0.6 + R.camAir * 0.8 - slow * 6; // 慢鏡：鏡頭推近少少
     view.updateProjectionMatrix();
   }
 
@@ -1105,7 +1349,7 @@ export function createRodeo(ctx) {
   function updateHud() {
     const m = RODEO_MAPS.find((x) => x.id === R.mapId);
     const d = Math.floor(R.dist);
-    const tip = R.phase === 'fly' ? `🪢 Lasso range ${lasso().range} m — get close to an animal!`
+    const tip = R.phase === 'fly' ? `🪢 Lasso range ${lasso().range} m — steer to an animal! SPACE again = throw now!`
       : R.phase === 'ride' && R.mount?.kind === 'wild' && !R.mount.tamed ? '🪈 Taming... SPACE = let go (it runs away!)'
         : R.phase === 'ride' ? '⌨️ A / D = steer · SPACE = jump off & lasso!' : R.phase === 'down' ? '💥 Ouch!' : '';
     const key = `${d}|${R.hearts}|${R.run?.tamed.length}|${tip}|${R.safeT > 0}`;
