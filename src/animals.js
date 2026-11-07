@@ -36,8 +36,8 @@ export function createRescue(scene, camera) {
 
 // seed：呢隻動物嘅「身份」（例如「第 123 段白天 · Biome 2」）；救咗嘅就唔再出
 export function spawnAnimal(rescue, biome, animal = null, kg = null, rarity = null, { seed = null, sizeMul = null } = {}) {
-  // 每個生態區得 1 隻；Biome 7 魔法王國可以同時有 3 隻（小朋友：最少 2 隻）
-  const MAX = biome === 6 ? 3 : 1;
+  // 每個生態區 2 隻（Issue #17 小朋友：「two per biome instead of one」）；Biome 7 魔法王國可以同時有 3 隻（小朋友：最少 2 隻）
+  const MAX = biome === 6 ? 3 : 2;
   const same = rescue.wild.filter((w) => w.biome === biome);
   const drop = same.slice(0, Math.max(0, same.length - (MAX - 1))); // 太多就拎走最舊嗰啲
   rescue.wild = rescue.wild.filter((w) => {
@@ -97,12 +97,23 @@ function makeWild(rescue, biome, animal, kg, rarity, seed, sizeMul) {
 
   // 放喺生態區上半部（近 Boss），要走得快先救到；會喺附近行嚟行去
   const half = (rect.maxX - rect.minX) / 2 - 3;
-  let home = new THREE.Vector3((Math.random() * 2 - 1) * half, biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 70 : 14) + Math.random() * (biome === 6 ? 80 : 16)); // 離 Boss 遠啲（佢喺 minZ + 4／王國 minZ + 42）
+  // Issue #17：生態區長咗、每區 2 隻 → 範圍大啲，兩隻唔好企埋一齊（試幾次，揀離其他動物最遠嗰個位）
+  const others = rescue.wild.filter((w) => w.biome === biome).map((w) => w.home);
+  let home = null;
+  let bestGap = -1;
+  for (let t = 0; t < 6; t++) {
+    const p = new THREE.Vector3((Math.random() * 2 - 1) * half, biome === 6 ? KINGDOM_Y : 0, rect.minZ + (biome === 6 ? 70 : 16) + Math.random() * (biome === 6 ? 80 : 26)); // 離 Boss 遠啲（佢喺 minZ + 4／王國 minZ + 42）
+    const gap = Math.min(99, ...others.map((o) => Math.hypot(o.x - p.x, o.z - p.z)));
+    if (gap > bestGap) [home, bestGap] = [p, gap];
+    if (gap > 12) break;
+  }
   let wander = 3;
   if (biome === 5) {
     // Mining Mountain：動物企喺山頂，要跳上去先救到
     // 山頂：喺頂層範圍入面行，唔會落山
-    home = new THREE.Vector3(SUMMIT.x + (Math.random() - 0.5) * SUMMIT.halfX, SUMMIT.top, SUMMIT.z + (Math.random() - 0.5) * SUMMIT.halfZ);
+    // 2 隻（Issue #17）：一隻企左、一隻企右，唔好疊埋
+    const side = others.some((o) => o.x < SUMMIT.x) ? 1 : -1;
+    home = new THREE.Vector3(SUMMIT.x + side * (0.35 + Math.random() * 0.5) * SUMMIT.halfX, SUMMIT.top, SUMMIT.z + (Math.random() - 0.5) * SUMMIT.halfZ);
     wander = 0;
   }
   group.position.copy(home);

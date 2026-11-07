@@ -924,7 +924,7 @@ export function batModel() {
   return g;
 }
 
-// ---------- Biome 6 座山後面嘅鎚仔 ----------
+// ---------- 鎚仔（Issue #17：喺 Hub Safety Zoo 隔籬，以前喺 Biome 6 座山後面）----------
 export function hammerModel() {
   const g = new THREE.Group();
   add(g, box(0.12, 1.0, 0.12), mat(0x8d6e63), 0, 0, 0);
@@ -934,20 +934,35 @@ export function hammerModel() {
   return g;
 }
 function buildHammer(live) {
+  // 石台（執咗鎚仔都留低，唔會變咗隱形障礙物）：兩級石底座 + 金邊 + 地上發光圈
+  const base = new THREE.Group();
+  base.position.set(HAMMER_SPOT.x, 0, HAMMER_SPOT.z);
+  add(base, rbox(1.6, 0.3, 1.6), mat(0x8d8378), 0, 0.15, 0);
+  add(base, rbox(1.2, 0.5, 1.0), mat(0x6d6359), 0, 0.5, 0);
+  add(base, box(1.24, 0.07, 1.04), mat(0xffd600, { metalness: 0.9, roughness: 0.2 }), 0, 0.72, 0);
+  live.add(base);
+  addCollider(HAMMER_SPOT.x, HAMMER_SPOT.z, 0.9);
   const g = new THREE.Group();
   g.position.set(HAMMER_SPOT.x, 0, HAMMER_SPOT.z);
-  add(g, rbox(1.2, 0.5, 1.0), mat(0x6d6359), 0, 0.25, 0); // 石頭
+  const floorGlow = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.35, 40), new THREE.MeshBasicMaterial({ color: 0xffd600, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+  floorGlow.rotation.x = -Math.PI / 2;
+  floorGlow.position.y = 0.04;
+  g.add(floorGlow);
   const ringM = new THREE.MeshBasicMaterial({ color: 0xffd600, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.85, 32), ringM);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.52;
+  ring.position.y = 0.77;
   g.add(ring);
+  // 一條淡淡嘅金色光柱（喺入口都見到）
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 9, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd600, transparent: true, opacity: 0.16, depthWrite: false }));
+  beam.position.y = 4.5;
+  g.add(beam);
   const tool = hammerModel();
   tool.scale.setScalar(1.3);
   tool.rotation.z = 0.3;
   g.add(tool);
-  const label = makeLabel([{ text: '🔨 HAMMER', color: '#ffeb3b' }], 0.8);
-  label.position.y = 2.6;
+  const label = makeLabel([{ text: '🔨 HAMMER', color: '#ffeb3b' }, { text: 'Smash the Lab glass!', color: '#ffffff' }], 0.8);
+  label.position.y = 2.9;
   g.add(label);
   live.add(g);
   lab.hammer = { g, tool };

@@ -59,7 +59,8 @@ export function clampArena(v, margin = 1) {
 export const inRect = (r, x, z, m = 0) => x >= r.minX + m && x <= r.maxX - m && z >= r.minZ + m && z <= r.maxZ - m;
 export const inLab = (x, z) => inRect(LAB, x, z) && z > LAB_DOOR_Z + 0.5;
 // Biome 6 座山後面嘅鎚仔（經山兩邊窄路入去）
-export const HAMMER_SPOT = { x: 0, z: -370.2 };
+// Issue #17 小朋友：「put the hammer next to the plot」→ 由 Biome 6 山後面搬去 Hub Safety Zoo 隔籬（左上角，近入口）
+export const HAMMER_SPOT = { x: -7.2, z: 15.2 };
 
 // ---- 秘密沙灘（Issue #2；Issue #4 之後小朋友話：唔係喺實驗室隔籬，係打贏 Boss 之後先見到）----
 // 喺好遠嘅地方（x 再加 BEACH_OFFSET，霧遮住，喺園入面望唔到），打贏 Boss 之後先去到；

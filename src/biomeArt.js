@@ -271,6 +271,7 @@ export function arcticV2(scene, rect, rand, live) {
   const half = (rect.maxX - rect.minX) / 2;
   const len = rect.maxZ - rect.minZ;
   const cz = (rect.minZ + rect.maxZ) / 2;
+  const more = Math.min(2.2, (half * 2 * len) / (42 * 62)); // Issue #17：生態區大咗，裝飾跟面積加多
   const ice = mat('ice', () => new THREE.MeshStandardMaterial({ map: iceTex(), roughness: 0.25, metalness: 0.05 }));
   const snow = mat('snowcap', () => new THREE.MeshStandardMaterial({ map: canvasTex(32, (c, s) => pixelNoise(c, s, 0xffffff, 0.04)) }));
   const deepIce = mat('deepice', () => new THREE.MeshStandardMaterial({ map: iceTex(), color: 0x7fb8e0, roughness: 0.3 }));
@@ -303,8 +304,9 @@ export function arcticV2(scene, rect, rand, live) {
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x1e6fb8, transparent: true, opacity: 0.85, roughness: 0.05, metalness: 0.2 });
   const floes = [];
   const pools = [
-    { x: -11, z: rect.maxZ - len * 0.3, w: 9, d: 12 },
-    { x: 11, z: rect.maxZ - len * 0.68, w: 9, d: 14 },
+    { x: -half * 0.52, z: rect.maxZ - len * 0.3, w: 9 + (half - 21) * 0.4, d: 12 },
+    { x: half * 0.52, z: rect.maxZ - len * 0.68, w: 9 + (half - 21) * 0.4, d: 14 },
+    { x: -half * 0.45, z: rect.maxZ - len * 0.88, w: 7, d: 8 }, // Issue #17：長咗，多一個細水池
   ];
   for (const p of pools) {
     const water = add(live, new THREE.BoxGeometry(p.w, 0.1, p.d), waterMat, p.x, 0.04, p.z, false);
@@ -327,7 +329,7 @@ export function arcticV2(scene, rect, rand, live) {
   // 3) 雪松（每層葉頂有雪）
   const leaf = mat('arcticleaf', () => new THREE.MeshStandardMaterial({ color: 0x2f5d3a }));
   const trunk = mat('arctictrunk', () => new THREE.MeshStandardMaterial({ color: 0x5d4037 }));
-  for (let n = 0; n < 14; n++) {
+  for (let n = 0; n < 14 * more; n++) {
     const [x, z] = sideSpot(rand, rect, 4.5, 6);
     if (pools.some((p) => Math.abs(x - p.x) < p.w / 2 + 1 && Math.abs(z - p.z) < p.d / 2 + 1)) continue;
     const s = 0.8 + rand() * 0.6;
@@ -340,7 +342,7 @@ export function arcticV2(scene, rect, rand, live) {
 
   // 4) 雪堆
   const drift = mat('drift', () => new THREE.MeshStandardMaterial({ color: 0xf7fbff, flatShading: true }));
-  for (let n = 0; n < 22; n++) {
+  for (let n = 0; n < 22 * more; n++) {
     const [x, z] = sideSpot(rand, rect, 3.5, 5);
     const m = add(scene, new THREE.IcosahedronGeometry(0.7 + rand() * 0.8, 0), drift, x, 0, z, false);
     m.scale.set(1.4, 0.45, 1);
@@ -443,6 +445,7 @@ export function smugglersV2(scene, rect, rand, live) {
   const half = (rect.maxX - rect.minX) / 2;
   const len = rect.maxZ - rect.minZ;
   const cz = (rect.minZ + rect.maxZ) / 2;
+  const more = Math.min(2.2, (half * 2 * len) / (42 * 62)); // Issue #17：生態區大咗，裝飾跟面積加多
   const metal = (c) => mat('corr' + c, () => new THREE.MeshStandardMaterial({ map: corrugatedTex(), color: c, metalness: 0.3, roughness: 0.6 }));
   const dark = mat('darkmetal', () => new THREE.MeshStandardMaterial({ color: 0x37474f, metalness: 0.5, roughness: 0.5 }));
   const hazard = mat('hazard', () => new THREE.MeshStandardMaterial({ map: hazardTex() }));
@@ -478,7 +481,7 @@ export function smugglersV2(scene, rect, rand, live) {
 
   // 3) 貨櫃（2 層疊，唔同顏色，有門把）
   const contColors = [0xc62828, 0x1565c0, 0x2e7d32, 0xef6c00, 0x6a1b9a];
-  const spots = [[-8, rect.maxZ - 22], [8.5, rect.maxZ - 9], [-8.5, rect.maxZ - 46], [8, rect.maxZ - 38]];
+  const spots = [[-8, rect.maxZ - 22], [8.5, rect.maxZ - 9], [-8.5, rect.maxZ - 46], [8, rect.maxZ - 38], [-11, rect.maxZ - 64], [10.5, rect.maxZ - 74]].filter(([, z]) => z > rect.minZ + 6);
   for (const [x, z] of spots) {
     const levels = rand() < 0.6 ? 2 : 1;
     for (let lv = 0; lv < levels; lv++) {
@@ -491,7 +494,7 @@ export function smugglersV2(scene, rect, rand, live) {
   // 4) 木箱（有 FRAGILE／THIS SIDE UP 印）
   const crateA = mat('crateA', () => new THREE.MeshStandardMaterial({ map: crateTex('FRAGILE') }));
   const crateB = mat('crateB', () => new THREE.MeshStandardMaterial({ map: crateTex('') }));
-  for (let n = 0; n < 16; n++) {
+  for (let n = 0; n < 16 * more; n++) {
     const [x, z] = sideSpot(rand, rect, 4, 7.5);
     const s = 0.9 + rand() * 0.5;
     const c = add(scene, new THREE.BoxGeometry(s, s, s), rand() < 0.5 ? crateA : crateB, x, s / 2, z);
@@ -504,7 +507,7 @@ export function smugglersV2(scene, rect, rand, live) {
 
   // 5) 打開咗嘅空籠（動物已經俾你救走）
   const bar = mat('cagebar', () => new THREE.MeshStandardMaterial({ color: 0x9aa4ab, metalness: 0.7, roughness: 0.35 }));
-  for (let n = 0; n < 6; n++) {
+  for (let n = 0; n < 6 * more; n++) {
     const [x, z] = sideSpot(rand, rect, 4, 7.5);
     const g = new THREE.Group();
     const s = 1.3;
@@ -528,7 +531,7 @@ export function smugglersV2(scene, rect, rand, live) {
   }
 
   // 6) 警告斜紋油桶
-  for (let n = 0; n < 10; n++) {
+  for (let n = 0; n < 10 * more; n++) {
     const [x, z] = sideSpot(rand, rect, 4, 7.5);
     add(scene, new THREE.CylinderGeometry(0.35, 0.35, 1, 12), rand() < 0.5 ? hazard : metal(0x1565c0), x, 0.5, z);
   }

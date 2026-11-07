@@ -256,3 +256,12 @@ src/data/questions.js ← 野生動物問題
 - Hub 重新排位（`src/hubShape.js`）：冇咗 Fuse Machine／遊樂場／噴水池；Safety Zoo 喺中間（閘口向北 (0,16)）；Happy Machines 左邊一行；右邊 🤠 牧場區 `TAME_AREA`：傳送門 `TAME_PORTAL` (32.4,28)、Lasso Sam、Tamer Ayden、Special's Stall（`src/tameStalls.js`，`buySpecial`）。出生點 `HUB_SPAWN` (0,9)。
 - 小遊戲 `src/rodeo.js`（+ rodeoMaps/rodeoModels/rodeoShape，x=4000）：Savanna/Desert/Taiga 無限地圖、騎馬、3 ❤️、SPACE 跳 + 套索、馴服條、完場 loading 'rodeo' → 返傳送門前。測試 `game.rodeo.*`。
 - `src/riding.js` 騎寵物（快捷欄 1、`state.ridePet`、`moveOpts.rideMul`）+ 🪢 Leash；`src/saddle.js`；🐉 `src/luminousDragon.js`（最好寵物 ×1.2）；🤠 `src/cowboyBossSkin.js`；🧢 Tamer Ranger（`src/rangerOutfits.js`）；TAME 變異樣 `fireAura.js` BUILD.tame。測試 `game.giveTame()`。
+
+## Issue #17 Hub／生態區（2026-11-07）
+- 🪵 Hub 圍欄跳得過：Safety Zoo 圓形圍欄同 🤠 牧場木欄唔再係一粒粒 collider，改做矮石台（`addFenceLine`／`addFenceRing` 喺 `src/world.js`，高 `FENCE_TOP` = 1.2 米）。平地行會擋住（動物、NPC 都過唔到），撳 SPACE 跳就過到，仲可以企喺圍欄頂。外面圍牆同大屋照舊實心。
+- 🪧「Recommended」牌 = 每個生態區入口嘅 Boss 牌（要幾多 Speed／IQ）：由入口左邊細細塊，搬去大門橫樑上面正中間（`addBossSign`／`updateBossSigns`），大好多、發光框（夠 = 綠「✅ READY!」、唔夠 = 紅「⚠️ TRAIN MORE」+ 仲差幾多），頂上有浮動大字。大門橫樑低咗少少（5.75）。
+- 🌍 生態區大咗：42×62 → **52×86**（`BIOME_LENGTH`／`BIOME_HALF_W` 喺 `src/data/biomeList.js`，world／enchanted／labShape／meteorDecor 都用）。裝飾數量跟面積加（`density`、`more`）；地面加泥地、泥路、石、樹叢、蘑菇、木堆、海草、浮木、礦燈支架；Biome 4 多一個融冰池、Biome 5 多兩個貨櫃。Biome 6 條橋接駁王國塊地嘅 0.5 米窿補返（`NEW_BIOME_ON` 開都行得入）。
+- 🐾 每個生態區 2 隻野生動物（Biome 7 照舊 3 隻）：第 2 隻 seed `day{N}-b{i}-2`（第 1 隻 seed 唔變，舊 `takenSpawns`／Legendary 公告照用）；活動 `${tag}-b{i}-2`。兩隻會企開（揀離另一隻最遠嘅位）；Biome 6 山頂一左一右。
+- ⭕ Safety Zoo 變圓形（小朋友：「make the plot into a circle」）：`PLOT = { cx: 0, cz: 23.5, r: 8.5, … }`（`src/hubShape.js`，`inPlotCircle`、`plotNorthZ`），閘口照舊喺北邊 (0, 15)；外面一圈圓形石路；寵物喺圓入面行；皮膚裝飾沿住個圓。
+- 😊 繁殖機升級牌轉返正面（向 +x，對住一行機前面條路同 Safety Zoo）。
+- 🔨 鎚仔搬咗去 Safety Zoo 隔籬（`HAMMER_SPOT` (-7.2, 15.2)，石台 + 金色光圈 + 光柱），唔再喺 Biome 6 山後面；提示字都改咗。

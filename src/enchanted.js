@@ -4,11 +4,12 @@
 // 閘門未開（NEW_BIOME_DATE 未到）嗰陣成個王國收埋（kingdomView.visible），等開門動畫先俾人見到
 
 import * as THREE from 'three';
+import { BIOME_LENGTH } from './data/biomeList.js';
 import { addPlatform, addCollider, bakeStatic, kingdom, KINGDOM_Y } from './world.js';
 import { buildSkywhaleModel, buildCrystalButterfly, buildRune } from './enchantedModels.js';
 
 export const kingdomView = { group: null, reveal: false }; // reveal：開門動畫俾人睇住先
-export const KINGDOM_STAIRS = { top: 13, z: -372 }; // 閘門嘅位同高度（開門動畫用）
+export const KINGDOM_STAIRS = { top: 13, z: -6 * BIOME_LENGTH }; // 閘門嘅位同高度（開門動畫用）
 
 const materials = new Map();
 const mat = (color, extra = {}) => {

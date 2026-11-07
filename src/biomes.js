@@ -47,7 +47,8 @@ function sidePosition(rand, rect) {
 }
 
 // 地方大啲，裝飾就多啲（以 14×20 為 1 倍）
-const density = (rect) => Math.min(2.5, ((rect.maxX - rect.minX) * (rect.maxZ - rect.minZ)) / (14 * 20)); // 最多 2.5 倍，唔好太迫
+// Issue #17：生態區大咗（42×62 → 52×86），裝飾跟面積加多（以前 42×62 = 2.5 倍），唔會變得空蕩蕩
+const density = (rect) => Math.min(4.5, (2.5 * (rect.maxX - rect.minX) * (rect.maxZ - rect.minZ)) / (42 * 62));
 
 // ---------------- 樹 ----------------
 const trunkMat = mat(0x6b4423);
@@ -69,6 +70,52 @@ function roundTree(scene, x, z, s = 1) {
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(3 * s, 2 * s, 3 * s), leafMat), x, 4.6 * s, z);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(2 * s, 1.4 * s, 2 * s), leafMat2), x + 0.6 * s, 5.8 * s, z + 0.3 * s);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.6 * s, 1.2 * s, 1.6 * s), leafMat2), x - 0.8 * s, 5.2 * s, z - 0.7 * s);
+}
+
+// ---------------- 地面變化 + 雜項（Issue #17「graphics should be better」）----------------
+const put = (scene, geo, material, x, y, z, shadow = true) => add(scene, new THREE.Mesh(geo, material), x, y, z, shadow);
+// 一笪笪唔同顏色嘅地（泥、深草、落葉）：幾個扁平多邊形疊埋，形狀唔規則；焊埋之後好平
+function groundPatches(scene, rect, rand, colors, count) {
+  const half = (rect.maxX - rect.minX) / 2 - 1.5;
+  for (let n = 0; n < count; n++) {
+    const cx = (rand() * 2 - 1) * half;
+    const cz = rect.minZ + 2 + rand() * (rect.maxZ - rect.minZ - 4);
+    const c = colors[n % colors.length];
+    const blobs = 2 + Math.floor(rand() * 3);
+    for (let k = 0; k < blobs; k++) {
+      const r = 0.9 + rand() * 1.8;
+      const m = put(scene, new THREE.CylinderGeometry(r, r, 0.02, 7), mat(c, { roughness: 1 }), cx + (rand() - 0.5) * 2.4, 0.012 + n * 0.00002, cz + (rand() - 0.5) * 2.4, false);
+      m.scale.z = 0.6 + rand() * 0.6;
+      m.rotation.y = rand() * 3;
+    }
+  }
+}
+// 彎彎曲曲嘅泥路（由入口一路去到 Boss 附近），中間少少偏左偏右
+function dirtTrail(scene, rect, rand, color, width = 2.4) {
+  for (let z = rect.maxZ - 1; z > rect.minZ + 6; z -= 1.6) {
+    const x = Math.sin(z * 0.08) * 2.2 + (rand() - 0.5) * 0.6;
+    const m = put(scene, new THREE.CylinderGeometry(width / 2, width / 2, 0.02, 8), mat(color, { roughness: 1 }), x, 0.014, z, false);
+    m.scale.z = 1.3;
+  }
+}
+// 石頭（一嚿大 + 兩嚿細）
+function rockCluster(scene, x, z, s, color = 0x8d8a85) {
+  const m = mat(color, { flatShading: true });
+  put(scene, new THREE.DodecahedronGeometry(0.6 * s, 0), m, x, 0.3 * s, z).rotation.y = x;
+  put(scene, new THREE.DodecahedronGeometry(0.32 * s, 0), m, x + 0.7 * s, 0.15 * s, z + 0.3 * s);
+  put(scene, new THREE.DodecahedronGeometry(0.25 * s, 0), m, x - 0.5 * s, 0.12 * s, z + 0.5 * s);
+}
+// 方塊矮樹叢
+function bush(scene, x, z, s, color = 0x388e3c) {
+  put(scene, new THREE.BoxGeometry(1.1 * s, 0.7 * s, 1.0 * s), mat(color), x, 0.35 * s, z).rotation.y = z;
+  put(scene, new THREE.BoxGeometry(0.7 * s, 0.5 * s, 0.7 * s), mat(color === 0x388e3c ? 0x4caf50 : color), x + 0.3 * s, 0.75 * s, z - 0.1 * s);
+}
+// 細花（一粒粒）
+function flowerDots(scene, rect, rand, colors, count) {
+  for (let n = 0; n < count; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    put(scene, new THREE.BoxGeometry(0.16, 0.16, 0.16), mat(colors[n % colors.length]), x, 0.12, z, false);
+  }
 }
 
 // ---------------- 生態區 ----------------
@@ -101,6 +148,32 @@ function deforestation(scene, rect, rand) {
     log.rotation.y = rand() * Math.PI;
     add(scene, log, x, 0.3, z);
   }
+  // Issue #17：地面有泥地、車胎印同深色草；仲有一堆堆斬咗嘅木、石、樹叢、蘑菇
+  groundPatches(scene, rect, rand, [0x6d5a3a, 0x4e7a26, 0x7a6a45], Math.round(10 * k));
+  dirtTrail(scene, rect, rand, 0x7b6646);
+  for (let n = 0; n < 2 * k; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    const ry = rand() * Math.PI;
+    for (const [dx, dy] of [[-0.32, 0.3], [0.32, 0.3], [0, 0.82]]) {
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3, 10), stumpMat);
+      l.rotation.set(0, ry, Math.PI / 2);
+      add(scene, l, x + Math.cos(ry) * 0 + dx * Math.sin(ry), dy, z + dx * Math.cos(ry));
+    }
+  }
+  for (let n = 0; n < 4 * k; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    rockCluster(scene, x, z, 0.8 + rand() * 0.7);
+  }
+  for (let n = 0; n < 6 * k; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    bush(scene, x, z, 0.7 + rand() * 0.6);
+  }
+  for (let n = 0; n < 5 * k; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    put(scene, new THREE.CylinderGeometry(0.06, 0.08, 0.3, 6), mat(0xf5f5f5), x, 0.15, z, false);
+    put(scene, new THREE.CylinderGeometry(0.02, 0.22, 0.14, 8), mat(n % 2 ? 0xe53935 : 0xff8f00), x, 0.34, z, false);
+  }
+  flowerDots(scene, rect, rand, [0xfff176, 0xffffff, 0xce93d8], Math.round(14 * k));
   return null;
 }
 
@@ -108,7 +181,7 @@ function deforestation(scene, rect, rand) {
 // 左邊係海（有浪、有隻漏油嘅大油輪），右邊係沙灘（棕櫚樹、遮陽傘、救生員塔、沙堡、蟹、海鷗）
 // 沙灘同淺水有垃圾：行埋去撳 E 執走（TRASH，main.js 處理）
 export const TRASH = [];
-const SHORE_X = -6; // 海同沙灘嘅分界
+const SHORE_X = -8; // 海同沙灘嘅分界（Issue #17 生態區闊咗：海都闊啲）
 function palmTree(scene, x, z, s = 1) {
   const trunk = mat(0x8d6e63);
   for (let i = 0; i < 6; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.45 * s, 0.75 * s, 0.45 * s), i % 2 ? trunk : mat(0x795548)), x + i * 0.08 * s, (0.375 + i * 0.72) * s, z);
@@ -196,9 +269,10 @@ function ocean(scene, rect, rand, live) {
     palmTree(scene, x, rect.minZ + 3 + rand() * (d - 6), 0.9 + rand() * 0.3);
   }
   const umbrellaColors = [0xff5252, 0xffeb3b, 0x40c4ff, 0x69f0ae];
-  for (let n = 0; n < 3; n++) {
-    const x = 8 + rand() * 8;
-    const z = rect.minZ + 8 + n * (d / 3.2);
+  const umbrellas = Math.round(3 * d / 62); // Issue #17：沙灘長咗，多幾把遮
+  for (let n = 0; n < umbrellas; n++) {
+    const x = 8 + rand() * (rect.maxX - 14);
+    const z = rect.minZ + 8 + n * ((d - 10) / umbrellas);
     add(scene, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), mat(0xeeeeee)), x, 1.3, z);
     const top = add(scene, new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.7, 8), mat(umbrellaColors[n % 4])), x, 2.6, z);
     top.rotation.z = 0.15;
@@ -238,6 +312,18 @@ function ocean(scene, rect, rand, live) {
       const star = add(scene, new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.06, 5), mat(n % 2 ? 0xff7043 : 0xffab91)), x, 0.03, z, false);
       star.rotation.y = rand() * 3;
     }
+  }
+
+  // Issue #17：沙灘有濕沙／乾沙深淺、海草、浮木
+  groundPatches({ add: (m) => (m.position.x > SHORE_X + 1.5 ? scene.add(m) : null) }, rect, rand, [0xe8d5a3, 0xcdb27a, 0xf0e2b8], Math.round(9 * k));
+  for (let n = 0; n < 5 * k; n++) {
+    const x = beachX();
+    if (!okX(x)) continue;
+    const z = rect.minZ + 3 + rand() * (d - 6);
+    if (n % 2) {
+      const wood = put(scene, new THREE.CylinderGeometry(0.15, 0.2, 1.8 + rand(), 7), mat(0xbcaaa4, { flatShading: true }), x, 0.15, z);
+      wood.rotation.set(0, rand() * 3, Math.PI / 2);
+    } else for (let q = 0; q < 3; q++) put(scene, new THREE.BoxGeometry(0.08, 0.5 + rand() * 0.4, 0.08), mat(0x558b2f), x + q * 0.15, 0.25, z + (q % 2) * 0.12, false); // 海草
   }
 
   // 垃圾（可以執）：膠樽、罐、膠袋、舊車胎
@@ -376,6 +462,17 @@ function birds(scene, rect, rand, live) {
     const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + rand() * 0.3, 0), mat(0x2e7d32, { flatShading: true }));
     bush.scale.y = 0.6;
     add(scene, bush, x, 0.25, z);
+  }
+  // Issue #17：深淺唔同嘅草地 + 泥路 + 石 + 大樹叢
+  groundPatches(scene, rect, rand, [0x2f5a1f, 0x557a2a, 0x5d4a2e], Math.round(10 * k));
+  dirtTrail(scene, rect, rand, 0x6b5536, 2.0);
+  for (let n = 0; n < 3 * k; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    rockCluster(scene, x, z, 0.7 + rand() * 0.6, 0x6f7d6a);
+  }
+  for (let n = 0; n < 6 * k; n++) {
+    const [x, z] = sidePosition(rand, rect);
+    bush(scene, x, z, 0.8 + rand() * 0.7, 0x2e7d32);
   }
   // 熱帶花
   const flowerColors = [0xff1744, 0xffea00, 0xff9100, 0xd500f9];
@@ -759,7 +856,7 @@ function buildBridge(scene, live, rect) {
   for (let i = 0; i < n; i++) add(scene, new THREE.Mesh(new THREE.BoxGeometry(W, 0.25, 0.54), i % 2 ? wood : wood2), 0, top - 0.125, z1 - 0.3 - i * (len / n), false);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, len), mat(0xb71c1c)), 0, top + 0.01, zc, false);
   for (const s of [-1, 1]) add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, len), iron), s * (W / 2), top - 0.35, zc);
-  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2, maxZ: z1 }, top, top - 0.4);
+  addPlatform({ minX: -W / 2, maxX: W / 2, minZ: z2 - 0.7, maxZ: z1 }, top, top - 0.4); // 伸過閘門少少，接住王國塊地（以前中間有 0.5 米窿，行得慢會跌落去）
   // 跌唔落去（小朋友：unfallable）：兩邊有高高嘅隱形欄杆台，只會擋住企喺橋上面嘅人；
   // 有 bottom，所以喺地面行嘅人照可以喺橋下面行過去攞鎚仔
   const GUARD = 3.2; // 欄杆擋到幾高（高過跳得到）
@@ -1089,6 +1186,21 @@ function mining(scene, rect, rand, live) {
     const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.35 + rand() * 0.3), mat(c, { emissive: c, emissiveIntensity: 2.2, flatShading: true }));
     crystal.scale.y = 1.8;
     add(scene, crystal, x, 0.5, z);
+  }
+  // Issue #17：山前面空地大咗：碎石地、石堆、木支架
+  groundPatches(scene, { ...rect, minZ: MOUNTAIN.maxZ + 1 }, rand, [0x6f655a, 0x9a8f80, 0x5e554b], Math.round(8 * k));
+  for (let n = 0; n < 4 * k; n++) {
+    const [x, z] = front();
+    if (Math.abs(x) < 4) continue;
+    rockCluster(scene, x, z, 1 + rand() * 0.8, 0x7a6f63);
+  }
+  for (let n = 0; n < 3; n++) {
+    const [x, z] = front();
+    if (Math.abs(x) < 5) continue;
+    const wood = mat(0x6d4c41);
+    for (const s of [-1, 1]) put(scene, new THREE.BoxGeometry(0.3, 2.6, 0.3), wood, x + s * 1.2, 1.3, z);
+    put(scene, new THREE.BoxGeometry(2.9, 0.3, 0.35), wood, x, 2.6, z);
+    put(scene, new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8), mat(0xfff59d, { emissive: 0xffd54f, emissiveIntensity: 1.5 }), x, 2.3, z, false); // 礦燈
   }
   // 會郁嘅鑽油機（喺山前面兩個角，上下鑽）
   const drills = [];

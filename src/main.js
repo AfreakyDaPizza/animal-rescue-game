@@ -455,6 +455,8 @@ let introRunning = true; // 開場動畫播緊
 function spawnAll() {
   const cycle = dayCycle(dayNight);
   const specials = BIOMES.map((_, b) => spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}` }));
+  // Issue #17：Biome 1–6 每區 2 隻；第 2 隻自己一個 seed（「-2」），第 1 隻個 seed 唔變（舊存檔 takenSpawns／Legendary 公告照用）
+  BIOMES.forEach((_, b) => b !== 6 && specials.push(spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}-2` })));
   // Biome 7：多 2 隻（同時有 3 隻）
   for (const extra of ['x', 'y']) specials.push(spawnAnimal(rescue, 6, null, null, null, { seed: `day${cycle}-b6${extra}` }));
   refillCrazy(crazy, rescue); // 🤪 瘋狂寵物活動緊：入夜都唔會冇咗
@@ -1070,7 +1072,7 @@ function labInteraction(pos) {
   if (pod) {
     if (holdingHammer()) return { prompt: `<kbd>E</kbd> or click: 🔨 Smash the pod and free the ${pod.animal.name}!`, action: () => smashPodNow(pod) };
     if (state.hasHammer) return { prompt: `🔨 Pick your Hammer in the hotbar (slot 1) to smash the pod` };
-    return { prompt: '🔒 You need the Hammer (found behind the mountain in Biome 6)' };
+    return { prompt: '🔒 You need the Hammer (it is next to the Safety Zoo in the Hub)' };
   }
   // 傳送門
   if (!state.labBossDefeated && near(pos, PORTAL, 6)) {
@@ -1775,9 +1777,11 @@ function updateFling(dt) {
 function respawnWild(rare = false, tag = null) {
   if (!tag) return spawnAll(); // 活動完咗：返返呢段白天嘅動物
   BIOMES.forEach((_, b) => {
-    const seed = `${tag}-b${b}`;
-    const r = seededPick(seed) < 0.3 ? 'Mythic' : 'Legendary';
-    spawnAnimal(rescue, b, null, null, rare ? r : null, { seed });
+    // Issue #17：每區 2 隻（Biome 7 照舊 1 隻）
+    for (const seed of b === 6 ? [`${tag}-b${b}`] : [`${tag}-b${b}`, `${tag}-b${b}-2`]) {
+      const r = seededPick(seed) < 0.3 ? 'Mythic' : 'Legendary';
+      spawnAnimal(rescue, b, null, null, rare ? r : null, { seed });
+    }
   });
   refillCrazy(crazy, rescue);
 }

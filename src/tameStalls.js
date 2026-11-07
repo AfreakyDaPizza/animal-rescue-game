@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state, save } from './state.js';
 import { extraPanels } from './hud.js';
-import { addCollider, bakeStatic } from './world.js';
+import { addCollider, addFenceLine, bakeStatic } from './world.js';
 import { makeSign, makeLabel, THEMES } from './signs.js';
 import { fencePost, fenceRails } from './fences.js';
 import { ranchGround, plankPath } from './hubFloor.js';
@@ -222,11 +222,18 @@ function ranchFence(root, x1, z1, x2, z2, skip = () => false) {
       if (!skip(nx, nz)) fenceRails(root, x, z, nx, nz, RANCH);
     }
   }
-  const cs = Math.ceil(len / 0.9);
-  for (let k = 0; k <= cs; k++) {
+  // Issue #17：跳得過（矮石台 addFenceLine，唔再係一粒粒 collider）；skip 嗰度（閘口）留窿
+  const cs = Math.ceil(len / 0.25);
+  let run = null;
+  for (let k = 0; k <= cs + 1; k++) {
     const x = x1 + ((x2 - x1) * k) / cs;
     const z = z1 + ((z2 - z1) * k) / cs;
-    if (!skip(x, z)) addCollider(x, z, 0.4);
+    if (k <= cs && !skip(x, z)) {
+      run = run ? { ...run, x2: x, z2: z } : { x1: x, z1: z, x2: x, z2: z };
+    } else if (run) {
+      addFenceLine(run.x1, run.z1, run.x2, run.z2);
+      run = null;
+    }
   }
 }
 // 牧場右邊圍牆喺邊（x），少少入返啲

@@ -10,8 +10,7 @@ import { HUB, HUB_WALL_H } from './hubShape.js';
 import { inHalloween } from './halloweenShape.js';
 import { seeded, crystalCluster, meteorRock, makeTrail, orientTrail, CRYSTAL_COLORS, GEO, rockMat, rockMat2, veinMat, glowTexture } from './meteorKit.js';
 
-const STEM_X = 21; // 生態區通道一半闊（同 world.js STEM 一樣）
-const BIOME_LENGTH = 62;
+import { BIOME_LENGTH, BIOME_HALF_W as STEM_X } from './data/biomeList.js'; // 生態區大細（Issue #17 改大咗）
 
 // ---- 1. 唔郁嘅裝飾（world.js buildWorld 叫，放入 staticRoot；要喺 buildBiomeBorders 之後叫，因為要搵山丘有幾高）----
 // Hub 係一個浮喺天上嘅圓形島，圍牆外面冇地 → 水晶放喺圍牆頂（城垛之間）

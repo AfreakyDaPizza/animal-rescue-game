@@ -34,7 +34,7 @@ const DEFAULTS = {
   plotLevel: 0, // 地塊升咗幾多次（每次 +1 隻位）
   machines: [null, null, null, null, null], // 5 部繁殖機：{ name, biome, endsAt }
   labUnlocked: false, // Issue #2：撳咗秘密紅色掣，睇咗開門動畫
-  hasHammer: false, // 執咗 Biome 6 山後面嘅鎚仔（永遠喺快捷欄）
+  hasHammer: false, // 執咗 Safety Zoo 隔籬嘅鎚仔（Issue #17 由 Biome 6 搬咗嚟；永遠喺快捷欄）
   labPodsSmashed: [], // 打爛咗邊幾個玻璃艙（0–3）
   labLegendaryGiven: 0, // 交咗幾多隻 Legendary 俾傳送門
   labGivenSpecies: [], // 交咗邊幾種（結局動畫佢哋會返嚟）

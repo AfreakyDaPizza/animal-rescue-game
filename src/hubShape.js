@@ -17,7 +17,14 @@ export const HUB_WALL_H = 7;
 // 噴水池、遊樂場、Fuse Machine 已經冇咗
 
 // 🐾 地塊：Hub 正中間；閘口喺北邊（minZ），對住入口條路
-export const PLOT = { minX: -9, maxX: 9, minZ: 16, maxZ: 31, gateX: 0, gateZ: 16, gateWidth: 3 };
+// Issue #17 小朋友：「make the plot into a circle」→ 圓形：圓心 (cx, cz)、半徑 r；minX…maxZ 係包住個圓嘅正方形（舊代碼用）
+const PLOT_R = 8.5;
+const PLOT_CZ = 23.5;
+export const PLOT = { cx: 0, cz: PLOT_CZ, r: PLOT_R, minX: -PLOT_R, maxX: PLOT_R, minZ: PLOT_CZ - PLOT_R, maxZ: PLOT_CZ + PLOT_R, gateX: 0, gateZ: PLOT_CZ - PLOT_R, gateWidth: 3 };
+// 喺地塊個圓入面？（m = 留幾多邊）
+export const inPlotCircle = (x, z, m = 0) => Math.hypot(x - PLOT.cx, z - PLOT.cz) <= PLOT.r - m;
+// 圓形圍欄喺某個 x 嘅北邊（z 細嗰邊）係幾多
+export const plotNorthZ = (x) => PLOT.cz - Math.sqrt(Math.max(0, PLOT.r ** 2 - (x - PLOT.cx) ** 2));
 export const PLOT_RING = 2.6; // 地塊四邊條石路有幾闊
 
 // 😊 Happy Machines：左邊一行（x 固定），面向 +x（地塊）
