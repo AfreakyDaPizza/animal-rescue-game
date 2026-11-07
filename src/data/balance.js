@@ -26,8 +26,10 @@ export const BOSSES = [
 export const HALLOWEEN_BASE_MONEY = [80000, 140000, 250000];
 export const BIOME_BASE_MONEY = [1, 5, 25, 150, 1000, 6000, 60000, ...HALLOWEEN_BASE_MONEY];
 export const WEIGHT_BONUS = 0.1;
+// 💰 All pets' money per second × this (kid, Issue #14 2026-11-07: "money per sec should be downgraded"). 1 = old amount, 0.5 = half
+export const PET_MONEY_MULT = 0.5;
 export const petMoney = (kg, biome, rarity = 'Common') =>
-  Math.max(1, Math.round(BIOME_BASE_MONEY[biome] * (1 + Math.sqrt(kg) * WEIGHT_BONUS) * rarityInfo(rarity).money));
+  Math.max(1, Math.round(BIOME_BASE_MONEY[biome] * (1 + Math.sqrt(kg) * WEIGHT_BONUS) * rarityInfo(rarity).money * PET_MONEY_MULT));
 
 // ---- 稀有度（原稿：Mythic 2%、Legendary 15%，其餘 83% 係 Common／Rare／Epic）----
 // chance：出現機會（%）；money：賺錢倍數；reproduce：繁殖時間倍數（越稀有越耐）
@@ -205,7 +207,7 @@ export const SELL_SECONDS = 60;
 
 // ---- New biome countdown (Issue #4): the wall at the end of the mountain bridge counts down to this day ----
 export const NEW_BIOME_DATE = '2026-10-24';
-export const NEW_BIOME_ON = false; // 👑 Enchanted Kingdom (Biome 7) (2026-11-03 kid: hidden, the gate stays shut). true = bring it back. Your Kingdom pets stay yours!
+export const NEW_BIOME_ON = true; // 👑 Enchanted Kingdom (Biome 7) (2026-11-03 kid: hidden, the gate stays shut). true = bring it back. Your Kingdom pets stay yours!
 
 // ---- 🧪 FUSE MACHINE (Issue #4): put in 3 pets, get 1 special fuse-only pet ----
 // The day the Fuse Machine opens (year-month-day). Before this day it shows a countdown.
