@@ -214,6 +214,7 @@ export const FUSE_OPEN_DATE = '2026-10-22';
 // ---- ☄️ METEORIC 活動 + Meteoric Shop 開放日（小朋友 2026-10-22：同一日開）----
 export const METEOR_EVENT_ON = false; // ☄️ METEORIC event + glowing meteor rocks (Issue #15: hidden). true = bring it back
 export const HALLOWEEN_ON = false; // 🎃 Halloween World portal in the Hub (Issue #15: hidden, the fountain comes back). true = bring it back. Your Halloween pets & items stay yours!
+export const PET_SKINS_ON = false; // 🎨 Pet skins (Issue #17: removed). true = bring the Pet Skins shop tab + looks back
 export const METEOR_SHOP_ON = false; // ☄️ Meteoric Shop in the Hub (Issue #15: removed). true = bring it back. Things you already bought stay yours!
 export const METEOR_OPEN_DATE = '2026-10-24';
 // How good each rarity is when you put it IN (3 pets → score 0 to 12)

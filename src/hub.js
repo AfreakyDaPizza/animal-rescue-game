@@ -14,7 +14,7 @@ import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
 import { buildPrehistoric, animatePrehistoric, prehistoricTexture } from './prehistoric.js'; // Lv16 Prehistoric Age（Issue #14）
 import { boost } from './events.js';
 import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 買嘅加成
-import { applyPetSkin } from './skins.js';
+import { applyPetSkin, activePetSkin } from './skins.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { state } from './state.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
@@ -1585,7 +1585,7 @@ function addPetToPlot(plot, scene, pet) {
   const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
   // 用返真實大細（之前縮到最多 2.4 米，大象變到好細），再跟重量放大縮細；
   // 只有超大嘅（例如藍鯨）先縮到地塊放得落
-  applyPetSkin(model, state.petSkin); // 寵物皮膚
+  applyPetSkin(model, activePetSkin()); // 寵物皮膚
   const maxDim = Math.max(size.x, size.y, size.z);
   const giant = pet.sizeMul || 1; // La Combination 變大嘅寵物
   // 普通寵物最大 7 米；巨型寵物（GIANT／BIG PET FRENZY）可以大到 60 米（同野生動物一樣）

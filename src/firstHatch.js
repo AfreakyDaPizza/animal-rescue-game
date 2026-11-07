@@ -9,7 +9,7 @@ import { playMovie, once, shake } from './movie.js';
 import { play } from './sound.js';
 import { state } from './state.js';
 import { buildAvatar, applyRangerSkin } from './thirdPerson.js';
-import { RANGER_SKINS, applyPetSkin } from './skins.js';
+import { RANGER_SKINS, applyPetSkin, activePetSkin } from './skins.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
 import { findAnimal, mutationList } from './data/animals.js';
 import { rarityInfo } from './data/balance.js';
@@ -48,7 +48,7 @@ function heartGeometry() {
 // 寵物模型（皮膚、變異、倒轉都跟返）；fit = 最長嗰邊幾長
 function petModel(pet, fit) {
   const model = buildAnimalModel(findAnimal(pet.name));
-  applyPetSkin(model, state.petSkin);
+  applyPetSkin(model, activePetSkin());
   const size = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
   model.scale.multiplyScalar(fit / Math.max(size.x, size.y, size.z, 0.01));
   let body = model;

@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { state } from './state.js';
 import { findAnimal, mutationInfo } from './data/animals.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
-import { applyPetSkin } from './skins.js';
+import { applyPetSkin, activePetSkin } from './skins.js';
 import { addFireAura, animateModelAuras } from './fireAura.js';
 import { buildShardModel } from './gearArt.js';
 import { addSaddle } from './saddle.js'; // 🐎 Ridable Shard
@@ -219,7 +219,7 @@ function buildPet(pet, before) {
   const animal = findAnimal(pet.name);
   if (!animal) return null;
   const model = buildAnimalModel(animal);
-  applyPetSkin(model, state.petSkin);
+  applyPetSkin(model, activePetSkin());
   let body = model;
   if (pet.flipped) {
     body = new THREE.Group();

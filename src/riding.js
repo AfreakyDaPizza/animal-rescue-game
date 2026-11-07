@@ -24,7 +24,7 @@ import { state, save } from './state.js';
 import { findAnimal, itemMoney, kgScale, mutationList } from './data/animals.js';
 import { RIDE_SPEED_PER_LOG10, RIDE_SPEED_MAX } from './data/tame.js';
 import { buildAnimalModel } from './animalModels.js';
-import { applyPetSkin } from './skins.js';
+import { applyPetSkin, activePetSkin } from './skins.js';
 import { addFireAura } from './fireAura.js';
 import { addSaddle } from './saddle.js';
 import { groundAt } from './world.js';
@@ -84,7 +84,7 @@ export function createRiding(ctx) {
     const animal = findAnimal(pet.name);
     if (!animal) return null;
     const inner = buildAnimalModel(animal);
-    applyPetSkin(inner, state.petSkin);
+    applyPetSkin(inner, activePetSkin());
     inner.userData.flying = false; // 雀仔都喺地上行（揹住你）
     inner.scale.multiplyScalar(kgScale(pet));
     const got = addSaddle(inner);

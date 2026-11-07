@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import './indexViewer.css';
 import { buildAnimalModel } from './animalModels.js';
 import { findAnimal, MUTATIONS, mutationInfo } from './data/animals.js';
-import { rarityInfo, RARITIES } from './data/balance.js';
+import { rarityInfo, RARITIES, PET_SKINS_ON } from './data/balance.js';
 import { BIOMES } from './data/biomeList.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js';
 import { PET_SKINS, applyPetSkin, animateSkins } from './skins.js';
@@ -88,7 +88,7 @@ function buildDom(animal, skinSwatch) {
             ${MUTATIONS.map((m) => chip('mut', m, `${mutationInfo(m).emoji} ${mutationInfo(m).name[0]}${mutationInfo(m).name.slice(1).toLowerCase()}`, false, `--c:${mutationInfo(m).color}`)).join('')}
           </div>
         </section>
-        <section class="iv-card">
+        <section class="iv-card" ${PET_SKINS_ON ? '' : 'style="display:none"'}>
           <h4>🎨 Looks</h4>
           <div class="iv-chips" data-group="skin">
             ${PET_SKINS.map((s) => chip('skin', s.id, `${sw(s.id)}${esc(s.name)}`, s.id === 'none')).join('')}

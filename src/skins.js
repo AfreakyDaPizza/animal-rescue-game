@@ -2,6 +2,11 @@
 // （以前有「擴建 Hub」：2026-10-15 小朋友話唔使買，Hub 本身已經好大，噴水池、石像、遊樂場全部免費有）
 
 import * as THREE from 'three';
+import { state } from './state.js';
+import { PET_SKINS_ON } from './data/balance.js';
+
+// Issue #17：寵物皮膚收埋 → 一律當 'none'（PET_SKINS_ON = true 就返嚟）
+export const activePetSkin = () => (PET_SKINS_ON ? state.petSkin : 'none');
 
 export const RANGER_SKINS = [
   { id: 'ranger', name: 'Classic Ranger', cost: 0, shirt: 0x2e7d32, pants: 0x5d4037, skin: 0xf5c99b, hat: 0x33691e, shoes: 0x3e2723 },

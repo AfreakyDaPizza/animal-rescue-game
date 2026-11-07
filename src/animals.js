@@ -12,7 +12,7 @@ import { moveOpts } from './player.js';
 import { biomeRect, KINGDOM_Y } from './world.js';
 import { SUMMIT } from './biomes.js';
 import { boost } from './events.js';
-import { applyPetSkin } from './skins.js';
+import { applyPetSkin, activePetSkin } from './skins.js';
 import { makeLabel } from './signs.js';
 import { state } from './state.js';
 
@@ -199,7 +199,7 @@ export function setHolding(rescue, name, mutation = null, flipped = false, ridea
   rescue.holding = null;
   if (show) {
     const model = handModel(findAnimal(show), flipped);
-    applyPetSkin(model, state.petSkin); // 寵物皮膚
+    applyPetSkin(model, activePetSkin()); // 寵物皮膚
     if (rideable) addSaddle(model.userData.inner); // 🐎 Issue #16
     if (mutation) addFireAura(model, mutation);
     rescue.camera.add(model);

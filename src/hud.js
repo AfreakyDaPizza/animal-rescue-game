@@ -10,7 +10,7 @@ import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { rangerSkinPic, petSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
 import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, TAME_ANIMALS, TAME_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
-import { BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
+import { PET_SKINS_ON, BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
@@ -746,7 +746,8 @@ const PET_SWATCH = {
 };
 function shopHtml() {
   const tab = (id, label) => `<button data-shop-tab="${id}" class="${shopTab === id ? 'active' : ''}">${label}</button>`;
-  let html = `<div class="tabs">${tab('ranger', '🧑 Ranger Skins')}${tab('pet', '🐾 Pet Skins')}</div>
+  if (!PET_SKINS_ON) shopTab = 'ranger'; // Issue #17：冇咗寵物皮膚
+  let html = `<div class="tabs">${tab('ranger', '🧑 Ranger Skins')}${PET_SKINS_ON ? tab('pet', '🐾 Pet Skins') : ''}</div>
     <p class="index-summary">You have <b>🎟️ ${fmt(state.tokens)}</b> Skin Tokens. Get more from 📜 Quests (J) and new pets!</p>`;
   const card = (preview, name, cost, owned, equipped, action, i, extra = '') => `<div class="card-animal ${equipped ? 'equipped' : ''}">
       ${preview}<b>${name}</b>${extra}
