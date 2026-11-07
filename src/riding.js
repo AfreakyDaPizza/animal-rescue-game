@@ -105,13 +105,13 @@ export function createRiding(ctx) {
     });
     const box = new THREE.Box3().setFromObject(wrap);
     const size = box.getSize(V());
-    return { pet, wrap, inner, seat: got.seatY * kk, size: Math.max(size.x, size.z, size.y), mult: rideSpeedMult(pet), phase: 0 };
+    return { pet, wrap, inner, seat: got.seatY * kk, size: Math.max(size.x, size.z, size.y), mult: rideSpeedMult(pet), phase: 0, mut: pet.mutation || '' };
   }
 
   function mountPet(pet, { quiet = false } = {}) {
     if (!pet?.rideable) return;
     if (ctx.blocked?.()) return popup("🐎 You can't ride here!");
-    if (rescue.carrying && !rescue.carrying.leashed) return popup('🙌 Your hands are full - take your animal to the Hub first, then ride!');
+    // 小朋友 2026-11-07：抱住動物都可以騎（俾人撞到先跌落嚟，見 knockOff）
     dismount({ quiet: true });
     ridePetRef = pet;
     state.ridePet = state.pets.indexOf(pet);
@@ -128,6 +128,11 @@ export function createRiding(ctx) {
       announce(`🐎 Riding ${pet.name}! Speed x${mount.mult.toFixed(2)}`);
     }
     renderHotbar();
+  }
+
+  // 💥 俾 Boss／障礙物撞到：跌落坐騎（main.js onBossCatch／onHazardHit 叫）
+  function knockOff() {
+    if (mount) dismount({ reason: '💥 You got hit and fell off your pet!' });
   }
 
   // 落坐騎（其他檔案都可以叫：window.__riding.dismount()）
@@ -201,8 +206,8 @@ export function createRiding(ctx) {
     if (mount) {
       // 揀咗嗰隻冇咗（賣咗）／唔再可以騎
       if (!state.pets.includes(mount.pet) || !mount.pet.rideable) dismount({ quiet: true });
-      else if (rescue.carrying && !rescue.carrying.leashed) dismount({ reason: `🙌 You hopped off to carry the ${rescue.carrying.animal.name}!` });
       else if (ctx.blocked?.()) dismount({ quiet: true });
+      else if ((mount.pet.mutation || '') !== mount.mut) mountPet(mount.pet, { quiet: true }); // 騎緊用 Shard：重新整過坐騎，見到新變異（2026-11-07）
     }
     if (mount) {
       placeMount(dt);
@@ -352,6 +357,7 @@ export function createRiding(ctx) {
     openPicker,
     mount: mountPet,
     dismount,
+    knockOff,
     leash,
     leashPrompt,
     update,

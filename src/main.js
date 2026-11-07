@@ -1650,6 +1650,7 @@ let safeTime = 0; // 答完問題之後幾秒唔會再撞
 
 async function onHazardHit(h) {
   play('hit');
+  riding.knockOff(); // 🐎 撞到障礙物：跌落坐騎
   const right = await quiz({ title: h.kind.title, biome: h.biome });
   safeTime = 2.5;
   if (right) quest('right');
@@ -1731,6 +1732,7 @@ function eclipseStrike(at) {
 
 function onBossCatch(boss) {
   play('hit');
+  riding.knockOff(); // 🐎 俾 Boss 捉到：跌落坐騎
   play('boing');
   sendBossHome(boss);
   if (rescue.carrying) {

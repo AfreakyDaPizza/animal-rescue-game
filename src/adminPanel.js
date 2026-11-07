@@ -305,8 +305,10 @@ const GROUPS = [
 ];
 const matches = (a) => !search || a.name.toLowerCase().includes(search.toLowerCase());
 
+// 小朋友 2026-11-07：跟稀有度排（Common → Eternal）；普通動物冇固定稀有度就當 Common，保持原本次序
+const rarityRank = (a) => Math.max(0, RARITIES.findIndex((r) => r.name === a.rarity));
 function petsHtml() {
-  const list = GROUPS.find((g) => g[0] === group)[2]();
+  const list = GROUPS.find((g) => g[0] === group)[2]().map((a, i) => [a, i]).sort((x, y) => rarityRank(x[0]) - rarityRank(y[0]) || x[1] - y[1]).map((x) => x[0]);
   const opt = (v, cur, label = v) => `<button data-admin="${v === cur ? 'noop' : 'set'}" data-k="__K__" data-v="${v}" class="${v === cur ? '' : 'grey'}">${label}</button>`;
   const choose = (k, vals, cur, labels) => vals.map((v, i) => opt(v, cur, labels?.[i]).replace('__K__', k)).join('');
   return `<div class="admin-pet-top">
