@@ -36,6 +36,8 @@ import { fluteFrame, stopFlute } from './tamerFlute.js'; // 🎵 Tamer Ranger �
 import { buildHorse } from './rodeoModels.js';
 import { short } from './format.js';
 import { TAME_PORTAL } from './hubShape.js';
+import { rodeoIntro, playRodeoIntro } from './rodeoIntro.js'; // 🎬 第一次入傳送門嘅開場短片（Issue #14 留言 2026-11-07）
+import { movie } from './movie.js';
 
 // 完咗返 Hub 邊度：Catch & Tame 傳送門（TAME_PORTAL，Hub 右邊，src/hubShape.js）前面；想改就改 rodeo.returnTo
 export const RODEO_RETURN = { x: TAME_PORTAL.x - 6, z: TAME_PORTAL.z, rotY: -Math.PI / 2 }; // 傳送門前面 6 米，望住個傳送門（第三身鏡頭唔會卡入門度）
@@ -140,6 +142,8 @@ body.in-rodeo #tutorial, body.in-rodeo #tutorial-arrow, body.in-rodeo #hud-timer
 .rodeo-map button, .rodeo-res .btns button { font-weight: 800; font-size: 16px; padding: 8px 18px; border-radius: 999px; border: 3px solid #3e2310; background: #ffd54f; color: #3e2310; cursor: pointer; }
 .rodeo-gear { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 12px 0 2px; font-weight: 800; }
 .rodeo-gear span { background: #fff3e0; border: 2px solid #ffb74d; border-radius: 999px; padding: 4px 12px; }
+.rodeo-replay { text-align: center; margin-top: 10px; }
+.rodeo-replay button { font-weight: 800; font-size: 14px; padding: 5px 14px; border-radius: 999px; border: 2px solid #3e2310; background: #e0e0e0; color: #3e2310; cursor: pointer; }
 .rodeo-res { text-align: center; }
 .rodeo-res .big { font-size: 52px; }
 .rodeo-res .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 10px 0; }
@@ -286,9 +290,24 @@ export function createRodeo(ctx) {
 
   // ================= 揀地圖 =================
   function openMapSelect() {
-    if (R.travelling || api.active) return;
+    if (R.travelling || api.active || rodeoIntro.active) return;
+    if (!state.rodeoIntroSeen) return playIntro(); // 🎬 第一次：先睇開場短片（舊存檔冇呢個 flag = 都睇一次）
     R.panel = 'maps';
     togglePanel('rodeo');
+  }
+  // 🎬 開場短片：播完（或者跳過）→ 開揀地圖面板
+  function playIntro() {
+    if (rodeoIntro.active || movie.active || api.active) return;
+    player.controls.unlock();
+    playRodeoIntro({
+      scene, camera,
+      onDone() {
+        state.rodeoIntroSeen = true;
+        save();
+        R.panel = 'maps';
+        togglePanel('rodeo');
+      },
+    });
   }
   const lasso = () => LASSO_LEVELS[clamp((state.lassoLevel || 1) - 1, 0, LASSO_LEVELS.length - 1)];
   const flute = () => FLUTE_LEVELS[clamp((state.fluteLevel || 1) - 1, 0, FLUTE_LEVELS.length - 1)];
@@ -310,6 +329,7 @@ export function createRodeo(ctx) {
     const F = flute();
     return `<div class="rodeo-panel"><p class="rp-intro">🤠 Pick a map! You ride a horse 🐎 that runs by itself. Steer with <b>A / D</b> (or the mouse). Press <b>SPACE</b> to jump off and 🪢 lasso an animal. Ride it while your 🪈 flute tames it!</p>
       <div class="rodeo-maps">${RODEO_MAPS.map(card).join('')}</div>
+      <div class="rodeo-replay"><button data-rodeo="intro" class="grey">🎬 Watch intro</button></div>
       <div class="rodeo-gear"><span>🪢 Lasso Lv ${state.lassoLevel || 1} · ${L.range} m range · ${L.height} m jump</span><span>🪈 Flute Lv ${state.fluteLevel || 1} · ×${F.speed} taming speed</span><span>❤️ × ${RODEO_HEARTS}</span><span>🤠 ${short(state.tameTokens || 0)} Tame Tokens</span></div></div>`;
   }
   function resultsHtml() {
@@ -343,6 +363,7 @@ export function createRodeo(ctx) {
       return;
     }
     togglePanel('rodeo'); // 收埋面板
+    if (b.dataset.rodeo === 'intro') return playIntro(); // 🎬 重播開場短片
     start(b.dataset.map);
   });
 
@@ -815,6 +836,7 @@ export function createRodeo(ctx) {
   }
   function update(dt, time, { paused = false } = {}) {
     lastPaused = paused;
+    if (rodeoIntro.savanna) applySky('savanna'); // 🎬 開場短片喺大草原：蓋過日夜系統個天
     if (!api.active || !world) return;
     // 俾人傳送走咗（控制面板、其他嘢）→ 結束
     if (R.phase !== 'leaving' && !inRodeo(camera.position.x)) {
@@ -1265,8 +1287,8 @@ export function createRodeo(ctx) {
 
   // ---------- 天、霧、光（每格蓋過日夜系統）----------
   const _c = new THREE.Color();
-  function applySky() {
-    const L = MAP_LOOK[R.mapId];
+  function applySky(mapId = R.mapId) {
+    const L = MAP_LOOK[mapId];
     if (!L) return;
     scene.background?.setHex?.(L.sky[0]);
     if (scene.fog) {
@@ -1377,6 +1399,7 @@ export function createRodeo(ctx) {
     freeze: false, // 測試影相：成個 Catch & Tame 停低
     start: (mapId = 'savanna') => start(mapId),
     open: () => openMapSelect(),
+    intro: () => playIntro(), // 🎬 game.rodeo.intro()
     end: () => api.active && finish('ko'),
     leave: () => api.active && finish('away'),
     tameNow() {

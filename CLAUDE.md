@@ -70,6 +70,8 @@
 - 2026-11-06/07：Issue #16 🤠 Catch & Tame（詳情 `docs/plan.md`「Issue #16」）：Hub 重新排位、3 個攤位、騎馬套動物小遊戲、騎寵物／Leash／Luminous God Dragon／Cowboy Boss／Tamer Ranger／TAME 變異。Index 3D 檢視器 `src/indexViewer.js`、Time Shard 追蹤牌。小朋友 2026-11-06 要求每 10 分鐘睇 GitHub。
 - 2026-11-07：Issue #17（Hub／生態區）：Hub 圍欄跳得過（`addFenceLine`／`addFenceRing` 矮石台）、Boss「recommended」牌掛喺生態區大門橫樑上面（綠／紅發光）、生態區 52×86（`src/data/biomeList.js` 嘅 `BIOME_LENGTH`／`BIOME_HALF_W`）、每區 2 隻動物（seed `-2`）、Safety Zoo 圓形（`PLOT.cx/cz/r`）、鎚仔搬去 Safety Zoo 隔籬、繁殖機升級牌轉正。詳情 `docs/plan.md`「Issue #17」。
 
+- 2026-11-07：🎬 Catch & Tame 開場短片（`src/rodeoIntro.js`，`state.rodeoIntroSeen`；揀地圖面板「🎬 Watch intro」；`game.rodeo.intro()`）。
+
 ## 點樣玩／開發
 - **團隊流程（2026-10-15）**：小朋友喺 GitHub 開 Issue（範本喺 `.github/ISSUE_TEMPLATE/`，規則喺 `CONTRIBUTING.md`，英文）；我哋做完 commit 寫 `Fixes #編號` 再 push 上 main（自動部署）。有問題就喺 Issue 留言問小朋友（`gh`，裝咗喺 `~/.local/bin`）。小朋友會自己喺 GitHub 網頁改 `src/data/balance.js` 嘅數值，所以**開工前先 `git pull origin main`**。
 - `npm run dev` → 瀏覽器開 http://localhost:5180（固定 5180，因為 5173 俾另一個項目用緊）。
