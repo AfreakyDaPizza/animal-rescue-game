@@ -10,6 +10,7 @@ import { HUB, HUB_WALL_H } from './hubShape.js';
 import { inHalloween } from './halloweenShape.js';
 import { seeded, crystalCluster, meteorRock, makeTrail, orientTrail, CRYSTAL_COLORS, GEO, rockMat, rockMat2, veinMat, glowTexture } from './meteorKit.js';
 
+import { MOUNTAIN } from './biomes.js'; // Biome 6 座山腳範圍（buildMountain 計好先）
 import { BIOME_LENGTH, BIOME_HALF_W as STEM_X } from './data/biomeList.js'; // 生態區大細（Issue #17 改大咗）
 
 // ---- 1. 唔郁嘅裝飾（world.js buildWorld 叫，放入 staticRoot；要喺 buildBiomeBorders 之後叫，因為要搵山丘有幾高）----
@@ -190,9 +191,9 @@ function buildMeteorWorld(root, { scene, sky, bake }, heightAt) {
   view.sky = sky;
   const rand = seeded(2210);
   const free = makeSpotFinder([root, scene]);
-  const ok = (b, x) => {
+  const ok = (b, x, z) => {
     if (b === 1 && x < -3) return false; // Biome 2：左邊係海
-    if (b === 5 && Math.abs(x) < 16) return false; // Biome 6：中間係座山
+    if (b === 5 && Math.abs(x) < MOUNTAIN.maxX + 1 && z > MOUNTAIN.minZ - 2 && z < MOUNTAIN.maxZ + 2) return false; // Biome 6：中間係座山（Issue #14 大咗）
     return true;
   };
   for (let b = 0; b < 6; b++) {
@@ -205,7 +206,7 @@ function buildMeteorWorld(root, { scene, sky, bake }, heightAt) {
       const side = (made + b) % 2 ? 1 : -1;
       const x = side * (7 + R + rand() * (STEM_X - 8.5 - 2 * R));
       const z = maxZ - 6 - rand() * (BIOME_LENGTH - 16);
-      if (!ok(b, x)) continue;
+      if (!ok(b, x, z)) continue;
       const gy = free(x, z, R * 1.3);
       if (gy === null) continue;
       crater(root, x, z, gy, R, rand);
@@ -216,7 +217,7 @@ function buildMeteorWorld(root, { scene, sky, bake }, heightAt) {
     for (let tries = 0; tries < 80 && made < 6; tries++) {
       const x = (rand() < 0.5 ? -1 : 1) * (5 + rand() * (STEM_X - 7));
       const z = maxZ - 3 - rand() * (BIOME_LENGTH - 6);
-      if (!ok(b, x)) continue;
+      if (!ok(b, x, z)) continue;
       const gy = free(x, z, 1.6);
       if (gy === null) continue;
       crack(root, x, z, gy, 2.5 + rand() * 2, rand);

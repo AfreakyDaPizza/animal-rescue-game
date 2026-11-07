@@ -394,7 +394,7 @@ export function playKingdomReveal({ camera, playMovie, once, shake, play, gate, 
     length: 21,
     skipText: 'Click or press any key to keep playing ▶',
     shots: [
-      [0, 5, { p: V(4, 15.5, Z + 12), l: V(0, 18, Z) }, { p: V(2, 15, Z + 8), l: V(0, 17, Z) }], // 喺橋上面望住閘門打開
+      [0, 5, { p: V(1.5, 20.5, Z + 14), l: V(0, 18, Z) }, { p: V(2, 17, Z + 8), l: V(0, 17, Z) }], // 喺橋（落樓梯嗰段）上面望住閘門打開
       [5, 10, { p: V(0, 15, Z + 2), l: V(0, 14, Z - 30) }, { p: V(0, 26, Z - 20), l: V(0, 14, Z - 80) }], // 飛過閘門，望到成個王國
       [10, 15, { p: V(-14, 21, Z - 34), l: V(0, 48, Z - 50) }, { p: V(-16, 23, Z - 40), l: V(8, 50, Z - 55) }], // 望上天：Royal Skywhale！
       [15, 21, { p: V(10, 17, Z - 24), l: V(-6, 15, Z - 44) }, { p: V(6, 16.5, Z - 30), l: V(-8, 15.5, Z - 50) }], // 水晶蝴蝶、符文
