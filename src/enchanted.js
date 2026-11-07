@@ -9,7 +9,8 @@ import { addPlatform, addCollider, bakeStatic, kingdom, KINGDOM_Y } from './worl
 import { buildSkywhaleModel, buildCrystalButterfly, buildRune } from './enchantedModels.js';
 
 export const kingdomView = { group: null, reveal: false }; // reveal：開門動畫俾人睇住先
-export const KINGDOM_STAIRS = { top: 13, z: -6 * BIOME_LENGTH }; // 閘門嘅位同高度（開門動畫用）
+// 閘門嘅位同高度（開門動畫用）
+export const KINGDOM_STAIRS = { get top() { return KINGDOM_Y; }, z: -6 * BIOME_LENGTH }; // top 用 getter：world.js 同呢個檔互相 import，開機時 KINGDOM_Y 未有
 
 const materials = new Map();
 const mat = (color, extra = {}) => {
@@ -387,7 +388,7 @@ export function enchanted(staticRoot, rect, rand, live) {
 // ================= 開門動畫（小朋友：上到山頂有段 cutscene，之後見到新生態區） =================
 // 鐵枝慢慢升起、漩渦消失 → 鏡頭飛過閘門、沿住樓梯落去 → 望上天見到 Royal Skywhale → 水晶蝴蝶同符文
 export function playKingdomReveal({ camera, playMovie, once, shake, play, gate, onDone }) {
-  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const V = (x, y, z) => new THREE.Vector3(x, y + KINGDOM_Y - 13, z); // 鏡頭高度係王國喺 13 米嗰陣度嘅，而家跟住 KINGDOM_Y 升
   const Z = KINGDOM_STAIRS.z;
   kingdomView.reveal = true;
   playMovie(camera, {

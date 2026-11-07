@@ -1965,7 +1965,7 @@ renderer.setAnimationLoop((timestamp) => {
   // 小朋友 2026-10-18：倒數到 0（或者提早開咗）→ 未睇過開門動畫嘅玩家一入遊戲就會播（喺邊度都得）；行到閘門前面都即刻播
   const kingdomReady = NEW_BIOME_ON && (isNewBiomeOpen() || kingdomDebug || state.bigButton); // 2026-11-03：NEW_BIOME_ON = false 就收埋
   kingdom.open = kingdomReady && (state.kingdomSeen || movie.active);
-  const atKingdomGate = pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > 10;
+  const atKingdomGate = pos.z < KINGDOM_STAIRS.z + 9 && player.feetY > KINGDOM_STAIRS.top - 3;
   const revealOk = kingdomReady && !state.kingdomSeen && !movie.active && !intro.active && startScreen.hidden && !isPanelOpen() && !isQuizOpen()
     && !document.getElementById('device-chooser') && !rescue.carrying && !endingRunning && whereIs(pos.x, pos.z) !== 'Boss Arena'
     && (state.tutorialDone || atKingdomGate) && !rodeo.active;
