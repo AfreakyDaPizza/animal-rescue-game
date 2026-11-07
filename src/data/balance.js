@@ -10,11 +10,11 @@
 export const BOSSES = [
   { name: 'Lumberjack', speed: 550, iq: 200 },
   { name: 'Captain Oil Spill', speed: 2200, iq: 1000 },
-  { name: 'Hunter', speed: 33000, iq: 45000 },
-  { name: 'Oil Driller', speed: 330000, iq: 450000 },
-  { name: 'Smuggler King', speed: 4400000, iq: 3000000 }, // 小朋友 2026-10-17：快啲（×2）
-  { name: 'Mega Digger', speed: 44000000, iq: 30000000 }, // 小朋友 2026-10-17：快啲（×2）
-  { name: 'Enchanted Royal Guardian', speed: 440000000, iq: 300000000 }, // Biome 7（小朋友 2026-10-17）；再快啲（×2）
+  { name: 'Hunter', speed: 66000, iq: 90000 }, // 小朋友 2026-11-07：Speed 同 IQ 都 ×2
+  { name: 'Oil Driller', speed: 660000, iq: 450000 }, // 小朋友 2026-11-07：第 4 個到最後：Speed ×2
+  { name: 'Smuggler King', speed: 8800000, iq: 3000000 }, // 小朋友 2026-10-17：快啲（×2）；2026-11-07 再 ×2
+  { name: 'Mega Digger', speed: 88000000, iq: 30000000 }, // 小朋友 2026-10-17：快啲（×2）；2026-11-07 再 ×2
+  { name: 'Enchanted Royal Guardian', speed: 1250000000, iq: 750000000 }, // Biome 7（小朋友 2026-10-17）；2026-11-07：1.25B Speed、750M IQ
 ];
 
 // ---- 寵物每秒賺幾多錢：生態區底價 × (1 + √重量 × 0.1) × 稀有度 ----
