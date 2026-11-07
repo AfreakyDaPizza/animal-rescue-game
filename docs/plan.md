@@ -278,3 +278,7 @@ src/data/questions.js ← 野生動物問題
 - 隕石坑唔會擺喺山腳範圍（`meteorDecor.js` 用 `MOUNTAIN`）。
 - 2026-11-07 第二輪（小朋友：「the mountains still too small」+「dont add too many decorations for the last biome」）：座山再大：**34 層 44.2 米**、山腳 44×59（x ±22，差唔多成個生態區咁闊）；前面每級 1.25 米（中間樓梯），兩邊 0.47 米、後面 0.2 米（懸崖）。王國跟住升：**`KINGDOM_Y` 13 → 40**（`world.js`；`KINGDOM_STAIRS.top` 改 getter 跟 `KINGDOM_Y`；開門動畫鏡頭高度跟 `KINGDOM_Y`；`main.js` 閘門判斷 `feetY > KINGDOM_STAIRS.top - 3`）；條橋由 44.2 米落 14 級去 40 米。
 - Biome 6 裝飾減晒：冇咗山前面嘅細石、細水晶、石堆、木支架、碎石地、鑽機、松樹、雪堆、水晶石縫、礦燈柱、山頂石堆；隕石裝飾（坑、裂縫、山腳細水晶）都唔放喺 Biome 6。淨係留：石層 + 雪頂、瀑布、5 嚿大水晶、3 個礦洞口（山腳前面、半山、右邊山腳）、兩邊礦車路軌。
+- 2026-11-07 第三輪（小朋友：「add back all of the decorations」「the mountain to have more width not taller」「magical kingdom REMOVE the messy TREES THEY MAKE THE pets so hard to see」）：
+  - 座山高度返返原本 **10 層 13 米**（`KINGDOM_Y` 返返 13，條橋平行入閘門），但係**闊同長好多**：山腳 45×55（x ±22.5，z -507 → -452.5），山頂 18×14 大平台；前面每級 4.5 米深（中間樓梯每級 1.5 米），兩邊每級 1.5 米，後面直懸崖（喺條橋下面，冇窄級卡人）。礦車路軌 = 山腳 ±2.2 米。
+  - Biome 6 裝飾全部返嚟（同第一輪一樣：細石、水晶、石堆、礦燈支架、碎石地、鑽機、松樹、雪堆、水晶石縫、礦燈柱、山頂石堆、隕石裝飾），擺喺新形狀上面（松樹每級多啲，因為級闊咗）。
+  - 🏰 Enchanted Kingdom：拎走地上嘅水晶樹、奇怪蘑菇樹（大傘 + 吊住嘅光球）、邊界巨型樹、藤；蝴蝶 110 → 50；淨係兩邊邊位有 40 粒矮發光蘑菇 + 細方塊。留低金色大道、彩虹拱門、地板、皇宮、噴泉、符文、浮島、Skywhale。

@@ -73,28 +73,6 @@ function glowShroom(root, x, z, s, rand) {
   add(root, new THREE.CylinderGeometry(0.12 * s, 0.16 * s, 0.6 * s, 6), mat(0xf3e5f5), x, 0.3 * s, z, false);
   add(root, new THREE.SphereGeometry(0.45 * s, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c, x, 0.6 * s, z, false);
 }
-// 邊界嘅藤（小朋友：vines around the border）：由山頂吊落嚟，有發光花同葉
-function vines(root, rect, rand) {
-  const leaf = mat(0x2e7d32);
-  const leaf2 = mat(0x66bb6a);
-  const put = (x, z, side, axis) => {
-    const len = 6 + rand() * 9;
-    const top = 11 + rand() * 6;
-    for (let y = top; y > top - len; y -= 0.55) {
-      const wob = Math.sin(y * 1.7 + x + z) * 0.25;
-      const vx = axis === 'x' ? x + side * 0.2 : x + wob;
-      const vz = axis === 'x' ? z + wob : z + side * 0.2;
-      add(root, new THREE.BoxGeometry(0.16, 0.6, 0.16), y % 1.1 < 0.55 ? leaf : leaf2, vx, y, vz, false);
-      if (rand() < 0.35) add(root, new THREE.BoxGeometry(0.38, 0.06, 0.24), leaf2, vx, y, vz, false).rotation.y = rand() * 3;
-      if (rand() < 0.12) add(root, new THREE.OctahedronGeometry(0.2), strangeMats[Math.floor(rand() * STRANGE.length)], vx, y, vz, false); // 發光花
-    }
-  };
-  for (let z = rect.maxZ - 18; z > rect.minZ + 1; z -= 1.6) {
-    put(rect.minX - 0.1, z + rand() * 0.8, 1, 'x');
-    put(rect.maxX + 0.1, z + rand() * 0.8, -1, 'x');
-  }
-  for (let x = rect.minX + 1; x < rect.maxX - 1; x += 1.6) put(x + rand() * 0.8, rect.minZ - 0.1, 1, 'z');
-}
 // 魔法地板（小朋友：cool looking floors）：一塊塊彩色寶石磚 + 發光縫
 function magicFloor(view, rect) {
   const c = document.createElement('canvas');
@@ -162,7 +140,7 @@ function castle(root, rect) {
 }
 
 
-// 邊界：好高嘅水晶懸崖（每段唔同高度，頂有發光水晶）+ 巨型發光奇怪樹 + 吊落嚟嘅藤
+// 邊界：好高嘅水晶懸崖（每段唔同高度，頂有發光水晶）
 function crystalCliffs(root, rect, rand) {
   const rock = [mat(0x4527a0, { flatShading: true }), mat(0x5e35b1, { flatShading: true }), mat(0x311b92, { flatShading: true })];
   const crystalC = [0xea80fc, 0x18ffff, 0xffd740, 0x76ff03];
@@ -185,12 +163,7 @@ function crystalCliffs(root, rect, rand) {
   for (let x = rect.minX - 7; x < rect.maxX + 7; x += S) cliff(x + S / 2, rect.minZ - 3.5, S + 0.5, 7);
   // 閘門兩邊（王國嘅入口嗰幅）
   for (let x = rect.minX - 7; x < rect.maxX + 7; x += S) if (Math.abs(x + S / 2) > 15) cliff(x + S / 2, rect.maxZ - 0.7, S + 0.5, 1.2); // 薄啲：唔好伸入 Biome 6 山後面條路
-  // 巨型發光奇怪樹沿住邊界
-  for (let z = rect.maxZ - 8; z > rect.minZ + 8; z -= 13) {
-    strangeTree(root, rect.minX + 4, z, 2.2 + rand() * 0.6, rand);
-    strangeTree(root, rect.maxX - 4, z - 6, 2.2 + rand() * 0.6, rand);
-  }
-  for (let x = rect.minX + 12; x < rect.maxX - 8; x += 15) strangeTree(root, x, rect.minZ + 5, 2.4 + rand() * 0.5, rand);
+  // （以前沿住邊界有巨型發光奇怪樹：Issue #14 小朋友話太亂、遮住動物 → 拎走咗）
 }
 
 // 中間嘅水晶噴泉（發光水）；小朋友：要行得穿（冇撞嘢圈）
@@ -241,24 +214,19 @@ export function enchanted(staticRoot, rect, rand, live) {
       if (Math.abs(x) > 6 && Math.hypot(x, z - (cz + 8)) > 9) return [x, z];
     }
   };
-  for (let n = 0; n < 90; n++) {
-    const [x, z] = spot();
-    crystalTree(root, x, z, 1.1 + rand() * 0.9, rand);
-    addCollider(x, z, 0.7);
+  // Issue #14（小朋友 2026-11-07：「REMOVE the messy TREES THEY MAKE THE pets so hard to see」）：
+  // 地上冇晒水晶樹、奇怪蘑菇樹、邊界嘅藤；淨係兩邊邊位有啲矮矮嘅發光蘑菇同小方塊，中間清清楚楚睇到動物
+  const edgeSpot = () => {
+    const side = rand() < 0.5 ? -1 : 1;
+    return [side * (half - 2 - rand() * 8), rect.minZ + 6 + rand() * (d - 12)];
+  };
+  for (let n = 0; n < 40; n++) {
+    const [x, z] = edgeSpot();
+    glowShroom(root, x, z, 0.6 + rand() * 0.5, rand);
   }
-  for (let n = 0; n < 70; n++) {
-    const [x, z] = spot();
-    strangeTree(root, x, z, 1.2 + rand() * 1.0, rand);
-    addCollider(x, z, 0.8);
-  }
-  for (let n = 0; n < 240; n++) {
-    const [x, z] = spot();
-    glowShroom(root, x, z, 0.8 + rand() * 1.6, rand);
-  }
-  vines(root, rect, rand);
-  for (let n = 0; n < 500; n++) {
+  for (let n = 0; n < 120; n++) {
     const c = [0xea80fc, 0x80d8ff, 0xffe57f, 0xb9f6ca][n % 4];
-    const [x, z] = spot();
+    const [x, z] = edgeSpot();
     add(root, new THREE.BoxGeometry(0.2, 0.2, 0.2), glow(c, 1), x, 0.12, z, false);
   }
   bakeStatic(root, view);
@@ -298,7 +266,7 @@ export function enchanted(staticRoot, rect, rand, live) {
   whaleG.add(whale);
   view.add(whaleG);
   // 水晶蝴蝶（多啲）
-  const butterflies = Array.from({ length: 110 }, (_, i) => {
+  const butterflies = Array.from({ length: 50 }, (_, i) => { // 少啲（唔好遮住動物）
     const b = buildCrystalButterfly([0xea80fc, 0x80d8ff, 0xffe57f, 0xb9f6ca, 0xb388ff][i % 5]);
     b.scale.setScalar(1.6);
     view.add(b);
@@ -395,7 +363,7 @@ export function playKingdomReveal({ camera, playMovie, once, shake, play, gate, 
     length: 21,
     skipText: 'Click or press any key to keep playing ▶',
     shots: [
-      [0, 5, { p: V(1.5, 20.5, Z + 14), l: V(0, 18, Z) }, { p: V(2, 17, Z + 8), l: V(0, 17, Z) }], // 喺橋（落樓梯嗰段）上面望住閘門打開
+      [0, 5, { p: V(4, 15.5, Z + 12), l: V(0, 18, Z) }, { p: V(2, 15, Z + 8), l: V(0, 17, Z) }], // 喺山頂／橋上面望住閘門打開
       [5, 10, { p: V(0, 15, Z + 2), l: V(0, 14, Z - 30) }, { p: V(0, 26, Z - 20), l: V(0, 14, Z - 80) }], // 飛過閘門，望到成個王國
       [10, 15, { p: V(-14, 21, Z - 34), l: V(0, 48, Z - 50) }, { p: V(-16, 23, Z - 40), l: V(8, 50, Z - 55) }], // 望上天：Royal Skywhale！
       [15, 21, { p: V(10, 17, Z - 24), l: V(-6, 15, Z - 44) }, { p: V(6, 16.5, Z - 30), l: V(-8, 15.5, Z - 50) }], // 水晶蝴蝶、符文

@@ -222,8 +222,8 @@ function placement(biome, i, count, rect) {
   // 滾石由山頂前面嘅邊開始碌（山頂本身安全，可以安心救動物）
   const rollStart = SUMMIT.z + SUMMIT.halfZ + 1.5;
   if (kind === 0) return { axis: 'z', fixed: [-6, 0, 6][j % 3], min: rollStart, max: rect.maxZ - 1, oneWay: true, start: rollStart + j * 5 };
-  // 礦車喺座山兩邊嘅路軌上面（Issue #14 座山大咗：路軌喺山腳外面 2.5 米，biomes.js coolMountain 起）
-  if (kind === 1) return { axis: 'z', fixed: (j % 2 ? 1 : -1) * (MOUNTAIN.maxX + 2.5), min: MOUNTAIN.minZ + 1, max: rect.maxZ - 2 };
+  // 礦車喺座山兩邊嘅路軌上面（Issue #14 座山大咗：路軌喺山腳外面 2.2 米，biomes.js coolMountain 起）
+  if (kind === 1) return { axis: 'z', fixed: (j % 2 ? 1 : -1) * (MOUNTAIN.maxX + 2.2), min: MOUNTAIN.minZ + 1, max: rect.maxZ - 2 };
   return { axis: 'x', fixed: MOUNTAIN.maxZ + 2.5 + j * 2.5, min: -limit, max: limit };
 }
 

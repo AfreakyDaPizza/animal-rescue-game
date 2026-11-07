@@ -626,17 +626,18 @@ export const KINGDOM_GATE = { open: 0, fast: false, bars: null, swirl: null, z: 
 export const MOUNTAIN = { minX: -15, maxX: 15, minZ: 0, maxZ: 0 }; // 山腳範圍（main／hazards 用）
 const STAIRS = { z: 0 }; // 樓梯口
 
-// 座山嘅形狀（Issue #14 小朋友 2026-11-07：「now make the mountain bigger」→「still too small」）
-// 10 層 13 米 → 18 層 23.4 米 → 34 層 44.2 米；山腳 44×~60（差唔多成個生態區咁闊）。前面每級 1.25 米闊（中間樓梯），
-// 兩邊好斜，後面差唔多係懸崖；條橋由山頂背面落少少去王國閘門（王國升咗去 KINGDOM_Y = 40 米）
+// 座山嘅形狀（Issue #14 小朋友 2026-11-07：「i want the mountain to have more width not taller」）
+// 高度返返原本 10 層 13 米（= KINGDOM_Y，條橋平行入閘門），但係闊好多、長好多：
+// 山腳 45×~59（x ±22.5，差唔多成個生態區咁闊）；前面每級 4.5 米深（大大級平台，中間樓梯每級 1.5 米），
+// 兩邊每級 1.5 米，後面直嘅懸崖（喺條橋下面）
 const MTN = {
-  LAYERS: 34,
+  LAYERS: 10,
   LAYER: 1.3,        // 每層幾高（跳得上，大約跳到 1.5 米）
-  SHRINK_X: 0.47,    // 兩邊每級幾闊（兩邊好斜）
-  SHRINK_FRONT: 1.25, // 前面每級幾闊（樓梯每層 3 級就喺度）
-  SHRINK_BACK: 0.2,  // 後面每級幾闊（差唔多直嘅懸崖，喺條橋下面）
-  TOP_HX: 6.5,       // 最頂嗰層（一半）：夠位俾兩隻動物一左一右
-  TOP_HZ: 5.5,
+  SHRINK_X: 1.5,     // 兩邊每級幾闊
+  SHRINK_FRONT: 4.5, // 前面每級幾深（樓梯每層 3 級就喺度）
+  SHRINK_BACK: 0,    // 後面：直嘅懸崖（喺條橋下面；冇窄級，唔會跌落去卡住）
+  TOP_HX: 9,         // 最頂嗰層（一半）：大平台，兩隻動物一左一右
+  TOP_HZ: 7,
   STAIR_HALF: 2.5,   // 中間條樓梯（一半闊）
   cz: 0,             // 山頂中心 z（buildMountain 計）
 };
@@ -692,7 +693,7 @@ function buildMountain(scene, rect) {
   const stripe = mat(0x4e463e, { flatShading: true });
   const snow = mat(0xf5f7fa);
   const snowLip = mat(0xffffff, { roughness: 0.4 });
-  const SNOW_FROM = LAYERS - 8; // 頂 8 層有雪
+  const SNOW_FROM = LAYERS - 4;
   for (let i = 0; i < LAYERS; i++) {
     const hx = mtnHx(i);
     const f = mtnFront(i);
@@ -737,11 +738,14 @@ function buildMountain(scene, rect) {
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(SW * 2 + 1.6, 0.12, 0.08), edgeMat), 0, 5.4, trailZ + 0.62, false);
   STAIRS.z = trailZ;
 
-  // 山頂：支旗
+  // 山頂：支旗 + 一堆石（cairn）
   const hx = mtnHx(LAYERS - 1);
   const back = mtnBack(LAYERS - 1);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.18, 4.5, 0.18), mat(0x5d4037)), hx - 0.5, top + 2.25, back + 0.6);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.05), mat(0xe53935)), hx - 1.4, top + 3.9, back + 0.6, false);
+  [[0.9, 0.5], [0.7, 0.45], [0.5, 0.4]].forEach(([w, h], k) => {
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(w, h, w), bands[2][k % 2]), -hx + 0.8, top + 0.25 + k * 0.45, back + 0.8).rotation.y = k * 0.5;
+  });
   Object.assign(SUMMIT, { x: 0, z: cz, top, halfX: MTN.TOP_HX - 0.9, halfZ: MTN.TOP_HZ - 0.9 });
   Object.assign(MOUNTAIN, { minX: -mtnHx(0), maxX: mtnHx(0), minZ: mtnBack(0), maxZ: mtnFront(0) });
 }
@@ -772,15 +776,15 @@ function railLine(scene, x, za, zb) {
   for (let z = Math.min(za, zb) + 0.4; z < Math.max(za, zb); z += 0.8) add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.07, 0.22), sleeper), x, 0.04, z, false);
 }
 
-// Biome 6 再型啲（小朋友 2026-10-15）：瀑布一級級流落嚟、水池、礦洞口 + 路軌、山頂金光圈、鷹喺山頂飛、雪
-// Issue #14（2026-11-07）：座山大咗；小朋友話唔好咁多裝飾 → 冇晒松樹、細水晶、礦燈柱，淨係幾嚿大水晶、3 個礦洞口、路軌
+// Biome 6 再型啲（小朋友 2026-10-15）：瀑布一級級流落嚟、水池、礦洞口 + 路軌、山上有松樹、山頂金光圈、鷹喺山頂飛、雪
+// Issue #14（2026-11-07）：座山大咗 → 仲有水晶礦脈、幾個礦洞口、兩邊礦車路軌、半山積雪
 function coolMountain(scene, live, rect, rand) {
   const cz = SUMMIT.z;
   const LAYER = MTN.LAYER;
   const SH = MTN.SHRINK_FRONT;
   const LAYERS = MTN.LAYERS;
 
-  // 瀑布：一條流動嘅水，由第 16 層一級級流落山腳（x = -4.6，樓梯左邊）
+  // 瀑布：一條流動嘅水，由第 7 層一級級流落山腳（x = -4.6，樓梯左邊）
   const c = document.createElement('canvas');
   c.width = 16;
   c.height = 64;
@@ -794,7 +798,7 @@ function coolMountain(scene, live, rect, rand) {
   tex.colorSpace = THREE.SRGBColorSpace;
   const waterMat = new THREE.MeshStandardMaterial({ map: tex, emissive: 0x0277bd, emissiveIntensity: 0.35, transparent: true, opacity: 0.88, roughness: 0.1 });
   const wx = -4.6;
-  const FALL_TOP = 16;
+  const FALL_TOP = MTN.LAYERS - 3;
   for (let i = 0; i <= FALL_TOP; i++) {
     const front = mtnFront(i);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.6, LAYER), waterMat);
@@ -823,37 +827,99 @@ function coolMountain(scene, live, rect, rand) {
   splash.frustumCulled = false;
   live.add(splash);
 
-  // 礦洞口（小朋友 2026-11-07：唔好咁多裝飾 → 淨係 3 個）：山腳前面（+ 路軌、礦車）、半山一個、右邊山腳一個（駁住礦車路軌）
+  // 礦洞口（山腳右邊）+ 路軌 + 一架礦車 + 寶石
   const mx = 9;
   const mz = mtnFront(0) + 0.05;
   mineDoor(scene, mx, 0, mz);
   railLine(scene, mx, mz + 0.4, mz + 6.4);
   add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 1.4), mat(0x795548)), mx, 0.55, mz + 3.5);
-  const DOOR_HIGH = [11, 14]; // [x, 第幾層]
-  mineDoor(scene, DOOR_HIGH[0], LAYER * DOOR_HIGH[1], mtnFront(DOOR_HIGH[1]) + 0.05, 0, 0.9);
-  const laneX = MOUNTAIN.maxX + 2.5; // 礦車條路（hazards.js 用同一個位）
-  const sideZ = cz + 10;
-  mineDoor(scene, mtnHx(0) + 0.05, 0, sideZ, Math.PI / 2);
-  const spur = new THREE.Group(); // 礦洞口出嚟嘅短路軌（打橫）駁去礦車路
-  railLine(spur, 0, 0, laneX - mtnHx(0) - 0.4);
-  spur.rotation.y = Math.PI / 2;
-  spur.position.set(mtnHx(0) + 0.4, 0, sideZ);
-  scene.add(spur);
-  for (const s of [-1, 1]) railLine(scene, s * laneX, MOUNTAIN.minZ + 0.5, rect.maxZ - 1.5); // 兩邊長路軌（礦車喺度上落）
+  for (let k = 0; k < 5; k++) {
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), mat([0x00e5ff, 0xff4081, 0xffd600][k % 3], { emissive: [0x00e5ff, 0xff4081, 0xffd600][k % 3], emissiveIntensity: 2 }));
+    add(scene, gem, mx - 0.4 + (k % 3) * 0.4, 1.0, mz + 3.2 + Math.floor(k / 3) * 0.5);
+  }
+  // 半山嘅礦洞口（企喺嗰級上面）+ 兩邊山腳嘅礦洞口（駁住礦車路軌）
+  const DOORS = [[-14, 3], [12, 5], [-9, 7]];
+  for (const [x, i] of DOORS) mineDoor(scene, x, LAYER * i, mtnFront(i) + 0.05, 0, 0.75);
+  const laneX = MOUNTAIN.maxX + 2.2; // 礦車條路（hazards.js 用同一個位）
+  const sideZ = cz + 6;
+  for (const s of [-1, 1]) {
+    mineDoor(scene, s * (mtnHx(0) + 0.05), 0, sideZ, s * Math.PI / 2);
+    // 礦洞口出嚟嘅短路軌（打橫）駁去礦車路
+    const spur = new THREE.Group();
+    railLine(spur, 0, 0, laneX - mtnHx(0) - 0.4);
+    spur.rotation.y = s * Math.PI / 2;
+    spur.position.set(s * (mtnHx(0) + 0.4), 0, sideZ);
+    scene.add(spur);
+    railLine(scene, s * laneX, MOUNTAIN.minZ + 0.5, rect.maxZ - 1.5); // 兩邊長路軌（礦車喺度上落）
+    // 路軌旁邊一排礦燈柱
+    for (let z = rect.maxZ - 4; z > MOUNTAIN.minZ + 2; z -= 9) {
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 0.2), mat(0x5d4037)), s * (laneX + 1.1), 1.5, z);
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.15, 0.15), mat(0x5d4037)), s * (laneX + 0.85), 2.9, z, false);
+      add(scene, new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.28, 8), mat(0xfff59d, { emissive: 0xffd54f, emissiveIntensity: 1.5 })), s * (laneX + 0.6), 2.7, z, false);
+    }
+  }
 
-  // 幾嚿大水晶（企喺山級上面同山腳兩個角）：一嚿大 + 兩嚿細，發光
-  const crystalColors = [0x7c4dff, 0x00e5ff, 0xff4081];
-  const bigCrystal = (x, y, z, size, color) => {
-    const m = mat(color, { emissive: color, emissiveIntensity: 1.8, flatShading: true });
-    [[0, 0, 1, 0], [0.7, 0.3, 0.6, 0.5], [-0.6, -0.2, 0.5, -0.45]].forEach(([dx, dz, k, lean]) => {
-      const cr = add(scene, new THREE.Mesh(new THREE.OctahedronGeometry(size * k), m), x + dx * size, y + size * k * 1.4, z + dz * size, false);
-      cr.scale.y = 1.9;
-      cr.rotation.z = lean;
-    });
-  };
-  [[-15, 4], [14, 8], [-9, 21]].forEach(([x, i], n) => bigCrystal(x, LAYER * (i + 1), mtnFront(i + 1) + MTN.SHRINK_FRONT / 2, 0.9, crystalColors[n % 3]));
-  bigCrystal(-17, 0, mtnFront(0) + 5, 1.4, crystalColors[1]);
-  bigCrystal(17, 0, mtnFront(0) + 9, 1.2, crystalColors[0]);
+  // 水晶礦脈：山身（前面同兩邊）一嚿嚿發光水晶 + 一條條發光石縫
+  const veinColors = [0x7c4dff, 0x00e5ff, 0xff4081];
+  const veinMats = veinColors.map((cc) => mat(cc, { emissive: cc, emissiveIntensity: 2.2, flatShading: true }));
+  const crackMats = veinColors.map((cc) => mat(cc, { emissive: cc, emissiveIntensity: 1.4 }));
+  for (let n = 0; n < 70; n++) {
+    const i = Math.floor(rand() * (LAYERS - 5));
+    const y = LAYER * i + 0.25 + rand() * (LAYER - 0.5);
+    const k = n % 3;
+    const side = rand();
+    let x;
+    let z;
+    let rotY = 0;
+    if (side < 0.5) {
+      // 前面：避開樓梯同瀑布
+      x = (rand() * 2 - 1) * (mtnHx(i) - 0.6);
+      if (Math.abs(x) < MTN.STAIR_HALF + 0.8 || Math.abs(x - wx) < 1.4) continue;
+      z = mtnFront(i) + 0.05;
+    } else {
+      const s = side < 0.75 ? -1 : 1;
+      x = s * (mtnHx(i) + 0.05);
+      z = mtnBack(i) + 1 + rand() * (mtnFront(i) - mtnBack(i) - 2);
+      rotY = Math.PI / 2;
+      if (Math.abs(z - sideZ) < 2.5) continue; // 礦洞口
+    }
+    if (n % 2) {
+      const cr = add(scene, new THREE.Mesh(new THREE.OctahedronGeometry(0.22 + rand() * 0.25), veinMats[k]), x, y, z, false);
+      cr.scale.y = 1.7;
+      cr.rotation.set(rand() - 0.5, rand() * 3, rand() - 0.5);
+    } else {
+      const cr = add(scene, new THREE.Mesh(new THREE.BoxGeometry(1.2 + rand() * 1.8, 0.08, 0.06), crackMats[k]), x, y, z, false);
+      cr.rotation.y = rotY;
+      cr.rotation[rotY ? 'x' : 'z'] = (rand() - 0.5) * 0.9;
+    }
+  }
+
+  // 山上每級都有啲松樹（前面同兩邊，避開樓梯、瀑布、礦洞口；積雪嗰幾層冇樹）
+  for (let i = 0; i < LAYERS - 3; i++) {
+    for (let n = 0; n < 8; n++) {
+      // 多數種喺前面嗰級（1.5 米闊），少少喺兩邊嗰級（窄啲，樹細啲）
+      const front = n < 6;
+      const x = front ? (rand() * 2 - 1) * (mtnHx(i) - 0.7) : (rand() < 0.5 ? -1 : 1) * (mtnHx(i + 1) + MTN.SHRINK_X / 2);
+      const z = front ? mtnFront(i + 1) + 0.6 + rand() * (MTN.SHRINK_FRONT - 1.2) : cz + rand() * (mtnFront(i + 1) - cz);
+      if (Math.abs(x) < MTN.STAIR_HALF + 1.2 || Math.abs(x - wx) < 1.8 || (i < 2 && Math.abs(x - mx) < 2.5)) continue;
+      if (DOORS.some(([dx, di]) => Math.abs(x - dx) < 2.2 && Math.abs(i + 1 - di) <= 1)) continue;
+      if (!front && i === 0 && Math.abs(z - sideZ) < 3) continue; // 兩邊礦洞口
+      const g = new THREE.Group();
+      pineTree(g, 0, 0, front ? 0.5 + rand() * 0.25 : 0.38);
+      g.position.set(x, LAYER * (i + 1), z); // 種喺嗰級上面
+      scene.add(g);
+    }
+  }
+  // 半山開始有雪：雪堆喺級上面
+  const snowPile = mat(0xffffff, { roughness: 0.5 });
+  for (let i = LAYERS - 6; i < LAYERS - 4; i++) {
+    for (let n = 0; n < 14; n++) {
+      const x = (rand() * 2 - 1) * (mtnHx(i) - 0.5);
+      const z = mtnFront(i + 1) + 0.25 + rand() * (SH - 0.5);
+      if (Math.abs(x) < MTN.STAIR_HALF + 0.4 || Math.abs(x - wx) < 1.2) continue;
+      add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.8 + rand() * 1.4, 0.12, 0.5 + rand() * 0.5), snowPile), x, LAYER * (i + 1) + 0.06, z, false);
+    }
+  }
 
   // 山頂金光圈（動物喺度）
   const ring = new THREE.Mesh(new THREE.RingGeometry(SUMMIT.halfX + 0.4, SUMMIT.halfX + 0.7, 32), new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
@@ -940,8 +1006,8 @@ export function newBiomeCountdown(now = new Date()) {
   return 'Coming soon!';
 }
 function buildBridge(scene, live, rect) {
-  // Issue #14（2026-11-07）：座山高咗（44.2 米），王國升咗去 KINGDOM_Y（40 米）→ 條橋由山頂平行 3 米，
-  // 之後一級級落（木級，每級矮過 0.45 米，返上山都唔使跳），最尾平行 5 米入閘門（數喺 BRIDGE，buildMountain 計）
+  // Issue #14（2026-11-07）：條橋由山頂背面去閘門；山頂高過 KINGDOM_Y 就喺中間一級級落（每級矮過 0.45 米），
+  // 而家座山同王國一樣高（13 米）→ 平路（數喺 BRIDGE，buildMountain 計）（數喺 BRIDGE，buildMountain 計）
   const { z1, zA, zB, z2, topA, topB, steps, stepH, tread } = BRIDGE;
   const len = z1 - z2;
   const W = 7; // 橋面闊（小朋友：要大啲）
@@ -1302,13 +1368,63 @@ function buildBridge(scene, live, rect) {
 
 // Biome 6：採礦山 — 中間一座好大嘅三角形山（要跳上去），山前面有石、水晶、鑽機
 function mining(scene, rect, rand, live) {
-  // Issue #14（小朋友 2026-11-07：「dont add too many decorations」）：唔再擺一堆細石、細水晶、木支架、鑽機；
-  // 淨係一座大山（石層、雪頂、幾嚿大水晶、礦洞口、路軌），乾淨型啲
+  const k = density(rect);
   buildMountain(scene, rect);
+  const rock = mat(0x6d6359, { flatShading: true });
+  const rock2 = mat(0x857a6e, { flatShading: true });
+  // 山前面嘅空地（入口同山腳之間）先放裝飾
+  const front = () => [(rand() * 2 - 1) * 16, MOUNTAIN.maxZ + 1.5 + rand() * (rect.maxZ - MOUNTAIN.maxZ - 3)];
+  for (let n = 0; n < 6 * k; n++) {
+    const [x, z] = front();
+    if (Math.abs(x) < 4) continue; // 中間留路
+    add(scene, new THREE.Mesh(new THREE.BoxGeometry(0.6 + rand(), 0.5 + rand() * 0.6, 0.6 + rand()), n % 2 ? rock : rock2), x, 0.3, z).rotation.y = rand() * 3;
+  }
+  // 發光水晶（山前面同山嘅每一級上面）
+  const crystalColors = [0x7c4dff, 0x00e5ff, 0xff4081];
+  for (let n = 0; n < 8 * k; n++) {
+    const [x, z] = front();
+    if (Math.abs(x) < 4) continue;
+    const c = crystalColors[n % 3];
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.35 + rand() * 0.3), mat(c, { emissive: c, emissiveIntensity: 2.2, flatShading: true }));
+    crystal.scale.y = 1.8;
+    add(scene, crystal, x, 0.5, z);
+  }
+  // Issue #17：山前面空地大咗：碎石地、石堆、木支架
+  groundPatches(scene, { ...rect, minZ: MOUNTAIN.maxZ + 1 }, rand, [0x6f655a, 0x9a8f80, 0x5e554b], Math.round(8 * k));
+  for (let n = 0; n < 4 * k; n++) {
+    const [x, z] = front();
+    if (Math.abs(x) < 4) continue;
+    rockCluster(scene, x, z, 1 + rand() * 0.8, 0x7a6f63);
+  }
+  for (let n = 0; n < 3; n++) {
+    const [x, z] = front();
+    if (Math.abs(x) < 5) continue;
+    const wood = mat(0x6d4c41);
+    for (const s of [-1, 1]) put(scene, new THREE.BoxGeometry(0.3, 2.6, 0.3), wood, x + s * 1.2, 1.3, z);
+    put(scene, new THREE.BoxGeometry(2.9, 0.3, 0.35), wood, x, 2.6, z);
+    put(scene, new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8), mat(0xfff59d, { emissive: 0xffd54f, emissiveIntensity: 1.5 }), x, 2.3, z, false); // 礦燈
+  }
+  // 會郁嘅鑽油機（喺山前面兩個角，上下鑽）
+  const drills = [];
+  for (const [x, z] of [[-14, rect.maxZ - 6], [14, rect.maxZ - 6]]) {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 2), mat(0xffc107)), 0, 0.3, 0);
+    for (const s of [-0.7, 0.7]) add(g, new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 0.2), mat(0x616161)), s, 2.3, 0);
+    const bit = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), mat(0x9e9e9e, { metalness: 0.8 }));
+    bit.rotation.x = Math.PI;
+    g.add(bit);
+    live.add(g);
+    drills.push(bit);
+  }
   const updateCool = coolMountain(scene, live, rect, rand);
   const updateBridge = buildBridge(scene, live, rect);
   return (dt, t) => {
     updateCool(dt, t);
     updateBridge(dt, t);
+    drills.forEach((bit, i) => {
+      bit.position.y = 2 + Math.sin(t * 3 + i) * 1.2;
+      bit.rotation.y = t * 8;
+    });
   };
 }

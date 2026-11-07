@@ -38,7 +38,7 @@ export const STEM = { minX: -BIOME_HALF_W, maxX: BIOME_HALF_W, minZ: -6 * BIOME_
 // Biome 7 Enchanted Kingdom：Biome 6 座山頂條橋盡頭嗰道閘門後面；閘門開咗先行得入（kingdom.open，main.js 睇日期）
 export const kingdom = { open: false };
 // 小朋友 2026-10-17：入咗閘門之後地面要同閘門一樣高（天空王國），仲要大啲
-export const KINGDOM_Y = 40; // Issue #14（2026-11-07）：Biome 6 座山高咗（44.2 米），王國跟住升（以前 13）
+export const KINGDOM_Y = 13; // 天空王國高度 = Biome 6 山頂（10 層 × 1.3 米）
 export const KINGDOM_RECT = { minX: -75, maxX: 75, minZ: -6 * BIOME_LENGTH - 200, maxZ: -6 * BIOME_LENGTH }; // 小朋友：要好大（150 × 200 米）
 const KINGDOM_DOOR = { minX: -3.4, maxX: 3.4, minZ: -6 * BIOME_LENGTH - 4, maxZ: -6 * BIOME_LENGTH + 3 }; // 閘門個窿（接住條橋同入面嘅樓梯）
 
