@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { ANIMALS_20 } from './animals20.js'; // 頭 20 隻嘅新設計
+import { ANIMALS_20 } from './animals20v3.js'; // 頭 20 隻（第三版，Issue #18）
 import { ANIMALS_30 } from './animals30.js'; // 其餘 30 隻嘅新設計
 import { WORST_PETS } from './worstPets.js'; // 「最差 20 隻」11–20 號新款（優先）
 import { HALLOWEEN_MODELS } from './halloweenPets.js'; // 🎃 Halloween 蛋寵物

@@ -5,7 +5,8 @@
 
 import * as THREE from 'three';
 import { box, pivot, cuteEyes, spike, ball, BLACK, WHITE } from './modelKit.js';
-import { beast, ANIMALS_20 } from './animals20.js';
+import { beast } from './animals20.js';
+import { ANIMALS_20 } from './animals20v3.js';
 import { ANIMALS_30 } from './animals30.js';
 
 const PI = Math.PI;
