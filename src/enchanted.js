@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { BIOME_LENGTH } from './data/biomeList.js';
 import { addPlatform, addCollider, bakeStatic, kingdom, KINGDOM_Y, KINGDOM_PET_HALF_X } from './world.js';
 import { buildSkywhaleModel, buildCrystalButterfly, buildRune } from './enchantedModels.js';
+import { buildParkour, inParkourZone } from './kingdomParkour.js'; // 🍄 Issue #18：跳菇上浮島 → 👼 Isotope Angel
 
 export const kingdomView = { group: null, reveal: false }; // reveal：開門動畫俾人睇住先
 // 閘門嘅位同高度（開門動畫用）
@@ -186,7 +187,8 @@ function crystalCliffs(root, rect, rand) {
   for (let x = rect.minX - 7; x < rect.maxX + 7; x += S) if (Math.abs(x + S / 2) > 15) cliff(x + S / 2, rect.maxZ - 0.7, S + 0.5, 1.2); // 薄啲：唔好伸入 Biome 6 山後面條路
   // 巨型發光奇怪樹沿住邊界（Issue #14：疏啲，以前每 13 米一棵，而家每 26 米；後面淨係兩個角）
   for (let z = rect.maxZ - 20; z > rect.minZ + 8; z -= 26) {
-    strangeTree(root, rect.minX + 4, z, 2.2 + rand() * 0.6, rand);
+    if (!inParkourZone(rect.minX + 4, z, 8)) strangeTree(root, rect.minX + 4, z, 2.2 + rand() * 0.6, rand); // 🍄 跳菇路線嗰度唔種（樹頂會撞到浮島）
+    else rand();
     strangeTree(root, rect.maxX - 4, z - 13, 2.2 + rand() * 0.6, rand);
   }
   for (const x of [rect.minX + 12, rect.maxX - 12]) strangeTree(root, x, rect.minZ + 5, 2.4 + rand() * 0.5, rand);
@@ -249,14 +251,16 @@ export function enchanted(staticRoot, rect, rand, live) {
   const treeOk = (x, z) =>
     Math.abs(x) > 12 && Math.abs(x) < half - 4 && z > rect.minZ + 16 && z < rect.maxZ - 14 && !petZone(x, z, 2)
     && fountains.every(([fx, fz, r]) => Math.hypot(x - fx, z - fz) > r)
+    && !inParkourZone(x, z, 7) // 🍄 跳菇 Parkour 路線（Issue #18）：樹唔好頂住浮島
     && trees.every((t) => Math.hypot(t[0] - x, t[1] - z) > 3.2); // 樹之間留路（唔會圍住人）
   const clusters = [];
-  for (let tries = 0; clusters.length < 16 && tries < 400; tries++) {
+  // Issue #18（小朋友：「put some more trees」）：16 → 21 叢（樹多咗大約三成半），一樣淨係兩邊
+  for (let tries = 0; clusters.length < 21 && tries < 600; tries++) {
     const side = clusters.length % 2 ? 1 : -1;
     const x = side * (14 + rand() * (half - 20));
     const z = rect.minZ + 18 + rand() * (d - 34);
     if (petZone(x, z, 4) && Math.abs(x) < half - 12) continue; // 動物範圍：淨係最邊嗰條
-    if (treeOk(x, z) && clusters.every((c) => Math.hypot(c[0] - x, c[1] - z) > 14)) clusters.push([x, z]);
+    if (treeOk(x, z) && clusters.every((c) => Math.hypot(c[0] - x, c[1] - z) > 12)) clusters.push([x, z]);
   }
   let nCrystal = 0;
   let nStrange = 0;
@@ -319,10 +323,15 @@ export function enchanted(staticRoot, rect, rand, live) {
     if (i % 2) strangeTree(g, 0, 0, 0.8 * s, rand);
     else crystalTree(g, 0, 0, 0.8 * s, rand);
     const y = 18 + rand() * 26;
-    g.position.set((rand() * 2 - 1) * (half - 8), y, rect.minZ + 10 + rand() * (d - 20));
+    let x = (rand() * 2 - 1) * (half - 8);
+    const z = rect.minZ + 10 + rand() * (d - 20);
+    if (inParkourZone(x, z, 10)) x = -x; // 🍄 唔好擋住跳菇路線：搬去另一邊
+    g.position.set(x, y, z);
     view.add(g);
     return { g, y, i };
   });
+  // 🍄 跳菇 Parkour（Issue #18）：企得嘅浮島 + 彈彈蘑菇 + 光點路線；島上面種棵細樹（行得穿）
+  const parkour = buildParkour(view, (g, x, z, s) => crystalTree(g, x, z, s * 0.85, rand));
   // 天上嘅 Royal Skywhale（好大隻，喺王國上面游圈）
   const whale = buildSkywhaleModel();
   const wsize = new THREE.Box3().setFromObject(whale).getSize(new THREE.Vector3());
@@ -397,6 +406,7 @@ export function enchanted(staticRoot, rect, rand, live) {
     view.visible = kingdom.open || kingdomView.reveal;
     if (!view.visible) return;
     runes.forEach((r, i) => r.userData.spin?.(t + i));
+    parkour(dt, t);
     floorMat.emissiveIntensity = 0.45 + Math.sin(t * 1.5) * 0.2; // 地板條縫一閃一閃
     strangeMats.forEach((m, i) => (m.emissiveIntensity = 0.9 + Math.sin(t * 2 + i) * 0.4)); // 啲樹一明一暗
     for (const isl of islands) isl.g.position.y = isl.y + Math.sin(t * 0.5 + isl.i) * 1.2;

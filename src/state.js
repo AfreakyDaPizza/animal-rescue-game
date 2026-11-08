@@ -44,6 +44,8 @@ const DEFAULTS = {
   fuseNerfed: false, // 舊 Fuse 寵物已經減咗錢（2026-10-18 Fuse nerf）
   firstHatchSeen: false, // 睇咗第一隻寵物出世動畫（敲玻璃、爆、跳圈圈）
   kingdomSeen: false, // 睇咗 Biome 7 開門動畫
+  isotopeAngelClaimed: false, // 👼 Issue #18：跳菇 Parkour 上咗最高嗰個浮島，攞咗 Isotope Angel（每個存檔一次）
+  kingdomIslandBest: 0, // 🏝️ Issue #18：Kingdom Parkour 最高去到第幾個島
   collabSeen: false, // 睇咗秘密結局 THE COLLAB
   labBossDefeated: false, // 打贏咗 Mutated Scientist Poacher
   labRewardPaid: false, // Owner 俾咗 $1000 未

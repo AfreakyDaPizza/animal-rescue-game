@@ -284,3 +284,13 @@ src/data/questions.js ← 野生動物問題
   - Biome 6 裝飾全部返嚟（同第一輪一樣：細石、水晶、石堆、礦燈支架、碎石地、鑽機、松樹、雪堆、水晶石縫、礦燈柱、山頂石堆、隕石裝飾），擺喺新形狀上面（松樹每級多啲，因為級闊咗）。
   - 🏰 Enchanted Kingdom：拎走地上嘅水晶樹、奇怪蘑菇樹（大傘 + 吊住嘅光球）、邊界巨型樹、藤；蝴蝶 110 → 50；淨係兩邊邊位有 40 粒矮發光蘑菇 + 細方塊。留低金色大道、彩虹拱門、地板、皇宮、噴泉、符文、浮島、Skywhale。
 - 2026-11-07 第四輪（小朋友：「dont remove ALL of the trees there」）：🏰 王國樹返嚟一部分（大約以前 4 成，64 棵）：水晶樹 + 奇怪蘑菇樹一叢叢（16 叢，每叢 3–5 棵 + 樹腳蘑菇）種喺兩邊；邊界巨型樹每 26 米一棵 + 後面兩個角；藤每 6.4 米一條（淨係兩邊）。中間清晒：野生動物淨係喺 x ±42（`KINGDOM_PET_HALF_X`，`world.js`；`animals.js` 用）出現，嗰個範圍 + 金色大道 + 噴泉 + 閘門入口都冇樹；樹之間最少 3.2 米（唔會圍住人）。撞嘢圈返嚟。
+
+## Issue #18 第 1 點：Enchanted Kingdom 多啲樹 + 🍄 跳菇 Parkour + 👼 Isotope Angel（2026-11-08）
+- 小朋友：「put some more trees in the enchanted kingdom and make it so you can jump on the mushrooms to boost you to the islands in the enchanted kingdom and when completed you will get a isotope angel legendary pet」
+- 🌳 樹：16 → 21 叢（66 → 89 棵，多咗大約 35%），一樣淨係兩邊；動物範圍、金色大道、噴泉同跳菇路線都唔種。
+- 🍄 跳菇 Parkour（`src/kingdomParkour.js`）：路線喺王國**左邊**（閘門入嚟左手面，x -50…-62，z -527 → -626，唔阻動物範圍）。地上第一粒發光大蘑菇（有白點、閃光、黃色箭咀、地上擴散光圈）→ 6 個浮島（比地面高 5／9.5／14／18.5／23／28 米），每個島邊有一粒蘑菇彈去下一個；金色光點沿住彈嘅路線流（提你去邊）。
+  - 跳上蘑菇頂就自動彈（`bounceFor`：最高點 = 下一個島 + 4 米，再俾少少「幫手」推力，自己唔郁都會跌正喺島中間）；半空自己郁最快 3.5 米／秒（撳住 W 唔會飛過頭），浮島上面同第一粒蘑菇隔籬限速 8 米／秒（`moveOpts.parkourMul`，`player.js`），Speed 好高都玩得。
+  - 浮島 + 蘑菇 = 圓形石台（`platforms` 有 `cx/cz/r` + `bottom`），喺下面行過唔會當牆。跌落嚟冇事，返到地面由第一粒蘑菇再嚟。
+  - 頂部 HUD「🏝️ Island 3/6」+ 進度點；落地閃光 + 聲效（`mushBounce`／`islandLand`／`angelWin`，`addSounds`）。
+- 👼 Isotope Angel（Legendary，`KINGDOM_PETS` 喺 `src/data/animals.js`，biome 6，魔法寵物）：上到第 6 個島 → 彩紙 + 「👼 You got the ISOTOPE ANGEL!」+ 寵物入背包、入 Index（新品種獎金）。每個存檔一次（`state.isotopeAngelClaimed`），之後再上去只係講你已經有。`state.kingdomIslandBest` = 最高去到第幾個島。模型 `src/isotopeAngel.js`：方塊天使、羽毛翼、光環、心口原子核、3 條電子軌道、閃光；最頂個島有一隻大嘅喺金色台上面 + 光柱。Index ✨ Special Pets「👼 Kingdom Parkour」、控制面板 Pets「👼 Kingdom」。
+- 測試：`game.kingdomParkour.teleport(n)`（0 = 第一粒蘑菇前面，1–6 = 第 n 個島）、`game.kingdomParkour.finish()`（當上咗最頂）。

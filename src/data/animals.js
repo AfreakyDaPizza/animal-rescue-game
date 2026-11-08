@@ -23,6 +23,14 @@ export const TAME_PETS = [
     fact: 'A glowing god dragon made of moonlight and purple lightning! In Chinese stories, dragons bring rain and good luck. The real Chinese Alligator, the "earth dragon", is Critically Endangered.' },
 ].map((p) => ({ ...p, biome: 9, tame: true, status: 'Magical (not a real animal!)', magical: true }));
 
+// 👼 Enchanted Kingdom 跳菇 Parkour 獎品（Issue #18）：彈上最高嗰個浮島先有（每個存檔一次，src/kingdomParkour.js）
+// 模型喺 src/isotopeAngel.js；biome 6 = Kingdom（唔喺 ANIMALS：唔會喺生態區出）
+export const ISOTOPE_ANGEL = 'Isotope Angel';
+export const KINGDOM_PETS = [
+  { name: ISOTOPE_ANGEL, rarity: 'Legendary', kg: [60, 95], emoji: '👼',
+    fact: 'A glowing angel made of atoms! Isotopes are kinds of the same atom with a different number of neutrons. Scientists use isotopes to find out how old fossils are, and doctors use them to see inside your body.' },
+].map((p) => ({ ...p, biome: 6, parkour: true, status: 'Magical (not a real animal!)', magical: true }));
+
 // emoji：快捷欄同圖鑑用嘅小圖示（3D 模型喺 src/animalModels.js）
 // kg：成年動物大約幾重 [最輕, 最重]；每隻救返嚟嘅動物會隨機有一個重量，越重賺越多錢
 
@@ -185,7 +193,7 @@ export const animalsInBiome = (biome) => (biome >= 7 ? HALLOWEEN_PETS : ANIMALS)
 
 // 舊名（2026-10-17 小朋友改名）
 const OLD_NAMES = { 'Enchanted Sunlion': 'Celestial Sunlion' };
-export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name) || TAME_ANIMALS.find((a) => a.name === name) || TAME_PETS.find((a) => a.name === name);
+export const findAnimal = (name) => (OLD_NAMES[name] ? findAnimal(OLD_NAMES[name]) : null) || ANIMALS.find((a) => a.name === name) || FUSE_PETS.find((a) => a.name === name) || HALLOWEEN_PETS.find((a) => a.name === name) || CHEST_PETS.find((a) => a.name === name) || METEOR_PETS.find((a) => a.name === name) || DEMONIC_PETS.find((a) => a.name === name) || TAME_ANIMALS.find((a) => a.name === name) || TAME_PETS.find((a) => a.name === name) || KINGDOM_PETS.find((a) => a.name === name);
 
 // 隨機重量（喺真實範圍入面），小過 10 kg 留一個小數位
 export function randomKg(animal) {

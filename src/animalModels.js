@@ -16,7 +16,8 @@ import { METEOR_MODELS } from './meteorPetModels.js'; // ☄️ Meteoric Shop �
 import { DEMONIC_MODELS } from './demonicPetModels.js'; // 😈 Witch Tower 獎品寵物（Issue #11）
 import { FUSE_MODELS } from './fusePets.js'; // Fuse Machine 寵物（Issue #4）
 import { buildLuminousDragon } from './luminousDragon.js'; // 🐉 Catch & Tame（Issue #16）
-const TAME_MODELS = { 'Luminous God Dragon': buildLuminousDragon };
+import { buildIsotopeAngel } from './isotopeAngel.js'; // 👼 Kingdom Parkour 獎品（Issue #18）
+const TAME_MODELS = { 'Luminous God Dragon': buildLuminousDragon, 'Isotope Angel': buildIsotopeAngel };
 import { buildSkywhaleModel, buildSunlionModel, buildOctophantModel } from './enchantedModels.js'; // Biome 7 魔法動物
 import { buildKitsuneModel, buildGemDragonModel, buildDreadscaleModel, buildArmadilloModel, buildCitadelSnailModel } from './kingdomPets.js';
 import { RODEO_MODELS } from './rodeoModels.js'; // 🤠 Catch & Tame 動物（Issue #16）

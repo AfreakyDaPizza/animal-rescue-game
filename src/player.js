@@ -9,7 +9,7 @@ import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 嘅 1.5x Speed
 
 const RADIUS = 0.4;      // 玩家有幾闊（用嚟撞嘢）
 const EYE_HEIGHT = 1.6;  // 對眼有幾高
-const GRAVITY = 28;      // 跌落嚟幾快
+export const GRAVITY = 28; // 跌落嚟幾快（🍄 kingdomParkour.js 計彈幾高都用）
 const JUMP_SPEED = 10.5; // 跳起有幾勁（大約跳到 2 米高）
 const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣）
 
@@ -17,7 +17,7 @@ const STEP = 0.45; // 一級樓梯最高幾高（同 world.js 嘅 STEP_UP 一樣
 // 用 log：Speed 每加倍，就快 3 格／秒。咁 Speed 去到幾百萬都唔會快到飛出畫面。
 //   100 → 6、200 → 9、400 → 12、1,000 → 16、2,000,000 → 49
 // 慢行模式（M 掣，小朋友 2026-10-19：朋友玩太快會頭暈）：最快只係普通行路速度
-export const moveOpts = { slow: false, speedMul: 1, rideMul: 1, rideLift: 0 }; // speedMul：例如 🗼 女巫塔 Frost Zombie 打中 = 慢落嚟（src/witchTower.js）；rideMul／rideLift：🐎 騎緊寵物（src/riding.js）快啲、對眼高啲
+export const moveOpts = { slow: false, speedMul: 1, rideMul: 1, rideLift: 0, parkourMul: 1 }; // speedMul：例如 🗼 女巫塔 Frost Zombie 打中 = 慢落嚟（src/witchTower.js）；rideMul／rideLift：🐎 騎緊寵物（src/riding.js）快啲、對眼高啲；parkourMul：🍄 Kingdom 跳菇 Parkour 喺浮島／半空限速（src/kingdomParkour.js）
 export const SLOW_WALK_SPEED = 7;
 export function walkSpeed(speed) {
   return 6 + 3 * Math.log2(Math.max(speed, 100) / 100);
@@ -166,7 +166,7 @@ export function updatePlayer(player, dt, extraGround = 0) {
 
     const len = Math.hypot(f, s); // 斜行唔好快過直行
     // 喺半空都保持跑步速度（小朋友老師話：跑跑下跳起會慢咗好多，2026-10-18 取消咗半空限速）
-    const speed = (moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed)) * boostMult('speed') * (window.__skills?.fightSpeed(camera.position.x, camera.position.z) ?? 1) * (moveOpts.speedMul ?? 1) * (moveOpts.rideMul ?? 1); // 🐎 騎寵物（Issue #16）// ❄️ Frost 殭屍減速 // ⚡ 1.5x Speed boost；🌳 Swift Boots（打架先有，Issue #14）
+    const speed = (moveOpts.slow ? Math.min(SLOW_WALK_SPEED, walkSpeed(state.speed)) : walkSpeed(state.speed)) * boostMult('speed') * (window.__skills?.fightSpeed(camera.position.x, camera.position.z) ?? 1) * (moveOpts.speedMul ?? 1) * (moveOpts.rideMul ?? 1) * (moveOpts.parkourMul ?? 1); // 🐎 騎寵物（Issue #16）// ❄️ Frost 殭屍減速 // ⚡ 1.5x Speed boost；🌳 Swift Boots（打架先有，Issue #14）
     const step = speed * dt * mag;
     // 跑得好快時分開幾細步行，咁先唔會跳過樓梯級或者穿牆
     const parts = Math.min(40, Math.max(1, Math.ceil(step / 0.3)));
