@@ -9,7 +9,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { createAmbience, updateAmbience, setAmbienceQuality } from './ambience.js'; // ✨ 粒子、雲、霧色、水光（2026-10-18 present 前靚啲）
 import { playFirstHatch } from './firstHatch.js'; // 🥚 第一隻寵物出世動畫（一次）
-import { buildStatueButton, pressStatueButton, updateStatueButton, nearStatueButton } from './statueButton.js'; // 🦏 犀牛像後面嘅掣
+import { pressStatueButton, updateStatueButton, nearStatueButton } from './statueButton.js'; // 🦏 犀牛像後面嘅掣
 import { createCrazyButton, crazyInteraction, updateCrazy, refillCrazy, pressCrazy } from './crazyButton.js'; // 🤪 秘密沙灘嘅瘋狂寵物掣
 import { buildWorld, whereIs, BIOMES, updateBossSigns, sky, gate, HUB, isWalkable, platforms, colliders, parkGate, kingdom, groundAt, gymArea, BIOME_LENGTH } from './world.js';
 let kingdomDebug = false; // 測試用：game.openKingdom() 唔使等日期
@@ -162,7 +162,7 @@ const ambience = createAmbience(scene); // ✨ 粒子、雲、霧色
 
 const updateWorld = buildWorld(scene);
 const crazy = createCrazyButton(scene); // 🤪 Crazy Pet Frenzy 掣（秘密沙灘）
-const statueBtn = buildStatueButton(scene); // 🦏 犀牛像後面嘅掣
+const statueBtn = null; // 🦏 犀牛像後面嘅 0 IQ 掣：小朋友 2026-11-08（Issue #18）叫刪咗（buildStatueButton 仲喺 statueButton.js）
 const updateLab = buildLab(scene); // Issue #2：Hub 大門外面嘅 Laboratory
 const updateGym = buildGym(scene); // 💪 Gym（小朋友 2026-10-18）：實驗室爆炸之後先見到
 const hubPortal = HALLOWEEN_ON ? buildHubPortal(scene, HW_PORTAL_SPOT.x, HW_PORTAL_SPOT.z) : null; // 🎃 Halloween 傳送門（Issue #15 收埋咗；Issue #16 噴水池冇咗，放喺地塊下面條路）
@@ -1015,7 +1015,7 @@ function currentInteraction() {
     if (Math.hypot(pos.x - STRANGER.x, pos.z - STRANGER.z) < 3) return { prompt: '<kbd>E</kbd> Talk to the mysterious ranger ❓', action: startCollab };
   }
   // 🦏 犀牛像後面個掣：Speed 夠最後生態區、錢夠升晒級，但 IQ 變 0
-  if (nearStatueButton(pos)) return { prompt: '<kbd>E</kbd> Press the button behind the rhino 🦏 (⚠️ your IQ becomes 0!)', action: () => {
+  if (statueBtn && nearStatueButton(pos)) return { prompt: '<kbd>E</kbd> Press the button behind the rhino 🦏 (⚠️ your IQ becomes 0!)', action: () => {
     const { money, speed } = pressStatueButton(statueBtn);
     save();
     play('magic');
@@ -2000,7 +2000,7 @@ renderer.setAnimationLoop((timestamp) => {
   }
   beach.inside = whereIs(pos.x, pos.z) === 'Secret Beach' || (movie.active && beach.collab);
   if (!frozen) updateBeach(dt, time);
-  updateStatueButton(statueBtn, dt);
+  if (statueBtn) updateStatueButton(statueBtn, dt);
   if (!frozen) updateCrazy(crazy, dt, rescue, () => rescue.wild.forEach((w) => (w.crazy = false))); // 完咗：唔再補；剩低嗰啲留到下次入夜
   updateEclipse(eclipse, frozen ? 0 : dt, time, { active: boost.eclipse, playing: !isPaused(), camera, pickTarget: eclipseTarget, onStrike: eclipseStrike, onWarn: () => play('alarm') });
   updateMeteor(meteor, frozen ? 0 : dt, time, { camPos: camera.position, feetY: player.feetY, quality: quality.level, playing: !isPaused() && !movie.active && !intro.active, bosses });
