@@ -569,17 +569,7 @@ export const VIDEOS = [
       for (let i = 0; i < 5; i++) emoji(ctx, '⭐', 60 + i * 130, 60 + (i % 2) * 30, 24);
     },
   },
-  {
-    title: 'TIP: Fuse Machine Magic',
-    caption: 'Game tip! The Fuse Machine mixes 3 pets into one brand-new pet. Put in rare pets for a better chance of a Mythic!',
-    colors: ['#b39ddb', '#5e35b1'],
-    pitch: 1.2, rate: 1.0, tip: true,
-    draw(ctx, t) {
-      ['🐼', '🦊', '🐢'].forEach((e, i) => emoji(ctx, e, 130 + i * 90, 200 - Math.max(0, Math.sin(t * 2 - i)) * 40, 60));
-      emoji(ctx, '🧪', 430, 200, 80, Math.sin(t * 4) * 0.2);
-      emoji(ctx, '✨', 540, 150 + bounce(t, 5, 20), 60);
-    },
-  },
+  // Issue #18：刪咗「TIP: Fuse Machine Magic」（Fuse Machine 喺 Issue #16 已經冇咗）
   {
     title: 'TIP: Hidden Secrets',
     caption: 'Game tip! Some secrets hide in sneaky places... have you looked UNDER things? Something red might be waiting!',

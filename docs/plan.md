@@ -294,3 +294,19 @@ src/data/questions.js ← 野生動物問題
   - 頂部 HUD「🏝️ Island 3/6」+ 進度點；落地閃光 + 聲效（`mushBounce`／`islandLand`／`angelWin`，`addSounds`）。
 - 👼 Isotope Angel（Legendary，`KINGDOM_PETS` 喺 `src/data/animals.js`，biome 6，魔法寵物）：上到第 6 個島 → 彩紙 + 「👼 You got the ISOTOPE ANGEL!」+ 寵物入背包、入 Index（新品種獎金）。每個存檔一次（`state.isotopeAngelClaimed`），之後再上去只係講你已經有。`state.kingdomIslandBest` = 最高去到第幾個島。模型 `src/isotopeAngel.js`：方塊天使、羽毛翼、光環、心口原子核、3 條電子軌道、閃光；最頂個島有一隻大嘅喺金色台上面 + 光柱。Index ✨ Special Pets「👼 Kingdom Parkour」、控制面板 Pets「👼 Kingdom」。
 - 測試：`game.kingdomParkour.teleport(n)`（0 = 第一粒蘑菇前面，1–6 = 第 n 個島）、`game.kingdomParkour.finish()`（當上咗最頂）。
+
+## Issue #18「fix all of the bugs」：捉蟲（2026-11-08）
+- 試玩（無頭 Chromium）行晒：新／舊存檔、教學、Biome 1–6 + 王國 Parkour、借動物、繁殖機、Safety Zoo、背包 + Shard + 變異動畫、Time Shard、騎寵物 + Leash + 俾 Boss 撞、Catch & Tame（開場片、成場、馴服）、3 個攤位、Index 3D、控制面板每個分頁 + 傳送、實驗室 Boss、日夜、手機版。冇 JS 錯誤。
+- 修咗：
+  - ☄️ Meteoric Shop 收埋咗（`METEOR_SHOP_ON = false`）仲留低一條隱形柱（圖書館隔籬撞到）→ 收埋就唔加 collider（`meteorShop.js`）。
+  - 🐎 第一身騎寵物：坐騎唔跟鏡頭轉（`bodyYaw` 停咗喺第三身最後個方向）→ 第一身 `bodyYaw` = 鏡頭方向（`thirdPerson.js`）。
+  - 🏖️ 秘密沙灘傳送門返 Hub 用咗舊出生點 (0,14)（地塊閘口牌下面）→ `HUB_SPAWN`。
+  - 🐉 Luminous God Dragon 有馬鞍：馬鞍唔跟身體上落（起模型時 `saddle` 變咗 null 就永遠唔再搵）→ 加咗嘢就再搵（`luminousDragon.js`）。
+  - 🎒 快捷欄：有鎚仔 + Ride（2 格工具）時，第 2 格拖咗嘅 Gear（例如 Leash）會唔見；冇空位會掉咗 → 每個被遮住嘅格都搬去空位、冇位就留低（`riding.js syncHotbar`；打緊仗唔郁）。
+  - 🌑 抱住／拖住嘅變異動物（例如 Eclipse）走返生態區會冇咗變異 → 保留（`animals.js loseAnimal`）。
+  - 🤠 Catch & Tame：每場拆唔到支笛（越積越多）、重睇開場片漏咗招牌／公仔材質／草 → dispose；馴服咗嘅動物放手後唔再出稀有度牌；上一場半空走咗嘅鏡頭／風線數值會帶落下一場 → 重設；載入失敗會卡喺 x 4000 → 送返傳送門前面。
+  - 📱 手機（400 闊）：左上數值盒遮住 🔊／👁️ 掣（以前計 5 粒掣，而家有 6 粒）→ 計 6 粒 + `box-sizing`，好窄就淨係圖案 + 數字（`mobileui.css`）。
+  - ⇧ 開住面板撳 Shift 會鎖咗滑鼠（撳唔到面板）→ 面板開住唔理 Shift。
+  - 📖 Index 3D：`THREE.Clock`／`PCFSoftShadowMap` 已經冇咗（每次開都出 warning）→ `THREE.Timer`／`PCFShadowMap`。
+  - 舊字：控制面板「Unlock ALL」仲話開咗 Fuse Machine、背包空白提示叫人去 Fuse Machine／Halloween、跑步機短片「TIP: Fuse Machine Magic」→ 改／刪。
+- 未改（要小朋友決定／影響細）：騎緊嗰隻寵物可以同時放喺 Safety Zoo（Equip Best 會放埋佢，見到兩隻）；每次上坐騎都起一隻新模型（舊嗰隻冇 dispose，同地塊一樣做法）；跑步機短片「TIP: Hidden Secrets」講紅色掣（橋下面個掣 2026-10-18 已經刪咗）。

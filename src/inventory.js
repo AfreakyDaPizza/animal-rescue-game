@@ -106,7 +106,7 @@ function inventoryHtml() {
   } else {
     const list = tab === 'animals' ? animals : endangered;
     body = list.length ? `<div class="cards">${list.map(animalCard).join('')}</div>`
-      : `<p class="index-summary">${tab === 'animals' ? 'No magical, Halloween or Fuse pets yet! Find them in the Enchanted Kingdom, the Halloween World or the Fuse Machine.' : 'No endangered animals yet! Rescue one from a biome.'}</p>`;
+      : `<p class="index-summary">${tab === 'animals' ? 'No magical or tamed pets yet! Find them in the Enchanted Kingdom or tame them in 🤠 Catch & Tame.' : 'No endangered animals yet! Rescue one from a biome.'}</p>`;
   }
   return tabs + hint + body;
 }

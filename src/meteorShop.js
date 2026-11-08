@@ -238,7 +238,7 @@ function buildBuilding(scene) {
   ring.rotation.x = -PI / 2;
   ring.position.set(0, 0.32, 3.2);
   g.add(ring);
-  addCollider(METEOR_SHOP.x - FRONT.x * 0.3 * SCALE, METEOR_SHOP.z - FRONT.z * 0.3 * SCALE, 2.6 * SCALE);
+  if (METEOR_SHOP_ON) addCollider(METEOR_SHOP.x - FRONT.x * 0.3 * SCALE, METEOR_SHOP.z - FRONT.z * 0.3 * SCALE, 2.6 * SCALE); // Issue #18：收埋咗間舖就唔好留隱形牆
   return { g, display, mascot, ring, floaters, trail, lamps, crystM, crystV, crackM, rimM, lamp };
 }
 

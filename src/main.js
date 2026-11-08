@@ -732,7 +732,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyE' && panelKind() === 'shop') return togglePanel('shop'); // 再撳 E 收埋商店
   if (e.code === 'KeyE' && ['pets', 'sell', 'portal', 'fuse', 'admin', 'statue', 'vacuum', 'rods', 'echo', 'echoQuests', 'meteor', 'expedition', 'witch', 'tower', 'lasso', 'flute', 'special'].includes(panelKind())) return togglePanel(panelKind()); // 再撳 E 收埋
   if (e.code === 'KeyG') cycleQuality();
-  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) toggleShiftLock();
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && !isPanelOpen()) toggleShiftLock(); // Issue #18：開住面板撳 Shift 唔好鎖滑鼠（會撳唔到面板）
   if (e.code === 'Escape' && player.controls.dragLook && player.controls.isLocked && !player.controls.freeMode) player.controls.unlock(); // Discord：冇滑鼠鎖，Esc 自己暫停
   if (e.code === 'Escape' && player.controls.freeMode) {
     player.controls.freeMode = false; // 放開滑鼠嗰陣撳 Esc：暫停
@@ -1005,7 +1005,7 @@ function currentInteraction() {
   if (trash) return { prompt: `<kbd>E</kbd> Clean up the ${trash.name} 🗑️ (+$${TRASH_REWARD})`, action: () => cleanTrash(trash) };
   // 秘密沙灘：長櫈坐低睇流星、同神秘人傾偈
   if (beach.open) {
-    if (Math.hypot(pos.x - BEACH_PORTAL.x, pos.z - BEACH_PORTAL.z) < 2.6) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Park', action: () => travel(0, 14, 0, '🏡 Back to the Animal Rescue Park!') };
+    if (Math.hypot(pos.x - BEACH_PORTAL.x, pos.z - BEACH_PORTAL.z) < 2.6) return { prompt: '<kbd>E</kbd> 🌀 Go back to the Park', action: () => travel(HUB_SPAWN.x, HUB_SPAWN.z, 0, '🏡 Back to the Animal Rescue Park!') };
     if (whereIs(pos.x, pos.z) === 'Laboratory' && Math.hypot(pos.x - PORTAL.x, pos.z - PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
     if (gym.present && Math.hypot(pos.x - GYM_PORTAL.x, pos.z - GYM_PORTAL.z) < 3.2) return { prompt: '<kbd>E</kbd> 🌀 Go to the Secret Beach 🏖️', action: goToBeach };
     const cb = crazyInteraction(crazy, pos, () => togglePanel('admin')); // 🔐 秘密掣：打開 Secret Ranger Control Panel
@@ -1200,7 +1200,7 @@ setAdminActions({
     state.bigButton = true;
     save();
     play('magic');
-    announce(first ? '🔓 The FUSE MACHINE 🧪 and the ENCHANTED KINGDOM 👑 are unlocked!' : '🔓 Already unlocked! Fuse Machine and Enchanted Kingdom are open.');
+    announce(first ? '🔓 The ENCHANTED KINGDOM 👑 is unlocked!' : '🔓 Already unlocked! The Enchanted Kingdom is open.'); // Issue #18：Fuse Machine 已經冇咗（Issue #16），唔好再講
     if (!state.labUnlocked) setTimeout(startUnlockScene, first ? 2500 : 400); // 以前個紅掣都會開實驗室大閘
   },
   // 控制台：去 Gym（未打 Boss 就當打贏咗：實驗室冇咗、Gym 出現；重新載入再傳送）
