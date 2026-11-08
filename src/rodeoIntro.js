@@ -558,6 +558,13 @@ export function playRodeoIntro({ scene, camera, onDone }) {
       // 跳過都要執返好：拆晒佈景、天空交返日夜系統、鏡頭返傳送門前面
       scene.remove(root);
       for (const x of own) x.dispose?.();
+      // Issue #18：再睇多次唔好越積越多：招牌（canvas texture）、自己個公仔嘅材質、草（InstancedMesh buffer）
+      for (const l of [sign, keep]) {
+        l.material.map?.dispose();
+        l.material.dispose();
+      }
+      me.g.traverse((o) => o.isMesh && o.material.dispose?.());
+      grass.dispose();
       alarmFx.remove();
       fade.style.background = '#000';
       fade.style.opacity = 0;

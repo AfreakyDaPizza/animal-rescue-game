@@ -28,7 +28,7 @@ import { applyPetSkin, activePetSkin } from './skins.js';
 import { addSaddle } from './saddle.js';
 import { groundAt } from './world.js';
 import { moveOpts } from './player.js';
-import { toolFlags, hotbarItems, hotbarHooks, extraPanels, panelKind, popup, announce, renderHotbar } from './hud.js';
+import { toolFlags, hotbarItems, hotbarToolCount, hotbarHooks, extraPanels, panelKind, popup, announce, renderHotbar } from './hud.js';
 import { petPic } from './animalPics.js';
 import { short as fmt } from './format.js';
 import { play } from './sound.js';
@@ -67,12 +67,21 @@ export function createRiding(ctx) {
   function syncHotbar() {
     const has = rideablePets().length > 0;
     toolFlags.ride = has;
-    if (has && state.hotbar?.[0]) {
+    // Issue #18：工具格（Ride + 鎚仔…）可能唔止 1 格：每個被遮住嘅格仔都要搬；冇空位就留低（唔好掉咗）
+    const tools = hotbarToolCount();
+    const fighting = toolFlags.bat || (toolFlags.weapons || []).length; // 打緊（球棒／武器）：Ride 格收埋，唔好郁人哋排好嘅格
+    if (!fighting && state.hotbar?.some((k, i) => k && i < tools)) { // 🔨 執咗鎚仔都一樣
       const hb = state.hotbar;
-      const j = hb.findIndex((k, i) => i > 0 && !k);
-      if (j > 0) hb[j] = hb[0];
-      hb[0] = null;
-      save();
+      let moved = false;
+      for (let i = 0; i < tools; i++) {
+        if (!hb[i]) continue;
+        const j = hb.findIndex((k, n) => n >= tools && !k);
+        if (j < 0) break; // 冇空位：留喺度（之後有位先搬）
+        hb[j] = hb[i];
+        hb[i] = null;
+        moved = true;
+      }
+      if (moved) save();
     }
     if (has && !lastHas) renderHotbar();
     lastHas = has;

@@ -41,9 +41,11 @@ body.mobile #hud-stats {
   top: calc(var(--m-edge) + env(safe-area-inset-top, 0px)); bottom: auto;
   left: calc(var(--m-edge) + env(safe-area-inset-left, 0px));
   font-size: 13px; line-height: 1.2; padding: 5px 10px; gap: 0; border-radius: 14px;
-  max-width: calc(100vw - 2 * var(--m-edge) - 5 * var(--m-btn) - 4 * var(--m-gap) - 8px);
+  box-sizing: border-box; max-width: calc(100vw - 2 * var(--m-edge) - 6 * var(--m-btn) - 5 * var(--m-gap) - 8px); /* Issue #18：連 padding 計：右上而家有 6 粒掣（以前計 5 粒，數值盒遮住 👁️） */
 }
 body.mobile #hud-stats .stat-line b { -webkit-text-stroke-width: 3px; }
+body.mobile #hud-stats .stat-line { overflow: hidden; text-overflow: ellipsis; } /* 窄畫面：數字太長就 … 唔好伸出去遮住掣 */
+@media (max-width: 440px) { body.mobile #hud-stats .label { display: none; } } /* 好窄嘅手機：淨係圖案 + 數字（💰 5M），留位俾右上 6 粒掣 */
 body.mobile #hud-stats .stat-small { font-size: 10px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- 第 1 行：右上 5 粒圖案掣 ---------- */

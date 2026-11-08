@@ -492,6 +492,7 @@ export function updateThirdPerson(tp, dt, { held, item, oneHand = false, walking
   const anim = trackMotion(tp, dt, { walking: walking || station?.kind === 'treadmill', running: station?.kind === 'treadmill', grounded, vy });
   const fluteOn = emote && tp.skinId === 'tamer' && !held && !oneHand && !station && !gymStation && grounded && anim.still > FLUTE_IDLE_SECONDS;
   if (!third) {
+    tp.bodyYaw = eye.rotation.y; // Issue #18：第一身 = 公仔面向跟鏡頭（騎寵物讀 bodyYaw，唔好用返第三身最後個方向）
     if (!tp.flute.byRodeo) fluteFrame(tp.flute, dt, { on: fluteOn, third: false, eye, sound: true });
     return (gymStation && gymFirstPerson(tp, gymStation, { time })) || eye;
   }

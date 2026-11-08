@@ -627,8 +627,13 @@ export function buildLuminousDragon() {
     }
   };
 
+  let kids = -1; // Issue #18：馬鞍係起好隻龍之後先加（第一次 animate 搵唔到就變 null，以後唔再搵）→ 多咗嘢就再搵過
   g.userData.animate = (t, moving = 0) => {
     pose(t, moving);
+    if (g.children.length !== kids) {
+      kids = g.children.length;
+      if (saddle === null) saddle = undefined;
+    }
     if (saddle !== null) saddleFollow();
     // 張口（好似吼緊），閉埋少少又再張大
     H.jaw.rotation.x = 0.32 + Math.max(0, Math.sin(t * 0.9)) * 0.38;

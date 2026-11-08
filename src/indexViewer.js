@@ -151,7 +151,7 @@ export function openIndexViewer(name, { skinSwatch } = {}) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // Issue #18：PCFSoft 已經冇咗（three 自動轉 PCF，仲每次出 warning）
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0x16233f, 18, 40);
@@ -213,7 +213,7 @@ export function openIndexViewer(name, { skinSwatch } = {}) {
     animal, root, renderer, scene, camera, own, holder, tilt, model: null, size: new THREE.Vector3(1, 1, 1), rearZ: 0, flying: false,
     mutations: new Set(), skin: 'none', anim: 'idle', moving: false, keys: new Set(),
     yaw: Math.PI - 0.55, pitch: 0.26, dist: 7.5, yawT: Math.PI - 0.55, pitchT: 0.26, distT: 7.5, target: new THREE.Vector3(0, 1, 0),
-    dotGeo, lastTouch: -10, time: 0, sitK: 0, raf: 0, clock: new THREE.Clock(), facing: 0, speed: 0, pointers: new Map(), pinch: 0,
+    dotGeo, lastTouch: -10, time: 0, sitK: 0, raf: 0, clock: new THREE.Timer(), facing: 0, speed: 0, pointers: new Map(), pinch: 0,
   };
   buildPet();
 
@@ -438,6 +438,7 @@ const _dir = new THREE.Vector3();
 function loop() {
   if (!v) return;
   v.raf = requestAnimationFrame(loop);
+  v.clock.update();
   const dt = Math.min(0.05, v.clock.getDelta());
   v.time += dt;
   const t = v.time;

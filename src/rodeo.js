@@ -478,6 +478,7 @@ export function createRodeo(ctx) {
     world.windMat.dispose();
     world.clouds.traverse((o) => o.isMesh && o.geometry.dispose());
     world.clouds.userData.mat.dispose();
+    world.fluteMesh.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); // Issue #18：每場一支新笛，唔拆會越積越多
     world.fluteMesh.removeFromParent();
     world.root.removeFromParent();
     world = null;
@@ -626,7 +627,7 @@ export function createRodeo(ctx) {
     if (!m) return;
     m.holder.rotation.set(0, 0, 0);
     m.holder.position.y = groundY(X0 + R.x, R.z);
-    if (m.label) m.label.visible = true;
+    if (m.label) m.label.visible = !m.tamed; // Issue #18：馴服咗（已經入咗背包）就唔好再出稀有度牌
     R.runners.push({ holder: m.holder, inner: m.inner, label: m.label, glow: m.glow, x: R.x, z: R.z, vx: sideways ? (R.x > 0 ? 1 : -1) * rand(6, 9) : 0, vz: R.speed * 0.7, t: 0, h: m.h, r: m.r, dustT: 0 });
   }
 
@@ -663,7 +664,7 @@ export function createRodeo(ctx) {
     const ok = await showLoading('🤠 Saddling up your horse...', async (progress) => {
       R.mapId = mapId;
       world = buildWorld(mapId);
-      Object.assign(R, { z: 0, x: 0, dist: 0, speed: RODEO_START_SPEED, hearts: RODEO_HEARTS, safeT: 2, t: 0, fly: null, overT: 0, downT: 0, steerV: 0 });
+      Object.assign(R, { z: 0, x: 0, dist: 0, speed: RODEO_START_SPEED, hearts: RODEO_HEARTS, safeT: 2, t: 0, fly: null, overT: 0, downT: 0, steerV: 0, camAir: 0, windK: 0, pull: null, mouseSteer: 0 }); // Issue #18：上一場飛到半空走咗都唔會帶落嚟
       R.run = { mapId, tamed: [], newBest: false };
       updateChunks(true);
       progress(0.6);
@@ -686,6 +687,7 @@ export function createRodeo(ctx) {
     R.travelling = false;
     if (!ok) {
       cleanup();
+      teleport(RODEO_RETURN.x, RODEO_RETURN.z, RODEO_RETURN.rotY); // Issue #18：載入失敗都要返 Hub（唔係會卡喺 x 4000）
       return;
     }
     document.body.classList.add('in-rodeo');

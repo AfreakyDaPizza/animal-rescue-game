@@ -175,7 +175,11 @@ export function loseAnimal(rescue) {
   const { animal, kg, rarity, seed, sizeMul, mutation, model } = rescue.carrying;
   model.removeFromParent(); // 可能喺手（鏡頭）或者頭頂（第三身）
   rescue.carrying = null;
-  spawnAnimal(rescue, animal.biome, animal, kg, rarity, { seed, sizeMul });
+  const w = spawnAnimal(rescue, animal.biome, animal, kg, rarity, { seed, sizeMul });
+  if (w && mutation) { // Issue #18：走返去都要保留變異（例如 🌑 Eclipse）
+    w.mutation = mutation;
+    addFireAura(w.model, mutation);
+  }
   return animal;
 }
 
