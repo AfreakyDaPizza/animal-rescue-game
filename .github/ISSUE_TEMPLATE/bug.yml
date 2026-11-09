@@ -8,6 +8,37 @@ body:
       value: |
         **One bug = one Issue!**
         ⚠️ Everyone in the world can read this. No real names, school, home address, or photos of yourself.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where in the game?
+      options:
+        - Hub
+        - Safety Zoo (your pet plots)
+        - Biome 1 - Deforestation Site
+        - Biome 2 - Polluted Ocean
+        - Biome 3 - Bird Poaching Site
+        - Biome 4 - Arctic Meltdown
+        - Biome 5 - Smuggler's Compound
+        - Biome 6 - Mining Mountain
+        - Biome 7 - Enchanted Kingdom (and the mushroom parkour)
+        - Secret Beach
+        - Laboratory / Boss Arena
+        - Halloween World (Ghost Town, Graveyard, Haunted House)
+        - Pumpkin Reaper Dragon
+        - Hell / Witch Castle
+        - Endless Witch Tower
+        - Catch & Tame
+        - Ranger Gym
+        - Cutscene
+        - Shops and stalls
+        - Index / Backpack / Quests / menus
+        - Animals or pets
+        - Bosses
+        - Weapons / Skill Tree
+        - Somewhere else
+    validations:
+      required: true
   - type: textarea
     id: did
     attributes:

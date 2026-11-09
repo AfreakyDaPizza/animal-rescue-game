@@ -319,3 +319,8 @@ src/data/questions.js ← 野生動物問題
   - 🪨 邊界改做長滿青苔嘅分層石崖（頂有水晶或者細樹）；石崖後面一排巨型方塊魔法樹（行唔到，淨係俾你覺得喺森林入面）；王國底下面係石。
   - 🌳 樹叢三款輪住種：水晶樹、奇怪蘑菇樹、新方塊魔法大樹（綠／青／粉紅花／紫，吊住發光果）；草叢 + 發光花；閃粉改做低空飄嘅螢火蟲。
   - 唔郁：動物、Boss、跳菇 Parkour、皇宮、Skywhale、浮島、符文、蝴蝶、動物範圍一樣冇樹。
+
+## Issue #20：更新 GitHub（2026-11-09）
+- 小朋友：「The new biome and other places didn't mention in GitHub issues」→ Issue 表格「Where in the game?」淨係去到 Biome 6。
+- `idea.yml` 同 `bug.yml`（Bug 表格以前冇呢格）都加咗：Safety Zoo、Biome 7、Secret Beach、Laboratory/Boss Arena、Halloween World、Pumpkin Reaper Dragon、Hell/Witch Castle、Endless Witch Tower、Catch & Tame、Ranger Gym、Shops、Weapons/Skill Tree；Biome 2 改返遊戲入面個名 Polluted Ocean。
+- README：保留小朋友嗰句，下面加遊戲連結 + 所有地方一覽 + 點開 Issue。
