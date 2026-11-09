@@ -310,3 +310,12 @@ src/data/questions.js ← 野生動物問題
   - 📖 Index 3D：`THREE.Clock`／`PCFSoftShadowMap` 已經冇咗（每次開都出 warning）→ `THREE.Timer`／`PCFShadowMap`。
   - 舊字：控制面板「Unlock ALL」仲話開咗 Fuse Machine、背包空白提示叫人去 Fuse Machine／Halloween、跑步機短片「TIP: Fuse Machine Magic」→ 改／刪。
 - 未改（要小朋友決定／影響細）：騎緊嗰隻寵物可以同時放喺 Safety Zoo（Equip Best 會放埋佢，見到兩隻）；每次上坐騎都起一隻新模型（舊嗰隻冇 dispose，同地塊一樣做法）；跑步機短片「TIP: Hidden Secrets」講紅色掣（橋下面個掣 2026-10-18 已經刪咗）。
+
+## Issue #19：Enchanted Kingdom 魔法森林重做地圖（2026-11-09）
+- 小朋友：「The enchanted forest needs to be redesigned. the map not animals and boss」「Make it look good」。
+- 舊版問題：霓虹格仔地板（似的士高）、紫色平方塊牆。新美術喺 `src/enchantedArt.js`（`enchanted.js` 用）：
+  - 🌿 青苔草地紋理（細花會一閃一閃發光）；中間大道改做石仔路（縫發金光）+ 路邊矮石 + 燈柱；噴泉廣場 + 兩條斜路去兩邊噴泉。
+  - 💧 發光小溪橫過王國（彩虹拱門後面，`maxZ - 42`），有荷葉、發光花、大道上面有矮石橋欄（行得過）。
+  - 🪨 邊界改做長滿青苔嘅分層石崖（頂有水晶或者細樹）；石崖後面一排巨型方塊魔法樹（行唔到，淨係俾你覺得喺森林入面）；王國底下面係石。
+  - 🌳 樹叢三款輪住種：水晶樹、奇怪蘑菇樹、新方塊魔法大樹（綠／青／粉紅花／紫，吊住發光果）；草叢 + 發光花；閃粉改做低空飄嘅螢火蟲。
+  - 唔郁：動物、Boss、跳菇 Parkour、皇宮、Skywhale、浮島、符文、蝴蝶、動物範圍一樣冇樹。

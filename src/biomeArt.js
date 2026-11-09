@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 
 // ---------- 細工具 ----------
-function canvasTex(size, draw, repeat = 1) {
+export function canvasTex(size, draw, repeat = 1) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
@@ -19,13 +19,13 @@ function canvasTex(size, draw, repeat = 1) {
   return t;
 }
 const hex = (c) => '#' + new THREE.Color(c).getHexString();
-function shade(c, l) {
+export function shade(c, l) {
   const col = new THREE.Color(c);
   col.offsetHSL(0, 0, l);
   return '#' + col.getHexString();
 }
 // 一格格噪點（像素風底色）
-function pixelNoise(ctx, size, base, amount, px = 4, rand = Math.random) {
+export function pixelNoise(ctx, size, base, amount, px = 4, rand = Math.random) {
   for (let y = 0; y < size; y += px)
     for (let x = 0; x < size; x += px) {
       ctx.fillStyle = shade(base, (rand() - 0.5) * amount);
@@ -34,7 +34,7 @@ function pixelNoise(ctx, size, base, amount, px = 4, rand = Math.random) {
 }
 
 // 方塊嘅 UV 跟實際尺寸（每 unit 米重複一次紋理）→ 大細唔同嘅箱用同一份物料都唔會拉長
-function tiledBox(w, h, d, unit = 2) {
+export function tiledBox(w, h, d, unit = 2) {
   const g = new THREE.BoxGeometry(w, h, d);
   const uv = g.attributes.uv;
   // 面嘅次序：+x、-x、+y、-y、+z、-z；每面 4 點

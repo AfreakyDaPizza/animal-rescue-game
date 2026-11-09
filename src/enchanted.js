@@ -8,6 +8,7 @@ import { BIOME_LENGTH } from './data/biomeList.js';
 import { addPlatform, addCollider, bakeStatic, kingdom, KINGDOM_Y, KINGDOM_PET_HALF_X } from './world.js';
 import { buildSkywhaleModel, buildCrystalButterfly, buildRune } from './enchantedModels.js';
 import { buildParkour, inParkourZone } from './kingdomParkour.js'; // 🍄 Issue #18：跳菇上浮島 → 👼 Isotope Angel
+import { forestFloor, forestPaths, glowStream, mossyCliff, forestTree, grassTuft, glowFlower, rockBase, pulseMats } from './enchantedArt.js'; // 🌳 Issue #19：魔法森林新美術
 
 export const kingdomView = { group: null, reveal: false }; // reveal：開門動畫俾人睇住先
 // 閘門嘅位同高度（開門動畫用）
@@ -19,7 +20,6 @@ const mat = (color, extra = {}) => {
   if (!materials.has(key)) materials.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra }));
   return materials.get(key);
 };
-const glow = (color, k = 1.4) => mat(color, { emissive: color, emissiveIntensity: k });
 function add(parent, geo, material, x, y, z, shadow = true) {
   const m = new THREE.Mesh(geo, material);
   m.position.set(x, y, z);
@@ -95,54 +95,6 @@ function vines(root, rect, rand) {
     put(rect.maxX + 0.1, z + rand() * 3, -1);
   }
 }
-// 魔法地板（小朋友：cool looking floors）：一塊塊彩色寶石磚 + 發光縫
-function magicFloor(view, rect) {
-  const c = document.createElement('canvas');
-  c.width = c.height = 256;
-  const ctx = c.getContext('2d');
-  const e = document.createElement('canvas');
-  e.width = e.height = 256;
-  const ex = e.getContext('2d');
-  ex.fillStyle = '#000';
-  ex.fillRect(0, 0, 256, 256);
-  const tiles = ['#5e35b1', '#3949ab', '#6a1b9a', '#283593', '#4527a0'];
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-    ctx.fillStyle = tiles[(x * 3 + y * 5) % tiles.length];
-    ctx.fillRect(x * 32, y * 32, 32, 32);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(x * 32 + 3, y * 32 + 3, 12, 12);
-  }
-  // 發光縫（青色）+ 中間發光符文點
-  for (const g of [ctx, ex]) {
-    g.strokeStyle = g === ctx ? '#80deea' : '#18ffff';
-    g.lineWidth = 2;
-    for (let i = 0; i <= 8; i++) {
-      g.beginPath();
-      g.moveTo(i * 32, 0);
-      g.lineTo(i * 32, 256);
-      g.moveTo(0, i * 32);
-      g.lineTo(256, i * 32);
-      g.stroke();
-    }
-    g.fillStyle = g === ctx ? '#ffe57f' : '#ffd740';
-    for (let i = 0; i < 6; i++) g.fillRect(((i * 97) % 8) * 32 + 14, ((i * 53) % 8) * 32 + 14, 5, 5);
-  }
-  const map = new THREE.CanvasTexture(c);
-  const emap = new THREE.CanvasTexture(e);
-  for (const t of [map, emap]) {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set((rect.maxX - rect.minX) / 8, (rect.maxZ - rect.minZ) / 8);
-    t.colorSpace = THREE.SRGBColorSpace;
-  }
-  const floorMat = new THREE.MeshStandardMaterial({ map, emissive: 0xffffff, emissiveMap: emap, emissiveIntensity: 0.6, roughness: 0.35, metalness: 0.2 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(rect.maxX - rect.minX, rect.maxZ - rect.minZ), floorMat);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, 0.012, (rect.minZ + rect.maxZ) / 2);
-  floor.receiveShadow = true;
-  view.add(floor);
-  return floorMat;
-}
-
 // 遠處嘅皇宮（王國盡頭）
 function castle(root, rect) {
   const z = rect.minZ + 6;
@@ -164,19 +116,7 @@ function castle(root, rect) {
 
 // 邊界：好高嘅水晶懸崖（每段唔同高度，頂有發光水晶）+ 巨型發光奇怪樹
 function crystalCliffs(root, rect, rand) {
-  const rock = [mat(0x4527a0, { flatShading: true }), mat(0x5e35b1, { flatShading: true }), mat(0x311b92, { flatShading: true })];
-  const crystalC = [0xea80fc, 0x18ffff, 0xffd740, 0x76ff03];
-  const cliff = (x, z, w, d) => {
-    const h = 10 + rand() * 14;
-    add(root, new THREE.BoxGeometry(w, h + 13, d), rock[Math.floor(rand() * 3)], x, (h - 13) / 2, z);
-    add(root, new THREE.BoxGeometry(w * 0.7, 2, d * 0.7), rock[Math.floor(rand() * 3)], x + (rand() - 0.5) * 1.5, h + 1, z + (rand() - 0.5) * 1.5);
-    for (let k = 0; k < 3; k++) {
-      const c = crystalC[Math.floor(rand() * crystalC.length)];
-      const cr = add(root, new THREE.OctahedronGeometry(0.8 + rand() * 1.4), mat(c, { emissive: c, emissiveIntensity: 1.1, flatShading: true }), x + (rand() - 0.5) * w, h + 2 + rand() * 2, z + (rand() - 0.5) * d, false);
-      cr.scale.y = 2;
-      cr.rotation.z = (rand() - 0.5) * 0.6;
-    }
-  };
+  const cliff = (x, z, w, d) => mossyCliff(root, x, z, w, d, rand); // Issue #19：青苔分層石崖（以前係平平哋嘅紫色方塊）
   const S = 7;
   for (let z = rect.maxZ - 2; z > rect.minZ; z -= S) {
     cliff(rect.minX - 3.5, z - S / 2, 7, S + 0.5);
@@ -187,10 +127,16 @@ function crystalCliffs(root, rect, rand) {
   for (let x = rect.minX - 7; x < rect.maxX + 7; x += S) if (Math.abs(x + S / 2) > 15) cliff(x + S / 2, rect.maxZ - 0.7, S + 0.5, 1.2); // 薄啲：唔好伸入 Biome 6 山後面條路
   // 巨型發光奇怪樹沿住邊界（Issue #14：疏啲，以前每 13 米一棵，而家每 26 米；後面淨係兩個角）
   for (let z = rect.maxZ - 20; z > rect.minZ + 8; z -= 26) {
-    if (!inParkourZone(rect.minX + 4, z, 8)) strangeTree(root, rect.minX + 4, z, 2.2 + rand() * 0.6, rand); // 🍄 跳菇路線嗰度唔種（樹頂會撞到浮島）
+    if (!inParkourZone(rect.minX + 4, z, 8)) forestTree(root, rect.minX + 4, z, 1.6 + rand() * 0.4, rand); // 🍄 跳菇路線嗰度唔種（樹頂會撞到浮島）
     else rand();
     strangeTree(root, rect.maxX - 4, z - 13, 2.2 + rand() * 0.6, rand);
   }
+  // Issue #19：石崖後面一排巨型魔法樹（行唔到去，淨係睇：有深度，好似喺森林入面）
+  for (let z = rect.maxZ - 6; z > rect.minZ - 10; z -= 11) {
+    forestTree(root, rect.minX - 11 - rand() * 4, z - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
+    forestTree(root, rect.maxX + 11 + rand() * 4, z - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
+  }
+  for (let x = rect.minX - 6; x < rect.maxX + 6; x += 12) forestTree(root, x + rand() * 4, rect.minZ - 13 - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
   for (const x of [rect.minX + 12, rect.maxX - 12]) strangeTree(root, x, rect.minZ + 5, 2.4 + rand() * 0.5, rand);
 }
 
@@ -225,15 +171,19 @@ export function enchanted(staticRoot, rect, rand, live) {
   const d = rect.maxZ - rect.minZ;
 
   // 浮喺天上嘅大地台（下面係紫色水晶石）
-  add(root, new THREE.BoxGeometry(w, KINGDOM_Y, d), mat(0x4a148c, { flatShading: true }), 0, -KINGDOM_Y / 2 - 0.01, cz);
+  const base = rockBase(w, KINGDOM_Y, d); // Issue #19：下面係石（以前紫色）
+  base.position.set(0, -KINGDOM_Y / 2 - 0.01, cz);
+  root.add(base);
   crystalCliffs(root, rect, rand);
   castle(root, rect);
   crystalFountain(root, 0, cz + 8);
   crystalFountain(root, -40, cz - 40);
   crystalFountain(root, 40, cz - 40);
   rainbowArch(root, rect.maxZ - 22);
-  // 中間金色大道（由閘門去皇宮）
-  add(root, new THREE.BoxGeometry(6, 0.05, d - 14), mat(0xfff59d, { emissive: 0xffd740, emissiveIntensity: 0.25 }), 0, 0.03, cz + 4, false);
+  // 中間大道（由閘門去皇宮）：Issue #19 改做石仔路（縫發金光）+ 路邊石 + 燈柱，中間廣場 + 去兩邊噴泉嘅細路
+  forestPaths(view, root, rect, cz, rand);
+  // 發光小溪：彩虹拱門後面橫過成個王國（行得過）
+  const streamZ = glowStream(view, root, rect, rect.maxZ - 42, rand);
   // 水晶樹、奇怪發光樹、蘑菇（避開中間條路同噴泉）
   const spot = () => {
     for (;;) {
@@ -274,7 +224,12 @@ export function enchanted(staticRoot, rect, rand, live) {
       if (!treeOk(x, z)) continue;
       trees.push([x, z]);
       k++;
-      if ((nCrystal + nStrange) % 2 === 0) {
+      const kind = (nCrystal + nStrange) % 3; // Issue #19：加咗方塊魔法大樹（森林感）
+      if (kind === 2) {
+        forestTree(root, x, z, 0.9 + rand() * 0.6, rand);
+        addCollider(x, z, 0.8);
+        nStrange++;
+      } else if (kind === 0) {
         crystalTree(root, x, z, 1.1 + rand() * 0.9, rand);
         addCollider(x, z, 0.7);
         nCrystal++;
@@ -284,6 +239,8 @@ export function enchanted(staticRoot, rect, rand, live) {
         nStrange++;
       }
       for (let m = 0; m < 3; m++) glowShroom(root, x + (rand() - 0.5) * 5, z + (rand() - 0.5) * 5, 0.6 + rand() * 0.8, rand); // 樹腳啲蘑菇
+      for (let m = 0; m < 5; m++) grassTuft(root, x + (rand() - 0.5) * 6, z + (rand() - 0.5) * 6, rand);
+      for (let m = 0; m < 3; m++) glowFlower(root, x + (rand() - 0.5) * 6, z + (rand() - 0.5) * 6, rand);
     }
   }
   kingdomView.trees = trees.length;
@@ -295,14 +252,21 @@ export function enchanted(staticRoot, rect, rand, live) {
     const [x, z] = edgeSpot();
     glowShroom(root, x, z, 0.6 + rand() * 0.5, rand);
   }
-  for (let n = 0; n < 120; n++) {
-    const c = [0xea80fc, 0x80d8ff, 0xffe57f, 0xb9f6ca][n % 4];
+  // Issue #19：以前係 120 粒細方塊 → 草叢同發光花（兩邊多，中間動物範圍少少）
+  for (let n = 0; n < 260; n++) {
     const [x, z] = edgeSpot();
-    add(root, new THREE.BoxGeometry(0.2, 0.2, 0.2), glow(c, 1), x, 0.12, z, false);
+    if (n % 3) grassTuft(root, x, z, rand);
+    else glowFlower(root, x, z, rand);
+  }
+  for (let n = 0; n < 160; n++) {
+    const x = (rand() * 2 - 1) * (half - 4);
+    const z = rect.minZ + 16 + rand() * (d - 30);
+    if (Math.abs(x) < 4.5 || Math.hypot(x, z - (cz + 8)) < 11.5 || Math.abs(z - streamZ(x)) < 2.6) continue; // 唔放喺路、廣場、溪
+    grassTuft(root, x, z, rand);
   }
   vines(root, rect, rand);
   bakeStatic(root, view);
-  const floorMat = magicFloor(view, rect);
+  const floorMat = forestFloor(view, rect); // Issue #19：青苔草地（以前霓虹格仔）
 
   // ---- 會郁嘅嘢 ----
   // 地上嘅魔法符文（慢慢轉，大大個）
@@ -350,13 +314,13 @@ export function enchanted(staticRoot, rect, rand, live) {
     const [x, z] = spot();
     return { b, x, z, h: 1.5 + rand() * 8, r: 1 + rand() * 4, s: 0.5 + rand(), p: rand() * 6 };
   });
-  // 魔法閃粉
+  // 魔法閃粉 → 螢火蟲（Issue #19）
   const SP = 500;
   const sp = new Float32Array(SP * 3);
   const spSeeds = Array.from({ length: SP }, () => ({ x: (rand() * 2 - 1) * (half - 2), z: rect.minZ + 2 + rand() * (d - 4), k: rand(), s: 0.3 + rand() * 0.5 }));
   const spGeo = new THREE.BufferGeometry();
   spGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const sparkles = new THREE.Points(spGeo, new THREE.PointsMaterial({ color: 0xfff59d, size: 0.24, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const sparkles = new THREE.Points(spGeo, new THREE.PointsMaterial({ color: 0xe6ff8a, size: 0.32, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   sparkles.frustumCulled = false;
   view.add(sparkles);
 
@@ -407,7 +371,8 @@ export function enchanted(staticRoot, rect, rand, live) {
     if (!view.visible) return;
     runes.forEach((r, i) => r.userData.spin?.(t + i));
     parkour(dt, t);
-    floorMat.emissiveIntensity = 0.45 + Math.sin(t * 1.5) * 0.2; // 地板條縫一閃一閃
+    floorMat.emissiveIntensity = 0.7 + Math.sin(t * 1.5) * 0.3; // 地上啲細花一閃一閃
+    for (const p of pulseMats) p.m.emissiveIntensity = p.base + Math.sin(t * p.speed) * p.amp; // 石仔路縫、小溪
     strangeMats.forEach((m, i) => (m.emissiveIntensity = 0.9 + Math.sin(t * 2 + i) * 0.4)); // 啲樹一明一暗
     for (const isl of islands) isl.g.position.y = isl.y + Math.sin(t * 0.5 + isl.i) * 1.2;
     const a = t * 0.06;
@@ -422,10 +387,10 @@ export function enchanted(staticRoot, rect, rand, live) {
     }
     for (let i = 0; i < SP; i++) {
       const s = spSeeds[i];
-      const k = (s.k + t * 0.05 * s.s) % 1;
-      sp[i * 3] = s.x + Math.sin(t * s.s + i) * 0.6;
-      sp[i * 3 + 1] = k * 16;
-      sp[i * 3 + 2] = s.z;
+      // Issue #19：螢火蟲：喺低空飄嚟飄去（以前一直升上天）
+      sp[i * 3] = s.x + Math.sin(t * 0.3 * s.s + i) * 2.5;
+      sp[i * 3 + 1] = 0.6 + s.k * 6 + Math.sin(t * 0.8 * s.s + i * 1.7) * 0.8;
+      sp[i * 3 + 2] = s.z + Math.cos(t * 0.25 * s.s + i * 0.7) * 2.5;
     }
     spGeo.attributes.position.needsUpdate = true;
   };
