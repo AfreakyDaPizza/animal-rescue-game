@@ -5,6 +5,7 @@
 import { rollSeeded } from './spawnRoll.js';
 import { eventStatus } from './events.js';
 import { BIOMES } from './data/biomeList.js';
+import { KINGDOM_WILD_COUNT, kingdomExtraSeeds } from './data/balance.js';
 import { DAY_LENGTH, NIGHT_LENGTH } from './data/clock.js';
 
 const CYCLE_MS = DAY_LENGTH * 1000; // 同 daynight.js 一樣：每 5 分鐘入夜
@@ -18,17 +19,16 @@ export const cycleAt = (time) => Math.floor(time / CYCLE_MS);
 export function predictSpawns(time = Date.now()) {
   const wild = BIOMES.map(() => []);
   const add = (biome, seed, rarity = null, sizeBoost = 1) => {
-    const max = biome === 6 ? 3 : 1; // Biome 7 同時有 3 隻
+    const max = biome === 6 ? KINGDOM_WILD_COUNT : 1; // Biome 7 同時有 5 隻（Issue #23）
     const r = rollSeeded(seed, biome, rarity, sizeBoost);
     wild[biome] = [...wild[biome], { seed, biome, ...r, special: SPECIAL.includes(r.rarity) }].slice(-max); // 太多就拎走最舊嗰啲
   };
   const spawnAll = (cycle) => {
     BIOMES.forEach((_, b) => add(b, `day${cycle}-b${b}`));
-    for (const extra of ['x', 'y']) add(6, `day${cycle}-b6${extra}`);
+    for (const seed of kingdomExtraSeeds(`day${cycle}`)) add(6, seed);
   };
   const respawnWild = (tag, rare, sizeBoost) => BIOMES.forEach((_, b) => {
-    const seed = `${tag}-b${b}`;
-    add(b, seed, rare ? (seededPick(seed) < 0.3 ? 'Mythic' : 'Legendary') : null, sizeBoost);
+    for (const seed of b === 6 ? [`${tag}-b${b}`, ...kingdomExtraSeeds(tag)] : [`${tag}-b${b}`]) add(b, seed, rare ? (seededPick(seed) < 0.3 ? 'Mythic' : 'Legendary') : null, sizeBoost);
   });
 
   const cycle = cycleAt(time);

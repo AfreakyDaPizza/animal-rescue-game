@@ -207,6 +207,9 @@ export const SELL_SECONDS = 60;
 
 // ---- New biome countdown (Issue #4): the wall at the end of the mountain bridge counts down to this day ----
 export const NEW_BIOME_DATE = '2026-10-24';
+export const KINGDOM_WILD_COUNT = 5; // 👑 How many wild animals are in the Enchanted Kingdom at the same time (Issue #23 kid: 5)
+// Seeds for the extra Kingdom animals (the 1st one uses the normal biome seed)
+export const kingdomExtraSeeds = (tag) => ['x', 'y', 'z', 'w', 'v', 'u', 't', 's'].slice(0, Math.max(0, KINGDOM_WILD_COUNT - 1)).map((e) => `${tag}-b6${e}`);
 export const NEW_BIOME_ON = true; // 👑 Enchanted Kingdom (Biome 7) (2026-11-03 kid: hidden, the gate stays shut). true = bring it back. Your Kingdom pets stay yours!
 
 // ---- 🧪 FUSE MACHINE (Issue #4): put in 3 pets, get 1 special fuse-only pet ----

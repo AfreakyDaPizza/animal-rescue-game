@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { short } from './format.js';
 import { addFireAura } from './fireAura.js';
 import { animalsInBiome, formatKg, kgScale, findAnimal } from './data/animals.js';
-import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, rarityInfo } from './data/balance.js';
+import { INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, petMoney, rarityInfo, KINGDOM_WILD_COUNT } from './data/balance.js';
 import { seededRandom, rollWild } from './spawnRoll.js';
 import { buildAnimalModel } from './animalModels.js';
 import { addSaddle } from './saddle.js'; // 🐎 Issue #16
@@ -37,7 +37,7 @@ export function createRescue(scene, camera) {
 // seed：呢隻動物嘅「身份」（例如「第 123 段白天 · Biome 2」）；救咗嘅就唔再出
 export function spawnAnimal(rescue, biome, animal = null, kg = null, rarity = null, { seed = null, sizeMul = null } = {}) {
   // 每個生態區 2 隻（Issue #17 小朋友：「two per biome instead of one」）；Biome 7 魔法王國可以同時有 3 隻（小朋友：最少 2 隻）
-  const MAX = biome === 6 ? 3 : 2;
+  const MAX = biome === 6 ? KINGDOM_WILD_COUNT : 2; // Issue #23：王國同時 5 隻
   const same = rescue.wild.filter((w) => w.biome === biome);
   const drop = same.slice(0, Math.max(0, same.length - (MAX - 1))); // 太多就拎走最舊嗰啲
   rescue.wild = rescue.wild.filter((w) => {

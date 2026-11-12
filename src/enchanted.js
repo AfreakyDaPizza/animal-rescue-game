@@ -8,7 +8,7 @@ import { BIOME_LENGTH } from './data/biomeList.js';
 import { addPlatform, addCollider, bakeStatic, kingdom, KINGDOM_Y, KINGDOM_PET_HALF_X } from './world.js';
 import { buildSkywhaleModel, buildCrystalButterfly, buildRune } from './enchantedModels.js';
 import { buildParkour, inParkourZone } from './kingdomParkour.js'; // 🍄 Issue #18：跳菇上浮島 → 👼 Isotope Angel
-import { forestFloor, forestPaths, glowStream, mossyCliff, forestTree, grassTuft, glowFlower, rockBase, pulseMats } from './enchantedArt.js'; // 🌳 Issue #19：魔法森林新美術
+import { forestFloor, forestPaths, glowStream, forestTree, grassTuft, glowFlower, rockBase, pulseMats, castleWalls, royalCarpet, flowerBed, hedgeRing, crownStatue, bannerPole } from './enchantedArt.js'; // 🌳 Issue #19：魔法森林新美術
 
 export const kingdomView = { group: null, reveal: false }; // reveal：開門動畫俾人睇住先
 // 閘門嘅位同高度（開門動畫用）
@@ -68,33 +68,6 @@ function strangeTree(root, x, z, s, rand) {
     add(root, new THREE.SphereGeometry(0.22 * s, 8, 6), strangeMats[(c + k) % STRANGE.length], px + Math.cos(a) * 2.2 * s, topY - 1.45 * s, pz + Math.sin(a) * 2.2 * s, false);
   }
 }
-// 發光蘑菇（地上）
-function glowShroom(root, x, z, s, rand) {
-  const c = strangeMats[Math.floor(rand() * STRANGE.length)];
-  add(root, new THREE.CylinderGeometry(0.12 * s, 0.16 * s, 0.6 * s, 6), mat(0xf3e5f5), x, 0.3 * s, z, false);
-  add(root, new THREE.SphereGeometry(0.45 * s, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c, x, 0.6 * s, z, false);
-}
-// 邊界嘅藤（小朋友：vines around the border）：由山頂吊落嚟，有發光花同葉
-// Issue #14（2026-11-07）：疏啲（以前每 1.6 米一條，而家每 6.4 米），淨係兩邊
-function vines(root, rect, rand) {
-  const leaf = mat(0x2e7d32);
-  const leaf2 = mat(0x66bb6a);
-  const put = (x, z, side) => {
-    const len = 6 + rand() * 9;
-    const top = 11 + rand() * 6;
-    for (let y = top; y > top - len; y -= 0.55) {
-      const vx = x + side * 0.2;
-      const vz = z + Math.sin(y * 1.7 + x + z) * 0.25;
-      add(root, new THREE.BoxGeometry(0.16, 0.6, 0.16), y % 1.1 < 0.55 ? leaf : leaf2, vx, y, vz, false);
-      if (rand() < 0.35) add(root, new THREE.BoxGeometry(0.38, 0.06, 0.24), leaf2, vx, y, vz, false).rotation.y = rand() * 3;
-      if (rand() < 0.12) add(root, new THREE.OctahedronGeometry(0.2), strangeMats[Math.floor(rand() * STRANGE.length)], vx, y, vz, false); // 發光花
-    }
-  };
-  for (let z = rect.maxZ - 18; z > rect.minZ + 1; z -= 6.4) {
-    put(rect.minX - 0.1, z + rand() * 3, 1);
-    put(rect.maxX + 0.1, z + rand() * 3, -1);
-  }
-}
 // 遠處嘅皇宮（王國盡頭）
 function castle(root, rect) {
   const z = rect.minZ + 6;
@@ -114,30 +87,15 @@ function castle(root, rect) {
 }
 
 
-// 邊界：好高嘅水晶懸崖（每段唔同高度，頂有發光水晶）+ 巨型發光奇怪樹
-function crystalCliffs(root, rect, rand) {
-  const cliff = (x, z, w, d) => mossyCliff(root, x, z, w, d, rand); // Issue #19：青苔分層石崖（以前係平平哋嘅紫色方塊）
-  const S = 7;
-  for (let z = rect.maxZ - 2; z > rect.minZ; z -= S) {
-    cliff(rect.minX - 3.5, z - S / 2, 7, S + 0.5);
-    cliff(rect.maxX + 3.5, z - S / 2, 7, S + 0.5);
-  }
-  for (let x = rect.minX - 7; x < rect.maxX + 7; x += S) cliff(x + S / 2, rect.minZ - 3.5, S + 0.5, 7);
-  // 閘門兩邊（王國嘅入口嗰幅）
-  for (let x = rect.minX - 7; x < rect.maxX + 7; x += S) if (Math.abs(x + S / 2) > 15) cliff(x + S / 2, rect.maxZ - 0.7, S + 0.5, 1.2); // 薄啲：唔好伸入 Biome 6 山後面條路
-  // 巨型發光奇怪樹沿住邊界（Issue #14：疏啲，以前每 13 米一棵，而家每 26 米；後面淨係兩個角）
-  for (let z = rect.maxZ - 20; z > rect.minZ + 8; z -= 26) {
-    if (!inParkourZone(rect.minX + 4, z, 8)) forestTree(root, rect.minX + 4, z, 1.6 + rand() * 0.4, rand); // 🍄 跳菇路線嗰度唔種（樹頂會撞到浮島）
-    else rand();
-    strangeTree(root, rect.maxX - 4, z - 13, 2.2 + rand() * 0.6, rand);
-  }
-  // Issue #19：石崖後面一排巨型魔法樹（行唔到去，淨係睇：有深度，好似喺森林入面）
+// 邊界（Issue #23 小朋友：「Make the kingdom border look like kingdom again ... with trees」）：
+// 城牆 + 塔 + 掛旗（castleWalls），牆外一圈巨型魔法樹（行唔到去，淨係睇）
+function kingdomBorder(root, rect, rand) {
+  castleWalls(root, rect, rand);
   for (let z = rect.maxZ - 6; z > rect.minZ - 10; z -= 11) {
-    forestTree(root, rect.minX - 11 - rand() * 4, z - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
-    forestTree(root, rect.maxX + 11 + rand() * 4, z - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
+    forestTree(root, rect.minX - 12 - rand() * 4, z - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
+    forestTree(root, rect.maxX + 12 + rand() * 4, z - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
   }
-  for (let x = rect.minX - 6; x < rect.maxX + 6; x += 12) forestTree(root, x + rand() * 4, rect.minZ - 13 - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
-  for (const x of [rect.minX + 12, rect.maxX - 12]) strangeTree(root, x, rect.minZ + 5, 2.4 + rand() * 0.5, rand);
+  for (let x = rect.minX - 6; x < rect.maxX + 6; x += 12) forestTree(root, x + rand() * 4, rect.minZ - 14 - rand() * 4, 2.6 + rand() * 1.2, rand, 4);
 }
 
 // 中間嘅水晶噴泉（發光水）；小朋友：要行得穿（冇撞嘢圈）
@@ -174,7 +132,7 @@ export function enchanted(staticRoot, rect, rand, live) {
   const base = rockBase(w, KINGDOM_Y, d); // Issue #19：下面係石（以前紫色）
   base.position.set(0, -KINGDOM_Y / 2 - 0.01, cz);
   root.add(base);
-  crystalCliffs(root, rect, rand);
+  kingdomBorder(root, rect, rand);
   castle(root, rect);
   crystalFountain(root, 0, cz + 8);
   crystalFountain(root, -40, cz - 40);
@@ -192,79 +150,58 @@ export function enchanted(staticRoot, rect, rand, live) {
       if (Math.abs(x) > 6 && Math.hypot(x, z - (cz + 8)) > 9) return [x, z];
     }
   };
-  // 魔法森林（Issue #14 小朋友 2026-11-07：先話樹太亂遮住動物，之後話「dont remove ALL of the trees」）：
-  // 樹少咗（大約以前三分一），一叢叢咁種喺兩邊；中間（動物出現同行嚟行去嘅範圍 KINGDOM_PET_HALF_X）、
-  // 金色大道、噴泉、閘門入口都唔種，一入嚟同喺大道上面都清清楚楚睇到動物
+  // 樹（Issue #22 小朋友：「the trees stuffed inside is pretty messy」）：唔再一叢叢亂種 → 整整齊齊一行行
+  // 動物範圍（KINGDOM_PET_HALF_X）、大道、噴泉、跳菇路線、小溪都唔種
   const petZone = (x, z, m) => Math.abs(x) < KINGDOM_PET_HALF_X + 4 + m && z > rect.minZ + 64 - m && z < rect.minZ + 156 + m;
-  const fountains = [[0, cz + 8, 10], [-40, cz - 40, 9], [40, cz - 40, 9]];
+  const fountains = [[0, cz + 8, 13], [-40, cz - 40, 10], [40, cz - 40, 10]];
   const trees = [];
-  const treeOk = (x, z) =>
-    Math.abs(x) > 12 && Math.abs(x) < half - 4 && z > rect.minZ + 16 && z < rect.maxZ - 14 && !petZone(x, z, 2)
-    && fountains.every(([fx, fz, r]) => Math.hypot(x - fx, z - fz) > r)
-    && !inParkourZone(x, z, 7) // 🍄 跳菇 Parkour 路線（Issue #18）：樹唔好頂住浮島
-    && trees.every((t) => Math.hypot(t[0] - x, t[1] - z) > 3.2); // 樹之間留路（唔會圍住人）
-  const clusters = [];
-  // Issue #18（小朋友：「put some more trees」）：16 → 21 叢（樹多咗大約三成半），一樣淨係兩邊
-  for (let tries = 0; clusters.length < 21 && tries < 600; tries++) {
-    const side = clusters.length % 2 ? 1 : -1;
-    const x = side * (14 + rand() * (half - 20));
-    const z = rect.minZ + 18 + rand() * (d - 34);
-    if (petZone(x, z, 4) && Math.abs(x) < half - 12) continue; // 動物範圍：淨係最邊嗰條
-    if (treeOk(x, z) && clusters.every((c) => Math.hypot(c[0] - x, c[1] - z) > 12)) clusters.push([x, z]);
-  }
-  let nCrystal = 0;
-  let nStrange = 0;
-  for (const [cx, cz2] of clusters) {
-    const n = 3 + Math.floor(rand() * 3);
-    for (let k = 0, tries = 0; k < n && tries < 30; tries++) {
-      const a = rand() * Math.PI * 2;
-      const r = rand() * 6;
-      const x = cx + Math.cos(a) * r;
-      const z = cz2 + Math.sin(a) * r;
-      if (!treeOk(x, z)) continue;
-      trees.push([x, z]);
-      k++;
-      const kind = (nCrystal + nStrange) % 3; // Issue #19：加咗方塊魔法大樹（森林感）
-      if (kind === 2) {
-        forestTree(root, x, z, 0.9 + rand() * 0.6, rand);
-        addCollider(x, z, 0.8);
-        nStrange++;
-      } else if (kind === 0) {
-        crystalTree(root, x, z, 1.1 + rand() * 0.9, rand);
-        addCollider(x, z, 0.7);
-        nCrystal++;
-      } else {
-        strangeTree(root, x, z, 1.2 + rand() * 1.0, rand);
-        addCollider(x, z, 0.8);
-        nStrange++;
-      }
-      for (let m = 0; m < 3; m++) glowShroom(root, x + (rand() - 0.5) * 5, z + (rand() - 0.5) * 5, 0.6 + rand() * 0.8, rand); // 樹腳啲蘑菇
-      for (let m = 0; m < 5; m++) grassTuft(root, x + (rand() - 0.5) * 6, z + (rand() - 0.5) * 6, rand);
-      for (let m = 0; m < 3; m++) glowFlower(root, x + (rand() - 0.5) * 6, z + (rand() - 0.5) * 6, rand);
+  const plant = (x, z, kind, s) => {
+    if (petZone(x, z, 2) || inParkourZone(x, z, 7) || Math.abs(z - streamZ(x)) < 4.5) return;
+    if (fountains.some(([fx, fz, r]) => Math.hypot(x - fx, z - fz) < r)) return;
+    trees.push([x, z]);
+    if (kind === 'crystal') crystalTree(root, x, z, s, rand);
+    else if (kind === 'strange') strangeTree(root, x, z, s, rand);
+    else forestTree(root, x, z, s, rand, 0, kind);
+    addCollider(x, z, 0.8);
+  };
+  // 閘門入嚟：大道兩邊一行粉紅花樹（彩虹拱門嗰度留空）
+  for (let z = rect.maxZ - 8; z > rect.maxZ - 38; z -= 7) if (Math.abs(z - (rect.maxZ - 22)) > 2.5) for (const x of [-10, 10]) plant(x, z, 2, 0.9);
+  // 兩邊果園：三行，每行同一款（綠樹 / 水晶樹 / 青樹），每 10 米一棵
+  for (let z = rect.maxZ - 10; z > rect.minZ + 12; z -= 10) {
+    for (const side of [-1, 1]) {
+      plant(side * 54, z, 0, 1);
+      plant(side * 63, z - 5, 'crystal', 1.3);
+      plant(side * 71, z, 1, 1);
     }
   }
+  // 皇宮前面：一行奇怪發光蘑菇樹（細細棵）
+  for (const x of [-40, -30, -20, 20, 30, 40]) plant(x, rect.minZ + 20, 'strange', 1);
   kingdomView.trees = trees.length;
-  const edgeSpot = () => {
-    const side = rand() < 0.5 ? -1 : 1;
-    return [side * (half - 2 - rand() * 8), rect.minZ + 6 + rand() * (d - 12)];
-  };
-  for (let n = 0; n < 40; n++) {
-    const [x, z] = edgeSpot();
-    glowShroom(root, x, z, 0.6 + rand() * 0.5, rand);
+
+  // 中間（Issue #22：「add some stuff in the middle」）：全部矮矮哋，唔會遮住動物
+  royalCarpet(view, 0, rect.maxZ - 2, cz + 8 + 11); // 👑 紅地氈（金邊）
+  royalCarpet(view, 0, cz + 8 - 11, rect.minZ + 14);
+  hedgeRing(root, 0, cz + 8, 13.5); // 噴泉廣場外面一圈矮樹籬
+  for (const [x, z] of [[-9, cz - 1], [9, cz - 1], [-9, cz + 17], [9, cz + 17]]) bannerPole(root, x, z, x < 0 ? 0x6a1b9a : 0xc62828);
+  for (const sx of [-1, 1]) {
+    for (const z of [cz + 8 - 12, cz + 8 + 12]) flowerBed(root, sx * 21, z, 8, 4, rand); // 廣場兩邊
+    for (const z of [rect.minZ + 72, rect.minZ + 146]) flowerBed(root, sx * 26, z, 10, 4, rand); // 動物範圍前後
   }
-  // Issue #19：以前係 120 粒細方塊 → 草叢同發光花（兩邊多，中間動物範圍少少）
-  for (let n = 0; n < 260; n++) {
+  // 金皇冠雕像：大道兩邊每 22 米一對
+  for (let z = rect.maxZ - 54; z > rect.minZ + 24; z -= 22) {
+    if (Math.abs(z - (cz + 8)) < 16) continue;
+    for (const x of [-6, 6]) {
+      crownStatue(root, x, z);
+      addCollider(x, z, 0.8);
+    }
+  }
+  // 草叢 + 發光花：淨係牆腳一條（以前周圍都係，好亂）
+  const edgeSpot = () => [(rand() < 0.5 ? -1 : 1) * (half - 1 - rand() * 3), rect.minZ + 6 + rand() * (d - 12)];
+  for (let n = 0; n < 140; n++) {
     const [x, z] = edgeSpot();
     if (n % 3) grassTuft(root, x, z, rand);
     else glowFlower(root, x, z, rand);
   }
-  for (let n = 0; n < 160; n++) {
-    const x = (rand() * 2 - 1) * (half - 4);
-    const z = rect.minZ + 16 + rand() * (d - 30);
-    if (Math.abs(x) < 4.5 || Math.hypot(x, z - (cz + 8)) < 11.5 || Math.abs(z - streamZ(x)) < 2.6) continue; // 唔放喺路、廣場、溪
-    grassTuft(root, x, z, rand);
-  }
-  vines(root, rect, rand);
   bakeStatic(root, view);
   const floorMat = forestFloor(view, rect); // Issue #19：青苔草地（以前霓虹格仔）
 

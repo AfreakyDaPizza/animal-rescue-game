@@ -324,3 +324,10 @@ src/data/questions.js ← 野生動物問題
 - 小朋友：「The new biome and other places didn't mention in GitHub issues」→ Issue 表格「Where in the game?」淨係去到 Biome 6。
 - `idea.yml` 同 `bug.yml`（Bug 表格以前冇呢格）都加咗：Safety Zoo、Biome 7、Secret Beach、Laboratory/Boss Arena、Halloween World、Pumpkin Reaper Dragon、Hell/Witch Castle、Endless Witch Tower、Catch & Tame、Ranger Gym、Shops、Weapons/Skill Tree；Biome 2 改返遊戲入面個名 Polluted Ocean。
 - README：保留小朋友嗰句，下面加遊戲連結 + 所有地方一覽 + 點開 Issue。
+
+## Issue #22 + #23：王國再整（2026-11-12）
+- #22 小朋友：「add some stuff in the middle and the trees stuffed inside is pretty messy」；#23：「Make it like kingdom with trees and 5 pets at a time」。
+- 🏰 邊界：青苔石崖 → 城牆（米白石磚、城垛、紫色皇冠掛旗）+ 塔（藍尖頂、金尖、旗、發光窗）：四個角、兩邊每 45 米、後面 2 座、閘門兩邊門樓。牆外一圈巨型魔法樹（`castleWalls` 喺 `src/enchantedArt.js`）。
+- 🌳 樹：唔再亂種一叢叢 → 整齊一行行：閘門入嚟大道兩邊粉紅花樹；兩邊果園三行（綠樹 x±54、水晶樹 x±63、青樹 x±71，每 10 米）；皇宮前一行細奇怪蘑菇樹。動物範圍、噴泉、跳菇路線、小溪都唔種。拎走咗藤、亂放嘅蘑菇同大部分草叢（淨係牆腳留）。
+- 👑 中間：紅地氈（金邊）沿大道、廣場外矮樹籬圈 + 4 支皇家旗杆、8 個花圃、大道兩邊金皇冠雕像（每 22 米）。全部矮，唔遮動物。
+- 🐾 王國同時 5 隻野生動物：`KINGDOM_WILD_COUNT = 5`（`balance.js`，小朋友可以自己改）；seed `-b6x/y/z/w`（`kingdomExtraSeeds`）；活動換動物同 Discord 預測（`spawnPredict.js`）都跟。

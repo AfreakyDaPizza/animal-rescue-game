@@ -78,7 +78,7 @@ import { buildGym, gym, isGymOpen, gymStationAt, trainInGym, gymCountdown, gymOp
 import { GYM, GYM_PORTAL, GYM_FRONT, inGym, nearGymDoor, labStatus } from './labShape.js';
 import { createFishing, fishingInteraction, fishingPress, fishingBusy, updateFishing, stopFishing, buyRod } from './fishing.js'; // 🎣 Halloween 釣魚（釣蛋 + 🌽 Candy Corn）
 import { setRodShopActions } from './rodShop.js';
-import { HALLOWEEN_ON, NEW_BIOME_ON } from './data/balance.js';
+import { HALLOWEEN_ON, NEW_BIOME_ON, kingdomExtraSeeds } from './data/balance.js';
 import { halloween, isHalloweenOpen, halloweenCountdown, buildHubPortal, buildHalloween, applyHalloweenSky } from './halloweenWorld.js'; // 🎃 Halloween 世界
 import { HW_ARRIVE, GHOST_ARRIVE, inHalloween, inGhostWorld } from './halloweenShape.js';
 import { buildHell, setWitchTowerEntry } from './hellWorld.js'; // 🔥 Halloween World 2：Hell + 飛天熔岩石 + Witch Castle（Issue #11）
@@ -459,8 +459,8 @@ function spawnAll() {
   const specials = BIOMES.map((_, b) => spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}` }));
   // Issue #17：Biome 1–6 每區 2 隻；第 2 隻自己一個 seed（「-2」），第 1 隻個 seed 唔變（舊存檔 takenSpawns／Legendary 公告照用）
   BIOMES.forEach((_, b) => b !== 6 && specials.push(spawnAnimal(rescue, b, null, null, null, { seed: `day${cycle}-b${b}-2` })));
-  // Biome 7：多 2 隻（同時有 3 隻）
-  for (const extra of ['x', 'y']) specials.push(spawnAnimal(rescue, 6, null, null, null, { seed: `day${cycle}-b6${extra}` }));
+  // Biome 7：同時有 KINGDOM_WILD_COUNT 隻（Issue #23：5 隻）
+  for (const seed of kingdomExtraSeeds(`day${cycle}`)) specials.push(spawnAnimal(rescue, 6, null, null, null, { seed }));
   refillCrazy(crazy, rescue); // 🤪 瘋狂寵物活動緊：入夜都唔會冇咗
   announceSpecials(specials.filter((e) => e?.special && (e.biome !== 6 || kingdom.open)));
 }
@@ -1781,8 +1781,8 @@ function updateFling(dt) {
 function respawnWild(rare = false, tag = null) {
   if (!tag) return spawnAll(); // 活動完咗：返返呢段白天嘅動物
   BIOMES.forEach((_, b) => {
-    // Issue #17：每區 2 隻（Biome 7 照舊 1 隻）
-    for (const seed of b === 6 ? [`${tag}-b${b}`] : [`${tag}-b${b}`, `${tag}-b${b}-2`]) {
+    // Issue #17：每區 2 隻
+    for (const seed of b === 6 ? [`${tag}-b${b}`, ...kingdomExtraSeeds(tag)] : [`${tag}-b${b}`, `${tag}-b${b}-2`]) { // Issue #23：王國 5 隻
       const r = seededPick(seed) < 0.3 ? 'Mythic' : 'Legendary';
       spawnAnimal(rescue, b, null, null, rare ? r : null, { seed });
     }
