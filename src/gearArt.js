@@ -31,6 +31,7 @@ const STYLES = {
   demonic: { body: ['#ff8a80', '#d50000', '#1a0505'], glow: '#ff1744', accent: '#ffab00', motif: 'demon' }, // 😈 Issue #11
   time: { body: ['#fffde7', '#ffca28', '#e65100'], glow: '#ffd54f', accent: '#18ffff', motif: 'clock' }, // ⏳ Time Shard
   tame: { body: ['#ffe0b2', '#ff9e40', '#8d4a17'], glow: '#ffab40', accent: '#ffd740', motif: 'cowboy' }, // 🤠 Tame Shard（Issue #16）
+  alien: { body: ['#ccff90', '#76ff03', '#1b5e20'], glow: '#76ff03', accent: '#b388ff', motif: 'stars' }, // 👽 Alien Shard（Issue #21）
   ride: { body: ['#ffccbc', '#c0703a', '#4e2a12'], glow: '#ffb74d', accent: '#ffd740', motif: 'saddle' }, // 🐎 Ridable Shard
   leash: { body: ['#ffe0b2', '#d7a86e', '#6d4c2f'], glow: '#ffcc80', accent: '#b0bec5', motif: 'leash', noShard: true }, // 🪢 Leash
 };

@@ -331,3 +331,12 @@ src/data/questions.js ← 野生動物問題
 - 🌳 樹：唔再亂種一叢叢 → 整齊一行行：閘門入嚟大道兩邊粉紅花樹；兩邊果園三行（綠樹 x±54、水晶樹 x±63、青樹 x±71，每 10 米）；皇宮前一行細奇怪蘑菇樹。動物範圍、噴泉、跳菇路線、小溪都唔種。拎走咗藤、亂放嘅蘑菇同大部分草叢（淨係牆腳留）。
 - 👑 中間：紅地氈（金邊）沿大道、廣場外矮樹籬圈 + 4 支皇家旗杆、8 個花圃、大道兩邊金皇冠雕像（每 22 米）。全部矮，唔遮動物。
 - 🐾 王國同時 5 隻野生動物：`KINGDOM_WILD_COUNT = 5`（`balance.js`，小朋友可以自己改）；seed `-b6x/y/z/w`（`kingdomExtraSeeds`）；活動換動物同 Discord 預測（`spawnPredict.js`）都跟。
+
+## Issue #21 第 1 部分：🛸 Alien Mothership 升級（2026-11-12）
+- 小朋友留言：「Just deal with the upgrades first then the trails」→ 先做升級；Luck Machine／Trails／稀有度機率之後做。
+- 對話答案（2026-11-10）：唔要 Luck Trails，但要 Luck Machine（賣 2／4／6／8／10／12／15／18 倍運氣 boost）+ 改稀有度（Common/Rare/Epic 多啲、Legendary 少啲、Mythic 再少、Eternal 最少）。之後小朋友喺 Issue 又話「then the trails」→ 做嗰陣再問。
+- 💰 加價（`balance.js`，小朋友可以改）：`MACHINE_COST_UP = 1.9`、`PLOT_COST_UP = 1.75`、`TRAINING_COST_UP = 1.5`（包括 Inferno $5B → $7.5B）。
+- 🏃 跑步機／學生桌 Lv18 Alien Mothership：$75B（`ALIEN_TRAINING_COST`，唔再 ×1.5）、每秒 4M–6M（`ALIEN_GAIN`，我揀嘅暫定數）。樣喺 `src/alien.js`：紫色外星機身 + 綠電路紋理、尖角大門 + 綠色核心、兩邊柱 + 浮水晶、頭頂細飛碟照綠光。跑步機多 5 條教育短片（`videos.js` 尾：水熊蟲上太空、一日 16 次日出、5,000 個系外行星、果蠅 1947 第一批上太空、月球每年遠 3.8 cm）。
+- 🥚 繁殖機 Lv7 Alien Mothership：$75B（唔 ×1.9）、快 75%、一次 2 隻、25% 巨型、問答、15% Meteoric、**50% 👽 ALIEN 變異（×4，`ALIEN_MONEY`）**。部機上面浮住大母艦（牽引光、閃燈、炮塔）、綠色六角玻璃罩、兩隻細無人機。
+- 👽 ALIEN 變異：`MUTATIONS` 加 `alien`；樣 `fireAura.js BUILD.alien`（頭頂細飛碟轉圈 + 綠色牽引光 + 光點）；Alien Shard 自動有（Mythic）。
+- 🌐 地塊第 12 級 Futuristic：+2 隻位、錢 ×3（取代 Royal ×1.5）、價錢 = 普通 ×6（`PLOT_FUTURE_*`）；銀色燈柱 + 發光燈條 + 全息光環（`futurePlotPiece`／`buildFutureHalo`）。

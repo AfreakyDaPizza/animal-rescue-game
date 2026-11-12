@@ -625,6 +625,66 @@ export const VIDEOS = [
       emoji(ctx, '⬆️', 520, 170 + bounce(t, 4, 15), 60);
     },
   },
+  // ---- 🛸 Issue #21（小朋友：「5 MORE EDUCATIONAL VIDEOS」，Alien Mothership 主題）：太空 + 動物真知識 ----
+  {
+    title: 'Space Water Bears',
+    caption: 'Tiny tardigrades ("water bears") lived for 10 days in open space in 2007 - and many came back alive!',
+    colors: ['#1a0b3d', '#4a148c'],
+    draw(ctx, t) {
+      for (let i = 0; i < 12; i++) emoji(ctx, '✨', (i * 97 + t * 20) % 640, 40 + ((i * 53) % 280), 20, 0, 0.6);
+      emoji(ctx, '🛰️', 470 + Math.sin(t) * 20, 110, 80, Math.sin(t * 0.8) * 0.2);
+      emoji(ctx, '🐻', 250, 180 + bounce(t, 2, 12), 110, Math.sin(t * 1.5) * 0.15);
+      emoji(ctx, '🔬', 130, 240, 60);
+      bigText(ctx, `Day ${Math.min(10, 1 + Math.floor(t))}`, 470, 250, '#76ff03');
+    },
+  },
+  {
+    title: '16 Sunrises a Day!',
+    caption: 'Astronauts on the space station fly around Earth so fast they see about 16 sunrises every day!',
+    colors: ['#0d47a1', '#000428'],
+    draw(ctx, t) {
+      const a = t * 1.3;
+      emoji(ctx, '🌍', 320, 185, 150);
+      emoji(ctx, '🚀', 320 + Math.cos(a) * 170, 185 + Math.sin(a) * 110, 50, a + Math.PI / 2);
+      emoji(ctx, '🌅', 110, 90, 50, 0, 0.5 + 0.5 * Math.abs(Math.sin(a)));
+      bigText(ctx, `${Math.min(16, Math.floor(t * 1.4))} 🌅`, 530, 90, '#ffd54f');
+    },
+  },
+  {
+    title: 'Other Worlds',
+    caption: 'Scientists have found over 5,000 planets going around other stars. Some might even have oceans!',
+    colors: ['#311b92', '#12005e'],
+    draw(ctx, t) {
+      ['🪐', '🌑', '🌕', '🌎', '🪐'].forEach((p, i) => emoji(ctx, p, 90 + i * 115, 180 + Math.sin(t * 2 + i) * 30, 60 + (i % 2) * 20, t * 0.3));
+      emoji(ctx, '🔭', 560, 290, 60);
+      emoji(ctx, '👽', 320, 300 + bounce(t, 4, 12), 50);
+      bigText(ctx, `${Math.min(5000, Math.floor(t * 900)).toLocaleString('en-US')}+`, 320, 80, '#b2ff59');
+    },
+  },
+  {
+    title: 'Fruit Flies Went First',
+    caption: 'The very first animals sent to space were fruit flies, in 1947 - and they came back safely!',
+    colors: ['#004d40', '#00251a'],
+    draw(ctx, t) {
+      const up = (t * 40) % 300;
+      emoji(ctx, '🚀', 320, 320 - up, 90);
+      for (let i = 0; i < 3; i++) emoji(ctx, '🪰', 300 + i * 22, 270 - up + Math.sin(t * 9 + i) * 6, 26);
+      emoji(ctx, '🍌', 120, 270, 60, Math.sin(t * 2) * 0.2);
+      bigText(ctx, '1947', 520, 110, '#ffeb3b');
+    },
+  },
+  {
+    title: 'The Moon Is Moving!',
+    caption: 'The Moon drifts about 3.8 cm farther away from Earth every year - about as fast as your fingernails grow!',
+    colors: ['#263238', '#000000'],
+    draw(ctx, t) {
+      const d = Math.min(220, 120 + t * 10);
+      emoji(ctx, '🌍', 140, 185, 110);
+      emoji(ctx, '🌕', 140 + d + 80, 160 + Math.sin(t) * 10, 70);
+      emoji(ctx, '💅', 470, 290 + bounce(t, 3, 10), 50);
+      bigText(ctx, '3.8 cm', 480, 80, '#e1f5fe');
+    },
+  },
 ];
 
 function bigText(ctx, text, x, y, color) {

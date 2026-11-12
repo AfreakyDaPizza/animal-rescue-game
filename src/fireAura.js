@@ -575,6 +575,21 @@ const DARK_STOPS = [lin(0x2a0000), lin(0x120000), lin(0x050000)];
 const ECLIPSE_SMOKE = [lin(0x4a148c), lin(0x2a0845), lin(0x12001f)];
 const pal = (...hex) => hex.map(lin);
 
+// 👽 Alien 用嘅形狀同物料
+const alienSaucerGeo = new THREE.SphereGeometry(1, 20, 10);
+const alienRimGeo = new THREE.TorusGeometry(0.98, 0.07, 6, 28);
+const alienDomeGeo = new THREE.SphereGeometry(0.45, 16, 8, 0, TAU, 0, Math.PI / 2);
+const alienLightGeo = new THREE.SphereGeometry(0.09, 8, 6);
+const alienBeamGeo = new THREE.CylinderGeometry(0.15, 1, 1, 20, 1, true);
+const ALIEN_MAT = {
+  hull: new THREE.MeshStandardMaterial({ color: 0xb0bec5, metalness: 0.9, roughness: 0.25 }),
+  rim: new THREE.MeshStandardMaterial({ color: 0x7c4dff, emissive: 0x651fff, emissiveIntensity: 0.8, metalness: 0.6 }),
+  dome: new THREE.MeshStandardMaterial({ color: 0x76ff03, emissive: 0x64dd17, emissiveIntensity: 0.6, transparent: true, opacity: 0.7, roughness: 0.1 }),
+  light: new THREE.MeshBasicMaterial({ color: 0xb2ff59 }),
+  beam: additiveBasic({ color: 0x76ff03, opacity: 0.2, side: THREE.DoubleSide }),
+  ground: additiveBasic({ color: 0x76ff03, map: tex('glow'), opacity: 0.45 }),
+};
+
 const BUILD = {
   fire(e) {
     const fl = cloud(e, 36, 'flame', false);
@@ -1094,6 +1109,69 @@ const BUILD = {
     };
   },
 
+  // 👽 ALIEN（Issue #21：Alien Mothership 繁殖機 50% 機會）：頭頂一隻細飛碟轉圈 + 綠色牽引光照住隻寵物 + 綠色光點
+  alien(e) {
+    const ufo = new THREE.Group();
+    const saucer = new THREE.Mesh(alienSaucerGeo, ALIEN_MAT.hull);
+    saucer.scale.set(1, 0.28, 1);
+    const rim = new THREE.Mesh(alienRimGeo, ALIEN_MAT.rim);
+    rim.rotation.x = Math.PI / 2;
+    const dome = new THREE.Mesh(alienDomeGeo, ALIEN_MAT.dome);
+    dome.position.y = 0.12;
+    ufo.add(saucer, rim, dome);
+    const lights = [];
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * TAU;
+      const l = new THREE.Mesh(alienLightGeo, ALIEN_MAT.light);
+      l.position.set(Math.cos(a) * 0.9, -0.02, Math.sin(a) * 0.9);
+      ufo.add(l);
+      lights.push(l);
+    }
+    const beam = new THREE.Mesh(alienBeamGeo, ALIEN_MAT.beam);
+    const size = Math.max(0.35 * e.s, e.R * 0.45);
+    ufo.scale.setScalar(size);
+    const hover = e.maxY + 0.55 * e.s + size * 0.4;
+    const glow = new THREE.Mesh(unitPlane, ALIEN_MAT.ground);
+    glow.position.set(e.c.x, e.minY + (0.02 + e.layer * 0.008) * e.s, e.c.z);
+    glow.renderOrder = 1;
+    const sparks = cloud(e, 20, 'glow', true, { colors: pal(0x76ff03, 0xb2ff59, 0x18ffff, 0xffffff) });
+    e.g.add(ufo, beam, glow, sparks.pts);
+    return {
+      anchor: sparks.pts,
+      secondary: [ufo, beam],
+      update(t, mul) {
+        const a = t * 0.9 + e.seed * TAU;
+        const r = e.R * 0.35;
+        const ux = e.c.x + Math.cos(a) * r;
+        const uz = e.c.z + Math.sin(a) * r;
+        const uy = hover + Math.sin(t * 2 + e.seed * 9) * 0.08 * e.s;
+        ufo.position.set(ux, uy, uz);
+        ufo.rotation.y = t * 2.5;
+        ufo.rotation.z = Math.sin(t * 1.7) * 0.12;
+        lights.forEach((l, k) => l.scale.setScalar(0.6 + 0.6 * Math.abs(Math.sin(t * 6 + k))));
+        // 牽引光：由飛碟照落隻寵物（圓錐，頂喺飛碟）
+        const len = Math.max(0.1, uy - e.minY);
+        beam.position.set((ux + e.c.x) / 2, e.minY + len / 2, (uz + e.c.z) / 2);
+        beam.scale.set(e.R * 0.9, len, e.R * 0.9);
+        ALIEN_MAT.beam.opacity = 0.16 + 0.08 * Math.sin(t * 5);
+        glow.scale.setScalar(e.R * 2.4 * (1 + 0.08 * Math.sin(t * 4 + e.seed * 9)));
+        // 綠色光點：沿住光柱升上飛碟
+        const n = cnt(20, mul);
+        const S = sparks.seeds;
+        for (let i = 0; i < n; i++) {
+          const u = fract(t * 0.45 * (0.6 + S[i * 4 + 1] * 0.8) + S[i * 4 + 2]);
+          const ang = S[i * 4] * TAU + t;
+          const rr = e.R * 0.5 * (1 - u * 0.6);
+          sparks.pos[i * 3] = e.c.x + (ux - e.c.x) * u + Math.cos(ang) * rr;
+          sparks.pos[i * 3 + 1] = e.minY + u * len;
+          sparks.pos[i * 3 + 2] = e.c.z + (uz - e.c.z) * u + Math.sin(ang) * rr;
+          sparks.size[i] = 0.1 * e.s;
+          sparks.alpha[i] = Math.sin(Math.PI * u) * 0.9;
+        }
+        flush(sparks, n);
+      },
+    };
+  },
 };
 
 // ---------- ⏳ Time 用 ----------

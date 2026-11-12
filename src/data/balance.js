@@ -55,6 +55,12 @@ export function randomRarity() {
 // ---- 繁殖機要幾耐（秒）：越遠嘅生態區越耐 ----
 export const REPRODUCE_SECONDS = [30, 60, 120, 240, 480, 900, 1500, 1800, 2400, 3000]; // last 3 = Halloween pets
 
+// Issue #21 (kid 2026-11-09): every machine upgrade costs 90% more (x1.9), every plot upgrade 75% more (x1.75),
+// every Treadmill / Student Table upgrade 50% more (x1.5). Change these 3 numbers if it's too hard!
+export const MACHINE_COST_UP = 1.9;
+export const PLOT_COST_UP = 1.75;
+export const TRAINING_COST_UP = 1.5;
+
 // ---- 繁殖機升級（小朋友 2026-10-11）：一次升晒 5 部 ----
 // timeFactor：繁殖時間 × 幾多（0.8 = 快 20%）；cost：升去呢級要幾錢
 export const MACHINE_LEVELS = [
@@ -72,7 +78,10 @@ export const MACHINE_LEVELS = [
   // 70% faster than Basic, 2 animals at a time, questions, 25% GIANT, and meteoricChance = chance (0 to 1)
   // that each pet comes out with the ☄️ METEORIC mutation (x METEORIC_MONEY money)
   { name: "Meteoric Dragon's Lair", timeFactor: 0.3, cost: 5000000000, double: true, giantChance: 0.25, quiz: true, meteoricChance: 0.15 },
-];
+  // 🛸 Alien Mothership (Issue #21, kid 2026-11-09): a flying mothership with a glass dome. alienChance = chance (0 to 1)
+  // that each pet comes out with the 👽 ALIEN mutation (x ALIEN_MONEY money). Its cost is NOT made 90% more (MACHINE_COST_UP)
+  { name: 'Alien Mothership', timeFactor: 0.25, cost: 75000000000, double: true, giantChance: 0.25, quiz: true, meteoricChance: 0.15, alienChance: 0.5, noRaise: true },
+].map((lv) => ({ ...lv, cost: lv.noRaise ? lv.cost : Math.round(lv.cost * MACHINE_COST_UP) }));
 export const MACHINE_QUIZ_CUT = 0.3; // Right answer: cut this much of the time that is left (0.3 = 30%)...
 export const MACHINE_QUIZ_MIN_CUT = 20; // ...but always at least this many seconds
 export const MACHINE_QUIZ_COOLDOWN = 10; // Seconds before the same machine can ask another question
@@ -84,6 +93,7 @@ export const METEORIC_MONEY = 5; // ☄️ METEORIC pets (from a Meteoric Shard)
 export const ASTRAL_MONEY = 8; // 🌌 ASTRAL pets earn this many times more money
 export const DEMONIC_MONEY = 10; // 😈 DEMONIC pets (Demonic Shard / Witch Tower) earn this many times more money
 export const TIME_MONEY = 6; // ⏳ TIME pets (cute googly eyes + clock halo, from a Time Shard) earn this many times more money - change it if you like!
+export const ALIEN_MONEY = 4; // 👽 ALIEN pets (50% from the Alien Mothership machine, Issue #21) earn this many times more money
 export const TAME_MONEY = 3; // 🤠 TAME pets (from a Tame Shard, Special's Stall, Issue #16) earn this many times more money
 // ⏳ A Time Shard falls from the sky near you every random TIME_SHARD_MIN to TIME_SHARD_MAX minutes of play time
 export const TIME_SHARD_MIN = 1; // shortest wait (minutes)
@@ -99,15 +109,18 @@ export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 400
 // 例：Lv1→2 $50、Lv5→6 $1,659、Lv10→11 $132,000、Lv13→14 $1,826,000
 // 跑步機再慢 10%（小朋友要求）：stat = 'speed' 就 × 0.9
 // 15 級，每級一個款：Basic → … → Mountain Magic（14）→ Astral（15，MAX）
-export const MAX_TRAINING_LEVEL = 17; // Lv17 Inferno Sanctuary（小朋友 2026-10-18）
+export const MAX_TRAINING_LEVEL = 18; // Lv17 Inferno Sanctuary（小朋友 2026-10-18）、Lv18 🛸 Alien Mothership（Issue #21）
 // 小朋友 2026-10-11 加強：Lv14 Mountain Magic ×1.5、Lv15 Astral ×2
 const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 6 }; // Lv16 Prehistoric Age（本來叫 Astral King's Kingdom，Issue #14 改名）: x6（小朋友 2026-10-17：再勁啲，本來 x3）
 // Lv17 Inferno Sanctuary (kid 2026-10-18): gives a random amount between these 2 numbers every second
 export const INFERNO_GAIN = [1000000, 1500000];
-export const trainingRange = (level) => (level >= 17 ? INFERNO_GAIN : null);
+// Lv18 🛸 Alien Mothership (Issue #21): random amount between these 2 numbers every second
+export const ALIEN_GAIN = [4000000, 6000000];
+export const ALIEN_TRAINING_COST = 75000000000; // kid: $75B (not made 50% more)
+export const trainingRange = (level) => (level >= 18 ? ALIEN_GAIN : level >= 17 ? INFERNO_GAIN : null);
 export const trainingGain = (level, stat = 'iq', roll = Math.random()) =>
   trainingRange(level)
-    ? Math.round(INFERNO_GAIN[0] + (INFERNO_GAIN[1] - INFERNO_GAIN[0]) * roll)
+    ? Math.round(trainingRange(level)[0] + (trainingRange(level)[1] - trainingRange(level)[0]) * roll)
     : Math.round(5 * 2 ** (level - 1) * (stat === 'speed' ? 0.9 : 1) * (TOP_LEVEL_BUFF[level] ?? 1));
 // 升去 Lv2–13 貴 10%（小朋友 2026-10-11），升去 Lv14／15 價錢唔變
 // Lv13–16 cost 30% more (kid 2026-10-18). Lv17 Inferno Sanctuary costs INFERNO_COST.
@@ -123,7 +136,8 @@ const costRamp = (toLevel) => (toLevel <= COST_RAMP_FROM ? 1 : Math.min(COST_RAM
 // 顯示用：Lv17 係一個範圍（例如 "1M–1.5M"）
 export const trainingGainLabel = (level, stat, fmt) => (trainingRange(level) ? trainingRange(level).map(fmt).join('–') : fmt(trainingGain(level, stat)));
 export const upgradeCost = (level) =>
-  level + 1 >= 17 ? INFERNO_COST : Math.round(50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1) * costRamp(level + 1));
+  level + 1 >= 18 ? ALIEN_TRAINING_COST
+    : Math.round(TRAINING_COST_UP * (level + 1 >= 17 ? INFERNO_COST : 50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1) * costRamp(level + 1)));
 
 // ---- 🎣 HALLOWEEN FISHING (kid 2026-10-19; Issues #8 #9 2026-10-21): 15 rods, fish for eggs AND 🌽 Candy Corn ----
 // Everybody gets the Twig Rod FREE. Better rods cost 🌽 Candy Corn (you get it by fishing) and you KEEP them (saved).
@@ -197,10 +211,15 @@ export const PLOT_ROYAL_LEVEL = 11; // 小朋友 2026-10-17：最後一級 +2 �
 export const PLOT_ROYAL_SLOTS = 2; // Royal Kingdom gives this many extra pet slots
 export const PLOT_ROYAL_MONEY = 1.5; // Royal Kingdom money multiplier for all plot pets
 export const PLOT_ROYAL_COST_MULTI = 3; // Royal Kingdom costs this many times a normal upgrade
-export const PLOT_MAX_UPGRADES = PLOT_ROYAL_LEVEL;
-export const plotSlots = (plotLevel) => PLOT_START_SLOTS + Math.min(plotLevel, PLOT_ROYAL_LEVEL - 1) + (plotLevel >= PLOT_ROYAL_LEVEL ? PLOT_ROYAL_SLOTS : 0);
-export const plotMoneyMulti = (plotLevel) => (plotLevel >= PLOT_ROYAL_LEVEL ? PLOT_ROYAL_MONEY : 1);
-export const plotUpgradeCost = (plotLevel) => Math.round(200 * 2.2 ** plotLevel * 1.1 * (plotLevel + 1 === PLOT_ROYAL_LEVEL ? PLOT_ROYAL_COST_MULTI : 1)); // 貴 10%
+// 🛸 Upgrade 12 (Issue #21, kid 2026-11-09): FUTURISTIC plot: shiny fences, +2 more pets, x3 money (instead of Royal's x1.5)
+export const PLOT_FUTURE_LEVEL = 12;
+export const PLOT_FUTURE_SLOTS = 2;
+export const PLOT_FUTURE_MONEY = 3;
+export const PLOT_FUTURE_COST_MULTI = 6; // costs this many times a normal upgrade
+export const PLOT_MAX_UPGRADES = PLOT_FUTURE_LEVEL;
+export const plotSlots = (plotLevel) => PLOT_START_SLOTS + Math.min(plotLevel, PLOT_ROYAL_LEVEL - 1) + (plotLevel >= PLOT_ROYAL_LEVEL ? PLOT_ROYAL_SLOTS : 0) + (plotLevel >= PLOT_FUTURE_LEVEL ? PLOT_FUTURE_SLOTS : 0);
+export const plotMoneyMulti = (plotLevel) => (plotLevel >= PLOT_FUTURE_LEVEL ? PLOT_FUTURE_MONEY : plotLevel >= PLOT_ROYAL_LEVEL ? PLOT_ROYAL_MONEY : 1);
+export const plotUpgradeCost = (plotLevel) => Math.round(PLOT_COST_UP * 200 * 2.2 ** plotLevel * 1.1 * (plotLevel + 1 === PLOT_ROYAL_LEVEL ? PLOT_ROYAL_COST_MULTI : plotLevel + 1 === PLOT_FUTURE_LEVEL ? PLOT_FUTURE_COST_MULTI : 1)); // 貴 10%
 
 // ---- 賣寵物：賣得幾錢 = 佢 1 分鐘賺到嘅錢 ----
 export const SELL_SECONDS = 60;

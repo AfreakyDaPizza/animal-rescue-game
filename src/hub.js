@@ -11,6 +11,7 @@ import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall, buildSaveStall } from './hubBuildings.js';
 import { addFireAura } from './fireAura.js';
 import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
+import { buildAlienTier, animateAlienTier, alienTexture, buildMothership, animateMothership, futurePlotPiece, buildFutureHalo, animateFutureHalo } from './alien.js'; // 🛸 Issue #21
 import { buildPrehistoric, animatePrehistoric, prehistoricTexture } from './prehistoric.js'; // Lv16 Prehistoric Age（Issue #14）
 import { boost } from './events.js';
 import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 買嘅加成
@@ -20,7 +21,7 @@ import { state } from './state.js';
 import { buildAnimalModel, flipUpsideDown } from './animalModels.js';
 import { addSaddle } from './saddle.js'; // 🐎 Issue #16
 import { kgOf, formatKg, itemMoney, kgScale, findAnimal, mutationList, mutationText, mutationInfo, sizeText, addMutation, hasMutation } from './data/animals.js';
-import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY } from './data/balance.js';
+import { trainingGain, trainingGainLabel, upgradeCost, REPRODUCE_SECONDS, rarityInfo, MACHINE_LEVELS, MAX_TRAINING_LEVEL, plotSlots, plotUpgradeCost, PLOT_MAX_UPGRADES, SELL_SECONDS, plotMoneyMulti, PLOT_ROYAL_LEVEL, PLOT_ROYAL_SLOTS, PLOT_ROYAL_MONEY, PLOT_FUTURE_LEVEL, PLOT_FUTURE_SLOTS, PLOT_FUTURE_MONEY } from './data/balance.js';
 import { plotGroundTexture } from './hubFloor.js'; // 🐾 地塊地面紋理（Issue #8）
 
 const INTERACT_DISTANCE = 2.8;
@@ -62,6 +63,8 @@ export const TIERS = [
   { name: 'Prehistoric Age', base: 0x6b4f36, trim: 0xefe3c8, metal: 0.1, glow: 0xffa000, extra: 'prehistoric' },
   // Lv17（小朋友 2026-10-18）：Inferno Sanctuary —— 黑曜石機身 + 熔岩、四條火柱、火球、火花
   { name: 'Inferno Sanctuary', base: 0x1a0d0a, trim: 0xff6d00, metal: 0.5, glow: 0xff3d00, emissive: 0x4a0e00, extra: 'inferno' },
+  // Lv18（Issue #21，小朋友 2026-11-09）：🛸 Alien Mothership —— 紫色外星機身 + 螢光綠電路、尖角大門、頭頂飛碟（alien.js）
+  { name: 'Alien Mothership', base: 0x3a0f5c, trim: 0x76ff03, metal: 0.5, glow: 0x76ff03, emissive: 0x1a0530, extra: 'alien' },
 ].map((t, i) => ({ ...t, minLevel: i + 1 }));
 export const tierOf = (level) => Math.min(TIERS.length, Math.max(1, level)) - 1;
 
@@ -110,7 +113,8 @@ function applyTier(station, level = state[station.levelKey]) {
   const starry = tier.extra === 'astral' ? starTexture() : null;
   const fossil = tier.extra === 'prehistoric' ? prehistoricTexture() : null;
   const fiery = tier.extra === 'inferno' ? infernoTexture() : null;
-  const skin = starry || fossil || fiery;
+  const alien = tier.extra === 'alien' ? alienTexture() : null; // 🛸 Issue #21
+  const skin = starry || fossil || fiery || alien;
   if (station.baseMat.map !== skin) {
     station.baseMat.map = skin;
     station.baseMat.emissiveMap = skin;
@@ -121,7 +125,7 @@ function applyTier(station, level = state[station.levelKey]) {
     station.baseMat.emissive.setHex(0xffffff);
     station.baseMat.emissiveIntensity = fiery ? 0.9 : fossil ? 0.12 : 0.6;
   } else station.baseMat.emissiveIntensity = 1;
-  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : 0x000000);
+  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : alien ? 0x2e7d00 : 0x000000);
   station.trimMat.emissiveIntensity = fiery ? 0.7 : 1;
   station.stageGlow.color.setHex(tier.glow || 0x90a4ae);
   station.stageGlow.emissive.setHex(tier.glow || 0x000000);
@@ -422,6 +426,9 @@ function addFancyBits(station, group, y) {
   // ---- Inferno Sanctuary（Lv17）：見 inferno.js（火山石門、熔岩瀑布、火龍捲、火焰圈、BB 火龍……）----
   buildInferno(make('inferno'));
 
+  // ---- 🛸 Alien Mothership（Lv18，Issue #21）：見 alien.js ----
+  buildAlienTier(make('alien'));
+
   // ---- Mountain Magic：細雪山、魔法水晶、紫色魔法陣 ----
   const mountain = make('mountain');
   const rock = M(0x6d6359, { flatShading: true });
@@ -712,6 +719,7 @@ function animateExtras(station, time) {
   if (e.mountain.visible) e.mountain.userData.rune.rotation.z = time * 0.5;
   if (e.inferno?.visible) animateInferno(e.inferno, station, time);
   if (e.prehistoric.visible) animatePrehistoric(e.prehistoric, time);
+  if (e.alien?.visible) animateAlienTier(e.alien, station, time);
   if (e.astral.visible) {
     const u = e.astral.userData;
     u.galaxy.rotation.y = time * 0.35;
@@ -1332,6 +1340,10 @@ function buildMachine(scene, index, x, z, yaw = 0) {
   const meteorLair = buildDragonLair('meteor');
   meteorLair.visible = false;
   g.add(meteorLair);
+  // 🛸 Alien Mothership（Lv7，Issue #21）：上面浮住一隻大母艦 + 綠色六角玻璃（alien.js）
+  const mothership = buildMothership();
+  mothership.visible = false;
+  g.add(mothership);
 
   // 進度燈（綠色光圈）
   const light = new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0x000000, emissiveIntensity: 1.5 });
@@ -1353,7 +1365,7 @@ function buildMachine(scene, index, x, z, yaw = 0) {
     hearts.push({ heart, phase: i / 4 });
   }
   const front = { x: -Math.sin(yaw), z: -Math.cos(yaw) }; // 正面方向（firstHatch.js、教學箭咀用）
-  return { index, x, z, front, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, meteorLair, rune, orb, pink };
+  return { index, x, z, front, group: g, glass, sign, light, hearts, inside: null, insideName: null, nature, mountain, combo, dragon, meteorLair, mothership, rune, orb, pink };
 }
 
 export function machineStatus(i) {
@@ -1446,6 +1458,7 @@ export const PLOT_SKINS = [
   { name: 'Golden Palace', ground: 0xfff3c4, fence: 0xffc107, deco: 'gold' },
   { name: 'Rainbow Paradise', ground: 0xb2ebf2, fence: 0xff4081, deco: 'rainbow' },
   { name: 'Royal Kingdom', ground: 0x4a2c6e, fence: 0xffc107, deco: 'royal' }, // 小朋友 2026-10-17：+2 隻位、錢 x1.5
+  { name: 'Futuristic', ground: 0x1c2541, fence: 0xeceff1, deco: 'future' }, // 🛸 Issue #21：+2 隻位、錢 x3、未來感圍欄 + 全息光環
 ];
 
 function buildPlotSkins(scene) {
@@ -1536,6 +1549,9 @@ function buildPlotSkins(scene) {
       piece(g, new THREE.SphereGeometry(0.1, 10, 8), glow(0xe040fb, 2), 0, 2.45, 0);
     } else piece(g, new THREE.BoxGeometry(0.04, 0.8, 0.5), M(0xc62828), 0, 1.6, 0.27); // 紅色旗
   });
+  // 🛸 Futuristic（Issue #21）：銀色燈柱 + 發光燈條 + 全息光環
+  make('future', (g, i) => futurePlotPiece(piece, g, i));
+  groups.future.add(buildFutureHalo(PLOT.cx, PLOT.cz, PLOT.r));
   // 彩虹拱門（Rainbow Paradise 先有）
   const arch = new THREE.Group();
   [0xff1744, 0xff9100, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9].forEach((c, i) => {
@@ -1556,7 +1572,7 @@ export function applyPlotSkin(hub, level = state.plotLevel) {
   const c = new THREE.Color(skin.fence);
   const hsl = c.getHSL({});
   hub.plot.trim.color.copy(c).offsetHSL(0, 0, hsl.l > 0.45 ? -0.28 : 0.22);
-  const GEMS = { flowers: 0xff80ab, beach: 0x4dd0e1, bamboo: 0xc6ff00, snow: 0x80d8ff, candy: 0xff4081, jungle: 0x76ff03, lava: 0xff6d00, crystal: 0xea80fc, gold: 0xffd740, rainbow: 0x18ffff, royal: 0xffd740 };
+  const GEMS = { flowers: 0xff80ab, beach: 0x4dd0e1, bamboo: 0xc6ff00, snow: 0x80d8ff, candy: 0xff4081, jungle: 0x76ff03, lava: 0xff6d00, crystal: 0xea80fc, gold: 0xffd740, rainbow: 0x18ffff, royal: 0xffd740, future: 0x18ffff };
   const g = GEMS[skin.deco] ?? 0xfff176;
   hub.plot.gem.color.setHex(g);
   hub.plot.gem.emissive.setHex(g);
@@ -1895,6 +1911,7 @@ export function updateHub(hub, dt, time, px, pz) {
   for (const m of hub.machines) {
     if (m.dragon.visible) animateDragonLair(m, time);
     if (m.meteorLair.visible) animateDragonLair(m, time, m.meteorLair);
+    if (m.mothership.visible) animateMothership(m.mothership, time + m.index);
     if (m.mountain.visible) {
       m.rune.rotation.z = time * 0.6;
       m.orb.position.y = 2.6 + Math.sin(time * 2 + m.index) * 0.2;
@@ -1915,13 +1932,14 @@ export function updateHub(hub, dt, time, px, pz) {
   }
 
   const maxedPlot = state.plotLevel >= PLOT_MAX_UPGRADES;
+  if (hub.plot.skins.future?.visible) animateFutureHalo(hub.plot.skins.future.children.at(-1), time); // 🛸 Futuristic 全息光環
   hub.plotUpgradeSpot.sign.draw(THEMES.dark, [
     { text: 'BIGGER SAFETY ZOO', size: 0.15, color: '#ffd54f' },
     { text: `Skin: ${PLOT_SKINS[state.plotLevel].name}`, size: 0.11, color: '#80deea' },
     { text: `Pets: ${plotSlots(state.plotLevel)} (max ${plotSlots(PLOT_MAX_UPGRADES)})${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 x${plotMoneyMulti(state.plotLevel)} money` : ''}`, size: 0.11 },
     maxedPlot
       ? { text: '★ MAX ★', size: 0.15, color: '#ffd54f' }
-      : { text: `${state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `👑 +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money` : '+1 pet'}: $${fmt(plotUpgradeCost(state.plotLevel))}`, size: 0.14, color: state.money >= plotUpgradeCost(state.plotLevel) ? '#69f0ae' : '#ff8a80' },
+      : { text: `${state.plotLevel + 1 === PLOT_FUTURE_LEVEL ? `🛸 +${PLOT_FUTURE_SLOTS} pets & x${PLOT_FUTURE_MONEY} money` : state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `👑 +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money` : '+1 pet'}: $${fmt(plotUpgradeCost(state.plotLevel))}`, size: 0.14, color: state.money >= plotUpgradeCost(state.plotLevel) ? '#69f0ae' : '#ff8a80' },
     { text: maxedPlot ? 'Full size!' : 'Press E', size: 0.11, color: '#cfd8dc' },
   ]);
 
@@ -1997,7 +2015,7 @@ export function hubInteraction(hub, px, pz, selected, actions) {
   if (pu < INTERACT_DISTANCE) {
     const cost = plotUpgradeCost(state.plotLevel);
     if (state.plotLevel >= PLOT_MAX_UPGRADES) options.push({ dist: pu, prompt: `★ Your Safety Zoo is MAX size: ${plotSlots(state.plotLevel)} pets!` });
-    else if (state.money >= cost) options.push({ dist: pu, prompt: state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `<kbd>E</kbd> 👑 Upgrade to the ROYAL KINGDOM: +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money for $${fmt(cost)}` : `<kbd>E</kbd> Upgrade Safety Zoo to ${plotSlots(state.plotLevel) + 1} pets for $${fmt(cost)}`, action: actions.upgradePlot });
+    else if (state.money >= cost) options.push({ dist: pu, prompt: state.plotLevel + 1 === PLOT_FUTURE_LEVEL ? `<kbd>E</kbd> 🛸 Upgrade to FUTURISTIC: +${PLOT_FUTURE_SLOTS} pets & x${PLOT_FUTURE_MONEY} money for $${fmt(cost)}` : state.plotLevel + 1 === PLOT_ROYAL_LEVEL ? `<kbd>E</kbd> 👑 Upgrade to the ROYAL KINGDOM: +${PLOT_ROYAL_SLOTS} pets & x${PLOT_ROYAL_MONEY} money for $${fmt(cost)}` : `<kbd>E</kbd> Upgrade Safety Zoo to ${plotSlots(state.plotLevel) + 1} pets for $${fmt(cost)}`, action: actions.upgradePlot });
     else options.push({ dist: pu, prompt: `💰 Need $${fmt(cost)} to make your Safety Zoo bigger` });
   }
 
@@ -2048,7 +2066,13 @@ function applyMachineLook(m, level) {
   m.combo.visible = level === 4;
   m.dragon.visible = level === 5;
   m.meteorLair.visible = level === 6;
-  m.pink.color.setHex([0xec407a, 0x66bb6a, 0x9575cd, 0xffc107, 0xd84315, 0x2979ff][level - 1]);
+  m.mothership.visible = level === 7;
+  m.pink.color.setHex([0xec407a, 0x66bb6a, 0x9575cd, 0xffc107, 0xd84315, 0x2979ff, 0x76ff03][level - 1]);
+  // 🛸 母艦：玻璃罩變綠色發光（其他等級返返淺藍）
+  const alienGlass = level === 7;
+  m.glass.material.color.setHex(alienGlass ? 0xb2ff59 : 0xb3e5fc);
+  m.glass.material.emissive.setHex(alienGlass ? 0x1b3a0a : 0x000000);
+  m.glass.material.opacity = alienGlass ? 0.42 : 0.3;
 }
 
 export function applyMachineLevel(hub) {
@@ -2078,6 +2102,7 @@ export function fillMachine(machine, item) {
 }
 
 export const newlyMeteoric = new WeakSet(); // 啱啱喺 Meteoric Dragon's Lair 變咗 ☄️ 嘅寵物
+export const newlyAlien = new WeakSet(); // 👽 啱啱喺 Alien Mothership 變咗 ALIEN 嘅寵物（Issue #21）
 // 攞寵物：回傳一個 list（La Combination 可能有兩隻）；La Combination 有 20% 機會變大 1–10 倍
 export function collectPet(machine) {
   const m = state.machines[machine.index];
@@ -2092,6 +2117,11 @@ export function collectPet(machine) {
     if (level.meteoricChance && !hasMutation(pet, 'meteoric') && Math.random() < level.meteoricChance) {
       pet.mutation = addMutation(pet, 'meteoric');
       newlyMeteoric.add(pet); // main.js 用嚟出「METEORIC MUTATION!」公告（唔存檔）
+    }
+    // 👽 Issue #21：Alien Mothership 50% 機會出 ALIEN（×ALIEN_MONEY 錢）
+    if (level.alienChance && !hasMutation(pet, 'alien') && Math.random() < level.alienChance) {
+      pet.mutation = addMutation(pet, 'alien');
+      newlyAlien.add(pet);
     }
     if (level.giantChance && Math.random() < level.giantChance) {
       const extra = Math.max(1.5, Math.round((1 + Math.random() * 9) * 10) / 10);

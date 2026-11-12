@@ -10,7 +10,7 @@ import { RANGER_SKINS, PET_SKINS } from './skins.js';
 import { rangerSkinPic, petSkinPic } from './skinPics.js'; // 🧑 皮膚商店公仔相（Issue #14）
 import { ANIMALS, HALLOWEEN_PETS, CHEST_PETS, METEOR_PETS, DEMONIC_CHEST_PETS, DEMONIC_EGG_PETS, TAME_ANIMALS, TAME_PETS, KINGDOM_PETS, animalsInBiome, kgOf, formatKg, itemMoney, findAnimal, mutationList, mutationText, mutationInfo, sizeText } from './data/animals.js';
 import { HALLOWEEN_BIOMES } from './data/halloween.js'; // 🎃
-import { PET_SKINS_ON, BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY } from './data/balance.js';
+import { PET_SKINS_ON, BOSSES, rarityInfo, trainingGain, trainingGainLabel, INDEX_NEW_SPECIES_REWARD, INDEX_BIOME_COMPLETE_REWARD, FUSE_MONEY_BONUS, FIRE_MONEY, ECLIPSE_MONEY, METEORIC_MONEY, ALIEN_MONEY } from './data/balance.js';
 import { BIOMES, BIOME_THEMES } from './world.js';
 import { moneyPerSecond, TIERS, tierOf, sellPrice, getTierThumbnails, getMachineThumbnails } from './hub.js';
 import { fuseChances } from './fuse.js';
@@ -428,7 +428,7 @@ function petsHtml() {
   };
   // 賺得最多排最前
   const pets = state.pets.map((p, i) => ({ p, i })).sort((a, b) => itemMoney(b.p) - itemMoney(a.p));
-  return `<p class="index-summary">Safety Zoo: <b>${used}/${slots}</b> pets · earning <b>$${fmt(total)}/sec</b>${plotMoneyMulti(state.plotLevel) > 1 ? ` · 👑 Royal Kingdom x${plotMoneyMulti(state.plotLevel)}` : ''}</p>
+  return `<p class="index-summary">Safety Zoo: <b>${used}/${slots}</b> pets · earning <b>$${fmt(total)}/sec</b>${plotMoneyMulti(state.plotLevel) > 1 ? ` · ${state.plotLevel >= 12 ? '🛸 Futuristic' : '👑 Royal Kingdom'} x${plotMoneyMulti(state.plotLevel)}` : ''}</p>
     <div class="pet-actions">
       <button data-action="best">⭐ Equip Best</button>
       <button data-action="unequip-all" class="grey">Unequip All</button>
@@ -598,7 +598,7 @@ function machineIndexHtml() {
         <img src="${pics[i]}" alt="${lv.name}">
         <b>${got ? lv.name : '???'}</b>
         <small>${got ? `Level ${i + 1}` : `🔒 $${fmt(lv.cost)} to unlock`}</small>
-        <span class="kg">⏱️ ${faster}${lv.double ? `<br>👯 2 pets at once · 🦣 ${Math.round(lv.giantChance * 100)}% GIANT (1-10x)` : ''}${lv.quiz ? '<br>❓ Answer questions to speed up' : ''}${lv.meteoricChance ? `<br>☄️ ${Math.round(lv.meteoricChance * 100)}% METEORIC mutation (x${METEORIC_MONEY} money)` : ''}</span>
+        <span class="kg">⏱️ ${faster}${lv.double ? `<br>👯 2 pets at once · 🦣 ${Math.round(lv.giantChance * 100)}% GIANT (1-10x)` : ''}${lv.quiz ? '<br>❓ Answer questions to speed up' : ''}${lv.meteoricChance ? `<br>☄️ ${Math.round(lv.meteoricChance * 100)}% METEORIC mutation (x${METEORIC_MONEY} money)` : ''}${lv.alienChance ? `<br>👽 ${Math.round(lv.alienChance * 100)}% ALIEN mutation (x${ALIEN_MONEY} money)` : ''}</span>
         ${current ? '<p class="you">⭐ You have this one!</p>' : ''}
       </div>`;
     }).join('')}</div>`;

@@ -36,7 +36,7 @@ import {
 } from './animals.js';
 import {
   createHub, updateHub, hubInteraction, trainingStationAt, upgradeStation, fillMachine, collectPet, placePet, scrollVideo,
-  unequipPet, equipBest, sellPet, upgradePlot, upgradeMachines, refreshPlotPets, newlyMeteoric,
+  unequipPet, equipBest, sellPet, upgradePlot, upgradeMachines, refreshPlotPets, newlyMeteoric, newlyAlien,
 } from './hub.js';
 import { createHazards, updateHazards, hazardHit } from './hazards.js';
 import { createBosses, updateBosses, sendBossHome, resetBosses } from './bosses.js';
@@ -1826,9 +1826,11 @@ function afterCollect(pets) {
   const giant = pets.find((p) => p.sizeMul > 1);
   // Issue #14：繁殖機唔再出 🔥 Fire；☄️ Meteoric Dragon's Lair 有機會出 ☄️ Meteoric
   const meteoric = pets.find((p) => newlyMeteoric.has(p));
-  if (meteoric) announce(`☄️☄️ METEORIC MUTATION! Your ${meteoric.name} glows blue: x${mutationInfo('meteoric').money} money! 🐉`);
+  const alien = pets.find((p) => newlyAlien.has(p)); // 👽 Issue #21
+  if (alien) announce(`👽👽 ALIEN MUTATION! A tiny UFO follows your ${alien.name}: x${mutationInfo('alien').money} money! 🛸`);
+  else if (meteoric) announce(`☄️☄️ METEORIC MUTATION! Your ${meteoric.name} glows blue: x${mutationInfo('meteoric').money} money! 🐉`);
   else announce(giant ? `🔥 GIANT x${giant.sizeMul} ${giant.name}!` : `🎉 You got ${pets.map((p) => `a ${p.name}`).join(' and ')}!`);
-  play(giant || meteoric ? 'tierUp' : 'ding');
+  play(giant || meteoric || alien ? 'tierUp' : 'ding');
   popup('Put it in your Safety Zoo to earn money!');
   save();
 }
