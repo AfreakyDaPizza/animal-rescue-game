@@ -43,6 +43,7 @@ export const TAME_PORTAL = { x: 32.4, z: 28 }; // 大傳送門（面向 -x）
 export const LASSO_STALL = { x: 20, z: 18 }; // 🪢 Lasso Sam（面向 +z）
 export const FLUTE_STALL = { x: 28, z: 18.6 }; // 🎵 Tamer Ayden（面向 +z）
 export const SPECIAL_STALL_POS = { x: 23.5, z: 39 }; // ⭐ Special's Stall（面向 -z）
+export const BUCKING_BULL = { x: 31.5, z: 36.5 }; // 🐂 機械牛（Issue #21 2026-11-13，傳送門同 Special's Stall 中間）
 
 // 出世／傳送返 Hub 嘅位（入口同地塊閘口中間）；🎃 Halloween 傳送門（HALLOWEEN_ON）放喺地塊下面條路
 export const HUB_SPAWN = { x: 0, z: 9 }; // 2026-11-07：退後啲，第三身鏡頭唔會撞落地塊閘口塊牌

@@ -340,3 +340,9 @@ src/data/questions.js ← 野生動物問題
 - 🥚 繁殖機 Lv7 Alien Mothership：$75B（唔 ×1.9）、快 75%、一次 2 隻、25% 巨型、問答、15% Meteoric、**50% 👽 ALIEN 變異（×4，`ALIEN_MONEY`）**。部機上面浮住大母艦（牽引光、閃燈、炮塔）、綠色六角玻璃罩、兩隻細無人機。
 - 👽 ALIEN 變異：`MUTATIONS` 加 `alien`；樣 `fireAura.js BUILD.alien`（頭頂細飛碟轉圈 + 綠色牽引光 + 光點）；Alien Shard 自動有（Mythic）。
 - 🌐 地塊第 12 級 Futuristic：+2 隻位、錢 ×3（取代 Royal ×1.5）、價錢 = 普通 ×6（`PLOT_FUTURE_*`）；銀色燈柱 + 發光燈條 + 全息光環（`futurePlotPiece`／`buildFutureHalo`）。
+
+## Issue #21 留言（2026-11-13）：「The newest upgrades are very ugly」+「add some new entertainment for the catch and tame event」
+- 🛸 Lv18 Alien Mothership 跑步機／學生桌重做（`src/alien.js` `buildAlienTier(group, kind)`）：方塊疊嘅尖角門 → 兩條順滑外星骨（Tube）+ 綠色接縫 + 光環 + 外面彎角；螢幕／黑板加外星尖角框（上下尖、兩邊尖耳、霓虹外框、兩支天線）；跑步機摩打蓋變太空艙（三粒眼、銀邊）+ 兩邊尾翼；學生桌細尾翼 + 櫈背外星盾。紫色機身（金屬邊淡紫，唔再成部綠），光柱淡咗。個名牌喺 Lv18 升高 1.25 米（`station.title`／`titleY`）。
+- 🛸 繁殖機 Lv7 母艦重做（`buildMothership`）：銀色分層機殼（Lathe）+ 深紫機腹 + 一圈會轉嘅彩色窗燈 + 四塊尾翼 + 三個引擎艙 + 外圈浮環；光柱幼同淡。
+- 🛸 地塊 Futuristic：原本木圍欄收埋（`applyPlotSkin` 將 `wood`／`trim`／`gem` 材質 `visible = false`），換 `buildFutureFence`：銀色六角柱 + 青色玻璃能量牆 + 上下發光環 + 閘口兩座光塔同全息拱門；入面裝飾改做矮全息台。
+- 🐂 新娛樂 **Bucking Bull**（`src/buckingBull.js`，位置 `BUCKING_BULL` (31.5, 36.5) 喺 `src/hubShape.js`）：牧場右下角機械牛，撳 E 坐上去，A / D（或者 ◀ ▶ 掣）保持平衡；越耐越難；跌落軟墊就計時。每 15 秒 1 個 🤠 Tame Token（最多 4）、破紀錄 +2；`state.bullBest`、`state.bullRides`。數值 `BULL_*` 喺 `src/data/tame.js`（模擬：反應 0.3–0.4 秒大約坐到 30–45 秒）。測試 `game.bull.start()`／`.fall()`。

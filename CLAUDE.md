@@ -71,6 +71,7 @@
 - 2026-11-07：Issue #17（Hub／生態區）：Hub 圍欄跳得過（`addFenceLine`／`addFenceRing` 矮石台）、Boss「recommended」牌掛喺生態區大門橫樑上面（綠／紅發光）、生態區 52×86（`src/data/biomeList.js` 嘅 `BIOME_LENGTH`／`BIOME_HALF_W`）、每區 2 隻動物（seed `-2`）、Safety Zoo 圓形（`PLOT.cx/cz/r`）、鎚仔搬去 Safety Zoo 隔籬、繁殖機升級牌轉正。詳情 `docs/plan.md`「Issue #17」。
 
 - 2026-11-07：🎬 Catch & Tame 開場短片（`src/rodeoIntro.js`，`state.rodeoIntroSeen`；揀地圖面板「🎬 Watch intro」；`game.rodeo.intro()`）。
+- 2026-11-13：Issue #21 留言：Alien 升級（跑步機／學生桌 Lv18、繁殖機 Lv7、Futuristic 地塊）全部重做外觀；🐂 牧場 Bucking Bull（`src/buckingBull.js`，`BULL_*` 喺 `data/tame.js`）。Luck Machine + trails 仲未做（等小朋友答）。
 - 2026-11-09：Issue #19 Enchanted Kingdom 地圖重做（`src/enchantedArt.js`：青苔草地、石仔路、發光小溪、青苔石崖、方塊魔法樹、螢火蟲；動物／Boss／Parkour 唔郁）；Issue #20 Issue 表格「Where in the game?」加晒新地方（Bug 表格都有）、README 加地方一覽。
 
 ## 點樣玩／開發

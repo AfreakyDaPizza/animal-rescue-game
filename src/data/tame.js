@@ -31,6 +31,15 @@ export const RODEO_MAPS = [
 export const RODEO_HEARTS = 3; // ❤️ hits from obstacles before you go back to the Hub
 export const RODEO_TOKENS_PER_TAME = 1; // 🤠 Tame Tokens for each animal you tame (rarer animals give more, see rodeo.js)
 
+// 🐂 BUCKING BULL in the Hub ranch (Issue #21, 2026-11-13): ride it, hold A / D to stay balanced
+export const BULL_TOKEN_SECONDS = 15; // 🤠 1 Tame Token for every this many seconds you stay on
+export const BULL_MAX_TOKENS = 4; // most Tame Tokens from one ride (before the record bonus)
+export const BULL_BEST_BONUS = 2; // extra Tame Tokens when you beat your own record
+export const BULL_START_PUSH = 0.3; // how hard the bull pushes you at the start
+export const BULL_PUSH_GROWTH = 0.025; // the push gets this much stronger every second (it gets harder!)
+export const BULL_CONTROL = 1.3; // how strong A / D pulls you back
+export const BULL_TIP = 0.3; // the more you lean, the faster you fall (bigger = harder)
+
 // 🪢 Lasso Sam: 10 levels, paid with 💰 money. range = how far (metres) your lasso reaches
 // SPACE jump-off (Issue #17): a better lasso flings you FURTHER and HIGHER
 //   height = how high you fly above the animal's back (metres)
