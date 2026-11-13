@@ -11,7 +11,7 @@ import { createVideoScreen } from './videos.js';
 import { buildMagicLibrary, buildSellStall, buildSaveStall } from './hubBuildings.js';
 import { addFireAura } from './fireAura.js';
 import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
-import { buildAlienTier, animateAlienTier, alienTexture, buildMothership, animateMothership, futurePlotPiece, buildFutureHalo, animateFutureHalo } from './alien.js'; // 🛸 Issue #21
+import { buildAlienTier, animateAlienTier, alienTexture, buildMothership, animateMothership, futurePlotPiece, buildFutureHalo, animateFutureHalo, buildFutureFence, animateFutureFence } from './alien.js'; // 🛸 Issue #21
 import { buildPrehistoric, animatePrehistoric, prehistoricTexture } from './prehistoric.js'; // Lv16 Prehistoric Age（Issue #14）
 import { boost } from './events.js';
 import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 買嘅加成
@@ -64,7 +64,7 @@ export const TIERS = [
   // Lv17（小朋友 2026-10-18）：Inferno Sanctuary —— 黑曜石機身 + 熔岩、四條火柱、火球、火花
   { name: 'Inferno Sanctuary', base: 0x1a0d0a, trim: 0xff6d00, metal: 0.5, glow: 0xff3d00, emissive: 0x4a0e00, extra: 'inferno' },
   // Lv18（Issue #21，小朋友 2026-11-09）：🛸 Alien Mothership —— 紫色外星機身 + 螢光綠電路、尖角大門、頭頂飛碟（alien.js）
-  { name: 'Alien Mothership', base: 0x3a0f5c, trim: 0x76ff03, metal: 0.5, glow: 0x76ff03, emissive: 0x1a0530, extra: 'alien' },
+  { name: 'Alien Mothership', base: 0x3a0f5c, trim: 0xce93d8, metal: 0.5, glow: 0x76ff03, emissive: 0x1a0530, extra: 'alien' },
 ].map((t, i) => ({ ...t, minLevel: i + 1 }));
 export const tierOf = (level) => Math.min(TIERS.length, Math.max(1, level)) - 1;
 
@@ -92,7 +92,7 @@ function starTexture() {
   return starTex;
 }
 
-function applyTier(station, level = state[station.levelKey]) {
+export function applyTier(station, level = state[station.levelKey]) {
   const index = tierOf(level);
   const tier = TIERS[index];
   station.baseMat.color.setHex(tier.base);
@@ -109,6 +109,8 @@ function applyTier(station, level = state[station.levelKey]) {
   station.ring.visible = index >= 4; // Neon 起：地上有圈光
   station.sparkles.visible = index >= 3; // Golden Steel 起：有閃粉
   for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra;
+  // 🛸 Lv18 外星螢幕框頂有天線，個名牌升高少少唔好撞埋（Issue #21 小朋友 2026-11-13）
+  if (station.title) station.title.position.y = station.titleY + (tier.extra === 'alien' ? 1.25 : 0);
   // Astral：機身變星空；Prehistoric：化石石頭；Inferno：機身變火山石 + 發光熔岩裂紋，金屬邊發橙光
   const starry = tier.extra === 'astral' ? starTexture() : null;
   const fossil = tier.extra === 'prehistoric' ? prehistoricTexture() : null;
@@ -125,7 +127,7 @@ function applyTier(station, level = state[station.levelKey]) {
     station.baseMat.emissive.setHex(0xffffff);
     station.baseMat.emissiveIntensity = fiery ? 0.9 : fossil ? 0.12 : 0.6;
   } else station.baseMat.emissiveIntensity = 1;
-  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : alien ? 0x2e7d00 : 0x000000);
+  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : alien ? 0x4a148c : 0x000000);
   station.trimMat.emissiveIntensity = fiery ? 0.7 : 1;
   station.stageGlow.color.setHex(tier.glow || 0x90a4ae);
   station.stageGlow.emissive.setHex(tier.glow || 0x000000);
@@ -427,7 +429,7 @@ function addFancyBits(station, group, y) {
   buildInferno(make('inferno'));
 
   // ---- 🛸 Alien Mothership（Lv18，Issue #21）：見 alien.js ----
-  buildAlienTier(make('alien'));
+  buildAlienTier(make('alien'), station.kind);
 
   // ---- Mountain Magic：細雪山、魔法水晶、紫色魔法陣 ----
   const mountain = make('mountain');
@@ -809,6 +811,8 @@ function buildTreadmill(scene, x, z) {
   const title = makeSign('TREADMILL - Train Speed', 3.4, 0.6, THEMES.orange);
   title.position.set(x, 4.75, z - 2.8);
   scene.add(title);
+  station.title = title;
+  station.titleY = 4.75;
 
   station.inZone = (px, pz) => Math.abs(px - x) < 1.2 && pz > z - 2.2 && pz < z + 2.8;
   station.standHeight = 0.36;
@@ -910,6 +914,8 @@ function buildStudentTable(scene, x, z) {
   const title = makeSign('STUDENT TABLE - Train IQ', 3.6, 0.6, THEMES.blue);
   title.position.set(x, 4.05, z - 1.5);
   scene.add(title);
+  station.title = title;
+  station.titleY = 4.05;
 
   // 坐喺櫈附近就練緊 IQ
   station.inZone = (px, pz) => Math.abs(px - x) < 1.5 && pz > z + 0.7 && pz < z + 2.6;
@@ -1552,6 +1558,8 @@ function buildPlotSkins(scene) {
   // 🛸 Futuristic（Issue #21）：銀色燈柱 + 發光燈條 + 全息光環
   make('future', (g, i) => futurePlotPiece(piece, g, i));
   groups.future.add(buildFutureHalo(PLOT.cx, PLOT.cz, PLOT.r));
+  groups.future.userData.fence = buildFutureFence(PLOT.cx, PLOT.cz, PLOT.r, Math.atan2(PLOT.gateZ - PLOT.cz, PLOT.gateX - PLOT.cx), PLOT.gateWidth / 2 + 0.3);
+  groups.future.add(groups.future.userData.fence);
   // 彩虹拱門（Rainbow Paradise 先有）
   const arch = new THREE.Group();
   [0xff1744, 0xff9100, 0xffea00, 0x00e676, 0x2979ff, 0xd500f9].forEach((c, i) => {
@@ -1577,6 +1585,9 @@ export function applyPlotSkin(hub, level = state.plotLevel) {
   hub.plot.gem.color.setHex(g);
   hub.plot.gem.emissive.setHex(g);
   for (const [name, g] of Object.entries(hub.plot.skins)) g.visible = name === skin.deco;
+  // 🛸 Futuristic 有自己一套未來感圍欄 → 收埋原本嘅木圍欄（焊埋咗，靠材質 visible）
+  const ownFence = skin.deco === 'future';
+  for (const m of [hub.plot.wood, hub.plot.trim, hub.plot.gem]) m.visible = !ownFence;
   return skin;
 }
 
@@ -1932,7 +1943,8 @@ export function updateHub(hub, dt, time, px, pz) {
   }
 
   const maxedPlot = state.plotLevel >= PLOT_MAX_UPGRADES;
-  if (hub.plot.skins.future?.visible) animateFutureHalo(hub.plot.skins.future.children.at(-1), time); // 🛸 Futuristic 全息光環
+  if (hub.plot.skins.future?.visible) animateFutureHalo(hub.plot.skins.future.children.find((c) => c.userData.rings), time); // 🛸 Futuristic 全息光環
+  if (hub.plot.skins.future?.visible) animateFutureFence(hub.plot.skins.future.userData.fence, time);
   hub.plotUpgradeSpot.sign.draw(THEMES.dark, [
     { text: 'BIGGER SAFETY ZOO', size: 0.15, color: '#ffd54f' },
     { text: `Skin: ${PLOT_SKINS[state.plotLevel].name}`, size: 0.11, color: '#80deea' },
