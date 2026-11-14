@@ -72,6 +72,7 @@
 
 - 2026-11-07：🎬 Catch & Tame 開場短片（`src/rodeoIntro.js`，`state.rodeoIntroSeen`；揀地圖面板「🎬 Watch intro」；`game.rodeo.intro()`）。
 - 2026-11-13：Issue #21 留言：Alien 升級（跑步機／學生桌 Lv18、繁殖機 Lv7、Futuristic 地塊）全部重做外觀；🐂 牧場 Bucking Bull（`src/buckingBull.js`，`BULL_*` 喺 `data/tame.js`）。Luck Machine + trails 仲未做（等小朋友答）。
+- 2026-11-14：Issue #21 留言：💀 Lv19 Shadow Realm（`src/shadowRealm.js`，幽靈 boost）、🍀 Luck Machine + 8 條 Luck Trail（`src/luckMachine.js`、`src/data/luck.js`；稀有度改咗，Eternal 野生 0.2%）、🎪 牧場小遊戲每 10 分鐘輪替（`src/ranchGames.js`：Bull／Lasso Toss／Horseshoe Toss）。詳情 `docs/plan.md`。
 - 2026-11-09：Issue #19 Enchanted Kingdom 地圖重做（`src/enchantedArt.js`：青苔草地、石仔路、發光小溪、青苔石崖、方塊魔法樹、螢火蟲；動物／Boss／Parkour 唔郁）；Issue #20 Issue 表格「Where in the game?」加晒新地方（Bug 表格都有）、README 加地方一覽。
 
 ## 點樣玩／開發
