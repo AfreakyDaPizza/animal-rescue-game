@@ -87,14 +87,18 @@ export function createBuckingBull({ scene, play = () => {}, popup = () => {}, an
   root.position.set(X, 0, Z);
   scene.add(root);
 
+  // 共用場地（🎪 三個小遊戲都用）：一直見到
+  const arena = new THREE.Group();
+  arena.position.set(X, 0, Z);
+  scene.add(arena);
   // ---- 場地：軟墊圓圈 + 紅白欄 + 燈 ----
-  const mat = add(root, new THREE.CylinderGeometry(3.1, 3.1, 0.12, 40), M(0x1e88e5), 0, 0.06, 0);
+  const mat = add(arena, new THREE.CylinderGeometry(3.1, 3.1, 0.12, 40), M(0x1e88e5), 0, 0.06, 0);
   mat.castShadow = false;
-  const ring = add(root, new THREE.TorusGeometry(3.1, 0.18, 8, 48), M(0xfdd835), 0, 0.14, 0);
+  const ring = add(arena, new THREE.TorusGeometry(3.1, 0.18, 8, 48), M(0xfdd835), 0, 0.14, 0);
   ring.rotation.x = PI / 2;
   for (let k = 0; k < 8; k++) { // 軟墊一格格
     const a = (k / 8) * PI * 2;
-    const seg = add(root, new THREE.BoxGeometry(0.06, 0.02, 2.2), M(0x1565c0), Math.cos(a) * 1.9, 0.13, Math.sin(a) * 1.9, false);
+    const seg = add(arena, new THREE.BoxGeometry(0.06, 0.02, 2.2), M(0x1565c0), Math.cos(a) * 1.9, 0.13, Math.sin(a) * 1.9, false);
     seg.rotation.y = -a + PI / 2;
   }
   // 支柱（紅白間條）
@@ -106,16 +110,16 @@ export function createBuckingBull({ scene, play = () => {}, popup = () => {}, an
     const a = (k / 4) * PI * 2 + PI / 4;
     const px = Math.cos(a) * 3.6;
     const pz = Math.sin(a) * 3.6;
-    add(root, new THREE.BoxGeometry(0.18, 2.6, 0.18), M(0x8d5a32), px, 1.3, pz);
-    bulbs.push(add(root, new THREE.SphereGeometry(0.2, 12, 8), GLOW(k % 2 ? 0xffeb3b : 0xff7043, 1.2), px, 2.7, pz, false));
+    add(arena, new THREE.BoxGeometry(0.18, 2.6, 0.18), M(0x8d5a32), px, 1.3, pz);
+    bulbs.push(add(arena, new THREE.SphereGeometry(0.2, 12, 8), GLOW(k % 2 ? 0xffeb3b : 0xff7043, 1.2), px, 2.7, pz, false));
   }
-  // 招牌（後面，面向 +z 嗰邊條路）
-  const sign = makeSign([{ text: '🐂 BUCKING BULL', size: 0.42 }, { text: 'Press E · Hold on tight!', size: 0.28 }], 3.6, 1.0, THEMES.red || THEMES.orange);
-  sign.position.set(0, 3.3, -3.6);
+  // 招牌（🎪 輪替招牌由 ranchGames.js 起；呢塊細牌跟隻牛）
+  const sign = makeSign([{ text: '🐂 BUCKING BULL', size: 0.42 }, { text: 'Press E · Hold on tight!', size: 0.28 }], 3.0, 0.85, THEMES.red || THEMES.orange);
+  sign.position.set(-2.6, 1.3, 2.6);
+  sign.rotation.y = -PI / 4;
   root.add(sign);
-  for (const s of [-1, 1]) add(root, new THREE.BoxGeometry(0.16, 3.2, 0.16), M(0x5d3a1f), s * 1.7, 1.6, -3.66);
-  const bestLabel = makeLabel([{ text: '🏆 Best: -' }], 0.9);
-  bestLabel.position.set(0, 4.25, -3.6);
+  const bestLabel = makeLabel([{ text: '🏆 Best: -' }], 0.8);
+  bestLabel.position.set(-2.6, 2.05, 2.6);
   root.add(bestLabel);
   const showBest = () => bestLabel.userData.setLines([{ text: `🏆 Your best: ${(state.bullBest || 0).toFixed(1)} s`, color: '#ffeb3b' }]);
   showBest();
@@ -183,18 +187,25 @@ export function createBuckingBull({ scene, play = () => {}, popup = () => {}, an
   hold('#bull-left', 'left');
   hold('#bull-right', 'right');
 
+  let enabled = true;
   const api = {
     get active() { return B.phase !== 'idle'; },
+    // 🎪 小遊戲輪替（ranchGames.js）：唔係輪到隻牛就收埋
+    setEnabled(on) {
+      enabled = on;
+      root.visible = on || B.phase !== 'idle';
+    },
     view,
     interaction,
     update,
     afterView,
+    arena,
     debug: { start: () => start(), fall: () => fall(), get state() { return B; } },
   };
 
   function interaction(pos) {
     if (B.phase !== 'idle') return { prompt: B.phase === 'ride' ? '🐂 Hold on! <kbd>A</kbd> / <kbd>D</kbd> to balance' : '💥 Woah!' };
-    if (Math.hypot(pos.x - X, pos.z - Z) > ACT) return null;
+    if (!enabled || Math.hypot(pos.x - X, pos.z - Z) > ACT) return null;
     return { prompt: '<kbd>E</kbd> 🐂 Ride the BUCKING BULL!', action: start };
   }
 

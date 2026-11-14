@@ -109,7 +109,7 @@ import { createDemonicRanger, updateDemonicRanger } from './demonicRanger.js'; /
 import { setDemonicHooks } from './demonicRewards.js'; // 🧙 Witch Tower 獎品 API（giveReward）
 import { HUB_SPAWN, HW_PORTAL_SPOT, TAME_PORTAL, BUCKING_BULL } from './hubShape.js'; // Issue #16：噴水池冇咗，Hub 重新排位
 import { createLuckMachine } from './luckMachine.js'; // 🍀 Luck Machine + Trails（Issue #21）
-import { createBuckingBull } from './buckingBull.js'; // 🐂 牧場機械牛（Issue #21）
+import { createRanchGames } from './ranchGames.js'; // 🎪 牧場小遊戲輪替：🐂 機械牛／🪢 Lasso Toss／🐴 Horseshoe Toss（Issue #21）
 import { createTameStalls } from './tameStalls.js'; // 🤠 Catch & Tame 區：3 個攤位 + 傳送門（Issue #16）
 import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
 import { createWeapons } from './weapons.js'; // 🔫 魔法武器（Issue #11，之後 Endless Tower 都用）
@@ -230,8 +230,8 @@ tameStalls.setToggle((kind) => togglePanel(kind));
 // 🍀 Luck Machine（Issue #21）：Hub 圍牆邊，買／裝備 Luck Trail
 const luck = createLuckMachine({ scene, play, popup, announce });
 luck.setToggle((kind) => togglePanel(kind));
-// 🐂 Bucking Bull（Issue #21 2026-11-13）：坐緊嗰陣唔行路、用 bull.view 做鏡頭、你個公仔擺上牛背
-const bull = createBuckingBull({
+// 🎪 牧場小遊戲（Issue #21）：玩緊嗰陣唔行路、用 ranch.view 做鏡頭、你個公仔擺上牛背／投擲位
+const ranch = createRanchGames({
   scene, play, popup, announce,
   onStart: () => { camera.visible = false; }, // 手上拎住嘅嘢（掛喺鏡頭）唔好浮喺半空
   onEnd: ({ x, z }) => {
@@ -462,7 +462,7 @@ const riding = createRiding({
   togglePanel: (kind) => togglePanel(kind),
   blocked: () => {
     const { x, z } = camera.position;
-    return intro.active || movie.active || !!fling || sitting || endingRunning || !!rodeo?.active || bull?.active
+    return intro.active || movie.active || !!fling || sitting || endingRunning || !!rodeo?.active || ranch?.active
       || whereIs(x, z) === 'Boss Arena' || inTowerArena(x, z) || inReaperHall(x, z)
       || !!trainingStationAt(hub, x, z) || !!gymStationAt(x, z);
   },
@@ -1067,8 +1067,8 @@ function currentInteraction() {
   if (whereIs(pos.x, pos.z) !== 'Hub') return ridePickInteraction();
   const luckAct = luck.interaction(pos); // 🍀 Luck Machine
   if (luckAct) return luckAct;
-  const bullAct = bull.interaction(pos); // 🐂 機械牛
-  if (bullAct) return bullAct;
+  const ranchAct = ranch.interaction(pos); // 🎪 牧場小遊戲
+  if (ranchAct) return ranchAct;
   const tameAct = tameStalls.interaction(pos); // 🤠 Catch & Tame 傳送門、3 個攤位
   if (tameAct) return tameAct;
   return hubInteraction(hub, pos.x, pos.z, selectedHotbarItem(), hubActions) || ridePickInteraction();
@@ -2047,7 +2047,7 @@ renderer.setAnimationLoop((timestamp) => {
 
     if (fling) updateFling(dt);
     else if (sitting) camera.position.set(BENCH.x + 0.05, 1.75, BENCH.z); // 坐喺長櫈睇流星
-    else if (!rodeo.active && !bull.active) updatePlayer(player, dt, station ? station.standHeight : gymStation ? gymStation.standHeight : 0); // 🤠 Catch & Tame：rodeo.js 自己郁
+    else if (!rodeo.active && !ranch.active) updatePlayer(player, dt, station ? station.standHeight : gymStation ? gymStation.standHeight : 0); // 🤠 Catch & Tame：rodeo.js 自己郁
     // 🦘 彈床：一落地就自動彈返上去（跳得越高越好玩）
     if (gymStation?.kind === 'trampoline' && player.grounded) {
       player.vy = jumpVelocity(Math.max(3.2, jumpHeight() * 1.35));
@@ -2209,11 +2209,11 @@ renderer.setAnimationLoop((timestamp) => {
     emote: !rodeo?.active && !riding.riding && fishing.phase === 'idle' && !fling && !sitting, // 🎵 Tamer 企定吹笛（Issue #17）：騎緊、釣緊魚、彈飛、坐低就唔吹
   });
   if (!inMovie) riding.afterView(viewCam); // 🐎 公仔坐喺馬鞍上面、鏡頭退後
-  if (!inMovie) bull.afterView(thirdPerson.avatar); // 🐂 坐喺機械牛上面／跌落軟墊
+  if (!inMovie) ranch.afterView(thirdPerson.avatar); // 🐂 坐喺機械牛上面／跌落軟墊
   // 🍀 Luck Trail：跟住你隻腳（第三身用公仔位置；第一身用鏡頭下面）
   luckFeet.set(camera.position.x, player.feetY, camera.position.z);
   if (thirdPerson.avatar.g.visible) luckFeet.copy(thirdPerson.avatar.g.position);
-  luck.update(frozen ? 0 : dt, time, luckFeet, !inMovie && !rodeo.active && !bull.active);
+  luck.update(frozen ? 0 : dt, time, luckFeet, !inMovie && !rodeo.active && !ranch.active);
   if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
   handHold.update({ time, third: thirdPerson.zoom > 0, show: !inMovie, walking: player.walking }); // ✋ 要喺 updateThirdPerson（擺好右手）之後
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
@@ -2234,7 +2234,7 @@ renderer.setAnimationLoop((timestamp) => {
     if (d > max) viewCam.position.set(ARENA.x + (dx / d) * max, viewCam.position.y, ARENA.z + (dz / d) * max);
   }
   avoidCameraClip(fight, viewCam.position);
-  renderPass.camera = rodeo.active ? rodeo.view : bull.active ? bull.view : viewCam; // 🤠 Catch & Tame 自己個鏡頭；🐂 機械牛
+  renderPass.camera = rodeo.active ? rodeo.view : ranch.active ? ranch.view : viewCam; // 🤠 Catch & Tame 自己個鏡頭；🐂 機械牛
   for (const p of hub.plot.pets) p.group.visible = !petsHidden;
   const heldModel = rescue.holding?.model;
   if (heldModel) heldModel.visible = !petsHidden && !inMovie; // 播片時唔好喺鏡頭前面見到手上隻寵物
@@ -2264,7 +2264,7 @@ renderer.setAnimationLoop((timestamp) => {
   echoQuests?.update(dt, time, camera.position); // 🐾 任務攤位 + HUD 追蹤器
   meteorShop.update(dt, time); // ☄️ 舖頭水晶閃、隕石火尾
   tameStalls.update(dt, time); // 🤠 Catch & Tame：傳送門轉、NPC 郁
-  bull.update(isPaused() ? 0 : dt, time); // 🐂 機械牛
+  ranch.update(isPaused() ? 0 : dt, time); // 🐂 機械牛
   chests.update(dt, { pos: camera.position, yaw: camera.rotation.y, feetY: player.feetY, third: thirdPerson.zoom > 0, hidden: inMovie }); // 🧰 開箱動畫
   // ⏳ Time Shard：正常玩緊先計時（Boss Arena、塔、Reaper 大廳、播片、彈飛緊都唔跌）
   const shardOk = !isPaused() && !inMovie && !loading.active && !endingRunning && !fling && whereIs(pos.x, pos.z) !== 'Boss Arena' && !inTowerArena(pos.x, pos.z) && !inReaperHall(pos.x, pos.z) && !tower.inside && !reaper.inside && !rodeo.active;
@@ -2284,7 +2284,7 @@ renderer.setAnimationLoop((timestamp) => {
   const quake = inMovie ? null : meteorShake(meteor) || reaper.shake() || tower.shake(); // ☄️ 隕石撞落地／🐉 Boss 爆地板：震下畫面
   if (quake) viewCam.position.add(quake);
   if (quality.bloom) composer.render();
-  else renderer.render(scene, rodeo.active ? rodeo.view : bull.active ? bull.view : viewCam);
+  else renderer.render(scene, rodeo.active ? rodeo.view : ranch.active ? ranch.view : viewCam);
   if (quake) viewCam.position.sub(quake);
   autoQuality(dt);
   if (!booted) {
@@ -2375,7 +2375,7 @@ function giveTame() {
   riding.syncHotbar();
   popup('🤠 Got every Special\'s Stall item!');
 }
-if (import.meta.env.DEV) window.game = { luck, bull: bull.debug, kingdomParkour: kingdomParkour.debug, giveTame, riding, cowboyBossSkins, tameStalls, composer, reaper: reaper.debug, tower: tower.debug, rodeo: rodeo.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { luck, ranch, bull: ranch.debug.bull, kingdomParkour: kingdomParkour.debug, giveTame, riding, cowboyBossSkins, tameStalls, composer, reaper: reaper.debug, tower: tower.debug, rodeo: rodeo.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.timeShard = () => timeShard.force(camera.position, player.feetY); // ⏳ 測試：即刻跌一粒 Time Shard（game.timeShardDrop 睇狀態）
 if (import.meta.env.DEV) window.game.timeShardDrop = timeShard;

@@ -40,6 +40,19 @@ export const BULL_PUSH_GROWTH = 0.025; // the push gets this much stronger every
 export const BULL_CONTROL = 1.3; // how strong A / D pulls you back
 export const BULL_TIP = 0.3; // the more you lean, the faster you fall (bigger = harder)
 
+// 🎪 RANCH MINI-GAME ROTATION (Issue #21, kid 2026-11-14): the ranch arena changes game every few minutes
+// Order: 🐂 Bucking Bull → 🪢 Lasso Toss → 🐴 Horseshoe Toss → back to the bull
+export const RANCH_ROTATE_MINUTES = 10;
+export const RANCH_BEST_BONUS = 2; // extra 🤠 Tame Tokens when you beat your own record (Lasso / Horseshoe)
+// 🪢 Lasso Toss: throw your lasso when the wooden calf is in the middle
+export const LASSO_TOSS_THROWS = 10; // throws per game
+export const LASSO_TOSS_TOKEN_EVERY = 3; // 🤠 1 Tame Token for every this many catches
+export const LASSO_TOSS_SPEED = 2.2; // how fast the calf moves at the start (it gets faster every catch)
+// 🐴 Horseshoe Toss: stop the power bar in the green part to ring the stake
+export const HORSESHOE_THROWS = 5; // throws per game
+export const HORSESHOE_TOKEN_EVERY = 4; // 🤠 1 Tame Token for every this many points (RINGER = 3 points, close = 1)
+export const HORSESHOE_BAR_SPEED = 0.9; // how fast the power bar moves at the start (it gets faster every throw)
+
 // 🪢 Lasso Sam: 10 levels, paid with 💰 money. range = how far (metres) your lasso reaches
 // SPACE jump-off (Issue #17): a better lasso flings you FURTHER and HIGHER
 //   height = how high you fly above the animal's back (metres)
