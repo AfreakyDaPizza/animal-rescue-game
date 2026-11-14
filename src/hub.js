@@ -12,6 +12,7 @@ import { buildMagicLibrary, buildSellStall, buildSaveStall } from './hubBuilding
 import { addFireAura } from './fireAura.js';
 import { buildInferno, animateInferno, infernoTexture } from './inferno.js';
 import { buildAlienTier, animateAlienTier, alienTexture, buildMothership, animateMothership, futurePlotPiece, buildFutureHalo, animateFutureHalo, buildFutureFence, animateFutureFence } from './alien.js'; // 🛸 Issue #21
+import { buildShadowTier, animateShadowTier, shadowTexture, updatePhantoms, SHADOW_LOOK } from './shadowRealm.js'; // 💀 Lv19（Issue #21）
 import { buildPrehistoric, animatePrehistoric, prehistoricTexture } from './prehistoric.js'; // Lv16 Prehistoric Age（Issue #14）
 import { boost } from './events.js';
 import { boostMult } from './boosts.js'; // ⚡ Meteoric Shop 買嘅加成
@@ -65,6 +66,8 @@ export const TIERS = [
   { name: 'Inferno Sanctuary', base: 0x1a0d0a, trim: 0xff6d00, metal: 0.5, glow: 0xff3d00, emissive: 0x4a0e00, extra: 'inferno' },
   // Lv18（Issue #21，小朋友 2026-11-09）：🛸 Alien Mothership —— 紫色外星機身 + 螢光綠電路、尖角大門、頭頂飛碟（alien.js）
   { name: 'Alien Mothership', base: 0x3a0f5c, trim: 0xce93d8, metal: 0.5, glow: 0x76ff03, emissive: 0x1a0530, extra: 'alien' },
+  // Lv19（Issue #21，小朋友 2026-11-14）：💀 Shadow Realm —— 黑色裂地機身 + 血紅裂紋、骷髏海盜爪、骨刺框、幽靈（shadowRealm.js）
+  { name: 'Shadow Realm', base: 0x141018, trim: 0x2b2b2b, metal: 0.6, glow: 0xff1744, emissive: 0x200000, extra: 'shadow' },
 ].map((t, i) => ({ ...t, minLevel: i + 1 }));
 export const tierOf = (level) => Math.min(TIERS.length, Math.max(1, level)) - 1;
 
@@ -110,13 +113,14 @@ export function applyTier(station, level = state[station.levelKey]) {
   station.sparkles.visible = index >= 3; // Golden Steel 起：有閃粉
   for (const [name, group] of Object.entries(station.extras)) group.visible = name === tier.extra;
   // 🛸 Lv18 外星螢幕框頂有天線，個名牌升高少少唔好撞埋（Issue #21 小朋友 2026-11-13）
-  if (station.title) station.title.position.y = station.titleY + (tier.extra === 'alien' ? 1.25 : 0);
+  if (station.title) station.title.position.y = station.titleY + (tier.extra === 'alien' ? 1.25 : tier.extra === 'shadow' ? 1.7 : 0);
   // Astral：機身變星空；Prehistoric：化石石頭；Inferno：機身變火山石 + 發光熔岩裂紋，金屬邊發橙光
   const starry = tier.extra === 'astral' ? starTexture() : null;
   const fossil = tier.extra === 'prehistoric' ? prehistoricTexture() : null;
   const fiery = tier.extra === 'inferno' ? infernoTexture() : null;
   const alien = tier.extra === 'alien' ? alienTexture() : null; // 🛸 Issue #21
-  const skin = starry || fossil || fiery || alien;
+  const shadow = tier.extra === 'shadow' ? shadowTexture() : null; // 💀 Lv19
+  const skin = starry || fossil || fiery || alien || shadow;
   if (station.baseMat.map !== skin) {
     station.baseMat.map = skin;
     station.baseMat.emissiveMap = skin;
@@ -125,9 +129,17 @@ export function applyTier(station, level = state[station.levelKey]) {
   if (skin) {
     station.baseMat.color.setHex(0xffffff);
     station.baseMat.emissive.setHex(0xffffff);
-    station.baseMat.emissiveIntensity = fiery ? 0.9 : fossil ? 0.12 : 0.6;
+    station.baseMat.emissiveIntensity = fiery ? 0.9 : fossil ? 0.12 : shadow ? 0.45 : 0.6;
   } else station.baseMat.emissiveIntensity = 1;
-  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : alien ? 0x4a148c : 0x000000);
+  station.trimMat.emissive.setHex(fiery ? 0xff5a00 : alien ? 0x4a148c : shadow ? 0x3a0000 : 0x000000);
+  // 💀 Shadow Realm：跑步帶變血紅、扶手變骨白；學生桌變烏木、黑板暗紅（小朋友：「change the treadmills tread colour and the handle」）
+  if (station.beltMat) {
+    station.beltMat.color.setHex(shadow ? SHADOW_LOOK.belt : 0xffffff);
+    station.beltMat.emissive.setHex(shadow ? SHADOW_LOOK.beltGlow : 0x000000);
+  }
+  if (station.gripMat) station.gripMat.color.setHex(shadow ? SHADOW_LOOK.grip : 0x263238);
+  if (station.woodMat) station.woodMat.color.setHex(shadow ? SHADOW_LOOK.wood : 0xb98a5e);
+  if (station.boardMat) station.boardMat.color.setHex(shadow ? SHADOW_LOOK.board : 0xffffff);
   station.trimMat.emissiveIntensity = fiery ? 0.7 : 1;
   station.stageGlow.color.setHex(tier.glow || 0x90a4ae);
   station.stageGlow.emissive.setHex(tier.glow || 0x000000);
@@ -430,6 +442,8 @@ function addFancyBits(station, group, y) {
 
   // ---- 🛸 Alien Mothership（Lv18，Issue #21）：見 alien.js ----
   buildAlienTier(make('alien'), station.kind);
+  // ---- 💀 Shadow Realm（Lv19，Issue #21）：見 shadowRealm.js ----
+  buildShadowTier(make('shadow'), station.kind);
 
   // ---- Mountain Magic：細雪山、魔法水晶、紫色魔法陣 ----
   const mountain = make('mountain');
@@ -722,6 +736,7 @@ function animateExtras(station, time) {
   if (e.inferno?.visible) animateInferno(e.inferno, station, time);
   if (e.prehistoric.visible) animatePrehistoric(e.prehistoric, time);
   if (e.alien?.visible) animateAlienTier(e.alien, station, time);
+  if (e.shadow?.visible) animateShadowTier(e.shadow, station, time);
   if (e.astral.visible) {
     const u = e.astral.userData;
     u.galaxy.rotation.y = time * 0.35;
@@ -761,6 +776,7 @@ function buildTreadmill(scene, x, z) {
   station.trimMat = new THREE.MeshStandardMaterial({ metalness: 0.6, roughness: 0.3 });
   station.ledMat = new THREE.MeshStandardMaterial({ emissiveIntensity: 3 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.6 });
+  station.gripMat = new THREE.MeshStandardMaterial({ color: 0x263238, roughness: 0.6 });
 
   // 底座 + 兩邊踏腳位
   add(g, rbox(3.2, 0.35, 5.8), station.baseMat, 0, 0.18, 0.1);
@@ -776,7 +792,8 @@ function buildTreadmill(scene, x, z) {
   station.beltTexture = new THREE.CanvasTexture(canvas);
   station.beltTexture.wrapS = station.beltTexture.wrapT = THREE.RepeatWrapping;
   station.beltTexture.repeat.set(1, 10);
-  const belt = add(g, new THREE.PlaneGeometry(2.2, 5.4), new THREE.MeshStandardMaterial({ map: station.beltTexture, roughness: 0.9 }), 0, 0.36, 0.1);
+  station.beltMat = new THREE.MeshStandardMaterial({ map: station.beltTexture, roughness: 0.9 });
+  const belt = add(g, new THREE.PlaneGeometry(2.2, 5.4), station.beltMat, 0, 0.36, 0.1);
   belt.rotation.x = -Math.PI / 2;
   // 兩邊 LED 燈條
   for (const s of [-1, 1]) add(g, new THREE.BoxGeometry(0.07, 0.07, 5.6), station.ledMat, s * 1.62, 0.3, 0.1);
@@ -787,7 +804,7 @@ function buildTreadmill(scene, x, z) {
   for (const s of [-1, 1]) {
     const post = add(g, rbox(0.22, 1.8, 0.22), station.trimMat, s * 1.35, 1.65, -2.6);
     post.rotation.x = 0.15;
-    add(g, rbox(0.16, 0.16, 1.6), dark, s * 1.35, 1.75, -1.75); // 手柄（黑色膠）
+    add(g, rbox(0.16, 0.16, 1.6), station.gripMat, s * 1.35, 1.75, -1.75); // 手柄（黑色膠；Shadow Realm 變骨白）
   }
   add(g, rbox(2.9, 0.18, 0.18), station.trimMat, 0, 1.75, -2.55);
   // 控制台（斜斜）+ 速度燈
@@ -862,6 +879,7 @@ function buildStudentTable(scene, x, z) {
   station.trimMat = new THREE.MeshStandardMaterial({ roughness: 0.4 });
   station.ledMat = new THREE.MeshStandardMaterial({ emissiveIntensity: 3 });
   const wood = new THREE.MeshStandardMaterial({ color: 0xb98a5e, roughness: 0.7 });
+  station.woodMat = wood; // 💀 Shadow Realm 變烏木
   const dark = new THREE.MeshStandardMaterial({ color: 0x37474f });
   const knob = new THREE.MeshStandardMaterial({ color: 0xffd54f, metalness: 0.6 });
 
@@ -901,7 +919,8 @@ function buildStudentTable(scene, x, z) {
   add(g, rbox(0.7, 0.06, 0.7), dark, 0, 0.04, 1.3);
   // 黑板
   add(g, rbox(3.8, 2.3, 0.16), station.baseMat, 0, 2.35, -1.5);
-  add(g, new THREE.PlaneGeometry(3.5, 2.0), new THREE.MeshStandardMaterial({ map: chalkboardTexture(), roughness: 0.9 }), 0, 2.35, -1.41);
+  station.boardMat = new THREE.MeshStandardMaterial({ map: chalkboardTexture(), roughness: 0.9 });
+  add(g, new THREE.PlaneGeometry(3.5, 2.0), station.boardMat, 0, 2.35, -1.41);
   add(g, rbox(3.6, 0.08, 0.12), station.ledMat, 0, 3.54, -1.42);
   add(g, rbox(3.2, 0.08, 0.2), station.trimMat, 0, 1.2, -1.35); // 粉筆槽
   for (const s of [-1, 1]) add(g, rbox(0.15, 1.3, 0.15), station.trimMat, s * 1.8, 0.65, -1.5); // 黑板腳
@@ -1773,6 +1792,9 @@ export function updateHub(hub, dt, time, px, pz) {
     result.trained = { station, amount };
     station.infernoBurstAt = time; // Inferno：練到嘢就爆一圈火
   }
+
+  // 👻 Shadow Realm：企喺 Lv19 機練緊 → 幽靈飄過嚟俾隨機 1 分鐘 boost
+  if (dt > 0 && Number.isFinite(px)) updatePhantoms(hub.scene, dt, time, station && TIERS[tierOf(state[station.levelKey])].extra === 'shadow' ? station : null, px, pz);
 
   // 地塊賺錢：每秒一次
   hub.moneyTimer += dt;

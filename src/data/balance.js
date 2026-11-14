@@ -109,7 +109,7 @@ export const INDEX_BIOME_COMPLETE_REWARD = [200, 1500, 10000, 75000, 500000, 400
 // 例：Lv1→2 $50、Lv5→6 $1,659、Lv10→11 $132,000、Lv13→14 $1,826,000
 // 跑步機再慢 10%（小朋友要求）：stat = 'speed' 就 × 0.9
 // 15 級，每級一個款：Basic → … → Mountain Magic（14）→ Astral（15，MAX）
-export const MAX_TRAINING_LEVEL = 18; // Lv17 Inferno Sanctuary（小朋友 2026-10-18）、Lv18 🛸 Alien Mothership（Issue #21）
+export const MAX_TRAINING_LEVEL = 19; // Lv17 Inferno Sanctuary（小朋友 2026-10-18）、Lv18 🛸 Alien Mothership（Issue #21）
 // 小朋友 2026-10-11 加強：Lv14 Mountain Magic ×1.5、Lv15 Astral ×2
 const TOP_LEVEL_BUFF = { 14: 1.5, 15: 2, 16: 6 }; // Lv16 Prehistoric Age（本來叫 Astral King's Kingdom，Issue #14 改名）: x6（小朋友 2026-10-17：再勁啲，本來 x3）
 // Lv17 Inferno Sanctuary (kid 2026-10-18): gives a random amount between these 2 numbers every second
@@ -117,7 +117,12 @@ export const INFERNO_GAIN = [1000000, 1500000];
 // Lv18 🛸 Alien Mothership (Issue #21): random amount between these 2 numbers every second
 export const ALIEN_GAIN = [4000000, 6000000];
 export const ALIEN_TRAINING_COST = 75000000000; // kid: $75B (not made 50% more)
-export const trainingRange = (level) => (level >= 18 ? ALIEN_GAIN : level >= 17 ? INFERNO_GAIN : null);
+// Lv19 💀 Shadow Realm (Issue #21, kid 2026-11-14): costs $150B, gives 6M–7M per second
+export const SHADOW_GAIN = [6000000, 7000000];
+export const SHADOW_TRAINING_COST = 150000000000;
+export const SHADOW_PHANTOM_EVERY = 40; // 👻 a Phantom comes every this many seconds while you train on a Shadow Realm machine
+export const SHADOW_PHANTOM_SECONDS = 60; // 👻 how long the Phantom's random boost lasts (seconds)
+export const trainingRange = (level) => (level >= 19 ? SHADOW_GAIN : level >= 18 ? ALIEN_GAIN : level >= 17 ? INFERNO_GAIN : null);
 export const trainingGain = (level, stat = 'iq', roll = Math.random()) =>
   trainingRange(level)
     ? Math.round(trainingRange(level)[0] + (trainingRange(level)[1] - trainingRange(level)[0]) * roll)
@@ -136,7 +141,8 @@ const costRamp = (toLevel) => (toLevel <= COST_RAMP_FROM ? 1 : Math.min(COST_RAM
 // 顯示用：Lv17 係一個範圍（例如 "1M–1.5M"）
 export const trainingGainLabel = (level, stat, fmt) => (trainingRange(level) ? trainingRange(level).map(fmt).join('–') : fmt(trainingGain(level, stat)));
 export const upgradeCost = (level) =>
-  level + 1 >= 18 ? ALIEN_TRAINING_COST
+  level + 1 >= 19 ? SHADOW_TRAINING_COST
+    : level + 1 >= 18 ? ALIEN_TRAINING_COST
     : Math.round(TRAINING_COST_UP * (level + 1 >= 17 ? INFERNO_COST : 50 * 2.4 ** (level - 1) * (level + 1 <= 13 ? 1.1 : 1) * (level + 1 >= 13 ? LATE_LEVEL_EXTRA : 1) * costRamp(level + 1)));
 
 // ---- 🎣 HALLOWEEN FISHING (kid 2026-10-19; Issues #8 #9 2026-10-21): 15 rods, fish for eggs AND 🌽 Candy Corn ----

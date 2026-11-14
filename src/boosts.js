@@ -35,6 +35,17 @@ export function addBoost(id) {
   return boostLeft(id, now);
 }
 
+// 👻 Shadow Realm 幽靈（Issue #21）：免費俾 seconds 秒（未完就喺尾加）
+export function addBoostFor(id, seconds) {
+  if (!findBoost(id)) return 0;
+  const now = Date.now();
+  state.boosts = { ...(state.boosts || {}) };
+  state.boosts[id] = Math.max(now, state.boosts[id] || 0) + seconds * 1000;
+  save();
+  renderChips();
+  return boostLeft(id, now);
+}
+
 export const formatLeft = (sec) => {
   const s = Math.ceil(sec);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
