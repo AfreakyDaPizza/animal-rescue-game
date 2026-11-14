@@ -375,7 +375,7 @@ export function buildHubPark(root, live) {
   pathStrip(root, ringW, 10.5, ringW, ringS, W);
   pathStrip(root, ringE, 10.5, ringE, ringS, W);
   pathStrip(root, 0, ringS, 0, cz + r, 5); // 地塊 → 大門
-  pathStrip(root, LIBRARY_WALK_X, 10.5, LIBRARY_WALK_X, (METEOR_SHOP_ON ? METEOR_SHOP.z : LIBRARY.z) + 4, 3.2); // ✨ 圖書館門口條直路（由上面條路落）
+  pathStrip(root, LIBRARY_WALK_X, 10.5, LIBRARY_WALK_X, METEOR_SHOP.z + 4, 3.2); // ✨ 圖書館門口條直路（由上面條路落，一直去到 🍀 Luck Machine）
   pathStrip(root, ringE, TAME_AREA.gateZ, TAME_AREA.minX + 1, TAME_AREA.gateZ, 3.4); // 去 🤠 Catch & Tame 入口
   // 圓形地塊（Issue #17）：圍欄外面一圈圓形石路 + 深色邊
   for (const [r1, r2, c, y] of [[PLOT.r - 0.1, PLOT.r + 1.9, 0x8a7d68, 0.05], [PLOT.r + 0.05, PLOT.r + 1.7, 0xe1d1ae, 0.06]]) {

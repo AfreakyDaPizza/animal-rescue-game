@@ -108,6 +108,7 @@ import { createDemonicBossSkins } from './demonicBossSkin.js'; // 😈 Demonic B
 import { createDemonicRanger, updateDemonicRanger } from './demonicRanger.js'; // 😈 Demonic Ranger：飛 + 火噴射跳
 import { setDemonicHooks } from './demonicRewards.js'; // 🧙 Witch Tower 獎品 API（giveReward）
 import { HUB_SPAWN, HW_PORTAL_SPOT, TAME_PORTAL, BUCKING_BULL } from './hubShape.js'; // Issue #16：噴水池冇咗，Hub 重新排位
+import { createLuckMachine } from './luckMachine.js'; // 🍀 Luck Machine + Trails（Issue #21）
 import { createBuckingBull } from './buckingBull.js'; // 🐂 牧場機械牛（Issue #21）
 import { createTameStalls } from './tameStalls.js'; // 🤠 Catch & Tame 區：3 個攤位 + 傳送門（Issue #16）
 import { showLoading, loading, startBoot, finishBoot } from './loading.js'; // ⏳ 載入畫面（Issue #8）
@@ -226,6 +227,9 @@ const tameStalls = createTameStalls({
   blocked: () => (rescue.carrying ? '🐾 Bring your animal to a Happy Machine first, partner!' : null),
 });
 tameStalls.setToggle((kind) => togglePanel(kind));
+// 🍀 Luck Machine（Issue #21）：Hub 圍牆邊，買／裝備 Luck Trail
+const luck = createLuckMachine({ scene, play, popup, announce });
+luck.setToggle((kind) => togglePanel(kind));
 // 🐂 Bucking Bull（Issue #21 2026-11-13）：坐緊嗰陣唔行路、用 bull.view 做鏡頭、你個公仔擺上牛背
 const bull = createBuckingBull({
   scene, play, popup, announce,
@@ -1061,6 +1065,8 @@ function currentInteraction() {
   const skinAct = cowboyBossSkins.interaction(pos, rescue.carrying) || demonicBossSkins.interaction(pos, rescue.carrying) || bossSkins.interaction(pos, rescue.carrying); // 🦹 Boss 隔籬：換隕石／惡魔皮膚
   if (skinAct) return skinAct;
   if (whereIs(pos.x, pos.z) !== 'Hub') return ridePickInteraction();
+  const luckAct = luck.interaction(pos); // 🍀 Luck Machine
+  if (luckAct) return luckAct;
   const bullAct = bull.interaction(pos); // 🐂 機械牛
   if (bullAct) return bullAct;
   const tameAct = tameStalls.interaction(pos); // 🤠 Catch & Tame 傳送門、3 個攤位
@@ -1595,6 +1601,7 @@ function goToBeach() {
   travel(BEACH_ARRIVE.x, BEACH_ARRIVE.z, -Math.PI / 2, '🏖️ The Secret Beach!');
 }
 let sitting = false;
+const luckFeet = new THREE.Vector3(); // 🍀 Luck Trail 用
 function sitDown() {
   sitting = true;
   camera.rotation.set(0.35, -Math.PI / 2, 0, 'YXZ'); // 望向海同天空
@@ -2203,6 +2210,10 @@ renderer.setAnimationLoop((timestamp) => {
   });
   if (!inMovie) riding.afterView(viewCam); // 🐎 公仔坐喺馬鞍上面、鏡頭退後
   if (!inMovie) bull.afterView(thirdPerson.avatar); // 🐂 坐喺機械牛上面／跌落軟墊
+  // 🍀 Luck Trail：跟住你隻腳（第三身用公仔位置；第一身用鏡頭下面）
+  luckFeet.set(camera.position.x, player.feetY, camera.position.z);
+  if (thirdPerson.avatar.g.visible) luckFeet.copy(thirdPerson.avatar.g.position);
+  luck.update(frozen ? 0 : dt, time, luckFeet, !inMovie && !rodeo.active && !bull.active);
   if (!inMovie) updateFishing(fishing, dt, time, { inside: halloween.inside, pos: camera.position, third: thirdPerson.zoom > 0, ui: fishUI, paused: isPaused() }); // 🎣 要喺 updateThirdPerson 之後（改手臂）
   handHold.update({ time, third: thirdPerson.zoom > 0, show: !inMovie, walking: player.walking }); // ✋ 要喺 updateThirdPerson（擺好右手）之後
   // Issue #2：喺實驗室／Arena 入面，第三身鏡頭唔好退咗出牆外面（會成個畫面黑晒／望唔到）
@@ -2364,7 +2375,7 @@ function giveTame() {
   riding.syncHotbar();
   popup('🤠 Got every Special\'s Stall item!');
 }
-if (import.meta.env.DEV) window.game = { bull: bull.debug, kingdomParkour: kingdomParkour.debug, giveTame, riding, cowboyBossSkins, tameStalls, composer, reaper: reaper.debug, tower: tower.debug, rodeo: rodeo.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
+if (import.meta.env.DEV) window.game = { luck, bull: bull.debug, kingdomParkour: kingdomParkour.debug, giveTame, riding, cowboyBossSkins, tameStalls, composer, reaper: reaper.debug, tower: tower.debug, rodeo: rodeo.debug, weapons, inventory, chests, giveChests, admin: () => togglePanel('admin'), get echo() { return echo; }, candy: (n = 5000) => giveCandyCorn(n), crystals: (n = 5000) => giveCrystals(n), meteorShop, bossSkins, fishing, get hwEggs() { return hwEggs; }, phantom, ghostHunt, shards, forceTrain, useHalloweenShard, halloween, enterHalloween, leaveHalloween, get hwWorld() { return hwWorld; }, get hell() { return hell; }, get expedition() { return expedition; }, travelToHell, leaveHell, placePlayer, openHalloween: () => (state.halloweenEarly = true), playHatch: (name = 'Giant Panda', rarity = 'Legendary', i = 0) => { const m = hub.machines[i]; const back = { x: camera.position.x, z: camera.position.z }; player.controls.unlock(); playFirstHatch({ scene, camera, machine: m, pet: { name, rarity, kg: 100, biome: 0 }, from: back, onDone() { teleportPlayer(player, back.x, back.z); } }); }, renderer, ambience, gradePass, bloomPass, hemi, sun, crazy, crazyButton: () => ((crazy.debug = true), pressCrazy(crazy, rescue)), crazyPress: () => pressCrazy(crazy, rescue), gym, openGym: () => (gym.debug = true), eclipse, resetDevice: () => { state.device = null; save(); }, openKingdom: () => (kingdomDebug = true), fight, lab: labDebug, movie, handHammer, avatarHammer, thirdPerson, spawnAll, forceEvent, tutorial, quality, camera, player, dayNight, scene, rescue, hub, bosses, hazards, state, intro, isWalkable, platforms, colliders, spawn: (b, rarity) => spawnAnimal(rescue, b, null, null, rarity) };
 if (import.meta.env.DEV) window.game.questline = Object.defineProperties(questline, { stall: { get: () => echoQuests }, open: { value: () => ((state.echoQuestsEarly = true), save()) } }); // 🐾 測試：game.questline.open()、.finish()、.jump(9)、.track('ghostCatch', 5)
 if (import.meta.env.DEV) window.game.timeShard = () => timeShard.force(camera.position, player.feetY); // ⏳ 測試：即刻跌一粒 Time Shard（game.timeShardDrop 睇狀態）
 if (import.meta.env.DEV) window.game.timeShardDrop = timeShard;

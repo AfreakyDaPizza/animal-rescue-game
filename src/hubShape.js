@@ -35,6 +35,7 @@ export const MACHINE_SIGN = { x: -17, z: 45 }; // 繁殖機升級牌（一行機
 // 兩間都喺 Hub 左邊、背脊貼住圍牆、面向 +x（Hub 中間）；前面有條直路連住兩個門口
 export const LIBRARY = { x: -31.2, z: 21 };
 export const METEOR_SHOP = { x: -31.0, z: 33.5 };
+export const LUCK_MACHINE = { x: -31.0, z: 33.5, rot: Math.PI / 2 }; // 🍀 Issue #21：以前 Meteoric Shop 個位（收埋咗），面向 +x（圖書館門口條路）
 export const LIBRARY_WALK_X = -25.6; // 兩間門口前面嗰條直路（x）
 
 // 🤠 Catch & Tame 新區（Hub 右邊）：西邊木欄有入口（gateZ），東邊係圍牆

@@ -33,19 +33,32 @@ export const petMoney = (kg, biome, rarity = 'Common') =>
 
 // ---- 稀有度（原稿：Mythic 2%、Legendary 15%，其餘 83% 係 Common／Rare／Epic）----
 // chance：出現機會（%）；money：賺錢倍數；reproduce：繁殖時間倍數（越稀有越耐）
+// Issue #21 (kid 2026-11-09): Common, Rare and Epic come MUCH more often than Legendary, Mythic is rarer,
+// Eternal is the rarest. A 🍀 Luck Trail (src/data/luck.js) makes Legendary / Mythic / Eternal come more often.
 export const RARITIES = [
-  { name: 'Common', chance: 45, money: 1, reproduce: 1, color: '#cfd8dc' },
-  { name: 'Rare', chance: 25, money: 1.5, reproduce: 1.2, color: '#42a5f5' },
-  { name: 'Epic', chance: 13, money: 2.5, reproduce: 1.5, color: '#ce93d8' },
-  { name: 'Legendary', chance: 15, money: 5, reproduce: 2, color: '#ffca28' },
-  { name: 'Mythic', chance: 2, money: 15, reproduce: 3, color: '#ff4081' },
-  // Eternal（小朋友 Issue #5）：最高級，唔會隨機出，淨係 Royal Skywhale 有
-  { name: 'Eternal', chance: 0, money: 40, reproduce: 4, color: '#18ffff' },
+  { name: 'Common', chance: 50, money: 1, reproduce: 1, color: '#cfd8dc' },
+  { name: 'Rare', chance: 28, money: 1.5, reproduce: 1.2, color: '#42a5f5' },
+  { name: 'Epic', chance: 16, money: 2.5, reproduce: 1.5, color: '#ce93d8' },
+  { name: 'Legendary', chance: 4.5, money: 5, reproduce: 2, color: '#ffca28' },
+  { name: 'Mythic', chance: 1.3, money: 15, reproduce: 3, color: '#ff4081' },
+  // Eternal（小朋友 Issue #5）：最高級；Issue #21 起野生都有（最少機會）
+  { name: 'Eternal', chance: 0.2, money: 40, reproduce: 4, color: '#18ffff' },
 ];
+export const LUCKY_RARITIES = ['Legendary', 'Mythic', 'Eternal']; // 🍀 trail luck multiplies these chances
 export const rarityInfo = (name) => RARITIES.find((r) => r.name === name) || RARITIES[0];
-export function randomRarity() {
+// 🍀 而家幾多運氣（luckMachine.js 喺開機／換 trail 時設定；Discord bot 冇 trail = 1）
+let rarityLuck = 1;
+export const setRarityLuck = (x) => (rarityLuck = Math.max(1, x || 1));
+export const getRarityLuck = () => rarityLuck;
+// 有運氣時每款稀有度嘅機會（%，加埋 = 100）
+export function rarityChances(luck = rarityLuck) {
+  const w = RARITIES.map((r) => r.chance * (LUCKY_RARITIES.includes(r.name) ? luck : 1));
+  const total = w.reduce((a, b) => a + b, 0);
+  return RARITIES.map((r, i) => ({ name: r.name, chance: (w[i] / total) * 100 }));
+}
+export function randomRarity(luck = rarityLuck) {
   let roll = Math.random() * 100;
-  for (const r of RARITIES) {
+  for (const r of rarityChances(luck)) {
     roll -= r.chance;
     if (roll < 0) return r.name;
   }
